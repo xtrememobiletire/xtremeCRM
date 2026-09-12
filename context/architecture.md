@@ -49,10 +49,10 @@ The architecture emphasizes **high throughput, minimal latency, zero redundant d
 +-------------------------------------------------------------------------+
 |                     PERSISTENCE & EXTERNAL SERVICES                     |
 |                                                                         |
-|   +-----------------------+  +----------------------+  +--------------+ |
-|   |  PostgreSQL Database  |  |  Google Maps API     |  | Dialer CTI / | |
-|   |  (ACID, Normalized)   |  |  (Geocode & Distance)|  | Webhook API  | |
-|   +-----------------------+  +----------------------+  +--------------+ |
+|   +------------------------------------+  +--------------------------+  |
+|   |  PostgreSQL Database (Dokploy)     |  |  Google Maps API         |  |
+|   |  (ACID, Single DB Multi-Tenant)    |  |  (Geocode & Distance)    |  |
+|   +------------------------------------+  +--------------------------+  |
 +-------------------------------------------------------------------------+
 ```
 
@@ -61,16 +61,16 @@ The architecture emphasizes **high throughput, minimal latency, zero redundant d
 | Layer | Technology | Why Chosen (Ponytail / High Speed) |
 | :--- | :--- | :--- |
 | **Frontend Framework** | **React 18 + Vite** | Instant HMR, sub-second cold starts, broad ecosystem, high UI velocity. |
-| **Client State** | **Zustand** | Zero boilerplate (unlike Redux), tiny bundle footprint (< 3KB), ideal for modal state, caller popup, and active filters. |
+| **Client State** | **Zustand** | Zero boilerplate (unlike Redux), tiny bundle footprint (< 3KB), ideal for modal state, active country, and active filters. |
 | **Server State / Cache** | **TanStack Query v5** | Automatic cache invalidation, deduplicated requests, background refetching, optimistic updates for dispatch. |
 | **Styling & Icons** | **Tailwind CSS + Lucide React** | Utility-first compile-time purge, predictable Red & White tokens, zero CSS runtime overhead. |
-| **Form Engine** | **React Hook Form + Zod** | Zero-lag uncontrolled form inputs optimized for high-speed call agent keyboard data entry. |
+| **Form Engine** | **React Hook Form + Zod** | Zero-lag uncontrolled form inputs optimized for high-speed manual call agent keyboard data entry. |
 | **Real-time Comms** | **Socket.io** | Built-in connection management, rooms/namespaces (`job:id`, `dispatch:region`), auto-reconnection on mobile network drops. |
 | **Backend Framework** | **Fastify** | 2x-3x faster than Express, built-in schema validation, plugin encapsulation, low memory overhead. |
 | **ORM** | **Prisma** | End-to-end TypeScript type safety, declarative migrations, Prisma Client Extensions for multi-tenancy. |
 | **Database** | **PostgreSQL 16** | Relational integrity, native JSON support, ACID compliance for accounting ledgers. Deployed via Dokploy. |
 | **Deployment / Host** | **Dokploy on Hostinger VPS** | 16GB RAM KVM VPS, Docker Compose, 1-click PostgreSQL with automated daily S3 backups, Traefik auto-SSL. |
-| **Telephony / Dialer** | **Zadarma Cloud PBX** | $0/seat cloud contact center. Webhook screen-pop (`POST /api/telephony/zadarma-webhook`), DIDs (US/CA/UK), ring groups, and webphone/MicroSIP integration without raw WebRTC. |
+| **Telephony Architecture** | **Decoupled / Standalone** | Agents use their dialer independently. Zero webhook/pop-up coupling into CRM state. Clean, deterministic, manual agent intake. |
 
 ### Fastify Developer Velocity Suite (Build Faster, Write Less Boilerplate)
 

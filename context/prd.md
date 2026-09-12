@@ -79,11 +79,10 @@ The software bridges the gap between high-pressure call-center intake, real-time
   - *Today*, *Yesterday*, *Last 3 Days*, *1 Week*, *Monthly*.
   - Reports show Gross Revenue, Material Costs, Driver Payouts, Net Margin, and IT_B balances.
 
-### 3.7. Zadarma Telephony & Cloud PBX Integration
-- **FR-7.1: Zero-Seat-Cost Cloud PBX:** Integration with Zadarma Cloud PBX for USA, Canada, and UK DIDs, automated ring groups (hunt groups), and free SIP extensions without per-agent monthly seat fees.
-- **FR-7.2: Inbound Screen-Pop Webhook:** Fastify exposes `/api/telephony/zadarma-webhook`. When a customer calls a DID, Zadarma sends `NOTIFY_START` / `NOTIFY_INTERNAL` $\rightarrow$ Fastify matches caller ID to the customer profile and emits a Socket.io event to auto-open the intake modal on the ringing agent's screen.
-- **FR-7.3: Click-to-Dial & Audio Interface:** Agents can initiate calls via one-click callback API or embedded webphone widget, or take calls via desktop softphones (MicroSIP/Zoiper).
-- **FR-7.4: Call Recording Synchronization:** When a call ends (`NOTIFY_END`), Zadarma’s MP3 recording link is automatically stored in `Job.callRecordingUrl`.
+### 3.7. Call Intake Workflow (Decoupled Manual Operation)
+- **FR-7.1: Manual Lead Source Selector:** Intake form includes the source dropdown (`Direct Call`, `WhatsApp`, `Website`) as defined in the original workflow.
+- **FR-7.2: Rapid Keyboard Data Entry:** When an agent takes a call, they open the intake modal and enter customer details manually. Phone number input performs an instant background search to auto-link returning customers.
+- **FR-7.3: Zero Dialer Coupling:** The CRM operates 100% independently of the agent's dialer/softphone, with zero forced pop-ups or dialer-driven side-effects.
 
 ---
 

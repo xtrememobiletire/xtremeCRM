@@ -90,16 +90,13 @@
    - Adding a new country (e.g. Australia `AU`) requires **zero database provisioning, zero containers, and zero schema migrations**.
    - Simply declare the country in `server/config/regions.ts`. Fastify and React pick it up instantly.
 
----
-
-## 7. Zadarma Telephony & Webhook Integration Rules
-1. **Zero Voice Audio in Fastify:**
-   - Fastify handles only JSON events (`POST /api/telephony/zadarma-webhook`). Audio RTP streams travel directly between Zadarma and the agent's headset (via webphone or softphone). Fastify never touches audio streams.
-2. **Fast Webhook Acknowledgement (< 2s):**
-   - The Zadarma webhook endpoint must respond with HTTP `200 OK` (`{"result": 1}`) immediately. Customer lookups and Socket.io event emissions must run asynchronously without delaying the HTTP response.
-3. **Extension-to-User Mapping:**
-   - The `User` model stores `telephonyExtension` (e.g. `"101"`). When Zadarma sends `NOTIFY_INTERNAL` with an extension, Fastify routes the screen-pop event strictly to that agent's socket room (`agent:101`).
-4. **Call Recording Audit Trail:**
-   - On `NOTIFY_END`, Zadarma's MP3 recording URL is saved to the related `Job` audit history for dispute resolution and quality assurance.
-5. **Zero Raw WebRTC Engineering:**
-   - Never write custom WebRTC peer connections or ICE servers. Use Zadarma's ready-to-use webphone widget or external SIP softphones (MicroSIP/Zoiper).
+## 7. Decoupled Telephony (Independent Manual Agent Workflow)
+1. **Zero Dialer Coupling:**
+   - The CRM is 100% standalone and decoupled from the dialer. The dialer does NOT make the CRM behave differently, and no external telephony webhooks drive CRM state.
+2. **No Automated Pop-Ups or Interruptions:**
+   - The CRM never interrupts agents with unexpected pop-ups or modal triggers when a call rings. Agents manually open the Call Intake modal when taking a call.
+3. **Manual Intake Data Flow:**
+   - As designed in the original system workflow, agents manually select the source from the dropdown (`Direct Call`, `WhatsApp`, `Website`).
+   - Agents manually enter or look up customer phone numbers, enter vehicle details, select services, and dispatch drivers.
+4. **Resilience & Simplicity (Ponytail Principle):**
+   - Telephony outages or dialer changes have zero impact on CRM performance, database integrity, or uptime. Less engineering overhead, zero unrequested complexity.

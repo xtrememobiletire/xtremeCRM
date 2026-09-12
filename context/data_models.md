@@ -100,7 +100,6 @@ model User {
   phone              String?
   role               UserRole
   countryCode        String?   @map("country_code") // e.g. "CA", "US", "UK". Null = Global Director/Admin
-  telephonyExtension String?   @map("telephony_extension") // e.g. "101", "102" mapped to Zadarma
   isActive           Boolean   @default(true) @map("is_active")
   createdAt          DateTime  @default(now()) @map("created_at")
   updated_at         DateTime  @updatedAt @map("updated_at")
@@ -113,7 +112,6 @@ model User {
   verifiedCashLedgers   DriverCashLedger[]      @relation("VerifiedBy")
 
   @@index([countryCode])
-  @@index([telephonyExtension])
   @@map("users")
 }
 
@@ -205,10 +203,9 @@ model Job {
   scheduledAt      DateTime?       @map("scheduled_at") // For FUTURE bookings
   completedAt      DateTime?       @map("completed_at")
 
-  // Call Center Outcome & Telephony
+  // Call Center Outcome
   disposition      JobDisposition  @default(BOOKED)
   dispositionNotes String?         @map("disposition_notes")
-  callRecordingUrl String?         @map("call_recording_url") // Zadarma MP3 recording link
 
   createdAt        DateTime        @default(now()) @map("created_at")
   updatedAt        DateTime        @updatedAt @map("updated_at")

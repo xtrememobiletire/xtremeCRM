@@ -21,7 +21,7 @@
 - **Client UI State:** **Zustand** — Ephemeral UI controls (drawers, modals, filters, dialer state).
 - **Server State / Cache:** **TanStack Query v5** — Automatic cache invalidation upon socket events.
 - **Form Engine:** **React Hook Form + Zod** — Zero-lag keyboard booking for call agents.
-- **Telephony & Dialer:** **Zadarma Cloud PBX** — $0/seat cloud contact center, US/CA/UK DIDs, inbound ring groups, and webhook screen-pop (`POST /api/telephony/zadarma-webhook`) without raw WebRTC engineering.
+- **Telephony Architecture:** **Decoupled / Standalone** — Agents operate their phone/dialer independently. Zero dialer-driven side-effects or forced pop-ups. High-speed manual booking.
 - **Hosting & DevOps:** **Dokploy** on Hostinger 16GB KVM VPS — Docker Compose, 1-click PostgreSQL with automated daily backups, Traefik auto-SSL.
 
 ---
@@ -45,6 +45,8 @@
    - Tenant scoping powered by an indexed `countryCode` column and Fastify Prisma Client Extensions (`prisma.$extends`).
    - Director role has unrestricted global access for cross-country aggregation in 1 fast query.
    - Ultra-low RAM footprint (< 400MB total) leaving 15GB+ RAM free on the Hostinger VPS.
+6. **Decoupled Telephony (Ponytail / YAGNI):**
+   - CRM has zero dialer webhooks or forced pop-ups. Agents manually select source (`Direct Call`, `WhatsApp`, `Website`) and enter details.
 
 ---
 
@@ -54,7 +56,7 @@
 - `context/design.md`: Red & White color palette tokens, typography, and wireframe layouts for the 4 core views.
 - `context/data_models.md`: Complete `schema.prisma` definitions, relation mappings, and duplication audit table.
 - `context/prd.md`: Product Requirements Document covering all functional (FR) and non-functional (NFR) specs.
-- `context/phases.md`: 6-phase implementation roadmap from core foundation to Talk Nexus in-house dialer.
+- `context/phases.md`: 5-phase implementation roadmap from core foundation to accounting reconciliation.
 - `context/memory.md`: *This file* — updated every session to maintain state continuity.
 
 ---
