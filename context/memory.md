@@ -47,6 +47,13 @@
    - Ultra-low RAM footprint (< 400MB total) leaving 15GB+ RAM free on the Hostinger VPS.
 6. **Decoupled Telephony (Ponytail / YAGNI):**
    - CRM has zero dialer webhooks or forced pop-ups. Agents manually select source (`Direct Call`, `WhatsApp`, `Website`) and enter details.
+7. **Frontend Architecture & Structure Rules:**
+   - Strict `camelCase` for all functions, utility files, and directories.
+   - `PascalCase` only for page files in `src/pages/` (root route renders `LandingPage.tsx`).
+   - Folder mirroring: Every page has a matching `camelCase` component folder in `src/components/pages/[pageName]/` (the page list is illustrative; rule applies dynamically to $N$ pages).
+   - Reusable shared UI primitives live in `src/components/ui/`.
+   - **Page Line Limits:** Target ~100 lines, strict hard ceiling of 150 lines (pages act purely as orchestrators).
+   - Tailwind deduplication: `@layer components` with `@apply` inside CSS to prevent JSX class spaghetti.
 
 ---
 

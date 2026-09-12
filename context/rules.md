@@ -44,18 +44,90 @@
 
 ---
 
-## 4. Frontend (React + Zustand + TanStack Query) Rules
-1. **Clear State Separation:**
-   - **TanStack Query:** Handles ALL server data (fetching, caching, mutations, cache invalidation on socket events).
-   - **Zustand:** Handles ONLY local ephemeral UI state (sidebar open/close, active filter tabs, dialer keypad drawer, selected job on map).
-   - Never mirror TanStack Query server data into Zustand.
-2. **Socket Sync Pattern:**
-   - When a Socket.io event arrives (e.g. `JOB_UPDATED`), invalidate the corresponding TanStack Query key (`queryClient.invalidateQueries({ queryKey: ['jobs'] })`).
-3. **Form Handling:**
-   - Use uncontrolled inputs with `react-hook-form` + `zod` for zero-lag high-speed call intake.
-   - Optimize for rapid keyboard navigation (Tab through Phone $\rightarrow$ Name $\rightarrow$ Address $\rightarrow$ Vehicle $\rightarrow$ Tire Size $\rightarrow$ Submit).
+## 4. Frontend Architecture, Naming & Structure Rules
 
----
+### 4.1. Strict Naming Conventions
+1. **camelCase Everywhere (Default):**
+   - **All functions, all utility files, and all folder names** must strictly be `camelCase`.
+   - Examples: `formatCurrency.ts`, `useDispatch.ts`, `jobService.ts`, `folderName/`.
+2. **PascalCase ONLY for Page Files & Components:**
+   - Files in `src/pages/` must start with an uppercase letter (`PascalCase`):
+     - `src/pages/LandingPage.tsx` (the root route `/` always renders the landing page).
+     - `src/pages/Dashboard.tsx`
+     - `src/pages/Dispatch.tsx`
+     - `src/pages/Driver.tsx`
+     - `src/pages/Accounting.tsx`
+
+### 4.2. Folder Mimicking & Component Architecture
+1. **Dynamic Page-to-Component Mimicking (Universal Rule):**
+   - For **every single page** created in `src/pages/`, there must be an exact matching folder created in `src/components/pages/` formatted in `camelCase`.
+   - The list of pages below is **strictly illustrative and non-exhaustive** — whether the application has 5, 20, or 50+ pages (e.g. `LandingPage`, `Dashboard`, `Dispatch`, `Driver`, `Accounting`, `Customers`, `Vehicles`, `Inventory`, `PricingMatrix`, `DriverPayouts`, `AuditLogs`, `Settings`), the mirroring rule applies dynamically and without exception:
+     - `src/pages/LandingPage.tsx` $\longrightarrow$ `src/components/pages/landingPage/`
+     - `src/pages/Dashboard.tsx` $\longrightarrow$ `src/components/pages/dashboard/`
+     - `src/pages/Dispatch.tsx` $\longrightarrow$ `src/components/pages/dispatch/`
+     - `src/pages/Driver.tsx` $\longrightarrow$ `src/components/pages/driver/`
+     - `src/pages/Accounting.tsx` $\longrightarrow$ `src/components/pages/accounting/`
+     - `src/pages/Customers.tsx` $\longrightarrow$ `src/components/pages/customers/`
+     - `src/pages/Vehicles.tsx` $\longrightarrow$ `src/components/pages/vehicles/`
+     - `src/pages/Settings.tsx` $\longrightarrow$ `src/components/pages/settings/`
+   - If there are $N$ pages in `src/pages/`, there must be exactly $N$ matching `camelCase` folders in `src/components/pages/`.
+2. **Shared Reusable Primitives (`src/components/ui/`):**
+   - Any component reused across multiple pages or features lives in `src/components/ui/` (e.g. `button.tsx`, `modal.tsx`, `card.tsx`, `badge.tsx`, `input.tsx`, `dropdown.tsx`, `dataTable.tsx`, `formField.tsx`). Never duplicate UI elements across page folders.
+
+### 4.3. Strict Page Line-Count Limits (Target ~100 Lines, Max 150 Lines)
+1. **Orchestrator Role:**
+   - Page files in `src/pages/` are strictly **orchestrators/conductors**, not monolithic code dumps.
+   - Target line count: **~100 lines of code**.
+   - **Hard Ceiling: 150 lines maximum.** Never allow 200 or 300 lines in a page file!
+2. **Decomposition:**
+   - If a page grows past 100 lines, break sections, tables, filters, and modals into their dedicated `src/components/pages/[pageName]/` folder immediately.
+
+### 4.4. Tailwind CSS Deduplication (`@layer components`)
+To eliminate repetitive Tailwind class spaghetti in JSX, use Tailwind's `@layer components` with `@apply` inside `src/index.css`:
+```css
+@layer components {
+  /* Buttons */
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 font-medium border border-slate-300 rounded-lg shadow-sm transition-colors;
+  }
+  
+  /* Containers & Surfaces */
+  .card-base {
+    @apply bg-white border border-slate-200 rounded-xl shadow-sm p-4;
+  }
+  
+  /* Inputs */
+  .input-base {
+    @apply w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors;
+  }
+  
+  /* Badges */
+  .badge-urgent {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-300;
+  }
+  .badge-standard {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200;
+  }
+}
+```
+* In JSX, write `<button className="btn-primary">Submit</button>` instead of 25 repeated Tailwind utility classes.
+
+### 4.5. Senior Developer Code-Reduction Suggestions (Ponytail Principles)
+1. **Custom Query/Mutation Hooks (`useDispatch`, `useJobs`, `useFinance`):**
+   - Extract all `useQuery` and `useMutation` calls out of page components.
+   - The page simply calls: `const { jobs, assignDriver } = useDispatch();`. This cuts 40–50 lines of query boilerplate per page.
+2. **Unified `<FormField />` Wrapper:**
+   - Create a reusable `FormField.tsx` in `components/ui/` that wraps `<label>`, `<input>`, and `<p className="text-red-500">{error}</p>`.
+   - Saves 10–15 lines of repetitive JSX per input in booking and accounting forms.
+3. **Reusable `<DataTable />` Primitive:**
+   - Build one generic `<DataTable columns={...} data={...} />` in `components/ui/dataTable.tsx`.
+   - Avoid hand-coding `<table><thead><tr><th>...<tbody><tr><td>` across 5 different pages.
+4. **Zustand Modal Slices (Zero Prop-Drilling):**
+   - Avoid passing `isOpen`, `setIsOpen`, `selectedJob` down through 4 component layers.
+   - Use `const openModal = useUiStore(s => s.openModal);` directly in child triggers. Cuts 30% of boilerplate code.
 
 ## 5. Security & Role-Based Access Control (RBAC)
 1. **Roles Hierarchy:**
