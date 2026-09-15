@@ -4,8 +4,14 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import path from 'path';
 
-dotenv.config();
+// Automatically load environment (.env.development vs .env.production)
+const nodeEnv = process.env.NODE_ENV || 'development';
+const envFile = nodeEnv === 'production' ? '.env.production' : '.env.development';
+dotenv.config({ path: path.resolve(process.cwd(), envFile) });
+dotenv.config(); // Fallback to root or default .env if present
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
