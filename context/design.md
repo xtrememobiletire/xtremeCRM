@@ -20,95 +20,174 @@ XtremeCRM uses a high-impact **Red & White** visual identity inspired by automot
 
 | Status | Color | Badge Style | Context |
 | :--- | :--- | :--- | :--- |
-| **Urgent / Emergency** | Vivid Red (`#EF4444`) | `bg-red-100 text-red-700 border-red-300 animate-pulse` | Roadside strandings, flat tires on highways |
-| **Standard** | Electric Blue (`#2563EB`) | `bg-blue-100 text-blue-700 border-blue-200` | Standard on-demand calls |
-| **Future Booking** | Indigo (`#6366F1`) | `bg-indigo-100 text-indigo-700 border-indigo-200` | Scheduled seasonal tire swaps |
-| **En Route / In Progress** | Amber (`#F59E0B`) | `bg-amber-100 text-amber-800 border-amber-300` | Driver driving or actively repairing |
-| **Completed / Paid** | Emerald (`#10B981`) | `bg-emerald-100 text-emerald-700 border-emerald-300` | Work finished, invoice collected |
-| **Cancelled / Disposed** | Slate Grey (`#64748B`) | `bg-slate-100 text-slate-600 border-slate-200` | RNC, Wrong Number, Cancelled |
+| **Urgent / Emergency** | Vivid Red (`#EF4444`) | `bg-red-100 text-red-700 border-red-300 font-bold animate-pulse` | High-priority roadside breakdown |
+| **Standard / Pending** | Amber (`#F59E0B`) | `bg-amber-100 text-amber-800 border-amber-300` | In intake queue awaiting dispatch |
+| **En Route / Active** | Cobalt Blue (`#3B82F6`) | `bg-blue-100 text-blue-800 border-blue-300` | Driver driving to customer |
+| **Arrived / In Progress**| Purple (`#8B5CF6`) | `bg-purple-100 text-purple-800 border-purple-300` | Technician on scene performing tire repair |
+| **Completed / Paid** | Emerald (`#10B981`) | `bg-emerald-100 text-emerald-800 border-emerald-300` | Service rendered and payment verified |
+| **Cancelled / Irrelevant**| Slate Gray (`#64748B`) | `bg-slate-100 text-slate-700 border-slate-300` | Non-converted leads or cancelled calls |
 
 ---
 
-## 2. Typography & Density
-- **Font Family:** `Inter` or `system-ui` for maximum numerical legibility (tire sizes `235/45R18`, currencies `$160.00 CAD`).
-- **High-Density Desktop Layout (Dispatchers & Agents):**
-  - Compact padding (`py-2 px-3`) for dense table rows.
-  - Information-rich tables with sticky headers.
-- **Mobile Touch-Optimized Layout (Drivers in Vans):**
-  - Minimum tap target size: **48px x 48px** for easy tapping while wearing gloves or in vehicles.
-  - High contrast buttons (Solid Red `#DC2626` with White Text `#FFFFFF`).
+## 2. Core Layout Principles & Page Structure
+- **Desktop Grid:** Sticky collapsible sidebar (`260px`), global top bar (`64px`) with regional switcher, quick-stats, and agent presence toggle.
+- **Mobile First for Drivers:** Fully responsive viewport with sticky bottom action controls, tap targets $\ge 48\text{px}$, and high-contrast sunlight mode.
+- **Strict Page Component Boundaries:**
+  - Page orchestrators in `src/pages/` must remain under **150 lines**.
+  - Child components strictly mirror page names in `src/components/pages/[pageName]/`.
+  - Reusable buttons, modals, badges, and form controls reside in `src/components/ui/`.
 
 ---
 
-## 3. Core Screen Layouts & Wireframes
+## 3. High-Velocity Wireframes & Layouts
 
-### 3.1. Agent Call Intake Modal (Fast Keyboard Data Entry)
-A clean, two-column high-speed modal triggered on incoming call:
-```
-+--------------------------------------------------------------------------+
-|  [CALL INTAKE]  Source: [Direct Call v]   Region: [Canada (CAD) v]       |
-+------------------------------------+-------------------------------------+
-| CUSTOMER & VEHICLE                 | SERVICES & PRICING                  |
-| Customer Name: [ John Doe        ] | Services:                           |
-| Phone:         [ (555) 234-5678  ] | [x] Tire Repair (Plug)     $80      |
-| Alt Phone:     [                 ] | [x] Stem Valve Replace     $25      |
-|                                    | Priority:  (o) Urgent  ( ) Standard |
-| Breakdown Address (Google Maps):   | ETA:       [ 35 mins ]              |
-| [ 123 Hwy 401 East, Toronto     ] |                                     |
-|                                    | Payment:   [ POS (Card Reader) v]   |
-| Vehicle:                           | Subtotal:  $105.00                  |
-| [ 2022 ] [ Honda ] [ Civic       ] | Tax (13%): $13.65                   |
-| Tire Size:                         | TOTAL:     $118.65                  |
-| [ 235 / 45 / R18                 ] |                                     |
-+------------------------------------+-------------------------------------+
-| DISPOSITION: [ 1- Booked - Appointment Booked              v ]          |
-|                      [ Cancel ]   [ CREATE JOB & DISPATCH (Enter) ]       |
-+--------------------------------------------------------------------------+
-```
-
-### 3.2. Dispatch Board (Multi-Queue Fleet Hub)
-- **Top Bar:** Quick stats (Active Urgent: 3, Standard: 8, Free Drivers: 5).
-- **Tabbed Queues:** `Urgent` (red badge), `Standard` (blue badge), `Future Bookings` (indigo badge).
-- **Interactive Columns:**
-  - **Job # / Time / Customer**
-  - **Location & Distance** (shows: `123 Hwy 401 (4.2 km from Driver Mike)`)
-  - **Vehicle & Tire** (`2022 Civic - 235/45R18`)
-  - **Driver Assignment:** Quick dropdown of nearest online drivers.
-  - **Live Status:** `PENDING` $\rightarrow$ `ASSIGNED` $\rightarrow$ `EN_ROUTE` $\rightarrow$ `ARRIVED` $\rightarrow$ `COMPLETED`.
-  - **Cash Collected Indicator:** Badges showing cash in hand that needs verification.
-
-### 3.3. Driver Mobile PWA (Field Execution View)
-- Outdoor high-visibility view:
-  - Giant Customer Address with one-tap `[ Open Google Maps / Waze ]`.
-  - Vehicle & Tire Spec: bold text `235/45R18 - NEW TIRE REPLACEMENT`.
-  - Customer Phone: one-tap `[ Call Customer ]`.
-  - Big Primary Action Stepper:
-    1. `[ START DRIVING (En Route) ]`
-    2. `[ I HAVE ARRIVED ]`
-    3. `[ JOB FINISHED - RECORD PAYMENT ]`
-  - Payment Modal: Choice of `Cash Collected ($160.00)` or `POS Terminal Swiped`.
-
-### 3.4. Accounting & Reconciliation Audit View
-- **Top Bar Controls:**
-  - **Region Dropdown Filter:** `[ All Regions (Global) v ]` | `[ USA (USD) ]` | `[ Canada (CAD) ]` | `[ UK (GBP) ]`
-  - **Date Filter Presets:** `[ Today ]` `[ Yesterday ]` `[ Last 3 Days ]` `[ 1 Week ]` `[ Monthly ]`
-
-- **Global Multi-Currency Summary Container (when "All Regions" is selected):**
+### 3.1. Inbound Multiple Agent Portal & Telnyx Screen Pop
 ```text
 +---------------------------------------------------------------------------------------------------------+
-| GLOBAL SUMMARY CONTAINER                                                                                |
+| [LOGO: XTREME RED]   Region: [ Canada (CAD) v ]   Agent: Sarah M.   Status: [ (●) ACTIVE | Inactive ]  |
++---------------------------------------------------------------------------------------------------------+
+| TELNYX INBOUND SCREEN POP MODAL (Auto-pops on active agent screen with caller phone pre-filled)         |
 |                                                                                                         |
-|   CANADA (CAD)                   UNITED STATES (USD)             UNITED KINGDOM (GBP)                   |
-|   Gross (CP):  $14,250.00 CAD    Gross (CP):  $18,400.00 USD     Gross (CP):  £9,850.00 GBP             |
-|   Tire Cost:   $ 4,100.00 CAD    Tire Cost:   $ 5,200.00 USD     Tire Cost:   £2,800.00 GBP             |
-|   Driver Fee:  $ 2,030.00 CAD    Driver Fee:  $ 2,950.00 USD     Driver Fee:  £1,630.00 GBP             |
-|   ---------------------------    ---------------------------     --------------------------             |
-|   NET PROFIT:  $ 8,120.00 CAD    NET PROFIT:  $10,250.00 USD     NET PROFIT:  £5,420.00 GBP             |
-|   IT Fee IT_B: $   150.00 CAD    IT Fee IT_B: $   100.00 USD     IT Fee IT_B: £   100.00 GBP             |
+|  Source: [ 1- Direct Call v ]               Caller Phone: [ (416) 555-0192 ] (Auto-Filled)              |
+|  Customer: (●) Self-Booking  ( ) Recipient  Alt Phone:    [ (416) 555-0199 ] (On-scene contact)        |
+|  Full Name: [ Johnathan Doe               ] Email:        [ john.doe@gmail.com             ]            |
+|  Service Location (Google Places): [ 401 Highway East & Leslie St, Toronto, ON (GPS Geocoded) ]        |
+|  Vehicle: [ 2022 ] [ Tesla ] [ Model 3    ] Tire Size:    [ 235/45R18 (Width/Rim Pickers)  ]            |
+|                                                                                                         |
+|  Select Services (16-Service Catalog):                                                                  |
+|  [x] 1. Tire Repair (plug)   [ ] 2. Stem Valve   [ ] 3. New Tire   [ ] 7. Tire Swap   [ ] 13. Jump Start|
+|                                                                                                         |
+|  Service Priority: [ (●) 1- Urgent   ( ) 2- Standard   ( ) 3- Future Booking ]   ETA: [ 25 Mins ]       |
+|  Billing: $160.00 base  [x] + Tax (13% = $20.80)  Total: $180.80 CAD   Method: [ 1- E-Transfer v ]      |
+|  Customer Account: [x] "After all this make user account" (Auto-creates login for live tracking)        |
+|  Call Disposition: [ 1- Booked - Appointment Booked v ]  Notes: [ Front right flat on shoulder ]        |
+|                                                                                                         |
+|  [ CANCEL / CLOSE ]                                            [ CREATE & DISPATCH APPOINTMENT (ENTER) ]|
 +---------------------------------------------------------------------------------------------------------+
 ```
-*(Note: When a specific country is selected, the container simplifies to just that country's metrics).*
 
-- **Reconciliation Table:**
-  - Columns: Job # | Country | Customer | Driver | Gross Paid | Tire Cost | Driver Cost | **Net Profit** | Payment Method | Receipt | Actions
-  - Junior Accountant clicks `[ Attach / View Receipt ]` $\rightarrow$ Senior Accountant clicks `[ Verify & Approve Payout ]`.
+### 3.2. Landing Page Public Booking Card (`/`)
+```text
++-------------------------------------------------------------------------+
+| [ NEED IMMEDIATE ROADSIDE TIRE ASSISTANCE? BOOK ONLINE ]                |
+|                                                                         |
+| Your Name: [ Michael Vance          ] Phone: [ (416) 555-8821 ]         |
+| Breakdown Location: [ Yorkdale Mall Parking Lot G, Toronto ]            |
+| Vehicle: [ 2021 Honda Civic       ] Tire Size: [ 215/50R17 ]            |
+| Service Needed: [ Tire Repair (Plug) v ]                                |
+|                                                                         |
+| [ REQUEST ROADSIDE DISPATCH ] -> Enters unverified queue (Call Agent verifies)|
++-------------------------------------------------------------------------+
+```
+
+### 3.3. Dispatch Manager Board & Fleets Sidebar
+```text
++---------------------------------------------------------------------------------------------------------+
+| SIDEBAR     | DISPATCH MANAGER BOARD                                             Search: [___________]   |
+| ----------- | ----------------------------------------------------------------------------------------- |
+| Dispatch    | [!] URGENT DISPATCH QUEUE (3 JOBS) [ CLICK TO EXPAND ALL ROW ACCORDIONS v ]              |
+| Drivers     | +---------------------------------------------------------------------------------------+ |
+| Fleets (B2B)| | [v] JOB-CA-10492 | 401 Hwy & Leslie | 235/45R18 Tesla Model 3 | ETA: 20m | $180.80 CAD| |
+| Accounting  | |     Customer: Johnathan Doe (416-555-0192) | Alt: 416-555-0199                         | |
+| Settings    | |     Assigned Driver: [ Dave Miller (Van #3 - 4.2 km away) v ] [ ASSIGN ]               | |
+|             | |     Actions: [ Message Driver ] [ Open Map Pin ] [ Cancel Ticket ]                      | |
+|             | +---------------------------------------------------------------------------------------+ |
+|             |                                                                                           |
+|             | ARBITRARY ADDRESS DISTANCE MEASUREMENT TOOL:                                              |
+|             | Type any address: [ 77 King St West, Toronto, ON                     ] [ MEASURE DIST ]  |
+|             | -> Dave Miller: 3.8 km (11 min) | Kevin S: 8.4 km (22 min) | Alex R: 14.1 km (35 min)     |
+|             |                                                                                           |
+|             | DRIVER CASH IN HAND SECTION:                                                             |
+|             | Dave Miller (Van #3): $320.00 CAD collected | Kevin S (Van #1): $160.00 CAD collected     |
+|             |                                                                                           |
+|             | DRIVER MESSAGING DRAWER (Job #10492):                                                     |
+|             | [Dave (Driver)]: Customer says lug nuts are locking type, I have the master key set.      |
+|             | [Dispatcher]: Approved, proceed with plug service.                                       |
++---------------------------------------------------------------------------------------------------------+
+```
+
+### 3.4. WorkFlow for Fleets Sign-Up (B2B Sidebar Page)
+```text
++---------------------------------------------------------------------------------------------------------+
+| FLEET MANAGEMENT (B2B PARTNERS)                                           [ + ADD NEW FLEET PROFILE ]   |
++---------------------------------------------------------------------------------------------------------+
+| Company Name        | Fleet Size | Contact Person  | Phone        | Verified Partner | VA Commission |
+| ------------------- | ---------- | --------------- | ------------ | ---------------- | ------------- |
+| Metro Delivery Inc. | 24 Vans    | Robert Hayes    | 416-555-4400 | [x] Verified     | $2.50 / job   |
+| QuickHaul Logistics | 12 Trucks  | Susan Walker    | 416-555-7711 | [x] Verified     | $3.00 / job   |
+| Apex Courier Corp   | 8 Vans     | Mark Patel      | 416-555-9090 | [ ] Pending Sign | -             |
++---------------------------------------------------------------------------------------------------------+
+```
+
+### 3.5. Driver Mobile PWA (Field Execution View)
+```text
++----------------------------------------------------+
+| [XTREME RED] JOB #10492             [ STATUS: EN ROUTE ]
+|                                                    |
+| Customer: Johnathan Doe                            |
+| Address:  401 Highway East & Leslie St             |
+| [ >>> OPEN IN GOOGLE MAPS / WAZE NAVIGATION <<< ]  |
+|                                                    |
+| Vehicle:   2022 Tesla Model 3                      |
+| Tire Spec: 235/45R18 - TIRE REPAIR (PLUG)          |
+|                                                    |
+| DRIVER EARNINGS FOR THIS JOB:                      |
+| Gross Customer Paid: $180.80 CAD | Your Net: $65.00|
+|                                                    |
+| BIG FIELD STEPPER:                                 |
+| 1. [ START DRIVING (EN ROUTE) ]                    |
+| 2. [ I HAVE ARRIVED ON SITE   ]                    |
+| 3. [ WORK IN PROGRESS         ]                    |
+| 4. [ COMPLETE & RECORD PAYMENT ]                   |
+|                                                    |
+| [ IN-APP CHAT WITH DISPATCH (1 Unread) ]           |
++----------------------------------------------------+
+```
+
+### 3.6. Accounting & Reconciliation View & Expense Stating
+
+```text
++---------------------------------------------------------------------------------------------------------+
+| ACCOUNTING DEPARTMENT                                  User: Senior Accountant | Role: ACCOUNTANT_SR     |
++---------------------------------------------------------------------------------------------------------+
+| Region Filter: [ All Regions (Global) v ]  Period: [ Yesterday v | Last 3 Days | One Week | Monthly ]  |
+|                                                                                                         |
+| MULTI-CURRENCY SUMMARY CARDS:                                                                           |
+| +-----------------------------+ +-----------------------------+ +-----------------------------+         |
+| | CANADA (CAD)                | | UNITED STATES (USD)         | | UNITED KINGDOM (GBP)        |         |
+| | Gross Paid (CP): $18,400.00 | | Gross Paid (CP): $24,100.00 | | Gross Paid (CP): £12,800.00 |         |
+| | Material (TC):   $ 4,900.00 | | Material (TC):   $ 6,200.00 | | Material (TC):   £ 3,400.00 |         |
+| | Repairer (DC):   $ 3,100.00 | | Repairer (DC):   $ 4,500.00 | | Repairer (DC):   £ 2,200.00 |         |
+| | --------------------------- | | --------------------------- | | --------------------------- |         |
+| | NET PROFIT:      $10,400.00 | | NET PROFIT:      $13,400.00 | | NET PROFIT:      £ 7,200.00 |         |
+| | IT Fee (IT_B):   $   180.00 | | IT Fee (IT_B):   $   120.00 | | IT Fee (IT_B):   £   120.00 |         |
+| | TOTAL NET (IT_B):$10,220.00 | | TOTAL NET (IT_B):$13,280.00 | | TOTAL NET (IT_B):£ 7,080.00 |         |
+| +-----------------------------+ +-----------------------------+ +-----------------------------+         |
+|                                                                                                         |
+| RECONCILIATION & EXPENSE STATING TABLE:                                                                 |
+| Job #    | CX Name   | Driver   | Gross(CP)| Material(TC)| Repairer(DC)| Net Profit | Verified? | Receipt |
+| -------- | --------- | -------- | -------- | ----------- | ----------- | ---------- | --------- | ------- |
+| CA-10492 | Johnathan | Dave M.  | $180.80  | $ 35.00     | $ 65.00     | $ 80.80    | [x] YES   | [View]  |
+| CA-10493 | Apex Ltd  | Kevin S. | $320.00  | $ 95.00     | $110.00     | $115.00    | [ ] NO    | [Attach]|
++---------------------------------------------------------------------------------------------------------+
+| MODAL: [ STATE JOB EXPENSES & VERIFY PAYMENT ]                                                          |
+| Job Ticket: #CA-10492 (Tire Repair + Valve)   Customer Paid (CP): $180.80 CAD                           |
+|                                                                                                         |
+| 1. State Material Fees (TC): [ $35.00 CAD  ]  Upload Supplier Receipt: [ Browse / Drag & Drop ]         |
+| 2. State Repairer Fees (DC): [ $65.00 CAD  ]  Repairer: Dave Miller (Van #3)                           |
+| 3. Other Incidental Expense: [ $ 0.00 CAD  ]  Notes: [ Wholesale patch & valve stem used ]             |
+|                                                                                                         |
+| CALCULATED NET MARGIN: $80.80 CAD (CP $180.80 - TC $35.00 - DC $65.00)                                 |
+| PLATFORM ROYALTY IT_B: $ 1.50 CAD -> Net After Royalty: $79.30 CAD                                     |
+|                                                                                                         |
+| PAYMENT AUDIT:                                                                                          |
+| Payment Method: E-Transfer | Reference #: [ ET-99201481 ]                                              |
+| [x] MARK PAYMENT AS VERIFIED (Sets isPaymentVerified = true with audit stamp)                           |
+|                                                                                                         |
+| [ CLOSE ]                     [ SAVE JOB EXPENSES (Junior) ]        [ APPROVE & FINALIZE (Senior) ]    |
++---------------------------------------------------------------------------------------------------------+
+```
+
+### 3.7. Admin Portal ("Admin sees every thing")
+- Global overview displaying all live regional KPIs (Canada, USA, UK).
+- Real-time heat maps of roadside emergencies, fleet growth metrics, Virtual Assistant commission ledger totals, and consolidated profit margins.
