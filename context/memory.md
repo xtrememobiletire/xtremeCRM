@@ -23,7 +23,7 @@
   - **Production:** Self-hosted single PostgreSQL container managed via **Dokploy** on VPS.
   - Multi-tenancy scoped by indexed `countryCode` (`CA`, `US`, `UK`).
 - **Real-Time Communication:** **Socket.io** — Bidirectional updates for dispatch queue, live technician tracking, and chat.
-- **Telephony Integration:** **Telnyx WebRTC & Webhooks** — Screen pop with caller number pre-filled.
+- **Telephony Integration:** **Telnyx WebRTC (`@telnyx/webrtc`) & Webhooks** — Embedded in-browser softphone with backend on-demand token service (`GET /api/telephony/token`), dual-trigger screen pop (WebRTC client + server webhook over Socket.io), and 1-click click-to-call.
 - **Frontend SPA:** **React 19 + Vite** + **Tailwind CSS v4** (`@tailwindcss/vite`), Red & White theme (`#DC2626` & `#FFFFFF`).
 - **Client State:** **Zustand** for UI controls; **TanStack Query v5** for server cache; **Framer Motion** for polished interactions.
 
@@ -66,6 +66,10 @@
    - Dynamic Folder Mirroring: `src/pages/[PageName].tsx` $\rightarrow$ `src/components/pages/[pageName]/`.
    - Shared primitives in `src/components/ui/`.
    - **State Hierarchy:** Local first (`useState`/`useReducer`) $\rightarrow$ Lift up to closest common parent for siblings $\rightarrow$ Context / Zustand for deep nesting (4-5+ levels) to avoid prop drilling $\rightarrow$ Custom hooks for reusable logic (`useFetch`, `useJobDetails`).
+8. **Call Intake Data Division & Non-User Handling:**
+   - **Auto-Populated on Ring:** Caller phone number (`phone`), default lead source (`DIRECT_CALL`), call ID, timestamp, area-code geographic detection, and returning customer/fleet match check.
+   - **First-Time Callers / Non-Users:** Screen displays `[✦ NEW CALLER / NON-USER]` badge with pre-filled phone number, 1-click `[ Link to Fleet ]` option, clean blank intake form, and pre-checked `[x] Auto-Create Customer Account & Send SMS Live Tracking Link` (converting them into registered users upon booking confirmation).
+   - **Agent-Entered Live During Call:** Exact roadside breakdown location (geocoded via Google Places), on-scene recipient info, vehicle & tire size confirmation, 16-service selection, verbal agreed ETA, quote & sales tax toggle, problem notes, and mandatory call disposition (`Booked`, `RNC`, `WN`, `IR`, `Cancelled`).
 
 
 ---

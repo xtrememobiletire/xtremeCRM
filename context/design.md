@@ -205,29 +205,95 @@ The system is architecturally split into **Internal Staff Operations** (`/admin`
 
 ## 6. High-Velocity Wireframes & Interface Blueprints
 
-### 6.1. Inbound Call Agent Portal & Telnyx Screen Pop (`/admin/intake`)
+### 6.1.A. Returning Customer / Verified Fleet Screen Pop Wireframe (`/admin/intake`)
 
 ```text
 +---------------------------------------------------------------------------------------------------------+
 | [XTREME RED LOGO]   Region: [ Canada (CAD) v ]   Agent: Sarah Miller    Status: [ (●) ACTIVE | Inactive ]|
 +---------------------------------------------------------------------------------------------------------+
-| TELNYX INBOUND SCREEN POP MODAL (Triggered via WebRTC/Webhook - Pre-fills Caller Phone)                |
+| TELNYX WEBRTC DIGITAL PHONE CONTROLS:                                                                   |
+| [!] INCOMING CALL: (416) 555-0192 (Ontario, CA)   [ ANSWER (SPACEBAR) ] [ MUTE ] [ REJECT / BUSY ]     |
++---------------------------------------------------------------------------------------------------------+
+| HIGH-VELOCITY DISPATCH INTAKE MODAL (Opens automatically on ring):                                      |
 |                                                                                                         |
-|  Call Source: [ 1- Direct Call v ]               Caller Phone: [ (416) 555-0192 ] (Auto-Filled)         |
-|  Customer:    (●) Self-Booking   ( ) Recipient   Alt Phone:    [ (416) 555-0199 ] (On-Scene Contact)     |
-|  Full Name:   [ Johnathan Doe                  ] Email:        [ john.doe@gmail.com             ]       |
-|  Breakdown Address: [ 401 Highway East & Leslie St, Toronto, ON (Google Places Geocoded) ]              |
-|  Vehicle:     [ 2022 ] [ Tesla ] [ Model 3     ] Tire Size:    [ 235/45R18 (Width/Rim Pickers) ]        |
+| === 1. AUTO-POPULATED BY SYSTEM (Zero Typing on Ring) ================================================== |
+| Caller Phone: [ (416) 555-0192 ] (Auto-Filled)   Lead Source: [ 1- Direct Call v ] (Auto-Defaulted)       |
+| Status Match: [✓] RETURNING CUSTOMER FOUND -> Johnathan Doe | Alt: 416-555-0199 | john.doe@gmail.com    |
+| Saved Vehicles: [ (●) 2022 Tesla Model 3 (235/45R18)  ( ) Add New Vehicle ]                             |
 |                                                                                                         |
-|  16-Service Picker Catalog:                                                                             |
-|  [x] 1. Tire Repair (Plug)  [ ] 2. Stem Valve   [ ] 3. New Tire   [ ] 7. Seasonal Swap   [ ] 13. Jump   |
+| === 2. AGENT-ENTERED DURING LIVE CONVERSATION (Asked from Motorist) ==================================== |
+| Recipient Type: [ (●) Stranded Motorist is Caller   ( ) Booking for Recipient / Driver on Scene ]       |
+| Roadside Location (Google Places Autocomplete):                                                         |
+| [ 401 Highway East & Leslie St, Toronto, ON (GPS Lat: 43.768, Lng: -79.370)                          ]  |
+| Landmark / Position: [ Front right flat on shoulder, 200m east of Leslie exit ramp                  ]  |
 |                                                                                                         |
-|  Priority: [ (●) 1- Urgent   ( ) 2- Standard   ( ) 3- Future Booking ]   ETA: [ 25 Mins ]               |
-|  Pricing: Base $160.00  [x] + Tax (13% = $20.80)  Total: $180.80 CAD   Method: [ 1- E-Transfer v ]     |
-|  Customer Account: [x] "After all this make user account" (Auto-provisions tracking portal)             |
-|  Call Disposition: [ 1- Booked - Appointment Booked v ]  Notes: [ Front right flat on shoulder ]        |
+| Vehicle & Tire Confirmation:                                                                            |
+| Make/Model: [ 2022 Tesla Model 3 ]   Tire Spec: [ 235/45R18 ] (Verified by driver)                      |
 |                                                                                                         |
-|  [ CANCEL / ESC ]                                              [ CREATE & DISPATCH APPOINTMENT (ENTER) ]|
+| 16-Service Roadside Picker:                                                                             |
+| [x] 1. Tire Repair (Plug)  [ ] 2. Stem Valve   [ ] 3. New Tire   [ ] 7. Seasonal Swap   [ ] 13. Jump   |
+|                                                                                                         |
+| Operational Urgency & Agreed ETA:                                                                       |
+| Priority: [ (●) 1- Urgent (Emergency)   ( ) 2- Standard   ( ) 3- Future Booking ]   ETA: [ 20 Mins ]    |
+|                                                                                                         |
+| Billing & Financial Controls:                                                                           |
+| Base Quote: [ $160.00 CAD ]   Tax Toggle: [x] + Tax (13% = $20.80)   Total Amount: [ $180.80 CAD ]      |
+| Payment Method: [ 1- E-Transfer v ]   Customer Account: [x] "After all this make user account"          |
+|                                                                                                         |
+| Mandatory Call Outcome Classification:                                                                  |
+| Call Disposition: [ 1- Booked - Appointment Booked v ]                                                  |
+| Problem Notes: [ Front right flat puncture, wheel lock key located in center console ]                  |
+|                                                                                                         |
+| [ DISCARD / CANCEL ]                                          [ CONFIRM & TRANSMIT TO DISPATCH (ENTER) ]|
++---------------------------------------------------------------------------------------------------------+
+```
+
+### 6.1.B. First-Time Caller / Non-User Roadside Intake Wireframe (`/admin/intake`)
+
+```text
++---------------------------------------------------------------------------------------------------------+
+| [XTREME RED LOGO]   Region: [ Canada (CAD) v ]   Agent: Sarah Miller    Status: [ (●) ACTIVE | Inactive ]|
++---------------------------------------------------------------------------------------------------------+
+| TELNYX WEBRTC DIGITAL PHONE CONTROLS:                                                                   |
+| [!] INCOMING CALL: (416) 555-8821   Detected Region: Toronto / GTA, ON   [ ANSWER (SPACEBAR) ] [ MUTE ] |
++---------------------------------------------------------------------------------------------------------+
+| FIRST-TIME MOTORIST INTAKE MODAL (Opens automatically on ring):                                         |
+|                                                                                                         |
+| CALLER STATUS: [✦ NEW CALLER / NON-USER ]             Quick Link: [ + LINK TO B2B FLEET ACCOUNT ]      |
+|                                                                                                         |
+| 1. MOTORIST IDENTITY (Phone Locked from Caller ID):                                                     |
+| Caller Phone: [ (416) 555-8821 ] (Auto-Filled)   Full Name: [ Michael Vance                   ]         |
+| Alternate / On-Scene Phone: [ (416) 555-0199 ]   Email:     [ michael.vance@gmail.com        ]         |
+| Caller Role:  [ (●) Stranded Motorist is Caller   ( ) Calling on Behalf of Recipient ]                  |
+|                                                                                                         |
+| 2. ROADSIDE BREAKDOWN LOCATION:                                                                         |
+| Location (Google Places): [ Yorkdale Mall Parking Lot G, Toronto, ON (GPS: 43.725, -79.452)           ]  |
+| Landmark / Details:       [ Parked near pillar D4 by Hudson's Bay, hazards flashing                   ]  |
+|                                                                                                         |
+| 3. VEHICLE & TIRE SPECIFICATION:                                                                        |
+| Vehicle: Year: [ 2021 ]   Make: [ Honda     ]   Model: [ Civic       ]                                  |
+| Tire Size: [ 215/50R17 ] (Agent tip: Guide customer to driver's door jamb sticker or tire sidewall)    |
+|                                                                                                         |
+| 4. SERVICE CATALOG:                                                                                     |
+| [x] 1. Tire Repair (Plug)  [ ] 2. Stem Valve   [ ] 3. New Tire   [ ] 9. Spare Change   [ ] 13. Jump     |
+|                                                                                                         |
+| 5. OPERATIONAL PRIORITY & AGREED ETA:                                                                   |
+| Priority: [ (●) 1- Urgent (Emergency)   ( ) 2- Standard   ( ) 3- Future ]   Agreed ETA: [ 25 Mins ]     |
+|                                                                                                         |
+| 6. BILLING, TAX & SEAMLESS ACCOUNT ONBOARDING:                                                          |
+| Base Quote: [ $160.00 CAD ]   Tax: [x] + Tax (13% = $20.80)   Total Amount: [ $180.80 CAD ]             |
+| Payment Method: [ 1- E-Transfer v ]                                                                     |
+| [x] AUTO-CREATE CUSTOMER ACCOUNT & SEND LIVE SMS TRACKING LINK (Pre-Checked by Default)                 |
+|     -> Auto-saves Customer profile, registers vehicle & tire size, and texts live driver tracking URL   |
+|                                                                                                         |
+| 7. MANDATORY CALL DISPOSITION:                                                                          |
+| Disposition: [ 1- Booked - Appointment Booked v ]                                                       |
+| Problem Notes: [ Screw in right rear tread, holds partial air, driver waiting inside vehicle ]          |
+|                                                                                                         |
+| QUICK NON-BOOKING SHORTCUTS (1-Click dismiss for non-conversions):                                      |
+| [ 2- RNC (Price Shopper) ]  [ 3- WN (Wrong Number) ]  [ 4- IR (Irrelevant Service) ]  [ 5- Cancelled ]  |
+|                                                                                                         |
+| [ DISCARD / ESC ]                                             [ BOOK & TRANSMIT TO DISPATCH (ENTER) ]   |
 +---------------------------------------------------------------------------------------------------------+
 ```
 

@@ -30,17 +30,52 @@ The software bridges the gap between high-pressure call-center intake, real-time
 
 ## 3. Functional Requirements
 
-### 3.1. Inbound Call Intake & Multiple Agent Portal
-- **FR-1.1: Agent Presence State:** Every agent has an `Active` and `Inactive` status toggle. When inactive, calls bypass the agent; when active, the agent receives incoming call events.
-- **FR-1.2: Telnyx Inbound Screen Pop:** When an incoming call connects via Telnyx Webhook / WebRTC, an intake modal immediately pops open on an active agent's screen with the caller's phone number already populated.
-- **FR-1.3: Customer & Fleet Auto-Match:** System queries database by phone number. If returning, past customer name, fleet account, alternate numbers, vehicles, and tire sizes are populated instantly.
-- **FR-1.4: Lead Channel Selector:** Intake form includes lead source dropdown: `Direct Call`, `Whatsapp`, `Website`, `Landing Page`, `Fleet Portal`, `Member Portal`.
-- **FR-1.5: Recipient Handling:** Form supports `Self-Booking Or Recipient` toggle (capturing recipient name and phone if caller is booking on behalf of someone stranded).
-- **FR-1.6: Breakdown Address Geocoding:** Address field integrates Google Maps Places Autocomplete and stores latitude/longitude coordinates (`serviceLat`, `serviceLng`).
-- **FR-1.7: Vehicle & Tire Catalog:**
-  - Vehicle Year, Make, Model capture.
-  - Tire size entry formatted as standard specification (e.g. `235/45R18` or commercial truck `11R22.5`).
-- **FR-1.8: Complete 16-Service Roadside Catalog:**
+### 3.1. Inbound Call Intake & Telnyx WebRTC Softphone Module
+- **FR-1.1: Agent Presence State:** Every agent has an `Active` / `Inactive` presence toggle in the CRM top navigation. Inactive agents receive zero call routing; active agents automatically receive incoming calls and screen pops.
+- **FR-1.2: Embedded Telnyx WebRTC Softphone & Dual-Trigger Screen Pop:**
+  - **In-Browser Digital Phone:** Embedded `@telnyx/webrtc` client connected via short-lived JWTs minted by the backend (`GET /api/telephony/token`).
+  - **Single-Click Answering:** When a call arrives, the agent hears the ringtone directly through their headset and can answer with 1 click (`[ Answer Call ]` or Spacebar) inside the CRM tab.
+  - **Dual-Trigger Screen Pop:** Incoming calls trigger an immediate modal popup simultaneously via the browser WebRTC `ringing` event and the backend Telnyx webhook (`POST /api/telephony/webhook` over Socket.io) ensuring zero lag even under high network latency.
+  - **Click-to-Call Outbound:** Agents and dispatchers can click any phone number in tickets, customer profiles, or driver cards to initiate immediate outbound calling through the browser headset.
+- **FR-1.3: Data Division: Auto-Populated vs. Agent-Entered Intake Details:**
+  To maximize operational speed while ensuring accurate roadside dispatching, the intake form explicitly partitions data between automated system ingestion and live agent conversation entry:
+  
+  **A. Auto-Populated by System (Zero Manual Typing on Ring):**
+  1. *Caller Phone Number (`phone`):* Automatically extracted from Telnyx caller ID (`caller_id_number`) and locked into the primary phone input.
+  2. *Default Lead Source (`source`):* Defaults automatically to `DIRECT_CALL` (or `WHATSAPP` / `WEBSITE` if ingested via webhook).
+  3. *Call Timestamp & Unique Call ID:* System auto-generates call ticket ID and timestamps entry.
+  4. *Caller Profile Detection (Returning vs. Non-User / First-Time Caller):*
+     - The system executes an instant background lookup (`GET /api/customers/lookup?phone=...`):
+     - **If Returning Customer / Fleet Account:**
+       - Displays `[✓ RETURNING CUSTOMER / FLEET]` badge.
+       - Customer name, email, secondary phone, fleet affiliation (e.g. `KT Group / XMT-5132`), and saved vehicles are displayed in an active 1-click selection card.
+     - **If Non-User / First-Time Caller (No DB Record Found):**
+       - Displays prominent `[✦ NEW CALLER / FIRST-TIME MOTORIST]` badge.
+       - Displays detected regional location from area code (e.g. *"Area Code (416) — Ontario, CA"*).
+       - Opens a clean, blank **Rapid Onboarding & Roadside Booking Form** with caller phone pre-filled.
+       - Pre-checks `[x] "After all this make user account"` by default, automatically provisioning their customer profile, saving their vehicle & tire size, and sending an SMS tracking link upon booking confirmation.
+       - Provides 1-click **`[ Link to B2B Fleet ]`** search bar in case the caller is an unregistered driver driving for a contracted fleet account (e.g. KT Group truck `KT-15`).
+       - Provides 1-click **Quick Disposition Shortcuts** (`[ Wrong Number ]`, `[ Price Shopper / RNC ]`, `[ Irrelevant / Spam ]`) allowing the agent to dismiss non-booking calls in 1 keystroke without filling any form fields.
+  
+  **B. Agent-Entered Operational Details (Collected Live During Call):**
+  1. *Roadside Breakdown Address (`serviceAddress`):* The agent asks where the motorist is stranded and types into the Google Places Autocomplete input (capturing highway, cross streets, shoulder position, and geocoded GPS coordinates). *Roadside breakdown location is independent of any saved customer profile address.*
+  2. *Recipient Confirmation (`isRecipient`):* Agent confirms if caller is the driver or booking on behalf of another party (captures on-scene contact name and phone).
+  3. *Vehicle & Tire Specification:*
+     - If returning vehicle: Agent clicks to select the matching vehicle.
+     - If new vehicle: Agent selects Year, Make, Model, and records exact tire size (`tireSize`, e.g. `235/45R18` or commercial truck `11R22.5`).
+  4. *Service Selection (16-Service Catalog):* Agent selects required service(s) from the 16-service catalog (e.g. Tire Plug, New Tire, Valve Stem, Jump Start, Towing).
+  5. *Urgency Level & Agreed ETA:*
+     - Agent confirms priority: `URGENT` (immediate roadside dispatch), `STANDARD` (same-day), or `FUTURE` (scheduled appointment).
+     - Agent enters agreed verbal ETA (`etaMinutes`).
+  6. *Billing & Tax Controls:*
+     - Base price quote confirmation.
+     - Regional sales tax checkbox toggle (`+ tax` or `- tax(box)`).
+     - Payment method selector: `E-Transfer`, `POS` (mobile card machine), `Cash`, `MOTO` (phone credit card).
+  7. *Customer Account Provisioning Toggle:* Agent checks *"After all this make user account"* to auto-provision customer login credentials for live SMS approach tracking.
+  8. *Specific Roadside Problem Notes:* Freeform notes (e.g. *"Front right flat on highway shoulder, locking lug nut socket located in glovebox"*).
+  9. *Mandatory Call Outcome Disposition:* Every incoming call MUST be classified before closing:
+     `Booked - Appointment Booked`, `Relevant (Not converted) - RNC`, `Business (Wrong Number) - WN`, `Irrelevant (Another service) - IR`, `Appointment Cancelled By CX`.
+- **FR-1.4: Complete 16-Service Roadside Catalog:**
   1. Tire Repair (plug)
   2. Stem valve replacement
   3. New Tire Replacement
@@ -57,12 +92,6 @@ The software bridges the gap between high-pressure call-center intake, real-time
   14. Battery Booster
   15. Lock Smith Service
   16. Towing Service
-- **FR-1.9: Urgency Tiers & Scheduling:**
-  - `URGENT`: Emergency breakdown requiring immediate dispatch.
-  - `STANDARD`: Same-day on-demand queue.
-  - `FUTURE`: Scheduled appointment with date and time picker.
-- **FR-1.10: Mandatory Outcome Tracking:** Every call handled by an agent must be tagged with a disposition:
-  `Booked`, `Relevant Not Converted (RNC)`, `Wrong Number (WN)`, `Irrelevant Service (IR)`, `Cancelled By Customer`.
 
 ### 3.2. 24/7 Fleet Driver Roadside Call-In Workflow
 - **FR-2.1: Direct Driver Roadside Verification:**

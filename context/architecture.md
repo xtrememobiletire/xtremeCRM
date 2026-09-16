@@ -16,18 +16,19 @@ The architecture is derived directly from the system design blueprint ([`Xtreme-
 |  [ Internal Admin Portal ]     [ External Fleet Portal ]     [ External Member Portal ]             |
 |  - URL: /admin                 - URL: /fleet-dashboard      - URL: /member-dashboard              |
 |  - Admin God-Mode Oversight    - 18+ Vehicles & Plates       - Personal Vehicle Profiles            |
-|  - Telnyx Call Screen Pop      - My Drivers Directory        - Priority Roadside Dispatch           |
-|  - Proximity Distance Tool     - Service Request Form        - Member Pricing & Receipts            |
-|  - 1-Click Invoice Generator   - Live Service Status         - Service History                      |
-|  - Active Accountant Costing   - Pending & Paid Invoices                                            |
-|  - IT_B Royalty Ledger         - Internal Portal Inbox                                              |
+|  - Telnyx WebRTC Softphone     - My Drivers Directory        - Priority Roadside Dispatch           |
+|  - Dual-Trigger Screen Pop      - Service Request Form        - Member Pricing & Receipts            |
+|  - Proximity Distance Tool     - Live Service Status         - Service History                      |
+|  - 1-Click Invoice Generator   - Pending & Paid Invoices                                            |
+|  - Active Accountant Costing   - Internal Portal Inbox                                              |
+|  - IT_B Royalty Ledger                                                                              |
 |                                                                                                    |
 |  +-----------------------+   +--------------------------+   +----------------------------------+   |
-|  |   Zustand Store       |   |   TanStack Query v5      |   |   Socket.io Client               |   |
-|  |   (Client & UI State) |   |   (Server State & Cache) |   |   (Real-Time Dispatch Updates)   |   |
+|  |   Zustand Store       |   |   TanStack Query v5      |   |   Telnyx WebRTC + Socket.io      |   |
+|  |   (Client & UI State) |   |   (Server State & Cache) |   |   (Softphone Audio & Push Evts)  |   |
 |  +-----------------------+   +-------------+------------+   +-----------------+----------------+   |
 +--------------------------------------------|----------------------------------|--------------------+
-                                             | REST API (JSON)                  | WebSockets
+                                             | REST API (JSON)                  | WebRTC / WebSockets
                                              v                                  v
 +----------------------------------------------------------------------------------------------------+
 |                                   BACKEND API (Express + TypeScript 5.9.x)                         |
@@ -38,11 +39,11 @@ The architecture is derived directly from the system design blueprint ([`Xtreme-
 |                         |                        |                                                 |
 |                         v                        v                                                 v
 |  +-------------------------------+  +-----------------------------+  +--------------------------+  |
-|  | Security & Ingestion Layer    |  | Socket.io Engine            |  | Prisma ORM v7 Client     |  |
+|  | Security & Ingestion Layer    |  | Socket.io & Telephony Engine|  | Prisma ORM v7 Client     |  |
 |  | - Passport-JWT & Bcrypt       |  | - Rooms: dispatch:{region}  |  | - @prisma/adapter-pg     |  |
 |  | - Zod Request Validation      |  | - Rooms: driver:{driverId}  |  | - prisma.config.ts       |  |
 |  | - Multer File/Receipt Upload  |  | - Rooms: chat:job:{jobId}   |  | - Multi-Tenant DB Pool   |  |
-|  | - Telnyx Inbound Webhook      |  |                             |  | - Tenant Scoping Ext     |  |
+|  | - Telnyx Inbound Webhook      |  | - Telnyx On-Demand Token Svc|  | - Tenant Scoping Ext     |  |
 |  +-------------------------------+  +-----------------------------+  +-------------+------------+  |
 +------------------------------------------------------------------------------------|---------------+
                                                                                      |
@@ -70,7 +71,7 @@ The architecture is derived directly from the system design blueprint ([`Xtreme-
 | **Styling & Motion** | **Tailwind CSS v4 + Framer Motion** | Fast compile-time purge, predictable Red & White tokens, polished micro-interactions. |
 | **Form Engine** | **React Hook Form + Zod** | Zero-lag uncontrolled form inputs optimized for high-speed manual call agent keyboard data entry. Shared Zod validation with backend. |
 | **Real-time Comms** | **Socket.io** | Real-time bidirectional communication with dedicated rooms (`dispatch:{region}`, `driver:{driverId}`, `chat:job:{jobId}`). Auto-reconnects on mobile drops. |
-| **Telephony** | **Telnyx WebRTC & Webhooks** | High-performance SIP/WebRTC trunking. Triggers automatic inbound screen pop on active agents' screens with caller phone pre-filled. |
+| **Telephony** | **Telnyx WebRTC (`@telnyx/webrtc`) & Webhooks** | Embedded in-browser softphone. Agents answer calls directly through USB headset; 1-click click-to-call. Triggers dual screen pop with caller ID pre-filled. |
 | **Backend Framework** | **Express (Node.js + TypeScript 5.9.x)** | Industry-standard, proven stability, massive ecosystem, transparent middleware pipeline. |
 | **Backend Validation** | **Zod** | Type-safe schema validation for all request bodies, query params, and route parameters with automatic TypeScript type inference. |
 | **ORM** | **Prisma ORM v7** | End-to-end TypeScript type safety, declarative migrations, `@prisma/adapter-pg` driver adapter, and `prisma.config.ts`. |
@@ -82,9 +83,12 @@ The architecture is derived directly from the system design blueprint ([`Xtreme-
 
 ### 3.1. Internal Admin Portal (`/admin`)
 - **Admin God-Mode:** The Admin has complete, unrestricted control over the entire system on one screen (answering calls, dispatching vans, editing invoices, changing prices, viewing net margins) without internal permission barriers.
-- **Telnyx Inbound Telephony & Screen Pop:**
-  - Incoming call triggers an instant screen pop modal on active agents' workstations.
-  - Caller phone number is pre-populated; returning customers or fleet accounts are matched automatically.
+- **Embedded Telnyx WebRTC Softphone & Dual-Trigger Screen Pop:**
+  - **In-Browser Audio:** Connected via `@telnyx/webrtc` using short-lived tokens from `GET /api/telephony/token`. Agents converse directly through their browser headset with call controls (Answer, Mute, Hold, Hang Up).
+  - **Dual-Trigger Screen Pop:** Incoming calls trigger the intake modal via WebRTC client events and server webhook (`POST /api/telephony/webhook` broadcasting to `dispatch:{region}` over Socket.io).
+  - **Data Division (Auto vs. Agent-Entered):**
+    - *Auto-Populated on Ring:* Caller phone number, lead source (`DIRECT_CALL`), unique call ID, call timestamp, and matching returning customer profile / registered fleet vehicles.
+    - *Agent-Entered During Conversation:* Roadside breakdown location (geocoded via Google Places), on-scene recipient info, vehicle & tire confirmation, service selection (16-service catalog), verbal agreed ETA, price quote & tax toggle, problem notes, and mandatory call disposition (`Booked`, `RNC`, `WN`, `IR`, `Cancelled`).
 - **Interactive Proximity & Distance Tool:**
   - Typing any address measures real driving distance and ETA from all active technicians.
 - **Appointments Board:** Urgent vs Standard vs Future queues with expandable row accordions.

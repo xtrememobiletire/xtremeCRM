@@ -24,23 +24,23 @@
 
 ---
 
-## Phase 2: Inbound Call Agent Intake & Disposition Module
-- **Objective:** High-speed call booking modal, Telnyx screen pops, and conversion tracking.
+## Phase 2: Inbound Call Agent Intake & Telnyx WebRTC Softphone Module
+- **Objective:** Embedded browser digital phone, instant screen pop, auto-prefilled caller matching, and rapid keyboard roadside intake.
 - **Deliverables:**
   - Agent Active/Inactive presence toggle in top navigation bar.
-  - Telnyx Webhook & Screen Pop service:
-    - Auto-detects inbound call and pops modal on active agent screen with caller phone number pre-filled.
-    - Instant background lookup queries customer and past vehicle records.
-  - Fast keyboard-driven booking form:
-    - Self-Booking vs Recipient toggle (with alternate on-scene phone).
-    - Google Places address autocomplete for roadside breakdown location.
-    - Vehicle Year, Make, Model, and Tire Size specification.
-    - Complete 16-service multi-select catalog.
-    - Urgency selector (`URGENT`, `STANDARD`, `FUTURE`) with ETA input.
-    - Billing controls: base amount, tax checkbox toggle (`+ tax` or `- tax(box)`), payment method selector (`E-Transfer`, `POS`, `Cash`, `MOTO`).
-    - Customer account auto-provisioning toggle (*"After all this make user account"*). Passwords hashed with Bcrypt.
-  - 5-Disposition call logging (`Booked`, `RNC`, `WN`, `IR`, `Appointment Cancelled By CX`).
-  - Public Landing Page booking widget (`/`):
+  - **Embedded Telnyx WebRTC Softphone (`@telnyx/webrtc`):**
+    - Backend on-demand token endpoint (`GET /api/telephony/token`) minting short-lived WebRTC JWTs.
+    - React softphone component with 1-click answer (`Spacebar`), mute, hold, and hangup.
+    - 1-click outbound click-to-call on all customer and driver phone numbers.
+  - **Dual-Trigger Screen Pop Service:**
+    - Dual event handling: WebRTC browser event + server webhook (`POST /api/telephony/webhook`) over Socket.io.
+    - Auto-prefills caller phone number (`phone`), defaults `DIRECT_CALL`, and initiates immediate customer/fleet database match.
+  - **Structured Intake Form (Auto vs. Agent-Entered Separation):**
+    - *Auto-Populated:* Caller number, lead source, timestamp, matching returning customer profile, and saved fleet vehicles.
+    - *Agent-Entered Live:* Breakdown location (Google Places Autocomplete), on-scene recipient info, vehicle & tire size confirmation, 16-service picker, urgency & agreed ETA, base price & tax toggle, payment method, customer account auto-creation toggle, and problem notes.
+  - **Mandatory 5-Disposition Call Logging:**
+    - Modal cannot be dismissed without logging outcome: `Booked`, `RNC`, `WN`, `IR`, `Appointment Cancelled By CX`.
+  - **Public Landing Page Booking Widget (`/`):**
     - Ingests self-bookings with `isVerified = false` validated via Zod.
     - Injects outbound verification task into active agents' queue.
 

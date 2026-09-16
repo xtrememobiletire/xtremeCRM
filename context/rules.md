@@ -141,12 +141,17 @@ The Express application must register middleware in the following explicit order
 ---
 
 ## 6. Telephony, Fleet Management & Commissions
-1. **Telnyx Inbound Integration:**
-   - Inbound call webhook routes to available agents with `isAgentActive = true`.
-   - Pre-fills caller phone number into the intake modal for instant customer matching.
-2. **B2B Fleet Workflow & Virtual Assistant Commission:**
+1. **Telnyx Inbound WebRTC & Screen Pop Architecture:**
+   - **Zero Master Key Exposure:** The frontend client MUST never receive master Telnyx API keys. The Express backend issues short-lived, on-demand JWTs via `GET /api/telephony/token` scoped to the active agent's WebRTC SIP connection.
+   - **Dual-Trigger Fail-Safe:** Screen pops trigger simultaneously on the client WebRTC `ringing` event and the server webhook (`POST /api/telephony/webhook` over Socket.io) to ensure 0ms latency even on jittery network connections.
+   - **Presence Routing:** Calls only ring agents whose `User.isAgentActive` flag is `true`. Inactive agents are skipped by the Telnyx routing engine.
+2. **Intake Data Division & Integrity Rules:**
+   - **System Auto-Populated:** Caller phone number is automatically ingested from caller ID and locked into the primary phone input. System triggers an asynchronous search for matching returning customers or B2B fleet accounts.
+   - **Agent-Entered Operational Truth:** Breakdown address MUST be geocoded via Google Places Autocomplete to ensure valid GPS coordinates (`serviceLat`, `serviceLng`) for the driver proximity tool.
+   - **Mandatory Outcome Disposition:** An intake modal CANNOT be closed or dismissed without selecting a valid disposition (`Booked`, `RNC`, `WN`, `IR`, `Cancelled`). This prevents lost leads and untracked calls.
+3. **B2B Fleet Workflow & Virtual Assistant Commission:**
    - When a fleet job reaches `COMPLETED`, system checks if the fleet is linked to a `virtualAssistantId`.
    - If linked, an entry is inserted into `FleetCommissionLedger` with the agreed commission amount ($2.00–$3.00, stored in integer cents).
-3. **Driver Visibility Restrictions:**
+4. **Driver Visibility Restrictions:**
    - Drivers can only see their own assigned jobs and their own Gross and Net earnings.
    - Drivers have zero access to company net profit margins, wholesale material costs, or other drivers' payouts.
