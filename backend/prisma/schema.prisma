@@ -16,7 +16,7 @@ enum UserRole {
   CALL_AGENT
   DISPATCHER
   DRIVER
-  ACCOUNTANT
+  ACCOUNTANT // ponytail: JR and SR accountant split deferred to single role with audit permissions
   VIRTUAL_ASSISTANT
 
   // External Portal Client Roles (Operate in client dashboards)
@@ -27,6 +27,12 @@ enum UserRole {
 enum CustomerType {
   RETAIL
   MEMBERSHIP
+}
+
+enum MembershipTier {
+  STANDARD
+  GOLD
+  PLATINUM
 }
 
 enum FleetStatus {
@@ -45,7 +51,7 @@ enum InvoiceStatus {
 
 enum JobStatus {
   PENDING
-  UNVERIFIED_PUBLIC
+  UNVERIFIED_PUBLIC // ponytail: isVerified boolean derived from status != UNVERIFIED_PUBLIC
   ASSIGNED
   EN_ROUTE
   ARRIVED
@@ -92,6 +98,19 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum CashTransactionType {
+  JOB_COLLECTION
+  DISPATCHER_DEPOSIT
+  PAYOUT_DEDUCTION
+  ADJUSTMENT
+}
+
+enum ServiceCategory {
+  TIRE_SERVICE
+  ROADSIDE_ASSISTANCE
+  MAINTENANCE
+}
+
 // --------------------------------------------------------
 // CORE USERS & AUTHENTICATION
 // --------------------------------------------------------
@@ -108,7 +127,7 @@ model User {
   // Agent Presence (Active / Inactive toggle for internal staff)
   isAgentActive Boolean  @default(false) @map("is_agent_active")
 
-  // Driver Telemetry & Balance (when role == DRIVER)
+  // Driver Telemetry & Balance (inlined from DriverProfile - ponytail: 1:1 table avoided)
   currentLat      Float?    @map("current_lat")
   currentLng      Float?    @map("current_lng")
   lastPingAt      DateTime? @map("last_ping_at")
@@ -121,12 +140,18 @@ model User {
   // Internal Staff Relations
   createdJobs       Job[]     @relation("AgentJobs")
   assignedJobs      Job[]     @relation("DriverJobs")
-  verifiedJobs      Job[]     @relation("VerifiedJobs")
   statedJobExpenses Job[]     @relation("JobExpensesStatedBy")
   verifiedPayments  Job[]     @relation("JobPaymentsVerifiedBy")
   auditedJobs       Job[]     @relation("JobAuditedBy")
   sourcedFleets     Fleet[]   @relation("VirtualAssistantFleets")
   createdInvoices   Invoice[] @relation("InvoicesCreated")
+
+  // Financial & Operational Ledger Relations
+  driverCashLedgers   DriverCashLedger[]      @relation("DriverCashLedgers")
+  verifiedCashLedgers DriverCashLedger[]      @relation("VerifiedCashLedgers")
+  vaCommissions       FleetCommissionLedger[] @relation("VACommissions")
+  sentPortalMessages  PortalMessage[]         @relation("SentPortalMessages")
+  sentJobMessages     JobMessage[]            @relation("SentJobMessages")
 
   // External Portal Client Relations
   customerAccount Customer? @relation("UserCustomer")
@@ -141,32 +166,33 @@ model User {
 // --------------------------------------------------------
 
 model Customer {
-  id                  String       @id @default(uuid())
-  fullName            String       @map("full_name")
-  phone               String       // Primary lookup index
-  altPhone            String?      @map("alt_phone")
-  email               String?
-  countryCode         String       @default("CA") @map("country_code") // "CA", "US", "UK"
-  customerType        CustomerType @default(RETAIL) @map("customer_type")
+  id           String       @id @default(uuid())
+  fullName     String       @map("full_name")
+  phone        String       // Primary lookup index
+  altPhone     String?      @map("alt_phone")
+  email        String?
+  countryCode  String       @default("CA") @map("country_code") // "CA", "US", "UK"
+  customerType CustomerType @default(RETAIL) @map("customer_type")
 
   // Membership Benefits (B2C)
-  isMembershipActive  Boolean   @default(false) @map("is_membership_active")
-  membershipTier      String?   @map("membership_tier") // e.g. "GOLD", "STANDARD"
-  membershipExpiresAt DateTime? @map("membership_expires_at")
+  // ponytail: isMembershipActive derived dynamically: membershipExpiresAt != null && membershipExpiresAt > now()
+  membershipTier      MembershipTier? @map("membership_tier")
+  membershipExpiresAt DateTime?       @map("membership_expires_at")
 
-  // Member Portal Credentials (account exists if userId != null)
+  // Member Portal Credentials (ponytail: isUserAccountCreated derived: userId != null)
   userId String? @unique @map("user_id")
   user   User?   @relation("UserCustomer", fields: [userId], references: [id])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  vehicles Vehicle[]
-  jobs     Job[]
-  invoices Invoice[]
+  vehicles       Vehicle[]
+  jobs           Job[]
+  invoices       Invoice[]
+  portalMessages PortalMessage[]
 
   @@unique([countryCode, phone])
-  @@index([customerType, isMembershipActive])
+  @@index([customerType])
   @@map("customers")
 }
 
@@ -191,9 +217,8 @@ model Fleet {
   managerUserId String? @unique @map("manager_user_id")
   managerUser   User?   @relation("FleetManagerUser", fields: [managerUserId], references: [id])
 
-  // B2B Contract Verification
+  // B2B Contract Verification (ponytail: isVerified derived: status == APPROVED || contractSignedAt != null)
   contractSignedAt DateTime? @map("contract_signed_at")
-  isVerified       Boolean   @default(true) @map("is_verified")
 
   // Lead attribution for Virtual Assistant
   virtualAssistantId String? @map("virtual_assistant_id")
@@ -202,13 +227,14 @@ model Fleet {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  vehicles Vehicle[]
-  drivers  FleetDriver[]
-  jobs     Job[]
-  invoices Invoice[]
+  vehicles       Vehicle[]
+  drivers        FleetDriver[]
+  jobs           Job[]
+  invoices       Invoice[]
+  commissions    FleetCommissionLedger[]
+  portalMessages PortalMessage[]
 
   @@index([countryCode, status])
-  @@index([countryCode, isVerified])
   @@map("fleets")
 }
 
@@ -273,10 +299,10 @@ model Invoice {
   dueDate   DateTime      @map("due_date")
   status    InvoiceStatus @default(PENDING)
 
-  subtotalCents  Int            @map("subtotal_cents")
-  taxAmountCents Int            @map("tax_amount_cents")
-  totalCents     Int            @map("total_cents")
-  currency       String         @default("USD") // "USD", "CAD"
+  subtotalCents  Int    @map("subtotal_cents")
+  taxAmountCents Int    @map("tax_amount_cents")
+  totalCents     Int    @map("total_cents")
+  currency       String @default("USD") // "USD", "CAD", "GBP"
 
   createdById String @map("created_by_id")
   createdBy   User   @relation("InvoicesCreated", fields: [createdById], references: [id])
@@ -301,9 +327,10 @@ model InvoiceItem {
   id             String  @id @default(uuid())
   invoiceId      String  @map("invoice_id")
   invoice        Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  itemDetails    String  @map("item_details") // e.g. "Tire Replacement"
-  unitPriceCents Int     @map("unit_price_cents") // 87500 ($875.00)
+  itemDetails    String  @map("item_details") // e.g. "Emergency Steer Tire Replacement (11R22.5)"
+  unitPriceCents Int     @map("unit_price_cents") // 42000 ($420.00)
   quantity       Int     @default(1)
+  // ponytail: totalCents derived: unitPriceCents * quantity
 
   @@map("invoice_items")
 }
@@ -329,18 +356,14 @@ model Job {
   createdBy   User      @relation("AgentJobs", fields: [createdById], references: [id])
 
   // Lifecycle & Priorities
-  status      JobStatus      @default(PENDING)
-  urgency     JobUrgency     @default(STANDARD)
-  source      JobSource      @default(DIRECT_CALL)
-  serviceType String         @default("Standard Service") @map("service_type") // "Standard Service", "Roadside Emergency"
-  countryCode String         @default("CA") @map("country_code") // "CA", "US", "UK"
+  status      JobStatus  @default(PENDING)
+  urgency     JobUrgency @default(STANDARD)
+  source      JobSource  @default(DIRECT_CALL)
+  serviceType String     @default("Standard Service") @map("service_type")
+  countryCode String     @default("CA") @map("country_code") // "CA", "US", "UK"
 
-  // Intake & Verification Flags
-  isVerified   Boolean @default(true) @map("is_verified")
-  verifiedById String? @map("verified_by_id")
-  verifiedBy   User?   @relation("VerifiedJobs", fields: [verifiedById], references: [id])
-  isTaxExempt  Boolean @default(false) @map("is_tax_exempt")
-  telnyxCallId String? @map("telnyx_call_id")
+  // Telephony
+  telnyxCallId String?   @map("telnyx_call_id")
 
   // Service Location & Timing
   serviceAddress  String    @map("service_address")
@@ -359,40 +382,47 @@ model Job {
   // ------------------------------------------------------
   // FINANCIALS & REVENUE (Inlined from JobFinancial)
   // ------------------------------------------------------
-  currency       String         @default("USD") // "USD", "CAD", "GBP"
+  currency       String         @default("CAD") // "CAD", "USD", "GBP"
   subtotalCents  Int            @default(0) @map("subtotal_cents")
-  taxRatePercent Float          @default(0.0) @map("tax_rate_percent") // e.g. 0.0 for 0%
+  taxRatePercent Float          @default(0.0) @map("tax_rate_percent") // ponytail: isTaxExempt derived: taxRatePercent == 0.0
   taxAmountCents Int            @default(0) @map("tax_amount_cents")
   totalCents     Int            @default(0) @map("total_cents") // Gross Customer Paid (CP)
   paymentMethod  PaymentMethod? @map("payment_method")
   paymentStatus  PaymentStatus  @default(UNPAID) @map("payment_status")
 
-  // Job Expense Stating (Accountant inputs expenses)
+  // Job Expense Stating (Accountant inputs actual ticket expenses)
   materialCostCents Int       @default(0) @map("material_cost_cents") // Wholesale tire & parts cost (TC)
   repairerFeeCents  Int       @default(0) @map("repairer_fee_cents")  // Repairer/technician labor (DC)
-  otherExpenseCents Int       @default(0) @map("other_expense_cents") // Incidental expenses
+  otherExpenseCents Int       @default(0) @map("other_expense_cents") // Incidental expenses (tolls, disposal)
   expenseNotes      String?   @map("expense_notes")                   // Explanation of job expenses
   expenseStatedById String?   @map("expense_stated_by_id")
   expenseStatedBy   User?     @relation("JobExpensesStatedBy", fields: [expenseStatedById], references: [id])
   expenseStatedAt   DateTime? @map("expense_stated_at")
 
-  // Payment Verification (verified if paymentVerifiedById != null or paymentStatus == VERIFIED_PAID)
+  // Payment Verification & Auditing
+  // ponytail: isPaymentVerified derived: paymentVerifiedById != null || paymentStatus == VERIFIED_PAID
   paymentVerifiedById String?   @map("payment_verified_by_id")
   paymentVerifiedBy   User?     @relation("JobPaymentsVerifiedBy", fields: [paymentVerifiedById], references: [id])
   paymentVerifiedAt   DateTime? @map("payment_verified_at")
 
-  // Platform Royalty
-  itPlatformFeeCents Int @default(100) @map("it_platform_fee_cents") // $1.50 CAD / $1.00 USD / £1.00 GBP
+  // Platform Royalty ($1.50 CAD for CA / $1.00 USD for US / £1.00 GBP for UK)
+  itPlatformFeeCents Int @default(150) @map("it_platform_fee_cents")
 
-  // Audit & Attachments (audited if auditedById != null)
-  receiptUrl         String?   @map("receipt_url")          // Customer payment proof
-  materialReceiptUrl String?   @map("material_receipt_url") // Supplier parts/tire purchase slip
+  // Receipt Proofs (ponytail: isAudited derived: auditedById != null)
+  receiptUrl         String?   @map("receipt_url")          // Customer payment receipt
+  materialReceiptUrl String?   @map("material_receipt_url") // Supplier wholesale parts slip
   auditedById        String?   @map("audited_by_id")
   auditedBy          User?     @relation("JobAuditedBy", fields: [auditedById], references: [id])
   auditedAt          DateTime? @map("audited_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Operational & Audit Relations
+  serviceItems     JobServiceItem[]
+  cashLedgers      DriverCashLedger[]
+  messages         JobMessage[]
+  fleetCommissions FleetCommissionLedger[]
 
   @@index([countryCode, status])
   @@index([countryCode, createdAt])
@@ -403,4 +433,108 @@ model Job {
   @@index([invoiceId])
   @@index([paymentStatus])
   @@map("jobs")
+}
+
+// --------------------------------------------------------
+// JOB SERVICE ITEMS (16-Service Catalog Line Items)
+// --------------------------------------------------------
+
+model JobServiceItem {
+  id             String          @id @default(uuid())
+  jobId          String          @map("job_id")
+  job            Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  serviceName    String          @map("service_name") // e.g. "Tire Repair (Plug)", "Stem Valve Replacement"
+  category       ServiceCategory @default(TIRE_SERVICE)
+  unitPriceCents Int             @default(0) @map("unit_price_cents")
+  quantity       Int             @default(1)
+  notes          String?
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  @@index([jobId])
+  @@map("job_service_items")
+}
+
+// --------------------------------------------------------
+// DRIVER CASH AUDIT LEDGER (Physical Cash Accountability)
+// --------------------------------------------------------
+
+model DriverCashLedger {
+  id           String              @id @default(uuid())
+  driverId     String              @map("driver_id")
+  driver       User                @relation("DriverCashLedgers", fields: [driverId], references: [id], onDelete: Cascade)
+  amountCents  Int                 @map("amount_cents") // Positive = cash collected, Negative = deposit to dispatch
+  type         CashTransactionType
+  jobId        String?             @map("job_id")
+  job          Job?                @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  verifiedById String?             @map("verified_by_id")
+  verifiedBy   User?               @relation("VerifiedCashLedgers", fields: [verifiedById], references: [id])
+  notes        String?
+  createdAt    DateTime            @default(now()) @map("created_at")
+
+  @@index([driverId, createdAt])
+  @@index([jobId])
+  @@map("driver_cash_ledgers")
+}
+
+// --------------------------------------------------------
+// FLEET COMMISSION LEDGER (Virtual Assistant Attributions)
+// --------------------------------------------------------
+
+model FleetCommissionLedger {
+  id                 String    @id @default(uuid())
+  fleetId            String    @map("fleet_id")
+  fleet              Fleet     @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+  virtualAssistantId String    @map("virtual_assistant_id")
+  virtualAssistant   User      @relation("VACommissions", fields: [virtualAssistantId], references: [id], onDelete: Cascade)
+  jobId              String?   @map("job_id")
+  job                Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  amountCents        Int       @default(250) @map("amount_cents") // $2.50 standard commission per completed job
+  isPaid             Boolean   @default(false) @map("is_paid")
+  paidAt             DateTime? @map("paid_at")
+  notes              String?
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  @@index([virtualAssistantId, isPaid])
+  @@index([fleetId])
+  @@map("fleet_commission_ledgers")
+}
+
+// --------------------------------------------------------
+// PORTAL MESSAGES (Direct Inbox / No Third-Party Email)
+// --------------------------------------------------------
+
+model PortalMessage {
+  id         String    @id @default(uuid())
+  fleetId    String?   @map("fleet_id")
+  fleet      Fleet?    @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+  customerId String?   @map("customer_id")
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  senderId   String    @map("sender_id")
+  sender     User      @relation("SentPortalMessages", fields: [senderId], references: [id])
+  subject    String
+  content    String    @db.Text
+  actionUrl  String?   @map("action_url") // e.g. "/fleet-dashboard/invoices/MW-US-0002"
+  isRead     Boolean   @default(false) @map("is_read")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([fleetId, isRead])
+  @@index([customerId, isRead])
+  @@map("portal_messages")
+}
+
+// --------------------------------------------------------
+// JOB MESSAGES (Two-Way Driver & Dispatcher Chat)
+// --------------------------------------------------------
+
+model JobMessage {
+  id        String   @id @default(uuid())
+  jobId     String   @map("job_id")
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  senderId  String   @map("sender_id")
+  sender    User     @relation("SentJobMessages", fields: [senderId], references: [id])
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([jobId, createdAt])
+  @@map("job_messages")
 }

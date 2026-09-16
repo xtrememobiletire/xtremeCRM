@@ -77,7 +77,7 @@
 ## 4. Documentation Index (Fully Aligned in `context/`)
 - `context/architecture.md`: Complete system architecture, subsystem topology, component diagrams, Express + TypeScript middleware stack.
 - `context/prd.md`: Product Requirements Document covering FR-1 through FR-8 (including Telnyx screen pop, Fleets B2B, driver Gross/Net, accountant job expense stating & payment verification) and NFRs.
-- `context/data_models.md`: Complete `schema.prisma` with `Fleet`, `FleetCommissionLedger`, `JobMessage`, `DriverCashLedger`, `JobFinancial` with expense stating and payment verification fields, and duplication audit table.
+- `context/data_models.md`: Reconciled complete Prisma schema with zero duplicate state, restoring DriverCashLedger, JobServiceItem, FleetCommissionLedger, PortalMessage, JobMessage, and comprehensive duplication audit table.
 - `context/design.md`: Industrial Utilitarian & Tactical Emergency Roadside Console design system built with the `frontend-design` skill; OKLCH tokens, fluid clamp typography, tabular telemetry, native dialogs, and comprehensive wireframes across Internal Staff (/admin), B2B Fleet Portal (/fleet-dashboard), Invoicing Engine, and Member Portal.
 - `context/phases.md`: 5-phase implementation roadmap covering core foundation, agent intake, dispatch & fleets, driver execution, and accounting reconciliation.
 - `context/rules.md`: Engineering rules, Ponytail/YAGNI principles, strict integer cents, zero duplication, Express + TypeScript middleware standards (Morgan, Helmet, CORS, Cookie-Parser, Bcrypt, Multer, Passport, Zod), and React conventions.
@@ -86,8 +86,13 @@
 ---
 
 ## 5. Session Status & Next Steps
-- **Current Milestone:** System Design & Specification Fully Synchronized; Design System Upgraded with `frontend-design` Skill.
-- **Prisma 7 Fix:** Resolved `directUrl` deprecation error in `backend/prisma.config.ts` by pointing `datasource.url` to `env("DIRECT_URL") || env("DATABASE_URL")` per Prisma 7 standards.
+- **Current Milestone:** Schema Reconciled & Zero-Duplication Cleaned; System Documentation 100% Synchronized.
+- **Prisma 7 Schema Reconciled:**
+  - Restored essential operational models: `DriverCashLedger` (cash audit trail), `JobServiceItem` (16-service catalog items), `FleetCommissionLedger` ($2.50 VA commissions), `PortalMessage` (inbox), `JobMessage` (driver-dispatch chat).
+  - Eliminated drifting duplicate state: `Job.isVerified` (derived from status), `Job.isTaxExempt` (derived from taxRatePercent == 0), `Customer.isMembershipActive` (derived from expiry > now).
+  - Inlined `DriverProfile` directly on `User` to avoid 1:1 join ceremony.
+  - Added explicit `// ponytail: [rationale]` tracking comments on every intentional deferral.
+- **Prisma 7 Fix:** Resolved `directUrl` deprecation in `backend/prisma.config.ts`.
 - **Backend Stack:** Express (Node.js + TypeScript) with Helmet, Morgan, CORS, Cookie-Parser, Passport-JWT, Bcrypt, Multer, and Zod.
-- **Active Deliverables:** All 7 core documentation files in `context/` are 100% verified, consistent, and adhere strictly to the system design diagram, user specifications, and anti-AI-slop design principles.
+- **Active Deliverables:** All 7 core documentation files in `context/` and `backend/prisma/schema.prisma` are 100% verified, consistent, and adhere strictly to Ponytail principles.
 - **Next Step:** Ready to initiate **Phase 1 Execution** (Express + TypeScript backend scaffolding, Prisma schema migration, seed catalog, and React Vite shell).
