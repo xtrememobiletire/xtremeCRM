@@ -18,47 +18,43 @@
   - `bcrypt`: Salt generation and password hashing.
   - `multer`: Multi-part form-data handling for customer and supplier receipt uploads.
   - `zod`: Single-source request schema validation (`validateRequest`) and TypeScript type inference.
-  - Centralized error handling middleware.
-- **Database & ORM:** **PostgreSQL 16** with **Prisma ORM** — Single database in Dokploy with indexed `countryCode` tenant scoping via Express tenant middleware and Prisma Client Extensions (`prisma.$extends`).
-- **Real-Time Communication:** **Socket.io / SSE** — Persistent bidirectional connections with scoped rooms (`dispatch:{region}`, `driver:{driverId}`, `chat:job:{jobId}`, `accountant:{region}`).
-- **Telephony Integration:** **Telnyx WebRTC & Webhooks** — Real-time screen pops on active agent screens with caller phone number pre-filled.
-- **Frontend SPA:** **React 18 + Vite** + **Tailwind CSS** (Red & White design tokens).
-- **Client UI State:** **Zustand** — Ephemeral UI controls (drawers, modals, filters, active/inactive agent toggle).
-- **Server State / Cache:** **TanStack Query v5** — Automatic cache invalidation upon socket events.
-- **Hosting & Infrastructure:** **Dokploy** on Hostinger 16GB KVM VPS — Docker Compose, single PostgreSQL container with automated daily S3 backups, Traefik auto-SSL.
+  - Centralized error handling middleware- **Database & ORM:** **PostgreSQL** with **Prisma ORM v7** + `@prisma/adapter-pg` driver adapter and `prisma.config.ts`:
+  - **Local Development:** Cloud **Neon DB** with PgBouncer connection pooler (`ep-*-pooler...`) for `DATABASE_URL` and unpooled direct host for `DIRECT_URL`.
+  - **Production:** Self-hosted single PostgreSQL container managed via **Dokploy** on VPS.
+  - Multi-tenancy scoped by indexed `countryCode` (`CA`, `US`, `UK`).
+- **Real-Time Communication:** **Socket.io** — Bidirectional updates for dispatch queue, live technician tracking, and chat.
+- **Telephony Integration:** **Telnyx WebRTC & Webhooks** — Screen pop with caller number pre-filled.
+- **Frontend SPA:** **React 19 + Vite** + **Tailwind CSS v4** (`@tailwindcss/vite`), Red & White theme (`#DC2626` & `#FFFFFF`).
+- **Client State:** **Zustand** for UI controls; **TanStack Query v5** for server cache; **Framer Motion** for polished interactions.
 
 ---
 
 ## 3. Core Business Logic & Architectural Pillars
-1. **Inbound Intake & Agent Presence:**
-   - Agent Active/Inactive presence toggle. Calls route to active agents.
-   - Telnyx inbound webhook triggers screen pop with caller phone pre-filled.
-   - Self-Booking vs Recipient toggle; Google Places geocoding; 16-Service Catalog; tax toggle (`$160 + tax or - tax(box)`); customer account auto-creation (`isUserAccountCreated`); 5 call dispositions.
-2. **Landing Page Public Booking Subsystem:**
-   - Public self-booking widget at `/` ingesting unverified leads (`isVerified = false`).
-   - Call agents perform outbound verification calls/SMS before dispatching.
-3. **Dispatch Logistics & B2B Fleets:**
-   - Urgent queue count with expandable row accordion.
-   - Interactive Arbitrary Address Distance Measurement Tool (measures driving distance from all active drivers to any typed address).
-   - Single-click driver assignment.
-   - Real-time two-way driver messaging per job ticket.
-   - Driver Cash-in-Hand tracking panel.
-   - B2B Fleets sidebar view (`Fleets`): ViciDial/BulkVS cold calling, contract signing verification, dedicated fleet service history, and **$2–$3 Virtual Assistant commission per completed job** (`FleetCommissionLedger`).
-4. **Driver Mobile Execution (PWA):**
-   - High-contrast sunlight UI with large step buttons (`EN_ROUTE`, `ARRIVED`, `IN_PROGRESS`, `COMPLETED`).
-   - Gross & Net earnings display per job/shift.
-   - Cash collection modal and in-app dispatch chat.
-5. **Accountant Department & Job Expense Stating:**
-   - **Active Job Costing:** The accountant is an active financial controller who **states the exact expenses for each job**:
-     - **Repairer Fees** (`repairerFeeCents` / `driverPayoutCents`): Technician labor compensation.
-     - **Material Fees** (`materialCostCents` / `tireMaterialCostCents`): Wholesale tires, rims, valves, patches, parts.
-     - **Other Job Expenses** (`otherExpenseCents`): Incidental expenses with explanatory notes.
-   - **Payment Verification:** Dedicated boolean flag `isPaymentVerified` with verifier identity and audit timestamp.
-   - **Receipt Attachments via Multer:** Customer payment receipt (`receiptUrl`) and supplier material purchase slip (`materialReceiptUrl`).
-   - **Dynamic Cost Formulas:**
-     $$\text{Total Job Expense} = \text{Material Fees} + \text{Repairer Fees} + \text{Other Expenses}$$
-     $$\text{Net Profit} = \text{Customer Paid (CP)} - \text{Total Job Expense}$$
-     $$\text{Total Net After IT\_B} = \text{Net Profit} - \text{IT\_B}$$
+1. **Three Distinct Portals**:
+   - `/admin` $\rightarrow$ **Internal Staff (Admin God-Mode)**: Full unrestricted control over call intake, dispatching, accounting reconciliation, driver tracking, and invoice management.
+   - `/fleet-dashboard` $\rightarrow$ **External Fleet Clients (B2B)**: Sandboxed portal with fleet code (`XMT-5132`), assigned company email (`piratheep@xtrememobiletire.com`), 18+ vehicle registry with license plates (`KT-15`, `KT-18`), driver directory, service bookings, internal portal inbox, and pending/paid invoices.
+   - `/member-dashboard` $\rightarrow$ **External Personal Members (B2C)**: Personal vehicle profiles, priority roadside bookings, exclusive member pricing, and receipts.
+2. **24/7 Roadside Driver Lookup**:
+   - On-the-road truck drivers call 24/7 dispatch directly quoting Company Name or License Plate.
+   - Dispatcher instantly verifies active fleet agreement and pre-registered tire size (`11R22.5`, `235/65R17`), dispatching the technician without phone tag.
+3. **Invoicing & Financial Engine**:
+   - **Separate from Jobs**: Jobs are operational fulfillment; Invoices are commercial instruments (`INV-0002` layout).
+   - **Custom Numbering**: `[Initials]-[Country]-[digits]` (e.g. `MW-US-0002` for Mike William, `AG-CA-0105` for Agent).
+   - **Flexible Due Dates**: User-selectable due date (default Net-15/30 or custom).
+   - **Multi-Job Fleet Invoicing**: 1-click invoice generation from completed jobs, bundling multiple weekly dispatches into one consolidated bill.
+   - **Automated PDF Export**: Server/client PDF generator replicating the verified KT Group invoice template with company banking instructions (`Payments@xtrememobiletire.com`).
+4. **Active Job Costing (Zero Inventory)**:
+   - No warehouse inventory or stock counts.
+   - Accountants directly input actual job expenses:
+     - **Material Cost ($TC$)**: Wholesale tire/parts cost.
+     - **Technician Fee ($DC$)**: Mobile repairer labor.
+     - **Platform Royalty ($IT\_B$)**: $1.50 CAD / $1.00 USD / £1.00 GBP.
+   - **Derived Net Profit on Read**:
+     $$\text{Net Profit} = \text{Customer Paid (CP)} - TC - DC$$
+     $$\text{Net After IT\_B} = \text{Net Profit} - IT\_B$$
+5. **Regional Hubs (Addresses & Currency Separation)**:
+   - **US Regional Hub**: 11815 Medway Church Loop, Manassas, VA 20109 (covering VA, MD, DC, KY, NC, TN in USD).
+   - **Canada Regional Hub**: 857 Winterton Way, Mississauga, ON L5V 1Z5 (covering ON & GTA in CAD).
    - **Platform IT Royalty (`IT_B`):** Fixed fee per job ($1.50 CAD / $1.00 USD / £1.00 GBP) with Total Net of IT_B.
    - **Date Presets:** 4 exact filters: `Yesterday`, `Last 3 Days`, `One Week`, `Monthly Amount`.
    - **Role Separation:** Junior Accountant inputs expenses and uploads receipts; Senior Accountant / Director audits, verifies payment, and approves repairer payout.
@@ -78,7 +74,7 @@
 - `context/architecture.md`: Complete system architecture, subsystem topology, component diagrams, Express + TypeScript middleware stack.
 - `context/prd.md`: Product Requirements Document covering FR-1 through FR-8 (including Telnyx screen pop, Fleets B2B, driver Gross/Net, accountant job expense stating & payment verification) and NFRs.
 - `context/data_models.md`: Complete `schema.prisma` with `Fleet`, `FleetCommissionLedger`, `JobMessage`, `DriverCashLedger`, `JobFinancial` with expense stating and payment verification fields, and duplication audit table.
-- `context/design.md`: Red & White design tokens, status badges, and wireframes for Agent Portal, Landing Page, Dispatch Board, Fleets view, Driver Mobile PWA, Accountant Expense Stating modal, and Admin Portal.
+- `context/design.md`: Industrial Utilitarian & Tactical Emergency Roadside Console design system built with the `frontend-design` skill; OKLCH tokens, fluid clamp typography, tabular telemetry, native dialogs, and comprehensive wireframes across Internal Staff (/admin), B2B Fleet Portal (/fleet-dashboard), Invoicing Engine, and Member Portal.
 - `context/phases.md`: 5-phase implementation roadmap covering core foundation, agent intake, dispatch & fleets, driver execution, and accounting reconciliation.
 - `context/rules.md`: Engineering rules, Ponytail/YAGNI principles, strict integer cents, zero duplication, Express + TypeScript middleware standards (Morgan, Helmet, CORS, Cookie-Parser, Bcrypt, Multer, Passport, Zod), and React conventions.
 - `context/memory.md`: *This file* — updated every session to maintain state continuity.
@@ -86,7 +82,8 @@
 ---
 
 ## 5. Session Status & Next Steps
-- **Current Milestone:** Complete System Design Synchronization & Specification Completed.
-- **Backend Stack Transition:** Successfully migrated backend architecture from Fastify to **Express (Node.js + TypeScript)** with **Helmet, Morgan, CORS, Cookie-Parser, Passport-JWT, Bcrypt, Multer, and Zod**.
-- **Active Deliverables:** All 7 core documentation files in `context/` are 100% verified, consistent, and adhere strictly to the updated system design diagram and user specifications.
+- **Current Milestone:** System Design & Specification Fully Synchronized; Design System Upgraded with `frontend-design` Skill.
+- **Prisma 7 Fix:** Resolved `directUrl` deprecation error in `backend/prisma.config.ts` by pointing `datasource.url` to `env("DIRECT_URL") || env("DATABASE_URL")` per Prisma 7 standards.
+- **Backend Stack:** Express (Node.js + TypeScript) with Helmet, Morgan, CORS, Cookie-Parser, Passport-JWT, Bcrypt, Multer, and Zod.
+- **Active Deliverables:** All 7 core documentation files in `context/` are 100% verified, consistent, and adhere strictly to the system design diagram, user specifications, and anti-AI-slop design principles.
 - **Next Step:** Ready to initiate **Phase 1 Execution** (Express + TypeScript backend scaffolding, Prisma schema migration, seed catalog, and React Vite shell).

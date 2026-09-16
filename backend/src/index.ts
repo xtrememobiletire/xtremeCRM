@@ -29,6 +29,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+import { prisma } from './lib/prisma.js';
+
 // Basic Hello & Health Routes
 app.get('/api/hello', (req: Request, res: Response) => {
   res.json({
@@ -38,12 +40,25 @@ app.get('/api/hello', (req: Request, res: Response) => {
   });
 });
 
-app.get('/api/health', (req: Request, res: Response) => {
-  res.json({
-    status: 'ok',
-    service: 'xtremecrm-backend',
-  });
+app.get('/api/health', async (req: Request, res: Response) => {
+  try {
+    const userCount = await prisma.user.count();
+    res.json({
+      status: 'ok',
+      service: 'xtremecrm-backend',
+      database: 'connected (Neon PostgreSQL via PgBouncer pooler)',
+      userCount,
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 'error',
+      service: 'xtremecrm-backend',
+      database: 'disconnected',
+      error: err instanceof Error ? err.message : 'Database query failed',
+    });
+  }
 });
+
 
 // Start Server
 app.listen(PORT, () => {

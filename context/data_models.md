@@ -1,19 +1,29 @@
 # Data Models & Schema Design — XtremeCRM
 
-## 1. Design Principles (Zero Duplication & Integrity)
+## 1. Design Principles (Zero Duplication & Business Integrity)
 - **Zero Redundancy:** No field is stored in more than one place:
-  - Tire size is stored strictly once on `Vehicle.tireSize`. `Job` references `vehicleId` and never duplicates tire size columns.
-  - Customer contact details live on `Customer`. `Job` references `customerId`.
-  - Service address on `Job` is the specific roadside emergency breakdown location (independent of customer profile).
+  - Tire size is stored strictly once on `Vehicle.tireSize` (e.g. `11R22.5`, `235/65R17`). `Job` references `vehicleId` and never duplicates tire size columns.
+  - License plates live on `Vehicle.licensePlate` (e.g. `KT-15`).
+  - Customer contact details live on `Customer` (B2C) or `Fleet` (B2B). `Job` references `customerId` or `fleetId`.
+  - Service address on `Job` is the specific roadside emergency breakdown location (independent of customer home or corporate depot address).
 - **Exact Integer Cents Storage:** Every currency field is stored as an integer in **cents** (`*_cents`). Floating-point arithmetic is strictly prohibited.
 - **Computed Metrics (Derived on Read):**
   $$\text{Total Job Expense} = \text{materialCostCents (TC)} + \text{repairerFeeCents (DC)} + \text{otherExpenseCents}$$
   $$\text{Net Profit} = \text{totalCents (CP)} - \text{Total Job Expense}$$
   $$\text{Total Net After IT\_B} = \text{Net Profit} - \text{itPlatformFeeCents (IT\_B)}$$
   These metrics are derived dynamically in SQL / API queries, eliminating out-of-sync financial columns.
-- **Active Accountant Job Costing:**
-  - The accountant actively **states the expenses for each job** (`repairerFeeCents`, `materialCostCents`, `otherExpenseCents`, `expenseNotes`) and timestamps their entry (`expenseStatedById`, `expenseStatedAt`).
+- **Zero Inventory Bloat (Active Job Costing):**
+  - No complex warehouse inventory stock or parts count tracking.
+  - The accountant actively **states the expenses for each completed job** (`repairerFeeCents`, `materialCostCents`, `otherExpenseCents`, `expenseNotes`) and timestamps their entry (`expenseStatedById`, `expenseStatedAt`).
   - Payment verification is tracked via an explicit boolean flag (`isPaymentVerified`, `paymentVerifiedById`, `paymentVerifiedAt`).
+- **External Client Portals vs Internal Staff:**
+  - Internal Staff (`ADMIN`, `CALL_AGENT`, `DISPATCHER`, `DRIVER`, `ACCOUNTANT_JR`, `ACCOUNTANT_SR`, `VIRTUAL_ASSISTANT`) operate inside `/admin` with unified oversight.
+  - External Accounts (`FLEET_MANAGER`, `CUSTOMER_MEMBER`) are sandboxed into self-service portals (`/fleet-dashboard` and `/member-dashboard`).
+- **Separation of Invoices from Jobs:**
+  - An **Appointment / Job** is operational fulfillment (status: `PENDING` $\rightarrow$ `EN_ROUTE` $\rightarrow$ `ARRIVED` $\rightarrow$ `IN_PROGRESS` $\rightarrow$ `COMPLETED`).
+  - An **Invoice** is a formal commercial instrument (`INV-0002`) with custom numbering format `[Initials]-[Country]-[digits]` (e.g. `MW-US-0002`), line items, subtotal, tax, net total, and flexible due dates. Supports 1-to-1 single retail invoicing or multi-job consolidated fleet weekly billing.
+- **Internal Portal Messaging:**
+  - Fleets are assigned an internal company email (e.g. `piratheep@xtrememobiletire.com`) without third-party email dependencies. All notices, invoices, and updates are delivered directly to their portal inbox via `PortalMessage`.
 
 ---
 
@@ -22,7 +32,6 @@
 ```prisma
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -34,6 +43,7 @@ generator client {
 // --------------------------------------------------------
 
 enum UserRole {
+  // Internal Staff Roles (Operate in /admin)
   ADMIN
   CALL_AGENT
   DISPATCHER
@@ -41,6 +51,29 @@ enum UserRole {
   ACCOUNTANT_JR
   ACCOUNTANT_SR
   VIRTUAL_ASSISTANT
+
+  // External Portal Client Roles (Operate in client dashboards)
+  FLEET_MANAGER
+  CUSTOMER_MEMBER
+}
+
+enum CustomerType {
+  RETAIL
+  MEMBERSHIP
+}
+
+enum FleetStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
 }
 
 enum JobStatus {
@@ -65,6 +98,8 @@ enum JobSource {
   WHATSAPP
   WEBSITE
   LANDING_PAGE_SELF_BOOK
+  FLEET_PORTAL
+  MEMBER_PORTAL
 }
 
 enum JobDisposition {
@@ -80,6 +115,7 @@ enum PaymentMethod {
   POS
   CASH
   MOTO
+  STRIPE
 }
 
 enum PaymentStatus {
@@ -96,7 +132,7 @@ enum CashTransactionType {
 }
 
 // --------------------------------------------------------
-// CORE ENTITIES
+// CORE USERS & AUTHENTICATION
 // --------------------------------------------------------
 
 model User {
@@ -108,13 +144,13 @@ model User {
   countryCode  String    @default("CA") @map("country_code") // "CA", "US", "UK"
   phone        String?
 
-  // Agent Presence (Active / Inactive toggle)
+  // Agent Presence (Active / Inactive toggle for internal staff)
   isAgentActive Boolean  @default(false) @map("is_agent_active")
 
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  // Relations
+  // Internal Staff Relations
   driverProfile        DriverProfile?
   createdJobs          Job[]                 @relation("AgentJobs")
   assignedJobs         Job[]                 @relation("DriverJobs")
@@ -125,8 +161,13 @@ model User {
   verifiedCashLedgers  DriverCashLedger[]    @relation("VerifiedBy")
   sourcedFleets        Fleet[]               @relation("VirtualAssistantFleets")
   fleetCommissions     FleetCommissionLedger[]
-  sentMessages         JobMessage[]          @relation("SentMessages")
+  sentJobMessages      JobMessage[]          @relation("SentJobMessages")
+  createdInvoices      Invoice[]             @relation("InvoicesCreated")
+  sentPortalMessages   PortalMessage[]       @relation("PortalMessagesSent")
+
+  // External Portal Client Relations
   customerAccount      Customer?             @relation("UserCustomer")
+  managedFleet         Fleet?                @relation("FleetManagerUser")
 
   @@index([countryCode, role])
   @@map("users")
@@ -147,73 +188,249 @@ model DriverProfile {
   @@map("driver_profiles")
 }
 
+// --------------------------------------------------------
+// CUSTOMERS & MEMBERSHIPS (B2C)
+// --------------------------------------------------------
+
 model Customer {
-  id                   String    @id @default(uuid())
-  fullName             String    @map("full_name")
-  phone                String    // Primary lookup index
-  altPhone             String?   @map("alt_phone")
+  id                   String        @id @default(uuid())
+  fullName             String        @map("full_name")
+  phone                String        // Primary lookup index
+  altPhone             String?       @map("alt_phone")
   email                String?
-  countryCode          String    @default("CA") @map("country_code") // "CA", "US", "UK"
+  countryCode          String        @default("CA") @map("country_code") // "CA", "US", "UK"
+  customerType         CustomerType  @default(RETAIL) @map("customer_type")
 
-  // Provisioning: "After all this make user account"
-  isUserAccountCreated Boolean   @default(false) @map("is_user_account_created")
-  userId               String?   @unique @map("user_id")
-  user                 User?     @relation("UserCustomer", fields: [userId], references: [id])
+  // Membership Benefits (B2C)
+  isMembershipActive   Boolean       @default(false) @map("is_membership_active")
+  membershipTier       String?       @map("membership_tier") // e.g. "GOLD", "STANDARD"
+  membershipExpiresAt  DateTime?     @map("membership_expires_at")
 
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
+  // Member Portal Credentials
+  isUserAccountCreated Boolean       @default(false) @map("is_user_account_created")
+  userId               String?       @unique @map("user_id")
+  user                 User?         @relation("UserCustomer", fields: [userId], references: [id])
+
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
 
   vehicles             Vehicle[]
   jobs                 Job[]
+  invoices             Invoice[]
+  inboxMessages        PortalMessage[]
 
   @@unique([countryCode, phone])
   @@index([countryCode, phone])
+  @@index([customerType, isMembershipActive])
   @@map("customers")
 }
 
-model Vehicle {
-  id          String    @id @default(uuid())
-  customerId  String    @map("customer_id")
-  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  year        Int
-  make        String
-  model       String
-  tireSize    String    @map("tire_size") // Single source of truth (e.g. "235/45R18")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+// --------------------------------------------------------
+// FLEETS & B2B ACCOUNTS
+// --------------------------------------------------------
 
-  jobs        Job[]
+model Fleet {
+  id                 String        @id @default(uuid())
+  fleetCode          String        @unique @map("fleet_code") // e.g. "XMT-5132"
+  name               String        // Company legal name (e.g. "KT Group")
+  contactPerson      String        @map("contact_person")
+  phone              String        // Primary management phone
+  email              String?       // Billing/contact email
+  companyEmail       String?       @map("company_email") // Assigned internal company email (e.g. "piratheep@xtrememobiletire.com")
+  website            String?       // e.g. "https://www.ktgroupcanada.ca/"
+  address            String?       // e.g. "10100 Richmond Hwy, Lorton, VA 22079"
+  fleetSize          Int           @default(1) @map("fleet_size")
+  countryCode        String        @default("US") @map("country_code")
+  status             FleetStatus   @default(APPROVED)
+
+  // Fleet Manager Login Credentials (role: FLEET_MANAGER)
+  managerUserId      String?       @unique @map("manager_user_id")
+  managerUser        User?         @relation("FleetManagerUser", fields: [managerUserId], references: [id])
+
+  // B2B Contract Verification
+  contractSignedAt   DateTime?     @map("contract_signed_at")
+  isVerified         Boolean       @default(true) @map("is_verified")
+
+  // Lead attribution for Virtual Assistant ($2-$3 commission)
+  virtualAssistantId String?       @map("virtual_assistant_id")
+  virtualAssistant   User?         @relation("VirtualAssistantFleets", fields: [virtualAssistantId], references: [id])
+
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  vehicles           Vehicle[]
+  drivers            FleetDriver[]
+  jobs               Job[]
+  invoices           Invoice[]
+  inboxMessages      PortalMessage[]
+  commissions        FleetCommissionLedger[]
+
+  @@index([countryCode, status])
+  @@index([countryCode, isVerified])
+  @@map("fleets")
+}
+
+model FleetDriver {
+  id           String    @id @default(uuid())
+  fleetId      String    @map("fleet_id")
+  fleet        Fleet     @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+  fullName     String    @map("full_name")
+  phone        String    // Driver phone (indexed for instant 24/7 roadside caller verification)
+  licensePlate String?   @map("license_plate")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@index([fleetId])
+  @@index([phone])
+  @@map("fleet_drivers")
+}
+
+// --------------------------------------------------------
+// VEHICLES (Both Fleet & Retail)
+// --------------------------------------------------------
+
+model Vehicle {
+  id           String    @id @default(uuid())
+  customerId   String?   @map("customer_id")
+  customer     Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  fleetId      String?   @map("fleet_id")
+  fleet        Fleet?    @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+  year         Int
+  make         String
+  model        String
+  licensePlate String?   @map("license_plate") // e.g. "KT-15", "KT-18"
+  vin          String?
+  tireSize     String    @map("tire_size")     // Single source of truth (e.g. "11R22.5", "235/65R17")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  jobs         Job[]
 
   @@index([customerId])
+  @@index([fleetId])
+  @@index([licensePlate])
   @@map("vehicles")
 }
 
-model Fleet {
-  id                 String    @id @default(uuid())
-  name               String
-  contactPerson      String    @map("contact_person")
-  phone              String
-  email              String?
-  address            String?
-  fleetSize          Int       @default(1) @map("fleet_size")
-  countryCode        String    @default("CA") @map("country_code")
+// --------------------------------------------------------
+// INVOICING & FINANCIAL INSTRUMENTS
+// --------------------------------------------------------
 
-  // B2B Workflow & Verification
-  contractSignedAt   DateTime? @map("contract_signed_at")
-  isVerified         Boolean   @default(false) @map("is_verified")
+model Invoice {
+  id             String        @id @default(uuid())
+  invoiceNumber  String        @unique @map("invoice_number") // Format: [Initials]-[Country]-[digits], e.g. "MW-US-0002"
+  countryCode    String        @default("US") @map("country_code")
 
-  // Lead attribution for Virtual Assistant ($2-$3 commission)
-  virtualAssistantId String?   @map("virtual_assistant_id")
-  virtualAssistant   User?     @relation("VirtualAssistantFleets", fields: [virtualAssistantId], references: [id])
+  fleetId        String?       @map("fleet_id")
+  fleet          Fleet?        @relation(fields: [fleetId], references: [id])
+  customerId     String?       @map("customer_id")
+  customer       Customer?     @relation(fields: [customerId], references: [id])
 
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
+  issueDate      DateTime      @map("issue_date")
+  dueDate        DateTime      @map("due_date")
+  status         InvoiceStatus @default(PENDING)
 
-  jobs               Job[]
-  commissions        FleetCommissionLedger[]
+  subtotalCents  Int           @map("subtotal_cents")
+  taxAmountCents Int           @map("tax_amount_cents")
+  totalCents     Int           @map("total_cents")
+  currency       String        @default("USD") // "USD", "CAD"
 
-  @@index([countryCode, isVerified])
-  @@map("fleets")
+  createdById    String        @map("created_by_id")
+  createdBy      User          @relation("InvoicesCreated", fields: [createdById], references: [id])
+
+  paidAt         DateTime?     @map("paid_at")
+  paymentMethod  PaymentMethod? @map("payment_method")
+  notes          String?
+
+  items          InvoiceItem[]
+  jobs           Job[]
+
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  @@index([fleetId, status])
+  @@index([customerId, status])
+  @@index([invoiceNumber])
+  @@index([countryCode, status])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id             String  @id @default(uuid())
+  invoiceId      String  @map("invoice_id")
+  invoice        Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  itemDetails    String  @map("item_details") // e.g. "Tire Replacement"
+  unitPriceCents Int     @map("unit_price_cents") // 87500 ($875.00)
+  quantity       Int     @default(1)
+  totalCents     Int     @map("total_cents")     // 700000 ($7,000.00)
+
+  @@map("invoice_items")
+}
+
+// --------------------------------------------------------
+// PORTAL INBOX & MESSAGING (Client Notifications)
+// --------------------------------------------------------
+
+model PortalMessage {
+  id         String    @id @default(uuid())
+  fleetId    String?   @map("fleet_id")
+  fleet      Fleet?    @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+  customerId String?   @map("customer_id")
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  senderId   String    @map("sender_id")
+  sender     User      @relation("PortalMessagesSent", fields: [senderId], references: [id])
+
+  subject    String
+  content    String    @db.Text
+  actionUrl  String?   @map("action_url") // e.g. "/fleet-dashboard/invoices/INV-0002"
+  isRead     Boolean   @default(false) @map("is_read")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([fleetId, isRead])
+  @@index([customerId, isRead])
+  @@map("portal_messages")
+}
+
+// --------------------------------------------------------
+// WAREHOUSE & REGIONAL HUBS (Addresses & Territories)
+// --------------------------------------------------------
+
+model Warehouse {
+  id              String    @id @default(uuid())
+  name            String    // e.g. "US Regional Warehouse - Manassas"
+  code            String    @unique // e.g. "WH-US-01", "WH-CA-01"
+  address         String    // e.g. "11815 Medway Church Loop, Manassas, VA 20109"
+  phone           String    // e.g. "(804) 326-5442"
+  countryCode     String    @default("US") @map("country_code")
+  lat             Float?
+  lng             Float?
+  coverageRegions String[]  @map("coverage_regions") // ["VA", "MD", "KY", "NC", "TN", "DC"]
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([countryCode, isActive])
+  @@map("warehouses")
+}
+
+// --------------------------------------------------------
+// SERVICES & COMMISSIONS
+// --------------------------------------------------------
+
+model ServiceCatalog {
+  id                String          @id @default(uuid())
+  name              String          // e.g. "Seasonal Tire Change", "Roadside Assistance"
+  category          String          // "TIRE_SERVICE", "ROADSIDE_ASSISTANCE", "MAINTENANCE"
+  defaultPriceCents Int             @map("default_price_cents")
+  countryCode       String          @default("CA") @map("country_code")
+  isActive          Boolean         @default(true) @map("is_active")
+
+  jobServiceItems   JobServiceItem[]
+
+  @@index([countryCode, isActive])
+  @@map("service_catalogs")
 }
 
 model FleetCommissionLedger {
@@ -233,29 +450,21 @@ model FleetCommissionLedger {
   @@map("fleet_commission_ledgers")
 }
 
-model ServiceCatalog {
-  id                String          @id @default(uuid())
-  name              String          // e.g. "Tire Repair (plug)", "Stem Valve", etc.
-  category          String          // "TIRE_SERVICE", "ROADSIDE_ASSISTANCE"
-  defaultPriceCents Int             @map("default_price_cents")
-  countryCode       String          @default("CA") @map("country_code")
-  isActive          Boolean         @default(true) @map("is_active")
-
-  jobServiceItems   JobServiceItem[]
-
-  @@index([countryCode, isActive])
-  @@map("service_catalogs")
-}
+// --------------------------------------------------------
+// JOBS & DISPATCH (Operational Work Orders)
+// --------------------------------------------------------
 
 model Job {
   id               String          @id @default(uuid())
-  jobCode          String          @unique @map("job_code") // e.g. "JOB-CA-10492"
-  customerId       String          @map("customer_id")
-  customer         Customer        @relation(fields: [customerId], references: [id])
+  jobCode          String          @unique @map("job_code") // e.g. "JOB-US-10492"
+  customerId       String?         @map("customer_id")
+  customer         Customer?       @relation(fields: [customerId], references: [id])
   vehicleId        String          @map("vehicle_id")
   vehicle          Vehicle         @relation(fields: [vehicleId], references: [id])
   fleetId          String?         @map("fleet_id")
   fleet            Fleet?          @relation(fields: [fleetId], references: [id])
+  invoiceId        String?         @map("invoice_id")
+  invoice          Invoice?        @relation(fields: [invoiceId], references: [id])
   driverId         String?         @map("driver_id")
   driver           User?           @relation("DriverJobs", fields: [driverId], references: [id])
   createdById      String          @map("created_by_id")
@@ -265,21 +474,22 @@ model Job {
   status           JobStatus       @default(PENDING)
   urgency          JobUrgency      @default(STANDARD)
   source           JobSource       @default(DIRECT_CALL)
+  serviceType      String          @default("Standard Service") @map("service_type") // "Standard Service", "Roadside Emergency"
   countryCode      String          @default("CA") @map("country_code") // "CA", "US", "UK"
 
   // Intake & Verification Flags
-  isVerified       Boolean         @default(true) @map("is_verified") // false for landing page bookings
+  isVerified       Boolean         @default(true) @map("is_verified")
   verifiedById     String?         @map("verified_by_id")
   verifiedBy       User?           @relation("VerifiedJobs", fields: [verifiedById], references: [id])
   isTaxExempt      Boolean         @default(false) @map("is_tax_exempt")
   telnyxCallId     String?         @map("telnyx_call_id")
 
-  // Roadside location
+  // Service Location & Timing
   serviceAddress   String          @map("service_address")
-  serviceLat       Float           @map("service_lat")
-  serviceLng       Float           @map("service_lng")
+  serviceLat       Float           @default(0.0) @map("service_lat")
+  serviceLng       Float           @default(0.0) @map("service_lng")
   etaMinutes       Int?            @map("eta_minutes")
-  scheduledAt      DateTime?       @map("scheduled_at")
+  appointmentDate  DateTime?       @map("appointment_date") // Scheduled booking date/time
   assignedAt       DateTime?       @map("assigned_at")
   arrivedAt        DateTime?       @map("arrived_at")
   completedAt      DateTime?       @map("completed_at")
@@ -303,6 +513,7 @@ model Job {
   @@index([urgency])
   @@index([driverId])
   @@index([fleetId])
+  @@index([invoiceId])
   @@map("jobs")
 }
 
@@ -323,9 +534,9 @@ model JobFinancial {
   jobId                String        @unique @map("job_id") // Strict 1:1 relation
   job                  Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
-  currency             String        @default("CAD") // "CAD", "USD", "GBP"
+  currency             String        @default("USD") // "USD", "CAD", "GBP"
   subtotalCents        Int           @map("subtotal_cents")
-  taxRatePercent       Float         @map("tax_rate_percent") // e.g. 13.0 for 13%
+  taxRatePercent       Float         @map("tax_rate_percent") // e.g. 0.0 for 0%
   taxAmountCents       Int           @map("tax_amount_cents")
   totalCents           Int           @map("total_cents") // Gross Customer Paid (CP)
 
@@ -335,7 +546,7 @@ model JobFinancial {
   // ------------------------------------------------------
   // JOB EXPENSE STATING (Accountant explicitly inputs expenses)
   // ------------------------------------------------------
-  materialCostCents    Int           @default(0) @map("material_cost_cents") // Tire & parts cost (TC)
+  materialCostCents    Int           @default(0) @map("material_cost_cents") // Wholesale tire & parts cost (TC)
   repairerFeeCents     Int           @default(0) @map("repairer_fee_cents")  // Repairer/technician labor (DC)
   otherExpenseCents    Int           @default(0) @map("other_expense_cents") // Incidental expenses
   expenseNotes         String?       @map("expense_notes")                   // Explanation of job expenses
@@ -381,7 +592,7 @@ model JobMessage {
   jobId     String   @map("job_id")
   job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
   senderId  String   @map("sender_id")
-  sender    User     @relation("SentMessages", fields: [senderId], references: [id])
+  sender    User     @relation("SentJobMessages", fields: [senderId], references: [id])
   content   String
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -403,20 +614,3 @@ model DriverCashLedger {
   @@index([driverProfileId, createdAt])
   @@map("driver_cash_ledgers")
 }
-```
-
----
-
-## 3. Duplication Audit & Verification
-
-| Field / Concept | Where it lives | Where it was intentionally omitted | Reason |
-| :--- | :--- | :--- | :--- |
-| **Tire Size** | `Vehicle.tireSize` | `Job`, `Customer` | Multiple jobs for the same vehicle reuse the tire specification without re-entering or duplicating it. |
-| **Customer Phone / Alt Phone** | `Customer.phone`, `Customer.altPhone` | `Job` | Single source of truth. If customer changes number, past jobs still reference the customer ID. |
-| **Service Breakdown Location** | `Job.serviceAddress`, `Job.serviceLat`, `Job.serviceLng` | `Customer` | Customers call from emergency highway locations, not necessarily their home address. |
-| **Job Expense Stating** | `JobFinancial.materialCostCents`, `JobFinancial.repairerFeeCents`, `JobFinancial.otherExpenseCents` | `Job`, `User` | Stated explicitly by the accountant per job. Captures exact material and repairer expenses for that ticket. |
-| **Total Job Expense** | *Derived in SQL/Code* (`materialCostCents + repairerFeeCents + otherExpenseCents`) | `JobFinancial.totalExpenseCents` | Summed dynamically on read to prevent mathematical desynchronization. |
-| **Net Profit / Net Margin** | *Derived in SQL/Code* (`totalCents - totalExpenseCents`) | `JobFinancial.netMarginCents` | Dynamic calculation: $\text{Customer Paid} - \text{Material Fees} - \text{Repairer Fees}$. |
-| **Payment Verification** | `JobFinancial.isPaymentVerified`, `paymentVerifiedById`, `paymentVerifiedAt` | `Job` | Financial verification belongs strictly on the financial record with audit trail. |
-| **Driver Cash Balance** | `DriverProfile.cashInHandCents` + `DriverCashLedger` | `User` | Only drivers hold physical cash; non-driver staff don't have empty or irrelevant columns. |
-| **Country Multi-Tenancy** | `countryCode` on `User`, `Customer`, `Job`, `Fleet` | *No cloned tables* (e.g. no `CanadaJob` or `USAJob`) | Zero model duplication. Scoping is enforced via indexed `countryCode` column and Prisma Client Extensions. |
