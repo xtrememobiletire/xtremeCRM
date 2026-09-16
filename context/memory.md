@@ -89,17 +89,25 @@
 ---
 
 ## 5. Session Status & Next Steps
-- **Current Milestone:** Database Schema Synchronized & Pushed to Neon DB; Prisma 7 Client Generated; All Documentation 100% Reconciled.
-- **Prisma 7 Schema Deployed:**
+- **Current Milestone:** Final Streamlined Schema Synchronized & Pushed to Neon DB; Prisma 7 Client Generated; All Documentation 100% Reconciled.
+- **Prisma 7 Schema Deployed to Neon:**
   - `prisma generate`: Generated Prisma Client (v7.10.0) successfully.
   - `prisma db push`: Successfully synchronized with PostgreSQL database (`neondb` on Neon cloud).
-  - Strict regional silos (`CountryCode`: `CA`, `US`, `UK`; `CurrencyCode`: `CAD`, `USD`, `GBP`).
-  - Money stored in whole integer cents/pence (`*_cents`) — zero decimal rounding bugs.
-  - Multi-timezone `@db.Timestamptz` across all DateTime fields.
-  - Cascade deletion protection (`onDelete: Restrict`) on all financial audit ledgers.
+  - **Client & Boss Requirements Fully Protected:**
+    - `JobUrgency` (`URGENT`, `STANDARD`, `FUTURE`) preserved for intake dropdowns.
+    - `JobDisposition` (`BOOKED`, `RELEVANT_NOT_CONVERTED`, `WRONG_NUMBER`, etc.) & `dispositionNotes` preserved for call conversion metrics.
+    - 3-service categorization (`ServiceCategory` & `JobServiceItem[]`) preserved for catalog dispatching.
+    - `Customer.altPhone` and `Fleet.contractSignedAt` preserved.
+  - **Ephemeral & Duplicate Baggage Eliminated (Ponytail Principles):**
+    - Removed `User.currentLat`, `User.currentLng`, and `User.lastPingAt` (live GPS telemetry handled in-memory via Socket.io, eliminating 2,400+ DB writes/hr).
+    - Unified `User.isAgentActive` into single `User.isOnline`.
+    - Removed `Fleet.fleetSize` (derived on read via `fleet.vehicles.count()`).
+    - Removed `Fleet.website` (useless taking space during roadside breakdowns).
+    - Removed `FleetCommissionLedger.isPaid` (derived on read via `paidAt != null`).
+    - Removed redundant single indexes on `Job` (`[status]` and `[driverId]`) covered by composite B-trees.
 - **Backend Stack:** Express (Node.js + TypeScript) with Helmet, Morgan, CORS, Cookie-Parser, Passport-JWT, Bcrypt, Multer, and Zod.
 - **Active Deliverables:** All 7 core documentation files in `context/` and `backend/prisma/schema.prisma` are 100% verified, consistent, and adhere strictly to Ponytail principles.
-- **Next Step:** Implement **Phase 1 Backend Scaffolding**:
-  1. Database Seed Script (16-service catalog per region, initial staff users with Bcrypt hashed passwords).
+- **Next Step:** Proceed with **Phase 1 Backend Scaffolding**:
+  1. Database Seed Script (catalog items per region, initial staff users with Bcrypt hashed passwords).
   2. Telnyx softphone token service (`GET /api/telephony/token`) and webhook intake listener (`POST /api/telephony/webhook`).
   3. Express Auth & Intake REST endpoints with Zod validation.

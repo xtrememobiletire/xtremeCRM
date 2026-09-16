@@ -14,7 +14,7 @@
     - `zod`: Request validation middleware (`validateRequest`) and TypeScript type inference.
     - Centralized error handling middleware.
   - PostgreSQL database connection with Prisma ORM migrations (`schema.prisma`) including:
-    - `User` (with `isAgentActive` and inlined driver telemetry `currentLat`, `currentLng`, `cashInHandCents`), `Customer`, `Vehicle`.
+    - `User` (with unified `isOnline` presence and soft-delete `deletedAt`), `Customer`, `Vehicle`.
     - `Fleet` and `FleetCommissionLedger` ($2–$3 VA commission per job).
     - `Job`, `JobServiceItem`, `JobMessage`, `DriverCashLedger`.
     - Inlined `Job` financials with active accountant expense stating fields (`materialCostCents`, `repairerFeeCents`, `otherExpenseCents`, `expenseNotes`) and payment verification trail (`paymentVerifiedById`, `paymentVerifiedAt`).

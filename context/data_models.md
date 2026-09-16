@@ -167,15 +167,11 @@ model User {
   countryCode  CountryCode @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
   phone        String?     // E.164 formatted, e.g. +14165550192
 
-  // Agent Presence (Active / Inactive toggle for internal staff)
-  isAgentActive Boolean @default(false) @map("is_agent_active")
+  // Presence (Unified for all staff: agents, dispatchers, drivers)
+  isOnline Boolean @default(false) @map("is_online")
 
-  // Driver Telemetry & Balance (inlined from DriverProfile - ponytail: 1:1 table avoided)
-  currentLat      Float?    @map("current_lat")
-  currentLng      Float?    @map("current_lng")
-  lastPingAt      DateTime? @db.Timestamptz @map("last_ping_at")
-  isOnline        Boolean   @default(false) @map("is_online")
-  cashInHandCents Int       @default(0) @map("cash_in_hand_cents")
+  // Soft Deletion (prevents orphan records while respecting onDelete: Restrict on financial ledgers)
+  deletedAt DateTime? @db.Timestamptz @map("deleted_at")
 
   createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
   updatedAt DateTime @updatedAt @db.Timestamptz @map("updated_at")
@@ -201,7 +197,7 @@ model User {
   managedFleet    Fleet?    @relation("FleetManagerUser")
 
   @@index([countryCode, role])
-  @@index([phone])
+  @@index([deletedAt])
   @@map("users")
 }
 
@@ -252,9 +248,8 @@ model Fleet {
   contactPerson String      @map("contact_person")
   phone         String      // E.164 formatted primary management phone (e.g. +17035550144)
   email         String?     // Billing/contact email
-  website       String?     // e.g. "https://www.ktgroupcanada.ca/"
   address       String?     // e.g. "10100 Richmond Hwy, Lorton, VA 22079"
-  fleetSize     Int         @default(1) @map("fleet_size")
+  // ponytail: fleetSize derived dynamically: fleet.vehicles.count
   countryCode   CountryCode @default(US) @map("country_code") // Strict regional silo: CA, US, UK
   status        FleetStatus @default(PENDING) // Must be verified before active dispatching
 
@@ -295,6 +290,7 @@ model FleetDriver {
   createdAt    DateTime @default(now()) @db.Timestamptz @map("created_at")
   updatedAt    DateTime @updatedAt @db.Timestamptz @map("updated_at")
 
+  @@unique([fleetId, phone])
   @@index([fleetId])
   @@index([phone])
   @@index([licensePlate])
@@ -368,6 +364,7 @@ model Invoice {
   @@index([customerId, status])
   @@index([countryCode, status])
   @@index([dueDate])
+  @@index([issueDate])
   @@map("invoices")
 }
 
@@ -380,6 +377,7 @@ model InvoiceItem {
   quantity       Int     @default(1)
   // ponytail: totalCents derived: unitPriceCents * quantity
 
+  @@index([invoiceId])
   @@map("invoice_items")
 }
 
@@ -409,19 +407,18 @@ model Job {
   source      JobSource   @default(DIRECT_CALL)
   serviceType String      @default("Standard Service") @map("service_type")
   countryCode CountryCode @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
+  version     Int         @default(0) @map("version") // Optimistic concurrency control for dispatch assignment
 
-  // Telephony
-  telnyxCallId String? @map("telnyx_call_id")
+  // Telephony (Idempotent Webhook Ingestion)
+  telnyxCallId String? @unique @map("telnyx_call_id")
 
   // On-Scene Contact & Roadside Details (Intake Capture)
   recipientName  String? @map("recipient_name")  // Name of driver on scene if caller is 3rd-party
   recipientPhone String? @map("recipient_phone") // E.164 phone of on-scene driver
   problemNotes   String? @db.Text @map("problem_notes") // Roadside notes ("flat on shoulder, wheel lock in glovebox")
 
-  // Service Location & Timing
+  // Service Location & Timing (Human Address - ponytail: serviceLat/Lng omitted, Distance Matrix takes address string directly)
   serviceAddress  String    @map("service_address")
-  serviceLat      Float     @default(0.0) @map("service_lat")
-  serviceLng      Float     @default(0.0) @map("service_lng")
   etaMinutes      Int?      @map("eta_minutes")
   appointmentDate DateTime? @db.Timestamptz @map("appointment_date") // Scheduled booking date/time
   assignedAt      DateTime? @db.Timestamptz @map("assigned_at")
@@ -480,16 +477,15 @@ model Job {
 
   @@index([countryCode, status])
   @@index([countryCode, createdAt])
+  @@index([status, createdAt])
+  @@index([driverId, status])
   @@index([customerId])
-  @@index([status])
   @@index([urgency])
-  @@index([driverId])
   @@index([fleetId])
   @@index([invoiceId])
   @@index([paymentStatus])
   @@index([completedAt])
   @@index([appointmentDate])
-  @@index([telnyxCallId])
   @@map("jobs")
 }
 
@@ -549,12 +545,12 @@ model FleetCommissionLedger {
   jobId              String?     @map("job_id")
   job                Job?        @relation(fields: [jobId], references: [id], onDelete: SetNull)
   amountCents        Int         @map("amount_cents") // Stored in cents (e.g. 250 for $2.50) agreed per fleet
-  isPaid             Boolean     @default(false) @map("is_paid")
+  // ponytail: isPaid derived dynamically: paidAt != null
   paidAt             DateTime?   @db.Timestamptz @map("paid_at")
   notes              String?
   createdAt          DateTime    @default(now()) @db.Timestamptz @map("created_at")
 
-  @@index([virtualAssistantId, isPaid])
+  @@index([virtualAssistantId, paidAt])
   @@index([fleetId])
   @@map("fleet_commission_ledgers")
 }
@@ -607,8 +603,12 @@ model JobMessage {
 | Field / Concept | Where it Lives | Where it Was Intentionally Omitted | Reason & Formula |
 | :--- | :--- | :--- | :--- |
 | **Strict Regional Silos** | `CountryCode` & `CurrencyCode` enums on `User`, `Customer`, `Fleet`, `Invoice`, `Job` | Blended cross-currency conversions | *Zero Mixing:* US, CA, UK operations have independent pricing, independent currencies, and separate reporting. |
-| **Driver Telemetry & Cash** | `User.currentLat`, `currentLng`, `cashInHandCents` | Separate `DriverProfile` table | *Ponytail Win:* Avoids 1:1 join table for 5 nullable columns. Proximity queries run directly against `users`. |
-| **Physical Cash Audit Trail** | `DriverCashLedger` (`onDelete: Restrict`) | Only mutable `User.cashInHandCents` | Mutable integer cannot audit theft or handover deposits. Preserves immutable deposits, verifier IDs, and outlives user accounts. |
+| **Driver Live Telemetry** | Socket.io In-Memory State (`socket.on('driver:ping')`) | PostgreSQL DB columns (`User.currentLat`, `currentLng`, `lastPingAt`) | Streaming GPS coordinates belong in memory; writing to DB every 15s burns serverless compute and causes row lock contention. |
+| **Fleet Vehicle Count** | *Derived on Read* (`fleet.vehicles.count`) | `Fleet.fleetSize` manual integer counter | Eliminates drift between manual counter and actual vehicle records. Single source of truth. |
+| **Fleet Commission Paid State** | *Derived on Read* (`paidAt != null`) | `FleetCommissionLedger.isPaid` boolean column | Eliminates duplicate mutable state between boolean flag and timestamp. |
+| **Driver Cash Balance** | *Derived on Read* (`SUM(DriverCashLedger.amountCents)`) | `User.cashInHandCents` mutable counter | Eliminates reconciliation drift between User column and immutable ledger. Single source of truth. |
+| **Physical Cash Audit Trail** | `DriverCashLedger` (`onDelete: Restrict`) | Mutable counter on User | Preserves immutable transaction ledger, deposits, verifier IDs, and outlives user accounts. |
+| **Service Location & Coordinates** | `Job.serviceAddress` (Human string address) | Numeric `serviceLat`, `serviceLng` columns | Eliminates "Null Island" (0.0, 0.0) GPS bug and geocoding ceremony on intake. Google Distance Matrix handles address strings directly. |
 | **Work Performed Line Items** | `JobServiceItem` | In freeform notes or strings | Essential for 16-service catalog tracking and 1-click invoice generation. |
 | **Customer Portal Account** | *Derived on Read* (`userId != null`) | `Customer.isUserAccountCreated` boolean | Storing a redundant boolean creates drift. Account exists if and only if `userId` is set. |
 | **B2C Membership Status** | *Derived on Read* (`membershipExpiresAt > now()`) | `Customer.isMembershipActive` boolean | An active flag alongside an expiration timestamp drifts the day after expiry. |
