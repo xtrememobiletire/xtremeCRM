@@ -14,26 +14,30 @@
 1. **Single Source of Truth:**
    - **NO duplicated fields across tables.** If a relationship provides access to data (e.g. `vehicle.tireSize` via `job.vehicleId`), do not replicate it on `Job`.
    - **No duplicated addresses:** A customer profile stores their default contact. `Job.serviceAddress` represents the physical roadside emergency breakdown location.
-2. **Strict Money Handling & Currency Bucketing:**
-   - Every monetary value is stored as an integer in **cents** (`*_cents`). Floating-point money arithmetic is strictly forbidden.
-   - Always pair financial fields with their currency: `CAD`, `USD`, or `GBP`.
-   - **Never blend different currencies into one sum:** When viewing "All Regions / Global" in the admin or accounting panel, never mathematically sum `USD + CAD + GBP`. Always display them side-by-side in separate regional currency cards.
-3. **Accountant Job Expense Stating & Margin Rules:**
+2. **Strict Money Handling & Integer Cents:**
+   - Every monetary value is stored as an integer in **cents / pence** (`*_cents`). Floating-point arithmetic (`0.1 + 0.2 != 0.3`) is strictly forbidden to eliminate rounding errors.
+   - For end users, dispatchers, drivers, and accountants, the UI always renders normal formatted currencies (e.g., `$160.00 CAD`, `$160.00 USD`, `£45.50 GBP`).
+   - **Absolute Regional Country Silos (No Blended Revenue):**
+     - Canada (CA) operates in `CAD` ($) with Canadian tax rules.
+     - United States (US) operates in `USD` ($) with US tax rules.
+     - United Kingdom (UK) operates in `GBP` (£) with UK VAT rules.
+     - **NEVER mix, convert, or sum different currencies into a single combined/blended revenue total.** Each country maintains its own independent accounting, jobs, pricing, and revenue reports.
+3. **Accountant Job Expense Stating & Margin Rules (Zero Inventory):**
    - The accountant actively **states/inputs the expenses per job** (`materialCostCents`, `repairerFeeCents`, `otherExpenseCents`, `expenseNotes`).
-   - These values are stored strictly in `JobFinancial` with audit trail attributes (`expenseStatedById`, `expenseStatedAt`).
+   - Financial fields are inlined directly onto the `Job` model (avoiding 1:1 join ceremony) with audit trail attributes (`expenseStatedById`, `expenseStatedAt`).
    - **Derived Metrics on Read:**
      $$\text{Total Job Expense} = \text{materialCostCents} + \text{repairerFeeCents} + \text{otherExpenseCents}$$
      $$\text{Net Profit} = \text{totalCents (CP)} - \text{Total Job Expense}$$
      $$\text{Total Net After IT\_B} = \text{Net Profit} - \text{itPlatformFeeCents}$$
      These are calculated dynamically on read in SQL/API queries. Never store them as redundant database columns.
-4. **Payment Verification Standards:**
-   - Dedicated boolean flag `isPaymentVerified` (default `false`) with verifier attribution (`paymentVerifiedById`) and timestamp (`paymentVerifiedAt`).
-   - Junior Accountant records expenses and initial checks; Senior Accountant / Director audits and finalizes payout approval.
+4. **Payment Verification & Audit Standards:**
+   - Payment verification is derived dynamically: `paymentVerifiedById != null || paymentStatus == VERIFIED_PAID`.
+   - Single unified `ACCOUNTANT` role handles ticket expense stating, receipt audits, payment verification, and payout approval.
 5. **Platform Royalty (`IT_B`):**
-   - Automatically computed per completed job:
-     - Canada: **$1.50 CAD** (150 cents)
-     - USA: **$1.00 USD** (100 cents)
-     - UK: **£1.00 GBP** (100 cents)
+   - Stored in regional cents per completed job (`itPlatformFeeCents @default(0)`):
+     - Canada: **150 cents** ($1.50 CAD)
+     - USA: **100 cents** ($1.00 USD)
+     - UK: **100 pence** (£1.00 GBP)
 
 ---
 
@@ -59,7 +63,6 @@ The Express application must register middleware in the following explicit order
     repairerFeeCents: z.number().int().nonnegative({ message: 'Repairer fee must be >= 0 cents' }),
     otherExpenseCents: z.number().int().nonnegative().optional().default(0),
     expenseNotes: z.string().max(500).optional(),
-    isPaymentVerified: z.boolean(),
   });
 
   export type StateJobExpensesInput = z.infer<typeof StateJobExpensesSchema>;
@@ -84,7 +87,7 @@ The Express application must register middleware in the following explicit order
 ### 3.3. Authentication with Passport & Bcrypt
 - **Passport-JWT:** Strategy extracts JWT from HttpOnly cookies (or `Authorization: Bearer` header for mobile drivers).
 - **Bcrypt:** Passwords hashed with `bcrypt.hash(password, 10)` before persistence; verified via `bcrypt.compare()`.
-- **Role-Based Guards:** `authorizeRoles('ADMIN', 'ACCOUNTANT_SR')` middleware for sensitive endpoints.
+- **Role-Based Guards:** `authorizeRoles('ADMIN', 'ACCOUNTANT')` middleware for sensitive endpoints.
 
 ### 3.4. File & Receipt Uploads with Multer
 - Use `multer` for multi-part file uploads (customer payment slips, supplier wholesale tire invoices, driver cash deposit receipts).
@@ -135,8 +138,9 @@ The Express application must register middleware in the following explicit order
    - Prisma Client Extension auto-injects `countryCode`:
      - Reads (`findMany`, `findFirst`): automatically appends `{ where: { countryCode: req.countryCode } }`.
      - Writes (`create`, `createMany`): automatically sets `{ countryCode: req.countryCode }`.
-3. **Director & Global Cross-Country Reporting:**
-   - Roles `ADMIN` and `ACCOUNTANT_SR` have access to the raw Prisma client to perform cross-country aggregations (e.g., global gross revenue, total global $IT\_B$ platform royalties).
+3. **Director & Regional Reporting (Zero Blended Revenue):**
+   - Admin and Accountant roles view metrics strictly partitioned by country.
+   - When viewing multiple regions in administrative dashboards, metrics are strictly displayed side-by-side in separate regional cards (Canada in CAD, US in USD, UK in GBP). Under no circumstances are cross-currency totals or blended revenues computed. Each country functions as an independent business silo.
 
 ---
 

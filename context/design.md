@@ -357,7 +357,7 @@ The system is architecturally split into **Internal Staff Operations** (`/admin`
 
 ```text
 +---------------------------------------------------------------------------------------------------------+
-| FINANCIAL RECONCILIATION & JOB COSTING                    User: Senior Accountant | Role: ACCOUNTANT_SR |
+| FINANCIAL RECONCILIATION & JOB COSTING                             User: Accountant | Role: ACCOUNTANT |
 +---------------------------------------------------------------------------------------------------------+
 | Region: [ All Regions (Global) v ]   Date Filter: [ Yesterday v | Last 3 Days | One Week | Monthly ]   |
 |                                                                                                         |
@@ -392,9 +392,9 @@ The system is architecturally split into **Internal Staff Operations** (`/admin`
 |                                                                                                         |
 | PAYMENT VERIFICATION AUDIT:                                                                             |
 | Method: E-Transfer | Reference: [ ET-99201481 ]                                                         |
-| [x] MARK PAYMENT AS VERIFIED (Sets isPaymentVerified = true with audit timestamp and user signature)    |
+| [x] MARK PAYMENT AS VERIFIED (Sets paymentVerifiedById and paymentVerifiedAt audit timestamp)           |
 |                                                                                                         |
-| [ CANCEL ]                    [ SAVE EXPENSES (Junior) ]              [ APPROVE & FINALIZE (Senior) ]   |
+| [ CANCEL ]                    [ SAVE EXPENSES ]                       [ APPROVE & FINALIZE PAYOUT ]     |
 +---------------------------------------------------------------------------------------------------------+
 ```
 

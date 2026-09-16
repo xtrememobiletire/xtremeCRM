@@ -14,11 +14,11 @@
     - `zod`: Request validation middleware (`validateRequest`) and TypeScript type inference.
     - Centralized error handling middleware.
   - PostgreSQL database connection with Prisma ORM migrations (`schema.prisma`) including:
-    - `User` (with `isAgentActive`), `DriverProfile`, `Customer`, `Vehicle`.
+    - `User` (with `isAgentActive` and inlined driver telemetry `currentLat`, `currentLng`, `cashInHandCents`), `Customer`, `Vehicle`.
     - `Fleet` and `FleetCommissionLedger` ($2–$3 VA commission per job).
     - `Job`, `JobServiceItem`, `JobMessage`, `DriverCashLedger`.
-    - `JobFinancial` with active accountant expense stating fields (`materialCostCents`, `repairerFeeCents`, `otherExpenseCents`, `expenseNotes`) and payment verification flags (`isPaymentVerified`, `paymentVerifiedById`, `paymentVerifiedAt`).
-  - Seed script with the complete 16-Service Catalog and initial seed users across all roles (`ADMIN`, `CALL_AGENT`, `DISPATCHER`, `DRIVER`, `ACCOUNTANT_JR`, `ACCOUNTANT_SR`, `VIRTUAL_ASSISTANT`).
+    - Inlined `Job` financials with active accountant expense stating fields (`materialCostCents`, `repairerFeeCents`, `otherExpenseCents`, `expenseNotes`) and payment verification trail (`paymentVerifiedById`, `paymentVerifiedAt`).
+  - Seed script with the complete 16-Service Catalog and initial seed users across all roles (`ADMIN`, `CALL_AGENT`, `DISPATCHER`, `DRIVER`, `ACCOUNTANT`, `VIRTUAL_ASSISTANT`).
   - React 18 (Vite) frontend with Tailwind CSS (Red & White design tokens), Zustand store, TanStack Query provider, and folder mirroring (`src/pages/` $\rightarrow$ `src/components/pages/`).
   - Role-based route protection for both REST API endpoints and frontend views.
 
@@ -76,31 +76,32 @@
     - `[ I HAVE ARRIVED ]` $\rightarrow$ sets `ARRIVED`
     - `[ COMMENCE WORK ]` $\rightarrow$ sets `IN_PROGRESS`
     - `[ COMPLETE JOB ]` $\rightarrow$ triggers payment collection modal.
-  - Cash in Hand collection logger: Updates `DriverProfile.cashInHandCents` and creates `DriverCashLedger` entry.
+  - Cash in Hand collection logger: Updates `User.cashInHandCents` and creates `DriverCashLedger` entry.
   - In-app Dispatch Chat tab for immediate coordination with dispatchers.
 
 ---
 
 ## Phase 5: Accounting, Expense Stating & Financial Reconciliation
-- **Objective:** Financial auditing, active job expense stating, margin calculations, and multi-currency reporting.
+- **Objective:** Financial auditing, active job expense stating, margin calculations, and strict regional country reporting (zero blended revenue).
 - **Deliverables:**
   - **Job Costing & Expense Stating Interface:**
-    - Junior Accountant explicitly inputs/states the expenses for each completed job:
-      - Material Fees (`materialCostCents` / `tireMaterialCostCents` - wholesale tires, parts, patches, valves).
-      - Repairer Fees (`repairerFeeCents` / `driverPayoutCents` - driver/technician labor fee).
+    - Accountant explicitly inputs/states the expenses for each completed job:
+      - Material Fees (`materialCostCents` - wholesale tires, parts, patches, valves).
+      - Repairer Fees (`repairerFeeCents` - driver/technician labor fee).
       - Other incidental expenses (`otherExpenseCents`) with explanatory notes.
     - Supplier parts receipt and customer invoice receipt upload/attachment handled by Multer.
   - **Payment Verification Audit:**
-    - Dedicated boolean field `isPaymentVerified` with verifier identity and audit stamp.
-    - Junior logs verification; Senior Accountant / Director audits stated expenses and finalizes payout approval.
+    - Dynamic verification state (`paymentVerifiedById != null || paymentStatus == VERIFIED_PAID`) with verifier identity and audit timestamp.
+    - Accountant audits stated expenses, attaches receipts, verifies payment, and finalizes payout approval.
   - **Automated Dynamic Net Margin Calculation:**
     $$\text{Total Job Expense} = \text{Material Fees} + \text{Repairer Fees} + \text{Other Expenses}$$
     $$\text{Net Profit} = \text{Customer Paid (CP)} - \text{Total Job Expense}$$
   - **IT Platform Royalty (`IT_B`) Ledger:**
-    - Fixed fee deduction per job: **$1.50 CAD** / **$1.00 USD** / **£1.00 GBP**.
+    - Fixed fee deduction per job: **150 cents** ($1.50 CAD) / **100 cents** ($1.00 USD) / **100 pence** (£1.00 GBP).
     - Displays Total Net of IT_B.
   - **Virtual Assistant Fleet Commission Settlement:**
     - Batch audit and payout interface for VA fleet commissions ($2–$3/job).
-  - **Multi-Currency Period Reports:**
+  - **Strict Regional Country Reports (Zero Mixing / Zero Blended Revenue):**
     - 4-Preset Date Filter: `Yesterday`, `Last 3 Days`, `One Week`, `Monthly Amount`.
-    - Side-by-side currency summary cards for Canada (CAD), USA (USD), and UK (GBP).
+    - Completely separate regional summary cards for Canada (CAD), USA (USD), and UK (GBP).
+    - Strict zero-sum isolation: Never compute blended or cross-currency total revenue. Each country functions as an independent business.

@@ -15,9 +15,7 @@ The software bridges the gap between high-pressure call-center intake, real-time
 | **Global Admin** | "Admin sees everything" — Full God-Mode oversight. | Unrestricted cross-country visibility across Canada, USA, and UK; full control to dispatch, edit invoices, state expenses, and view profit margins without bureaucratic internal blocks. |
 | **Call Center Agent** | Handles inbound phone calls, WhatsApp inquiries, and website bookings. | Active/Inactive presence toggle, Telnyx inbound screen pop with pre-filled caller number, instant customer/vehicle auto-lookup, Google address geocoding, 16-service picker, tax toggle, customer user account provisioning, call disposition logging. |
 | **Dispatch Manager** | Assigns roadside jobs to drivers based on proximity and urgency; manages fleet accounts. | Urgent vs Standard queue with expandable accordion, arbitrary address distance measurement tool, single-click driver assignment, live status monitoring, driver messaging, driver cash-in-hand tracking, Fleets directory. |
-| **Mobile Driver / Tech** | Roadside technician operating a mobile tire van. | Mobile-first UI with large tap targets, GPS navigation links, one-tap status updates (`EN_ROUTE`, `ARRIVED`, `COMPLETED`), Gross & Net earnings display, in-app dispatch messaging, cash collection ledger. (Zero access to company net margins or wholesale material costs). |
-| **Junior Accountant** | Audits completed tickets and states job expenses. | Explicitly states expenses for each completed job (material fees, repairer fees, other expenses), attaches supplier and customer receipts via Multer, logs initial payment verification check. |
-| **Senior Accountant / Director** | Approves driver/repairer payouts, verifies payments, and monitors company P&L. | Verifies customer payment (`isPaymentVerified = true`), audits stated expenses, approves repairer payouts, monitors IT platform royalties (`IT_B`), runs multi-currency period reports. |
+| **Accountant** | Audits completed tickets, states job expenses, verifies payments, and manages regional P&L. | States expenses per completed job (wholesale material costs, technician repairer fees, other incidentals), verifies customer payment, audits receipts via Multer, approves repairer payouts, and monitors regional P&L ledgers (CAD, USD, GBP strictly separated). |
 | **Virtual Assistant (VA)** | B2B cold calling & fleet lead acquisition. | ViciDial/BulkVS outreach, warm transfer to Dispatch Manager, automatic tracking of **$2–$3 commission per completed job** for acquired fleet accounts. |
 
 ### 2.2. External Customer Accounts (NOT Company Staff — Sandboxed Client Portals)
@@ -154,13 +152,13 @@ The software bridges the gap between high-pressure call-center intake, real-time
     - **Repairer Fee ($DC$):** Technician labor compensation.
     - **Other Expenses:** Incidental costs with explanatory notes.
 - **FR-6.2: Payment Verification Workflow:**
-  - Dedicated boolean verification flag: `isPaymentVerified` (default `false`) with verifier identity and audit timestamp.
+  - Payment verification is derived dynamically on read (`paymentVerifiedById != null || paymentStatus == VERIFIED_PAID`), capturing verifier identity and audit timestamp.
 - **FR-6.3: Net Profit Dynamic Calculation:**
   $$\text{Total Job Expense} = TC + DC + \text{Other Expenses}$$
   $$\text{Net Profit} = \text{Customer Paid (CP)} - \text{Total Job Expense}$$
   $$\text{Net After IT\_B} = \text{Net Profit} - \text{IT\_B}$$
 - **FR-6.4: Platform Royalty Fee (`IT_B`):**
-  - Deducted per completed job: Canada: **$1.50 CAD**, USA: **$1.00 USD**, UK: **£1.00 GBP**.
+  - Deducted per completed job: Canada: **$1.50 CAD** (150 cents), USA: **$1.00 USD** (100 cents), UK: **£1.00 GBP** (100 pence).
 - **FR-6.5: Receipt Attachments via Multer:** Customer payment proof (`receiptUrl`) and wholesale supplier invoice (`materialReceiptUrl`).
 
 ### 3.7. Regional Territorial Hubs
@@ -172,5 +170,5 @@ The software bridges the gap between high-pressure call-center intake, real-time
 ## 4. Non-Functional Requirements
 - **NFR-1: Performance & Zero Lag:** Express (Node.js + TypeScript) REST API response times $< 50\text{ms}$. Instant search on license plates and phone numbers.
 - **NFR-2: Zero Data Duplication:** Strict database normalization per `data_models.md`. Tire size stored once on `Vehicle`; financial margins derived dynamically on read.
-- **NFR-3: Exact Financial Integrity:** All monetary amounts stored as integer cents (`*_cents`). Floating-point arithmetic strictly forbidden. Currencies (USD vs CAD) kept in separate regional ledgers.
+- **NFR-3: Exact Financial Integrity & Strict Regional Silos:** All monetary amounts are stored internally as whole integer cents / pence (`*_cents`) to completely eliminate binary floating-point rounding bugs (`0.1 + 0.2 != 0.3`). The UI always renders standard human-readable currency strings (e.g. `$160.00 CAD`, `$160.00 USD`, `£45.50 GBP`). Each country (Canada, US, UK) operates as a completely separate silo with its own pricing, tax rules, and currency. Blended or cross-currency totals are strictly forbidden — no mixed revenue numbers exist.
 - **NFR-4: Security & Sandboxing:** External clients (`FLEET_MANAGER`, `CUSTOMER_MEMBER`) are strictly sandboxed to their own vehicles, drivers, and invoices. Internal company margins, technician payouts, and wholesale costs are never exposed to external clients or mobile drivers.

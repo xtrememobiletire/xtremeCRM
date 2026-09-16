@@ -130,7 +130,7 @@ The architecture is derived directly from the system design blueprint ([`Xtreme-
 - **Zero Stock Tracking Overhead:** No warehouse stock counts or inventory ledgers. Wholesale tires and parts are purchased on-demand as direct expenses per ticket.
 - **Active Job Costing:**
   - Accountant enters **Material Cost ($TC$)** and **Repairer Labor Fee ($DC$)** for each completed job ticket.
-  - Payment verified via explicit boolean flag (`isPaymentVerified`) and receipt attachments via Multer.
+  - Payment verified with dynamic verification state (`paymentVerifiedById != null || paymentStatus == VERIFIED_PAID`) and receipt attachments via Multer.
 - **Derived Financial Metrics on Read:**
   $$\text{Net Profit} = \text{Customer Paid (CP)} - TC - DC$$
   $$\text{Net After IT\_B} = \text{Net Profit} - \text{IT\_B}$$

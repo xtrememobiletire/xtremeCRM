@@ -32,7 +32,7 @@
 ## 3. Core Business Logic & Architectural Pillars
 1. **Three Distinct Portals**:
    - `/admin` $\rightarrow$ **Internal Staff (Admin God-Mode)**: Full unrestricted control over call intake, dispatching, accounting reconciliation, driver tracking, and invoice management.
-   - `/fleet-dashboard` $\rightarrow$ **External Fleet Clients (B2B)**: Sandboxed portal with fleet code (`XMT-5132`), assigned company email (`piratheep@xtrememobiletire.com`), 18+ vehicle registry with license plates (`KT-15`, `KT-18`), driver directory, service bookings, internal portal inbox, and pending/paid invoices.
+   - `/fleet-dashboard` $\rightarrow$ **External Fleet Clients (B2B)**: Sandboxed portal with fleet code (`XMT-5132`), billing/contact email (`Fleet.email`), 18+ vehicle registry with license plates (`KT-15`, `KT-18`), driver directory, service bookings, internal portal inbox, and pending/paid invoices.
    - `/member-dashboard` $\rightarrow$ **External Personal Members (B2C)**: Personal vehicle profiles, priority roadside bookings, exclusive member pricing, and receipts.
 2. **24/7 Roadside Driver Lookup**:
    - On-the-road truck drivers call 24/7 dispatch directly quoting Company Name or License Plate.
@@ -52,14 +52,17 @@
    - **Derived Net Profit on Read**:
      $$\text{Net Profit} = \text{Customer Paid (CP)} - TC - DC$$
      $$\text{Net After IT\_B} = \text{Net Profit} - IT\_B$$
-5. **Regional Hubs (Addresses & Currency Separation)**:
+5. **Strict Regional Hubs & Absolute Country Isolation (Zero Blended Revenue)**:
    - **US Regional Hub**: 11815 Medway Church Loop, Manassas, VA 20109 (covering VA, MD, DC, KY, NC, TN in USD).
    - **Canada Regional Hub**: 857 Winterton Way, Mississauga, ON L5V 1Z5 (covering ON & GTA in CAD).
-   - **Platform IT Royalty (`IT_B`):** Fixed fee per job ($1.50 CAD / $1.00 USD / £1.00 GBP) with Total Net of IT_B.
+   - **UK Operations**: Independent hub covering UK operations in GBP (£).
+   - **Zero Cross-Currency Blending**: No mixed totals or currency conversions. US, Canada, and UK are independent silos with separate pricing, separate taxes, and separate P&L reports.
+   - **Money in Integer Cents**: All monetary values are stored in whole cents/pence (`*_cents`) to prevent floating-point rounding bugs (`0.1 + 0.2 != 0.3`). The UI always renders human-readable `$160.00` or `£45.50`.
+   - **Platform IT Royalty (`IT_B`):** Fixed fee per job (150 cents [$1.50 CAD] / 100 cents [$1.00 USD] / 100 pence [£1.00 GBP]).
    - **Date Presets:** 4 exact filters: `Yesterday`, `Last 3 Days`, `One Week`, `Monthly Amount`.
-   - **Role Separation:** Junior Accountant inputs expenses and uploads receipts; Senior Accountant / Director audits, verifies payment, and approves repairer payout.
+   - **Accountant Role:** Single unified `ACCOUNTANT` role inputs job expenses, attaches receipts via Multer, verifies payment, audits tickets, and approves repairer payouts.
 6. **Admin Portal ("Admin sees every thing"):**
-   - Omni-channel executive oversight across Canada, USA, and UK.
+   - Omni-channel executive oversight across Canada, USA, and UK, viewing each country's metrics in separate, side-by-side regional cards without blending revenues.
 7. **Frontend Architecture, Naming & State Rules:**
    - Strict `camelCase` for directories and functions.
    - `PascalCase` ONLY for page orchestrators in `src/pages/` (strict ceiling of 150 lines).
@@ -86,13 +89,17 @@
 ---
 
 ## 5. Session Status & Next Steps
-- **Current Milestone:** Schema Reconciled & Zero-Duplication Cleaned; System Documentation 100% Synchronized.
-- **Prisma 7 Schema Reconciled:**
-  - Restored essential operational models: `DriverCashLedger` (cash audit trail), `JobServiceItem` (16-service catalog items), `FleetCommissionLedger` ($2.50 VA commissions), `PortalMessage` (inbox), `JobMessage` (driver-dispatch chat).
-  - Eliminated drifting duplicate state: `Job.isVerified` (derived from status), `Job.isTaxExempt` (derived from taxRatePercent == 0), `Customer.isMembershipActive` (derived from expiry > now).
-  - Inlined `DriverProfile` directly on `User` to avoid 1:1 join ceremony.
-  - Added explicit `// ponytail: [rationale]` tracking comments on every intentional deferral.
-- **Prisma 7 Fix:** Resolved `directUrl` deprecation in `backend/prisma.config.ts`.
+- **Current Milestone:** Database Schema Synchronized & Pushed to Neon DB; Prisma 7 Client Generated; All Documentation 100% Reconciled.
+- **Prisma 7 Schema Deployed:**
+  - `prisma generate`: Generated Prisma Client (v7.10.0) successfully.
+  - `prisma db push`: Successfully synchronized with PostgreSQL database (`neondb` on Neon cloud).
+  - Strict regional silos (`CountryCode`: `CA`, `US`, `UK`; `CurrencyCode`: `CAD`, `USD`, `GBP`).
+  - Money stored in whole integer cents/pence (`*_cents`) — zero decimal rounding bugs.
+  - Multi-timezone `@db.Timestamptz` across all DateTime fields.
+  - Cascade deletion protection (`onDelete: Restrict`) on all financial audit ledgers.
 - **Backend Stack:** Express (Node.js + TypeScript) with Helmet, Morgan, CORS, Cookie-Parser, Passport-JWT, Bcrypt, Multer, and Zod.
 - **Active Deliverables:** All 7 core documentation files in `context/` and `backend/prisma/schema.prisma` are 100% verified, consistent, and adhere strictly to Ponytail principles.
-- **Next Step:** Ready to initiate **Phase 1 Execution** (Express + TypeScript backend scaffolding, Prisma schema migration, seed catalog, and React Vite shell).
+- **Next Step:** Implement **Phase 1 Backend Scaffolding**:
+  1. Database Seed Script (16-service catalog per region, initial staff users with Bcrypt hashed passwords).
+  2. Telnyx softphone token service (`GET /api/telephony/token`) and webhook intake listener (`POST /api/telephony/webhook`).
+  3. Express Auth & Intake REST endpoints with Zod validation.
