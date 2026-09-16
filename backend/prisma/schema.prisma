@@ -136,8 +136,8 @@ model User {
   countryCode  CountryCode @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
   phone        String?     // E.164 formatted, e.g. +14165550192
 
-  // Presence (Unified for all staff: agents, dispatchers, drivers)
-  isOnline Boolean @default(false) @map("is_online")
+  // ponytail: isOnline moved to Redis/Socket.io — ephemeral heartbeat, not DB state
+  isAgentActive Boolean @default(false) @map("is_agent_active") // Human toggle: "I accept calls" (PRD: Active/Inactive presence toggle)
 
   // Soft Deletion (prevents orphan records while respecting onDelete: Restrict on financial ledgers)
   deletedAt DateTime? @db.Timestamptz @map("deleted_at")
@@ -166,6 +166,7 @@ model User {
   managedFleet    Fleet?    @relation("FleetManagerUser")
 
   @@index([countryCode, role])
+  @@index([phone])
   @@index([deletedAt])
   @@map("users")
 }
@@ -218,6 +219,7 @@ model Fleet {
   phone         String      // E.164 formatted primary management phone (e.g. +17035550144)
   email         String?     // Billing/contact email
   address       String?     // e.g. "10100 Richmond Hwy, Lorton, VA 22079"
+  website       String?     // Fleet company website (PRD: Fleet Dashboard KPI card)
   // ponytail: fleetSize derived dynamically: fleet.vehicles.count
   countryCode   CountryCode @default(US) @map("country_code") // Strict regional silo: CA, US, UK
   status        FleetStatus @default(PENDING) // Must be verified before active dispatching
@@ -271,24 +273,27 @@ model FleetDriver {
 // --------------------------------------------------------
 
 model Vehicle {
-  id           String    @id @default(uuid())
-  customerId   String?   @map("customer_id")
-  customer     Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  fleetId      String?   @map("fleet_id")
-  fleet        Fleet?    @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+  id           String      @id @default(uuid())
+  customerId   String?     @map("customer_id")
+  customer     Customer?   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  fleetId      String?     @map("fleet_id")
+  fleet        Fleet?      @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+  countryCode  CountryCode @map("country_code") // Set from parent (Customer/Fleet) at creation
   year         Int
   make         String
   model        String
-  licensePlate String?   @map("license_plate") // e.g. "KT-15", "KT-18"
+  licensePlate String?     @map("license_plate") // e.g. "KT-15", "KT-18"
   vin          String?
-  tireSize     String    @map("tire_size")     // Single source of truth (e.g. "11R22.5", "235/65R17")
-  createdAt    DateTime  @default(now()) @db.Timestamptz @map("created_at")
-  updatedAt    DateTime  @updatedAt @db.Timestamptz @map("updated_at")
+  tireSize     String      @map("tire_size")     // Single source of truth (e.g. "11R22.5", "235/65R17")
+  createdAt    DateTime    @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt    DateTime    @updatedAt @db.Timestamptz @map("updated_at")
 
   jobs Job[]
 
+  @@unique([countryCode, licensePlate])
   @@index([customerId])
   @@index([fleetId])
+  @@index([countryCode])
   @@index([licensePlate])
   @@map("vehicles")
 }
@@ -334,17 +339,19 @@ model Invoice {
   @@index([countryCode, status])
   @@index([dueDate])
   @@index([issueDate])
+  @@index([createdById])
   @@map("invoices")
 }
 
 model InvoiceItem {
-  id             String  @id @default(uuid())
-  invoiceId      String  @map("invoice_id")
-  invoice        Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  itemDetails    String  @map("item_details") // e.g. "Emergency Steer Tire Replacement (11R22.5)"
-  unitPriceCents Int     @map("unit_price_cents") // e.g. 42000 ($420.00)
-  quantity       Int     @default(1)
+  id             String   @id @default(uuid())
+  invoiceId      String   @map("invoice_id")
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  itemDetails    String   @map("item_details") // e.g. "Emergency Steer Tire Replacement (11R22.5)"
+  unitPriceCents Int      @map("unit_price_cents") // e.g. 42000 ($420.00)
+  quantity       Int      @default(1)
   // ponytail: totalCents derived: unitPriceCents * quantity
+  updatedAt      DateTime @updatedAt @db.Timestamptz @map("updated_at")
 
   @@index([invoiceId])
   @@map("invoice_items")
@@ -374,7 +381,7 @@ model Job {
   status      JobStatus   @default(PENDING)
   urgency     JobUrgency  @default(STANDARD)
   source      JobSource   @default(DIRECT_CALL)
-  serviceType String      @default("Standard Service") @map("service_type")
+  // ponytail: serviceType deleted — JobServiceItem[] is source of truth for service details
   countryCode CountryCode @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
   version     Int         @default(0) @map("version") // Optimistic concurrency control for dispatch assignment
 
@@ -387,12 +394,12 @@ model Job {
   problemNotes   String? @db.Text @map("problem_notes") // Roadside notes ("flat on shoulder, wheel lock in glovebox")
 
   // Service Location & Timing (Human Address - ponytail: serviceLat/Lng omitted, Distance Matrix takes address string directly)
-  serviceAddress  String    @map("service_address")
-  etaMinutes      Int?      @map("eta_minutes")
-  appointmentDate DateTime? @db.Timestamptz @map("appointment_date") // Scheduled booking date/time
-  assignedAt      DateTime? @db.Timestamptz @map("assigned_at")
-  arrivedAt       DateTime? @db.Timestamptz @map("arrived_at")
-  completedAt     DateTime? @db.Timestamptz @map("completed_at")
+  serviceAddress     String    @map("service_address")
+  estimatedArrivalAt DateTime? @db.Timestamptz @map("estimated_arrival_at") // ponytail: replaces stale etaMinutes — UI computes live countdown
+  appointmentDate    DateTime? @db.Timestamptz @map("appointment_date") // Scheduled booking date/time
+  assignedAt         DateTime? @db.Timestamptz @map("assigned_at")
+  arrivedAt          DateTime? @db.Timestamptz @map("arrived_at")
+  completedAt        DateTime? @db.Timestamptz @map("completed_at")
 
   // Call Center Outcome
   disposition      JobDisposition @default(BOOKED)
@@ -450,11 +457,13 @@ model Job {
   @@index([driverId, status])
   @@index([customerId])
   @@index([urgency])
-  @@index([fleetId])
+  @@index([fleetId, status])
   @@index([invoiceId])
   @@index([paymentStatus])
   @@index([completedAt])
   @@index([appointmentDate])
+  @@index([createdById])
+  @@index([countryCode, paymentStatus])
   @@map("jobs")
 }
 
@@ -472,6 +481,7 @@ model JobServiceItem {
   quantity       Int             @default(1)
   notes          String?
   createdAt      DateTime        @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt      DateTime        @updatedAt @db.Timestamptz @map("updated_at")
 
   @@index([jobId])
   @@map("job_service_items")
@@ -505,19 +515,20 @@ model DriverCashLedger {
 // --------------------------------------------------------
 
 model FleetCommissionLedger {
-  id                 String      @id @default(uuid())
-  fleetId            String      @map("fleet_id")
-  fleet              Fleet       @relation(fields: [fleetId], references: [id], onDelete: Restrict)
-  virtualAssistantId String      @map("virtual_assistant_id")
+  id                 String    @id @default(uuid())
+  fleetId            String    @map("fleet_id")
+  fleet              Fleet     @relation(fields: [fleetId], references: [id], onDelete: Restrict)
+  virtualAssistantId String    @map("virtual_assistant_id")
   // Restrict: Commission records must outlive staff records for accounts-payable integrity
-  virtualAssistant   User        @relation("VACommissions", fields: [virtualAssistantId], references: [id], onDelete: Restrict)
-  jobId              String?     @map("job_id")
-  job                Job?        @relation(fields: [jobId], references: [id], onDelete: SetNull)
-  amountCents        Int         @map("amount_cents") // Stored in cents (e.g. 250 for $2.50) agreed per fleet
+  virtualAssistant   User      @relation("VACommissions", fields: [virtualAssistantId], references: [id], onDelete: Restrict)
+  jobId              String?   @map("job_id")
+  job                Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  amountCents        Int       @map("amount_cents") // Stored in cents (e.g. 250 for $2.50) agreed per fleet
   // ponytail: isPaid derived dynamically: paidAt != null
-  paidAt             DateTime?   @db.Timestamptz @map("paid_at")
+  paidAt             DateTime? @db.Timestamptz @map("paid_at")
   notes              String?
-  createdAt          DateTime    @default(now()) @db.Timestamptz @map("created_at")
+  createdAt          DateTime  @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt          DateTime  @updatedAt @db.Timestamptz @map("updated_at")
 
   @@index([virtualAssistantId, paidAt])
   @@index([fleetId])
@@ -538,12 +549,15 @@ model PortalMessage {
   sender     User      @relation("SentPortalMessages", fields: [senderId], references: [id])
   subject    String
   content    String    @db.Text
-  actionUrl  String?   @map("action_url") // e.g. "/fleet-dashboard/invoices/MW-US-0002"
-  isRead     Boolean   @default(false) @map("is_read")
+  // ponytail: actionUrl replaced with typed entity references — frontend router map resolves paths
+  relatedEntityType String? @map("related_entity_type") // "INVOICE" | "JOB" | "FLEET"
+  relatedEntityId   String? @map("related_entity_id")   // "MW-US-0002" | "JOB-CA-10492"
+  readAt     DateTime? @db.Timestamptz @map("read_at") // ponytail: isRead derived: readAt != null
   createdAt  DateTime  @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt  DateTime  @updatedAt @db.Timestamptz @map("updated_at")
 
-  @@index([fleetId, isRead])
-  @@index([customerId, isRead])
+  @@index([fleetId, readAt])
+  @@index([customerId, readAt])
   @@map("portal_messages")
 }
 

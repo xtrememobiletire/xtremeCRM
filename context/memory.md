@@ -100,14 +100,21 @@
     - `Customer.altPhone` and `Fleet.contractSignedAt` preserved.
   - **Ephemeral & Duplicate Baggage Eliminated (Ponytail Principles):**
     - Removed `User.currentLat`, `User.currentLng`, and `User.lastPingAt` (live GPS telemetry handled in-memory via Socket.io, eliminating 2,400+ DB writes/hr).
-    - Unified `User.isAgentActive` into single `User.isOnline`.
-    - Removed `Fleet.fleetSize` (derived on read via `fleet.vehicles.count()`).
-    - Removed `Fleet.website` (useless taking space during roadside breakdowns).
-    - Removed `FleetCommissionLedger.isPaid` (derived on read via `paidAt != null`).
-    - Removed redundant single indexes on `Job` (`[status]` and `[driverId]`) covered by composite B-trees.
+    - Restored `User.isAgentActive` (persistent human call toggle) and removed `User.isOnline` from DB (ephemeral socket heartbeat moved to Redis/Socket.io only).
+    - Restored `Fleet.website` (PRD FR-3.1: Fleet Dashboard KPI card).
+    - Removed `Job.etaMinutes` frozen int, replaced with `Job.estimatedArrivalAt` timestamp (live countdown derived on client).
+    - Removed `Job.serviceType` freeform string (single source of truth in `JobServiceItem[]`).
+    - Removed `PortalMessage.actionUrl`, replaced with `relatedEntityType` and `relatedEntityId` (survives frontend route renames).
+    - Removed redundant `PortalMessage.isRead` boolean, replaced with `readAt DateTime?` (null = unread).
+    - Added `Vehicle.countryCode` and regional `@@unique([countryCode, licensePlate])`.
+    - Restored missing `User.phone` index for fast Telnyx caller ID lookup; added `createdById` indexes to `Job` and `Invoice`.
+    - Added `updatedAt` tracking to mutable models (`InvoiceItem`, `JobServiceItem`, `FleetCommissionLedger`, `PortalMessage`).
+    - Upgraded `Job.fleetId` index to composite `@@index([fleetId, status])`.
+    - Stripped redundant 560-line schema copy from `context/data_models.md`, pointing directly to `backend/prisma/schema.prisma` as single source of truth.
 - **Backend Stack:** Express (Node.js + TypeScript) with Helmet, Morgan, CORS, Cookie-Parser, Passport-JWT, Bcrypt, Multer, and Zod.
-- **Active Deliverables:** All 7 core documentation files in `context/` and `backend/prisma/schema.prisma` are 100% verified, consistent, and adhere strictly to Ponytail principles.
+- **Active Deliverables:** `backend/prisma/schema.prisma` validated and locked; documentation trimmed of duplicate code.
 - **Next Step:** Proceed with **Phase 1 Backend Scaffolding**:
   1. Database Seed Script (catalog items per region, initial staff users with Bcrypt hashed passwords).
   2. Telnyx softphone token service (`GET /api/telephony/token`) and webhook intake listener (`POST /api/telephony/webhook`).
   3. Express Auth & Intake REST endpoints with Zod validation.
+
