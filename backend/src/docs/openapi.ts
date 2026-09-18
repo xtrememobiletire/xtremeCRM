@@ -155,9 +155,32 @@ export const openApiSpec = {
       },
       patch: {
         tags: ['Users'],
-        summary: 'Update user',
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { '200': { description: 'User updated' } },
+        summary: 'Update user profile or role (Admin)',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'Target User ID' }],
+        requestBody: {
+          required: true,
+          description: 'User fields to update (send any fields to modify)',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  fullName: { type: 'string', example: 'Super Admin Updated' },
+                  email: { type: 'string', format: 'email', example: 'admin@xtremecrm.com' },
+                  phone: { type: 'string', example: '+14165550199' },
+                  role: {
+                    type: 'string',
+                    enum: ['ADMIN', 'CALL_AGENT', 'DISPATCHER', 'DRIVER', 'ACCOUNTANT', 'VIRTUAL_ASSISTANT', 'FLEET_MANAGER', 'CUSTOMER_MEMBER'],
+                    example: 'ADMIN',
+                  },
+                  countryCode: { type: 'string', enum: ['CA', 'US', 'UK'], example: 'CA' },
+                  isAgentActive: { type: 'boolean', example: true },
+                },
+              },
+            },
+          },
+        },
+        responses: { '200': { description: 'User updated successfully' } },
       },
       delete: {
         tags: ['Users'],
@@ -234,7 +257,27 @@ export const openApiSpec = {
       patch: {
         tags: ['Customers'],
         summary: 'Update customer',
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'Customer ID' }],
+        requestBody: {
+          required: true,
+          description: 'Customer fields to update',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  fullName: { type: 'string', example: 'Jane Doe' },
+                  phone: { type: 'string', example: '+14165550198' },
+                  altPhone: { type: 'string', example: '+14165550197' },
+                  email: { type: 'string', format: 'email', example: 'jane@example.com' },
+                  countryCode: { type: 'string', enum: ['CA', 'US', 'UK'], example: 'CA' },
+                  customerType: { type: 'string', enum: ['RETAIL', 'MEMBERSHIP'], example: 'RETAIL' },
+                  membershipTier: { type: 'string', enum: ['STANDARD', 'GOLD', 'PLATINUM'], example: 'STANDARD' },
+                },
+              },
+            },
+          },
+        },
         responses: { '200': { description: 'Customer updated' } },
       },
       delete: {
@@ -295,8 +338,28 @@ export const openApiSpec = {
       },
       patch: {
         tags: ['Vehicles'],
-        summary: 'Update vehicle',
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        summary: 'Update vehicle specs',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'Vehicle ID' }],
+        requestBody: {
+          required: true,
+          description: 'Vehicle fields to update',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  year: { type: 'integer', example: 2023 },
+                  make: { type: 'string', example: 'Freightliner' },
+                  model: { type: 'string', example: 'Cascadia' },
+                  licensePlate: { type: 'string', example: 'KT-15' },
+                  vin: { type: 'string', example: '1FUJGLDR5PL123456' },
+                  tireSize: { type: 'string', example: '11R22.5' },
+                  countryCode: { type: 'string', enum: ['CA', 'US', 'UK'], example: 'CA' },
+                },
+              },
+            },
+          },
+        },
         responses: { '200': { description: 'Vehicle updated' } },
       },
       delete: {
@@ -368,7 +431,28 @@ export const openApiSpec = {
       patch: {
         tags: ['Fleets'],
         summary: 'Update fleet details',
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'Fleet ID' }],
+        requestBody: {
+          required: true,
+          description: 'Fleet fields to update',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', example: 'KT Group Logistics' },
+                  contactPerson: { type: 'string', example: 'Piratheep S.' },
+                  phone: { type: 'string', example: '+14165550144' },
+                  email: { type: 'string', format: 'email', example: 'piratheep@ktgroup.com' },
+                  address: { type: 'string', example: '11815 Medway Church Loop, Manassas, VA' },
+                  website: { type: 'string', example: 'https://ktgroup.com' },
+                  status: { type: 'string', enum: ['PENDING', 'APPROVED', 'SUSPENDED'], example: 'APPROVED' },
+                  countryCode: { type: 'string', enum: ['CA', 'US', 'UK'], example: 'CA' },
+                },
+              },
+            },
+          },
+        },
         responses: { '200': { description: 'Fleet updated' } },
       },
       delete: {
