@@ -160,10 +160,27 @@ The software bridges the gap between high-pressure call-center intake, real-time
 - **FR-6.4: Platform Royalty Fee (`IT_B`):**
   - Deducted per completed job: Canada: **$1.50 CAD** (150 cents), USA: **$1.00 USD** (100 cents), UK: **£1.00 GBP** (100 pence).
 - **FR-6.5: Receipt Attachments via Multer:** Customer payment proof (`receiptUrl`) and wholesale supplier invoice (`materialReceiptUrl`).
+- **FR-6.6: Senior vs. Junior Accountant Permission Tiers (Zero Enum Bloat):**
+  - Uses capability boolean `canApprovePayouts` on user record instead of adding database roles.
+  - **Junior Accountant (`canApprovePayouts = false`):** Audits completed roadside tickets, inputs wholesale parts cost ($TC$), technician labor payout ($DC$), incidentals, and uploads supplier invoices (`materialReceiptUrl`). Payout release button is disabled.
+  - **Senior Accountant (`canApprovePayouts = true` / `ADMIN`):** Verifies customer remittance, reconciles driver physical cash envelopes, approves repairer payouts, and locks financial ledgers against further modification.
+- **FR-6.7: Exact Accounting Quick Date Filter Presets:**
+  - Reconciliation dashboard provides 4 1-click date filters:
+    1. **Yesterday:** Previous 24h operational window.
+    2. **Last 3 Days:** Rolling 72h window for weekend backlog reconciliation.
+    3. **1 Week / 7 Days:** Weekly dispatch cycle for consolidated fleet billing.
+    4. **Monthly Amount:** Full calendar month-to-date regional P&L ledger.
 
 ### 3.7. Regional Territorial Hubs
 - **FR-7.1: US Regional Hub:** 11815 Medway Church Loop, Manassas, VA 20109 | (804) 326-5442 (Covers VA, MD, DC, KY, NC, TN in USD).
 - **FR-7.2: Canada Regional Hub:** 857 Winterton Way, Mississauga, ON L5V 1Z5 | (437) 375-5674 (Covers ON, GTA in CAD).
+
+### 3.8. Landing Page Self-Booking Outbound Lead Triage Queue
+- **FR-8.1: Public Web Intake Pipeline:**
+  - Self-service bookings submitted via landing page widget enter a dedicated triage queue in status `UNVERIFIED_PUBLIC`.
+  - Inbound submissions auto-poll every 5 seconds with auditory chime.
+  - Agents verify customer location, OEM tire size compatibility, and payment method via embedded Telnyx softphone click-to-call before clicking `[ PROMOTE TO URGENT DISPATCH ]`.
+  - Non-responsive or invalid submissions are dismissed with dispositions `UNREACHABLE` or `SPAM`.
 
 ---
 
@@ -171,4 +188,8 @@ The software bridges the gap between high-pressure call-center intake, real-time
 - **NFR-1: Performance & Zero Lag:** Express (Node.js + TypeScript) REST API response times $< 50\text{ms}$. Instant search on license plates and phone numbers.
 - **NFR-2: Zero Data Duplication:** Strict database normalization per `data_models.md`. Tire size stored once on `Vehicle`; financial margins derived dynamically on read.
 - **NFR-3: Exact Financial Integrity & Strict Regional Silos:** All monetary amounts are stored internally as whole integer cents / pence (`*_cents`) to completely eliminate binary floating-point rounding bugs (`0.1 + 0.2 != 0.3`). The UI always renders standard human-readable currency strings (e.g. `$160.00 CAD`, `$160.00 USD`, `£45.50 GBP`). Each country (Canada, US, UK) operates as a completely separate silo with its own pricing, tax rules, and currency. Blended or cross-currency totals are strictly forbidden — no mixed revenue numbers exist.
-- **NFR-4: Security & Sandboxing:** External clients (`FLEET_MANAGER`, `CUSTOMER_MEMBER`) are strictly sandboxed to their own vehicles, drivers, and invoices. Internal company margins, technician payouts, and wholesale costs are never exposed to external clients or mobile drivers.
+- **NFR-4: Security & Sandboxing (Client & Driver Financial Isolation):**
+  - External clients (`FLEET_MANAGER`, `CUSTOMER_MEMBER`) are strictly sandboxed to their own vehicles, drivers, and invoices.
+  - Mobile drivers (`DRIVER` role) are strictly isolated: driver consoles render ONLY driver personal earnings ($DC$), completed job counts, and physical cash collected in hand (`cashInHandCents`).
+  - Wholesale material cost ($TC$), IT platform royalties ($IT\_B$), and company net profit margins are 100% hidden and omitted from driver payloads and mobile views.
+

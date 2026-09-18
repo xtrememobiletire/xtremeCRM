@@ -13,7 +13,14 @@ import { errorHandler } from './middleware/errorHandler.js';
 export const app: Application = express();
 
 // Security & Utility Middleware
-app.use(helmet());
+app.use(
+  config.NODE_ENV === 'production'
+    ? helmet() // Strict production defaults
+    : helmet({
+        contentSecurityPolicy: false, // Relaxed in dev for local tools, hot reload, Swagger UI
+        crossOriginEmbedderPolicy: false,
+      })
+);
 app.use(
   cors({
     origin: config.FRONTEND_URL,
@@ -25,6 +32,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(config.COOKIE_SECRET));
 app.use(passport.initialize());
+
+// Root Redirect to Swagger Docs
+app.get('/', (_req: Request, res: Response) => {
+  res.redirect('/api/docs');
+});
 
 // Static file hosting
 app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
