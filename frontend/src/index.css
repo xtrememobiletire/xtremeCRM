@@ -1,1 +1,100 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #ef4444;
+
+  /* XtremeCRM Brand: Dynamic Crimson Red */
+  --brand: #dc2626;
+  --brand-hover: #b91c1c;
+  --brand-light: #fef2f2;
+  --brand-text: #991b1b;
+  --brand-border: #fecaca;
+  --brand-ring: rgba(220, 38, 38, 0.22);
+}
+
+@theme inline {
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-light: var(--brand-light);
+  --color-brand-text: var(--brand-text);
+  --color-brand-border: var(--brand-border);
+  --color-brand-ring: var(--brand-ring);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+@layer base {
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  /* Dynamic Buttons */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition-all duration-150 hover:bg-red-700 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 cursor-pointer;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 shadow-xs transition-all duration-150 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 cursor-pointer;
+  }
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-600 text-red-600 bg-transparent px-3.5 py-2 text-xs font-semibold transition-all duration-150 hover:bg-red-50 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 cursor-pointer;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-700 transition-all duration-150 hover:bg-rose-100 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 cursor-pointer;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-all duration-150 hover:bg-slate-100 hover:text-slate-900 active:scale-[0.99] cursor-pointer;
+  }
+
+  /* Containers & Surfaces */
+  .card-surface {
+    @apply rounded-xl border border-slate-200/90 bg-white shadow-xs transition-all duration-150;
+  }
+  .card-header {
+    @apply flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-100;
+  }
+  .card-body {
+    @apply p-4 sm:p-5;
+  }
+
+  /* Form Controls */
+  .input-base {
+    @apply w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs sm:text-sm text-slate-900 outline-none transition duration-150 placeholder:text-slate-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-500/20 disabled:bg-slate-100 disabled:text-slate-400;
+  }
+  .select-base {
+    @apply w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs sm:text-sm text-slate-900 outline-none transition duration-150 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-500/20 disabled:bg-slate-100 disabled:text-slate-400;
+  }
+  .textarea-base {
+    @apply w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs sm:text-sm text-slate-900 outline-none transition duration-150 placeholder:text-slate-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-500/20 resize-none;
+  }
+
+  /* Tables */
+  .table-container {
+    @apply w-full overflow-x-auto rounded-xl border border-slate-200/90 bg-white shadow-xs;
+  }
+  .table-th {
+    @apply px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-50/80 border-b border-slate-200/80;
+  }
+  .table-td {
+    @apply px-4 py-2.5 text-xs sm:text-sm text-slate-700 border-b border-slate-100 font-medium;
+  }
+}
