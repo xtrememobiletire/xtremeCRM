@@ -3,9 +3,9 @@ import { config } from '../config/env.js';
 export const telnyxService = {
   async getWebRtcToken(userId: string) {
     return {
-      token: 	elnyx_simulated_token__,
+      token: `telnyx_simulated_token_${userId}`,
       connectionId: config.TELNYX.CONNECTION_ID,
-      sipUsername: gent_,
+      sipUsername: `agent_${userId}`,
     };
   },
 

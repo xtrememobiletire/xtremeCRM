@@ -166,7 +166,7 @@ export class JobService {
     userId?: string,
     countryCode: string = 'CA'
   ): Promise<any> {
-    const jobCode = JOB--;
+    const jobCode = `JOB-${countryCode}-${Math.floor(10000 + Math.random() * 90000)}`;
 
     // Resolve creator ID: if none provided, find first available system user
     let creatorId = userId;

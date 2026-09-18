@@ -12,16 +12,16 @@ initSocket(server);
 
 // Start HTTP Server
 server.listen(config.PORT, () => {
-  logger.info(🚀 XtremeCRM backend running at http://localhost:);
-  logger.info(🌍 Environment: );
+  logger.info("🚀 XtremeCRM backend running at http://localhost:" + config.PORT);
+  logger.info("🌍 Environment: " + config.NODE_ENV);
 });
 
 // Graceful Shutdown
 const shutdown = async (signal: string) => {
-  logger.info(Received . Shutting down gracefully...);
+  logger.info(`Received ${signal}. Shutting down gracefully...`);
   server.close(async () => {
     logger.info('HTTP server closed.');
-    await prisma.();
+    await prisma.$disconnect();
     logger.info('Database connections closed.');
     process.exit(0);
   });

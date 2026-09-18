@@ -16,5 +16,5 @@ export const formatCurrency = (
     GBP: '£',
   };
   const amount = centsToDollars(cents);
-  return ${symbols[currency] || '$'};
+  return `${symbols[currency] || '$'}${amount.toFixed(2)}`;
 };

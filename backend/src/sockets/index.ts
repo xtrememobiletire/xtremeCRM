@@ -10,14 +10,14 @@ export const initSocket = (httpServer: HttpServer): SocketIOServer => {
   const io = initSocketServer(httpServer);
 
   io.on('connection', (socket: Socket) => {
-    logger.info(Socket connected: );
+    logger.info(`Socket connected: ${socket.id}`);
 
     registerDispatchHandlers(io, socket);
     registerDriverHandlers(io, socket);
     registerChatHandlers(io, socket);
 
     socket.on('disconnect', (reason: string) => {
-      logger.info(Socket disconnected:  (reason: ));
+      logger.info(`Socket disconnected: ${socket.id} (reason: ${reason})`);
     });
   });
 

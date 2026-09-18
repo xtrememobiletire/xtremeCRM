@@ -8,7 +8,7 @@ export const invoiceService = {
     });
     if (!job) throw new Error('Job not found');
 
-    const invoiceNumber = INV--;
+    const invoiceNumber = `INV-${job.countryCode}-${Date.now().toString().slice(-6)}`;
     const now = new Date();
     const dueDate = new Date();
     dueDate.setDate(now.getDate() + 30);
@@ -30,7 +30,7 @@ export const invoiceService = {
         items: {
           create: [
             {
-              itemDetails: Service for Vehicle ( ),
+              itemDetails: `Service for Vehicle (${job.vehicle ? `${job.vehicle.make} ${job.vehicle.model}` : 'N/A'})`,
               unitPriceCents: job.subtotalCents,
               quantity: 1,
             },

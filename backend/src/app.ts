@@ -36,7 +36,7 @@ app.use('/api', apiRouter);
 app.use((req: Request, res: Response) => {
   res.status(404).json({
     success: false,
-    error: Route not found:  ,
+    error: `Route not found: ${req.originalUrl}`,
     timestamp: new Date().toISOString(),
   });
 });
