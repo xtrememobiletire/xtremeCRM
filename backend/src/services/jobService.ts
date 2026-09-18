@@ -7,37 +7,78 @@ import {
 } from '../utils/pagination.js';
 import type { PaginationQuery } from '../schemas/job.schema.js';
 
-/**
- * =====================================
- * JOB SERVICE
- * =====================================
- * Business logic for job operations
- * Handles database queries with Prisma
- */
-
 export class JobService {
   constructor(private prisma: PrismaClient) {}
 
-  /**
-   * Get all jobs with pagination, filtering, and sorting
-   * @param query - Pagination and filter parameters
-   * @param countryCode - Tenant country code (CA, US, UK)
-   * @returns Paginated list of jobs
-   */
+  private mapJob(job: any) {
+    const customer = job.customer
+      ? {
+          id: job.customer.id,
+          fullName: job.customer.fullName,
+          firstName: job.customer.fullName?.split(' ')[0] || '',
+          lastName: job.customer.fullName?.split(' ').slice(1).join(' ') || '',
+          primaryPhone: job.customer.phone,
+          phone: job.customer.phone,
+        }
+      : null;
+
+    const vehicle = job.vehicle
+      ? {
+          id: job.vehicle.id,
+          year: job.vehicle.year,
+          make: job.vehicle.make,
+          model: job.vehicle.model,
+          tireSize: job.vehicle.tireSize,
+          licensePlate: job.vehicle.licensePlate,
+        }
+      : null;
+
+    const assignedDriver = job.driver
+      ? {
+          id: job.driver.id,
+          fullName: job.driver.fullName,
+          firstName: job.driver.fullName?.split(' ')[0] || '',
+          lastName: job.driver.fullName?.split(' ').slice(1).join(' ') || '',
+          phone: job.driver.phone,
+        }
+      : null;
+
+    const services = job.serviceItems
+      ? job.serviceItems.map((s: any) => s.serviceName)
+      : [];
+
+    return {
+      id: job.id,
+      jobCode: job.jobCode,
+      serviceAddress: job.serviceAddress,
+      status: job.status,
+      urgency: job.urgency,
+      totalCents: job.totalCents,
+      quotedPriceCents: job.subtotalCents,
+      taxCents: job.taxAmountCents,
+      currency: job.currency,
+      paymentMethod: job.paymentMethod,
+      createdAt: job.createdAt,
+      scheduledFor: job.appointmentDate,
+      customer,
+      vehicle,
+      assignedDriver,
+      driver: assignedDriver,
+      services,
+    };
+  }
+
   async getAllJobs(
     query: PaginationQuery,
-    countryCode: string
-  ): Promise<PaginatedResponse<Job>> {
-    // Sanitize pagination params
+    countryCode: string = 'CA'
+  ): Promise<PaginatedResponse<any>> {
     const { page, limit } = sanitizePaginationParams(query.page, query.limit);
     const skip = calculateSkip(page, limit);
 
-    // Build dynamic where clause
-    const where: Prisma.JobWhereInput = {
-      countryCode, // Tenant scoping
+    const where: any = {
+      countryCode: (query.countryCode || countryCode) as any,
     };
 
-    // Add optional filters
     if (query.status) {
       where.status = query.status;
     }
@@ -47,19 +88,21 @@ export class JobService {
     }
 
     if (query.search) {
-      // Search in service address or problem notes
       where.OR = [
         { serviceAddress: { contains: query.search, mode: 'insensitive' } },
         { problemNotes: { contains: query.search, mode: 'insensitive' } },
       ];
     }
 
-    // Build sort order
-    const orderBy: Prisma.JobOrderByWithRelationInput = {
-      [query.sortBy || 'createdAt']: query.sortOrder || 'desc',
-    };
+    const sortField = query.sortBy || 'createdAt';
+    const sortOrder = query.sortOrder || 'desc';
+    const orderBy: any = {};
+    if (sortField === 'scheduledFor') {
+      orderBy.appointmentDate = sortOrder;
+    } else {
+      orderBy[sortField] = sortOrder;
+    }
 
-    // Execute queries in parallel for better performance
     const [jobs, totalCount] = await Promise.all([
       this.prisma.job.findMany({
         where,
@@ -67,156 +110,185 @@ export class JobService {
         take: limit,
         orderBy,
         include: {
-          customer: {
+          customer: true,
+          vehicle: true,
+          driver: {
             select: {
               id: true,
-              firstName: true,
-              lastName: true,
-              primaryPhone: true,
-            },
-          },
-          vehicle: {
-            select: {
-              id: true,
-              year: true,
-              make: true,
-              model: true,
-              tireSize: true,
-            },
-          },
-          assignedDriver: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
+              fullName: true,
               phone: true,
             },
           },
+          serviceItems: true,
         },
       }),
       this.prisma.job.count({ where }),
     ]);
 
-    return createPaginatedResponse(jobs, page, limit, totalCount);
+    const mapped = jobs.map((j) => this.mapJob(j));
+    return createPaginatedResponse(mapped, page, limit, totalCount);
   }
 
-  /**
-   * Get a single job by ID
-   * @param id - Job ID
-   * @param countryCode - Tenant country code
-   * @returns Job details or null
-   */
-  async getJobById(id: string, countryCode: string): Promise<Job | null> {
-    return this.prisma.job.findFirst({
-      where: {
-        id,
-        countryCode,
-      },
+  async getJobById(id: string, countryCode?: string): Promise<any | null> {
+    const where: any = { id };
+    if (countryCode) {
+      where.countryCode = countryCode as any;
+    }
+
+    const job = await this.prisma.job.findFirst({
+      where,
       include: {
         customer: true,
         vehicle: true,
-        assignedDriver: true,
+        driver: {
+          select: {
+            id: true,
+            fullName: true,
+            phone: true,
+          },
+        },
         createdBy: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            fullName: true,
             email: true,
           },
         },
+        serviceItems: true,
       },
     });
+
+    return job ? this.mapJob(job) : null;
   }
 
-  /**
-   * Create a new job
-   * @param data - Job creation data
-   * @param userId - ID of user creating the job
-   * @param countryCode - Tenant country code
-   * @returns Created job
-   */
   async createJob(
-    data: Prisma.JobCreateInput,
-    userId: string,
-    countryCode: string
-  ): Promise<Job> {
-    return this.prisma.job.create({
+    data: any,
+    userId?: string,
+    countryCode: string = 'CA'
+  ): Promise<any> {
+    const jobCode = JOB--;
+
+    // Resolve creator ID: if none provided, find first available system user
+    let creatorId = userId;
+    if (!creatorId) {
+      const defaultUser = await this.prisma.user.findFirst();
+      creatorId = defaultUser?.id;
+    }
+
+    if (!creatorId) {
+      throw new Error('No user found to assign job creation.');
+    }
+
+    const job = await this.prisma.job.create({
       data: {
-        ...data,
-        countryCode,
-        createdById: userId,
+        jobCode,
+        countryCode: countryCode as any,
+        customerId: data.customerId,
+        vehicleId: data.vehicleId,
+        serviceAddress: data.serviceAddress,
+        urgency: data.urgency || 'STANDARD',
+        appointmentDate: data.scheduledFor ? new Date(data.scheduledFor) : undefined,
+        problemNotes: data.problemNotes,
+        subtotalCents: data.quotedPriceCents || data.totalCents || 0,
+        taxAmountCents: data.taxCents || 0,
+        totalCents: data.totalCents || data.quotedPriceCents || 0,
+        currency: data.currency || 'CAD',
+        paymentMethod: data.paymentMethod,
+        createdById: creatorId,
+        status: 'PENDING',
+        serviceItems: data.services?.length
+          ? {
+              create: data.services.map((s: string) => ({
+                serviceName: s,
+                unitPriceCents: Math.round((data.totalCents || 0) / data.services.length),
+              })),
+            }
+          : undefined,
       },
       include: {
         customer: true,
         vehicle: true,
+        driver: true,
+        serviceItems: true,
       },
     });
+
+    return this.mapJob(job);
   }
 
-  /**
-   * Update job status
-   * @param id - Job ID
-   * @param status - New status
-   * @param countryCode - Tenant country code
-   * @returns Updated job
-   */
   async updateJobStatus(
     id: string,
-    status: string,
-    countryCode: string
-  ): Promise<Job | null> {
-    return this.prisma.job.update({
-      where: {
-        id,
-        countryCode,
-      },
-      data: {
-        status,
-        updatedAt: new Date(),
+    status: any,
+    countryCode?: string
+  ): Promise<any | null> {
+    const existing = await this.prisma.job.findFirst({
+      where: { id, ...(countryCode ? { countryCode: countryCode as any } : {}) },
+    });
+    if (!existing) return null;
+
+    const data: any = {
+      status,
+      updatedAt: new Date(),
+    };
+    if (status === 'ARRIVED') data.arrivedAt = new Date();
+    if (status === 'COMPLETED') data.completedAt = new Date();
+
+    const updated = await this.prisma.job.update({
+      where: { id },
+      data,
+      include: {
+        customer: true,
+        vehicle: true,
+        driver: true,
+        serviceItems: true,
       },
     });
+
+    return this.mapJob(updated);
   }
 
-  /**
-   * Assign driver to job
-   * @param jobId - Job ID
-   * @param driverId - Driver ID
-   * @param countryCode - Tenant country code
-   * @returns Updated job
-   */
   async assignDriver(
     jobId: string,
     driverId: string,
-    countryCode: string
-  ): Promise<Job | null> {
-    return this.prisma.job.update({
-      where: {
-        id: jobId,
-        countryCode,
-      },
+    countryCode?: string
+  ): Promise<any | null> {
+    const existing = await this.prisma.job.findFirst({
+      where: { id: jobId, ...(countryCode ? { countryCode: countryCode as any } : {}) },
+    });
+    if (!existing) return null;
+
+    const updated = await this.prisma.job.update({
+      where: { id: jobId },
       data: {
-        assignedDriverId: driverId,
+        driverId,
         status: 'ASSIGNED',
+        assignedAt: new Date(),
         updatedAt: new Date(),
       },
       include: {
-        assignedDriver: true,
+        customer: true,
+        vehicle: true,
+        driver: true,
+        serviceItems: true,
       },
     });
+
+    return this.mapJob(updated);
   }
 
-  /**
-   * Delete a job (soft delete recommended)
-   * @param id - Job ID
-   * @param countryCode - Tenant country code
-   * @returns Deleted job
-   */
-  async deleteJob(id: string, countryCode: string): Promise<Job> {
-    return this.prisma.job.delete({
-      where: {
-        id,
-        countryCode,
-      },
+  async deleteJob(id: string, countryCode?: string): Promise<any | null> {
+    const existing = await this.prisma.job.findFirst({
+      where: { id, ...(countryCode ? { countryCode: countryCode as any } : {}) },
     });
+    if (!existing) return null;
+
+    // Delete relation serviceItems first if not cascade
+    await this.prisma.jobServiceItem.deleteMany({ where: { jobId: id } });
+
+    const deleted = await this.prisma.job.delete({
+      where: { id },
+    });
+
+    return this.mapJob(deleted);
   }
 }

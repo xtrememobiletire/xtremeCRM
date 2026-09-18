@@ -10,7 +10,7 @@ dotenv.config(); // Fallback to root or default .env if present
 
 export const config = {
   NODE_ENV: nodeEnv,
-  PORT: Number(process.env.PORT) || 5000,
+  PORT: Number(process.env.PORT) || 3000,
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
   DATABASE_URL: process.env.DATABASE_URL || '',
   DIRECT_URL: process.env.DIRECT_URL || '',
