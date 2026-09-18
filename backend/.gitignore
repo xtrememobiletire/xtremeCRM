@@ -3,8 +3,9 @@ dist
 .vscode
 
 # Environment files
-.env*
+.env.development*
 !.env.example
+.env.production
 
 # Uploads and generated files
 uploads/*
