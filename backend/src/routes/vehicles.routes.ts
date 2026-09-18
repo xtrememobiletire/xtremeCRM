@@ -1,29 +1,71 @@
 import { Router } from 'express';
-import { prisma } from '../config/database.js';
+import { vehicleController } from '../controllers/vehicleController.js';
 import { authenticate } from '../middleware/auth.js';
-import { sendSuccess, sendError } from '../utils/apiResponse.js';
+import { validateRequest } from '../middleware/validateRequest.js';
+import {
+  createVehicleSchema,
+  updateVehicleSchema,
+  vehicleQuerySchema,
+  idParamSchema,
+} from '../schemas/index.js';
 
 const router = Router();
 
 router.use(authenticate);
 
-router.get('/', async (_req, res) => {
-  try {
-    const vehicles = await prisma.vehicle.findMany();
-    sendSuccess(res, vehicles);
-  } catch (err: any) {
-    sendError(res, err.message);
-  }
-});
+/**
+ * @route   GET /api/vehicles
+ * @desc    Get paginated vehicles with filters
+ * @access  Private
+ */
+router.get(
+  '/',
+  validateRequest({ query: vehicleQuerySchema }),
+  vehicleController.getVehicles
+);
 
-router.get('/:id', async (req, res) => {
-  try {
-    const vehicle = await prisma.vehicle.findUnique({ where: { id: req.params.id } });
-    if (!vehicle) return sendError(res, 'Vehicle not found', 404);
-    sendSuccess(res, vehicle);
-  } catch (err: any) {
-    sendError(res, err.message);
-  }
-});
+/**
+ * @route   GET /api/vehicles/:id
+ * @desc    Get vehicle by ID
+ * @access  Private
+ */
+router.get(
+  '/:id',
+  validateRequest({ params: idParamSchema }),
+  vehicleController.getVehicleById
+);
+
+/**
+ * @route   POST /api/vehicles
+ * @desc    Create a vehicle linked to customer or fleet
+ * @access  Private
+ */
+router.post(
+  '/',
+  validateRequest({ body: createVehicleSchema }),
+  vehicleController.createVehicle
+);
+
+/**
+ * @route   PATCH /api/vehicles/:id
+ * @desc    Update vehicle specifications
+ * @access  Private
+ */
+router.patch(
+  '/:id',
+  validateRequest({ params: idParamSchema, body: updateVehicleSchema }),
+  vehicleController.updateVehicle
+);
+
+/**
+ * @route   DELETE /api/vehicles/:id
+ * @desc    Delete vehicle
+ * @access  Private
+ */
+router.delete(
+  '/:id',
+  validateRequest({ params: idParamSchema }),
+  vehicleController.deleteVehicle
+);
 
 export default router;

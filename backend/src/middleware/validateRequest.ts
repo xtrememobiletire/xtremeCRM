@@ -46,7 +46,7 @@ export function validateRequest(schemas: ValidationTarget) {
             errors: formatZodErrors(result.error),
           });
         }
-        req.query = result.data;
+        Object.defineProperty(req, 'query', { value: result.data, writable: true, configurable: true, enumerable: true });
       }
 
       // Validate URL parameters
@@ -59,7 +59,7 @@ export function validateRequest(schemas: ValidationTarget) {
             errors: formatZodErrors(result.error),
           });
         }
-        req.params = result.data;
+        Object.defineProperty(req, 'params', { value: result.data, writable: true, configurable: true, enumerable: true });
       }
 
       next();
@@ -81,7 +81,7 @@ export function validateRequest(schemas: ValidationTarget) {
 function formatZodErrors(error: ZodError): Record<string, string[]> {
   const formatted: Record<string, string[]> = {};
 
-  error.errors.forEach((err) => {
+  (error.issues || []).forEach((err) => {
     const path = err.path.join('.');
     if (!formatted[path]) {
       formatted[path] = [];

@@ -8,6 +8,8 @@ import fleetsRoutes from './fleets.routes.js';
 import invoicesRoutes from './invoices.routes.js';
 import accountingRoutes from './accounting.routes.js';
 import telephonyRoutes from './telephony.routes.js';
+import messagesRoutes from './messages.routes.js';
+import docsRoutes from './docs.routes.js';
 import healthRoutes from './health.routes.js';
 
 const router = Router();
@@ -21,6 +23,8 @@ router.use('/fleets', fleetsRoutes);
 router.use('/invoices', invoicesRoutes);
 router.use('/accounting', accountingRoutes);
 router.use('/telephony', telephonyRoutes);
+router.use('/messages', messagesRoutes);
+router.use('/docs', docsRoutes);
 router.use('/', healthRoutes);
 
 export default router;

@@ -11,3 +11,11 @@ export const createCustomerSchema = z.object({
 });
 
 export const updateCustomerSchema = createCustomerSchema.partial();
+
+export const customerQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional().default(1),
+  limit: z.coerce.number().int().positive().max(100).optional().default(20),
+  search: z.string().optional(),
+  countryCode: z.enum(['CA', 'US', 'UK']).optional(),
+  customerType: z.enum(['RETAIL', 'MEMBERSHIP']).optional(),
+});

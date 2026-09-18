@@ -14,10 +14,12 @@ export const validate = (schemas: ValidationTargets) => {
         req.body = await schemas.body.parseAsync(req.body);
       }
       if (schemas.query) {
-        req.query = await schemas.query.parseAsync(req.query);
+        const parsed = await schemas.query.parseAsync(req.query);
+        Object.defineProperty(req, 'query', { value: parsed, writable: true, configurable: true, enumerable: true });
       }
       if (schemas.params) {
-        req.params = await schemas.params.parseAsync(req.params);
+        const parsed = await schemas.params.parseAsync(req.params);
+        Object.defineProperty(req, 'params', { value: parsed, writable: true, configurable: true, enumerable: true });
       }
       next();
     } catch (error) {

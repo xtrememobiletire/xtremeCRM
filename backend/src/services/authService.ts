@@ -40,7 +40,7 @@ export const authService = {
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role, countryCode: user.countryCode },
       config.JWT_SECRET,
-      { expiresIn: config.JWT_EXPIRES_IN }
+      { expiresIn: config.JWT_EXPIRES_IN as any }
     );
 
     return { user, token };
@@ -60,7 +60,7 @@ export const authService = {
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role, countryCode: user.countryCode },
       config.JWT_SECRET,
-      { expiresIn: config.JWT_EXPIRES_IN }
+      { expiresIn: config.JWT_EXPIRES_IN as any }
     );
 
     const { passwordHash: _, ...safeUser } = user;
