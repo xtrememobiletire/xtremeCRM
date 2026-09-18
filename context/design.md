@@ -625,6 +625,112 @@ Professional multi-job invoice generator matching the verified KT Group invoice 
 +-------------------------------------------------------------------------+
 ```
 
+### 6.9. Landing Page Self-Booking Lead Triage & Outbound Verification Queue (`/admin/leads`)
+
+Triage screen for unverified public roadside web submissions (`UNVERIFIED_PUBLIC`). Agents click to initiate instantaneous outbound call via embedded Telnyx softphone before promoting to active dispatch:
+
+```text
++------------------------------------------------------------------------------------------------------------------+
+| UNVERIFIED PUBLIC WEB BOOKINGS — REGION: [ CA-ONTARIO v ]                [ 3 PENDING TRIAGE ]  [ 🔊 LIVE CHIME ] |
++------------------------------------------------------------------------------------------------------------------+
+| QUEUE: INCOMING WEB SUBMISSIONS (AUTO-POLL: 5s) | OUTBOUND AGENT VERIFICATION COCKPIT                            |
+| ----------------------------------------------- | -------------------------------------------------------------- |
+| [●] ID #WEB-9102 • 3m ago                      | CUSTOMER: Michael Vance | PHONE: (416) 555-8821 [ 📞 CLICK TO CALL ]
+|     Michael Vance • Yorkdale Mall Lot G         | STATUS: [ UNVERIFIED_PUBLIC ]                                  |
+|     2021 Honda Civic (215/50R17)                | IP GEOLOCATION: Toronto, ON (Match: 1.2km from breakdown)      |
+|     Issue: Flat Tire (Need Plug or Replace)     | -------------------------------------------------------------- |
+|                                                 | 1. VERIFY LOCATION & ROADSIDE SAFETY:                          |
+| [ ] ID #WEB-9100 • 14m ago                      | Breakdown Pin: [ Yorkdale Mall Parking Lot G, Toronto ]        |
+|     Sarah Jenkins • Hwy 401 East Bound          | Cross-Street / Marker: [ Near Hudson's Bay lower entrance ]    |
+|     2019 Ford F-150 (275/65R18)                 | Customer in safe location? [x] Yes [ ] Highway Shoulder        |
+|                                                 |                                                                |
+| [ ] ID #WEB-9098 • 29m ago                      | 2. VERIFY VEHICLE & TIRE SPECIFICATION:                        |
+|     Dave Bautista • Mississauga City Centre     | Vehicle: [ 2021 Honda Civic Sedan v ]                          |
+|     2022 Toyota RAV4 (225/65R17)                | Tire Size: [ 215/50R17 ] [✓ MATCHES OEM DATABASE]              |
+|                                                 | Service Required: [ Tire Plug / Bead Reseal ($95 CAD) v ]      |
+|                                                 |                                                                |
+|                                                 | 3. PAYMENT & DISPATCH DISPOSITION:                             |
+|                                                 | Payment Terms: [ Card on Scene (POS Mobile Terminal) v ]       |
+|                                                 | Agreed Quote: [ $95.00 CAD ] Sales Tax: [x] +HST (13%)         |
+|                                                 | Total CX Price: $107.35 CAD                                    |
+|                                                 | -------------------------------------------------------------- |
+|                                                 | [ PROMOTE TO URGENT DISPATCH (ASSIGN TECH) ]                   |
+|                                                 | [ ⊘ DISMISS: NO ANSWER ] [ ⊘ DISMISS: SPAM / DUPLICATE ]        |
++------------------------------------------------------------------------------------------------------------------+
+```
+
+### 6.10. Accountant Tiered Console & Date Filter Presets (`/admin/accounting`)
+
+Tiered accounting reconciliation view with quick date presets and capability-based controls (`canApprovePayouts`):
+
+```text
++------------------------------------------------------------------------------------------------------------------+
+| FINANCIAL RECONCILIATION CONSOLE — SILO: [ 🇨🇦 CANADA (CAD) v ]    [ 👤 Sarah Lin (Junior Accountant) ]            |
++------------------------------------------------------------------------------------------------------------------+
+| QUICK DATE PRESETS: [ Yesterday ]  [ Last 3 Days ]  [● 1 Week / 7 Days ]  [ Monthly Amount ]  [ 📅 Custom Range ] |
+| Date Window: 2026-09-11 00:00:00 to 2026-09-18 23:59:59                                                          |
++------------------------------------------------------------------------------------------------------------------+
+| REGIONAL P&L SUMMARY (CAD SILO — ZERO CURRENCY BLENDING):                                                         |
+| +---------------------+ +---------------------+ +---------------------+ +---------------------+ +---------------+ |
+| | GROSS REVENUE (CP)  | | WHOLESALE TIRES(TC) | | DRIVER PAYOUTS (DC) | | PLATFORM ROYALTY(IT)| | AUDITED NET P&L | |
+| | $ 14,820.00 CAD     | | $  4,110.00 CAD     | | $  4,850.00 CAD     | | $   165.00 CAD      | | $ 5,695.00 CAD  | |
+| | 110 Completed Jobs  | | Direct Wholesale    | | Tech Labor          | | $1.50 CAD / Job     | | Margin: 38.4%   | |
+| +---------------------+ +---------------------+ +---------------------+ +---------------------+ +---------------+ |
++------------------------------------------------------------------------------------------------------------------+
+| AUDIT QUEUE — COMPLETED TICKETS REQUIRING EXPENSE STATING & PAYOUT APPROVAL:                                     |
+| TICKET #   | CX PAID | WHOLESALE (TC) | DRIVER PAY (DC) | OTHER EXP | NET PROFIT | RECEIPT UPLOAD | PAYOUT STATUS     |
+| ---------- | ------- | -------------- | --------------- | --------- | ---------- | -------------- | ----------------- |
+| CA-10492   | $160.00 | [ $45.00     ] | [ $60.00      ] | [ $0.00 ] | $ 53.50    | [📎 invoice.pdf]| [ LOCKED - SR REQ ]
+| CA-10490   | $380.00 | [ $140.00    ] | [ $110.00     ] | [ $10.00] | $118.50    | [📎 tire_wh.pdf] | [ LOCKED - SR REQ ]
+| CA-10488   | $ 95.00 | [ $ 0.00     ] | [ $45.00      ] | [ $0.00 ] | $ 48.50    | [ No receipt ] | [ LOCKED - SR REQ ]
++------------------------------------------------------------------------------------------------------------------+
+| * NOTE: Active user 'Sarah Lin' has canApprovePayouts = FALSE (Junior Tier). Payout approval action is disabled. |
+| Senior Accountants (or Admins) see active: [ ✓ APPROVE PAYOUT & CLOSE LEDGER ] button per line.                  |
++------------------------------------------------------------------------------------------------------------------+
+```
+
+### 6.11. Driver Financial Sandbox & Cash Hand-Off Modal (`/driver-portal`)
+
+Driver mobile view strictly sandboxed per NFR-4 (wholesale tire cost $TC$, company net profit, and IT platform fees $IT\_B$ are completely omitted from the UI/API payload). Includes physical cash envelope hand-off protocol:
+
+```text
++-------------------------------------------------------------------------+
+| XTREME MOBILE TECH — DRIVER CONSOLE                 [ 👤 Dave Miller ]  |
+| ACTIVE VEHICLE: Mobile Van #3 (Ford Transit)       [ 🟢 ON-DUTY / DISPATCH ]
++-------------------------------------------------------------------------+
+| TODAY'S SHIFT TELEMETRY (DRIVER PERSONAL EARNINGS ONLY):                 |
+| +---------------------------+ +---------------------------------------+ |
+| | MY EARNINGS / LABOR (DC)  | | CASH COLLECTED IN HAND                | |
+| | $ 240.00 CAD              | | $ 315.00 CAD (2 Transactions)         | |
+| | 4 Jobs Completed Today    | | [ HAND OFF CASH ENVELOPE ]            | |
+| +---------------------------+ +---------------------------------------+ |
++-------------------------------------------------------------------------+
+| ACTIVE DISPATCH: JOB #CA-10495                                          |
+| Location: 401 Eastbound Shoulder at Mavis Rd, Mississauga               |
+| Service: 1x Used Tire Replacement (225/55R17)                           |
+| Customer Name: Robert Chen (416-555-0199)                               |
+| Payment Method: [ CASH ON SCENE ($140.00 CAD DUE) ]                     |
+|                                                                         |
+| ACTIONS:                                                                |
+| [ 📷 SNAP PHOTO: DAMAGE BEFORE ]  [ 📷 SNAP PHOTO: INSTALLED TIRE AFTER ]|
+| [ 🟢 COLLECT CASH ($140.00) & MARK COMPLETE ]                           |
++-------------------------------------------------------------------------+
+
+[ MODAL: PHYSICAL CASH ENVELOPE HAND-OFF PROTOCOL ]
++-------------------------------------------------------------------------+
+| PHYSICAL CASH ENVELOPE HAND-OFF TO DISPATCH / SAFE                      |
+|                                                                         |
+| Total Cash in Driver Possession: $ 315.00 CAD                           |
+| Envelope Physical Serial #: [ ENV-20260918-03 ]                         |
+| Amount Sealed in Envelope: [ $ 315.00 CAD ]                             |
+| Receiving Dispatcher / Manager: [ Marcus Vance (Dispatch Mgr) v ]       |
+| Deposit Location: [ Regional Drop Box #2 (Mississauga Depot) v ]        |
+| Driver Signature / Confirmation: [x] I confirm cash is sealed in envelope|
+|                                                                         |
+| [ SUBMIT HAND-OFF FOR DISPATCH VERIFICATION ]         [ CANCEL ]        |
++-------------------------------------------------------------------------+
+```
+
 ---
 
 ## 7. Frontend Code Architecture & Quality Standards
@@ -892,3 +998,71 @@ Professional multi-job invoice generator matching the verified KT Group invoice 
    - Initial entry JS bundle < **350 KB** (gzipped).
    - Largest Contentful Paint (LCP) < **1.2s** on 4G network.
    - First Input Delay (FID) / Interaction to Next Paint (INP) < **50ms**.
+
+---
+
+### 8.11. Senior vs. Junior Accountant Permission Tiers & UI Affordances
+
+1. **Zero Enum Churn (Ponytail Capability Architecture):**
+   - Do NOT add database enum values (e.g. `JR_ACCOUNTANT`, `SR_ACCOUNTANT`). The system retains the single unified `Role.ACCOUNTANT`.
+   - Tiering is governed strictly by a capability boolean flag on the `User` model: `canApprovePayouts Boolean @default(false)` or role inheritance (`ADMIN` inherently satisfies all permissions).
+2. **Junior Accountant (`canApprovePayouts = false`):**
+   - **Permissions:** Can state job expenses per completed ticket: Wholesale Tire/Part Cost ($TC$), Technician Repairer Labor ($DC$), Other Incidentals, and upload supplier invoice receipts via Multer (`materialReceiptUrl`).
+   - **UI Affordance:** The "Approve Payout" action button renders disabled/locked (`cursor-not-allowed opacity-50 bg-slate-800 text-slate-400 border border-slate-700`) with tooltip: `"Requires Senior Accountant or Admin clearance"`.
+   - **P&L Visibility:** Can view operational cost breakdowns for tickets they audit, but cannot sign off or release payouts to drivers.
+3. **Senior Accountant (`canApprovePayouts = true` / `ADMIN`):**
+   - **Permissions:** Full auditing authority. Can state and adjust expenses, verify customer bank receipts (`paymentVerifiedById`), verify driver physical cash envelopes, and approve technician payout disbursements.
+   - **UI Affordance:** Active high-contrast emerald action button: `[ ✓ Approve Payout & Lock Ticket ]`.
+4. **Audit Immutability & Ledger Locking:**
+   - Once a Senior Accountant or Admin clicks "Approve Payout", the ticket's financial ledger is marked `LOCKED`.
+   - All inputs ($TC$, $DC$, incidentals) freeze into read-only badges to prevent retrospective tampering. Only an `ADMIN` can unlock an audited ticket.
+
+---
+
+### 8.12. Landing Page Self-Booking Triage State Machine
+
+Public motorists submitting self-service emergency requests from the landing page widget (`/`) enter a strict verification pipeline to eliminate spam, incorrect tire specs, and unserviceable locations before driver dispatch.
+
+1. **Lifecycle States:**
+   ```mermaid
+   stateDiagram-v2
+       [*] --> UNVERIFIED_PUBLIC: Web Form Submitted
+       UNVERIFIED_PUBLIC --> CONTACTING: Agent Clicks "Call CX" (Telnyx WebRTC)
+       CONTACTING --> VERIFIED_ACTIVE: Location & Tire Confirmed
+       CONTACTING --> UNREACHABLE: No Answer / Voicemail (3 Attempts)
+       CONTACTING --> DISMISSED_SPAM: Fake Info / Prank / Price Shopper
+       VERIFIED_ACTIVE --> ASSIGNED: Promoted to Active Dispatch Queue
+       UNREACHABLE --> ARCHIVED: Closed after 2 Hours
+       DISMISSED_SPAM --> ARCHIVED: Purged from Queue
+   ```
+2. **Auto-Polling & Real-Time Alerts:**
+   - The Lead Triage queue polls every 5 seconds or listens to WebSocket event `lead:new_web_submission`.
+   - Unverified leads older than 5 minutes pulse in warning amber; older than 15 minutes pulse in emergency crimson with badge `[ CRITICAL OVERDUE ]`.
+3. **Agent Verification Cockpit Controls:**
+   - **1-Click Outbound Dial:** Embedded Telnyx click-to-call dials the motorist immediately.
+   - **Location Verification:** Auto-displays customer geocoded pin against nearest highway exit/cross street.
+   - **Tire Specification Guard:** Compares user-entered tire size (e.g. `215/55R17`) against vehicle OEM specs; highlights green if OEM match, amber if non-standard size.
+   - **Promotion CTA:** Single click on `[ PROMOTE TO URGENT DISPATCH ]` transforms the lead into an active `Job` record with `status = PENDING_DISPATCH`, auto-provisions customer user profile, and broadcasts to Dispatch Manager queue.
+
+---
+
+### 8.13. Driver Cash Envelope Physical Handoff & Dispatch Reconciliation Protocol
+
+1. **Context & NFR-4 Isolation:**
+   - Drivers frequently collect physical cash payments on scene (e.g. tire plug or roadside swap).
+   - Per NFR-4, drivers NEVER see wholesale tire costs ($TC$), platform royalties ($IT\_B$), or company net profit. Drivers only see:
+     - Their own personal labor earnings ($DC$).
+     - Cumulative physical cash collected in hand (`cashInHandCents`).
+2. **Shift End Cash Envelope Hand-Off Workflow:**
+   - At the end of a shift (or when cash in hand exceeds threshold, e.g. $500), the driver must physically drop cash into the regional warehouse safe or hand it to the on-duty Dispatch Manager.
+   - **Step 1 (Driver Mobile App):** Driver taps `[ Hand Off Cash Envelope ]`.
+     - Driver enters sealed envelope tamper-evident serial number (e.g. `ENV-20260918-03`).
+     - Driver verifies exact cash amount enclosed (e.g. `$315.00 CAD`).
+     - Driver selects receiving manager or drop box location and signs digitally.
+     - Driver's app creates a `CASH_TRANSACTION` with status `PENDING_VERIFICATION`.
+   - **Step 2 (Dispatch Manager / Senior Accountant Physical Audit):**
+     - Manager opens the safe / receives envelope, counts the cash against the envelope serial number.
+     - In `/admin/accounting` -> `Cash Ledger`, manager clicks `[ Verify & Accept Cash ]`.
+     - System updates transaction to `VERIFIED`, updates `verifiedById`, and decrements the driver's active `cashInHandCents` balance to `$0.00`.
+   - **Discrepancy Resolution:**
+     - If physical cash count does not match the driver's declared envelope amount, the manager flags `DISCREPANCY`, inputs the actual counted amount, and system creates an audit note flagged for Admin review.
