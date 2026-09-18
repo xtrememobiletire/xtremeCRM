@@ -89,32 +89,13 @@
 ---
 
 ## 5. Session Status & Next Steps
-- **Current Milestone:** Final Streamlined Schema Synchronized & Pushed to Neon DB; Prisma 7 Client Generated; All Documentation 100% Reconciled.
-- **Prisma 7 Schema Deployed to Neon:**
-  - `prisma generate`: Generated Prisma Client (v7.10.0) successfully.
-  - `prisma db push`: Successfully synchronized with PostgreSQL database (`neondb` on Neon cloud).
-  - **Client & Boss Requirements Fully Protected:**
-    - `JobUrgency` (`URGENT`, `STANDARD`, `FUTURE`) preserved for intake dropdowns.
-    - `JobDisposition` (`BOOKED`, `RELEVANT_NOT_CONVERTED`, `WRONG_NUMBER`, etc.) & `dispositionNotes` preserved for call conversion metrics.
-    - 3-service categorization (`ServiceCategory` & `JobServiceItem[]`) preserved for catalog dispatching.
-    - `Customer.altPhone` and `Fleet.contractSignedAt` preserved.
-  - **Ephemeral & Duplicate Baggage Eliminated (Ponytail Principles):**
-    - Removed `User.currentLat`, `User.currentLng`, and `User.lastPingAt` (live GPS telemetry handled in-memory via Socket.io, eliminating 2,400+ DB writes/hr).
-    - Restored `User.isAgentActive` (persistent human call toggle) and removed `User.isOnline` from DB (ephemeral socket heartbeat moved to Redis/Socket.io only).
-    - Restored `Fleet.website` (PRD FR-3.1: Fleet Dashboard KPI card).
-    - Removed `Job.etaMinutes` frozen int, replaced with `Job.estimatedArrivalAt` timestamp (live countdown derived on client).
-    - Removed `Job.serviceType` freeform string (single source of truth in `JobServiceItem[]`).
-    - Removed `PortalMessage.actionUrl`, replaced with `relatedEntityType` and `relatedEntityId` (survives frontend route renames).
-    - Removed redundant `PortalMessage.isRead` boolean, replaced with `readAt DateTime?` (null = unread).
-    - Added `Vehicle.countryCode` and regional `@@unique([countryCode, licensePlate])`.
-    - Restored missing `User.phone` index for fast Telnyx caller ID lookup; added `createdById` indexes to `Job` and `Invoice`.
-    - Added `updatedAt` tracking to mutable models (`InvoiceItem`, `JobServiceItem`, `FleetCommissionLedger`, `PortalMessage`).
-    - Upgraded `Job.fleetId` index to composite `@@index([fleetId, status])`.
-    - Stripped redundant 560-line schema copy from `context/data_models.md`, pointing directly to `backend/prisma/schema.prisma` as single source of truth.
-- **Backend Stack:** Express (Node.js + TypeScript) with Helmet, Morgan, CORS, Cookie-Parser, Passport-JWT, Bcrypt, Multer, and Zod.
-- **Active Deliverables:** `backend/prisma/schema.prisma` validated and locked; documentation trimmed of duplicate code.
-- **Next Step:** Proceed with **Phase 1 Backend Scaffolding**:
-  1. Database Seed Script (catalog items per region, initial staff users with Bcrypt hashed passwords).
-  2. Telnyx softphone token service (`GET /api/telephony/token`) and webhook intake listener (`POST /api/telephony/webhook`).
-  3. Express Auth & Intake REST endpoints with Zod validation.
+- **Current Milestone:** Backend REST API, Controllers, Swagger UI, and Positive/Negative Test Suites 100% Complete; `context/design.md` updated with Section 8 Edge Cases, Token Scales & PWA specs.
+- **Backend Deliverables (Verified & Rock Solid):**
+  - All 11 controllers implemented and standardized on `backend/src/utils`.
+  - Swagger UI live console at `GET /api/docs` with OpenAPI 3.0 specification at `GET /api/docs/openapi.json`.
+  - Positive API suite: 33/33 passed (`tests/curl-all-endpoints.sh`).
+  - Negative API suite: 20/20 passed (`tests/curl-negative-tests.sh`).
+  - `pnpm lint` and `pnpm build` pass with 0 errors.
+- **Design System Deliverables:**
+  - `context/design.md` enriched with Section 2 dual-theme OKLCH tokens, zero-flicker `<head>` switching script, Zustand store, and segmented pill UI switcher; and Section 8 covering Error & Edge Cases, Form Validation, Design Token Scales, Mobile Driver PWA, Socket.io Real-Time, Data Tables, Notifications, Accessibility, Print/PDF, and Performance.
 

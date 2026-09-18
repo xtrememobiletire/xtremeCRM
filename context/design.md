@@ -18,40 +18,172 @@ The design system commits strictly to the **Industrial Utilitarian & Tactical Em
 
 ---
 
-## 2. Color Palette & Token Architecture
+## 2. Color Palette, Token Architecture & Dual-Theme Switching
 
-### 2.1. Color Tokens (OKLCH & Tailwind Utility Mappings)
+### 2.1. Perceptually Uniform Dual-Theme Color Tokens (OKLCH)
 
-| Token Name | OKLCH Value | Hex / RGB | Tailwind Class | Role & Operational Context |
-| :--- | :--- | :--- | :--- | :--- |
-| `--brand-emergency` | `oklch(58% 0.24 27)` | `#DC2626` | `bg-red-600 text-red-600` | Primary action buttons, brand mark, urgent badges, active intake tabs |
-| `--brand-crimson-dark` | `oklch(42% 0.22 27)` | `#991B1B` | `bg-red-800 text-red-800` | Focused outlines, high-priority row highlights, header borders |
-| `--brand-surface-tint` | `oklch(96% 0.03 27)` | `#FEF2F2` | `bg-red-50 text-red-950` | Urgent job highlight card surface, flash banners |
-| `--canvas-dark` | `oklch(12% 0.015 260)`| `#0A0D14` | `bg-[#0A0D14]` | Client portal dark backgrounds, dispatch console canvas |
-| `--surface-dark-1` | `oklch(16% 0.018 260)`| `#111827` | `bg-slate-900 / bg-gray-900` | Card containers, sidebar background, bento tiles |
-| `--surface-dark-2` | `oklch(20% 0.022 260)`| `#1E293B` | `bg-slate-800` | Input backgrounds, table header rows, hover states |
-| `--canvas-light` | `oklch(98.5% 0.005 80)`| `#F8FAFC` | `bg-slate-50` | Admin daylight page background |
-| `--surface-light` | `oklch(100% 0 0)` | `#FFFFFF` | `bg-white` | Modal windows, data tables, light cards |
-| `--text-primary-dark` | `oklch(98% 0.005 260)`| `#F8FAFC` | `text-slate-50` | High-contrast headings and active metrics |
-| `--text-secondary-dark` | `oklch(75% 0.015 260)`| `#94A3B8` | `text-slate-400` | Secondary labels, vehicle specs, timestamps |
-| `--border-specular-dark`| `oklch(90% 0.02 260 / 0.12)` | `rgba(255,255,255,0.12)` | `border-white/10` | 1px crisp specular card and table borders |
-| `--border-subtle-light` | `oklch(90% 0.008 260)`| `#E2E8F0` | `border-slate-200` | Table cell borders, light input outlines |
+The design system uses CSS Custom Properties rooted in the `oklch()` color space for exact perceptual uniformity across daylight operations and nighttime roadside dispatch.
 
-### 2.2. Status Indicator LEDs & Badge Styles
+| Token Name | Light Mode (Daylight Console) | Dark Mode (Tactical Obsidian) | Shared Utility Role |
+| :--- | :--- | :--- | :--- |
+| `--bg-canvas` | `oklch(98.5% 0.005 80)` (`#F8FAFC`) | `oklch(12% 0.015 260)` (`#0A0D14`) | 60% Dominant app background |
+| `--surface-base` | `oklch(100% 0 0)` (`#FFFFFF`) | `oklch(16% 0.018 260)` (`#111827`) | Main card containers, table backgrounds |
+| `--surface-raised` | `oklch(96.5% 0.008 80)` (`#F1F5F9`) | `oklch(20% 0.022 260)` (`#1E293B`) | Input boxes, table headers, hovered rows |
+| `--surface-overlay` | `oklch(100% 0 0)` (`#FFFFFF`) | `oklch(24% 0.025 260)` (`#26334D`) | Modals, floating popovers, dropdowns |
+| `--text-primary` | `oklch(15% 0.015 260)` (`#0F172A`) | `oklch(98% 0.005 260)` (`#F8FAFC`) | High-contrast titles, tabular metrics |
+| `--text-secondary` | `oklch(45% 0.02 260)` (`#64748B`) | `oklch(75% 0.015 260)` (`#94A3B8`) | Field labels, timestamps, secondary specs |
+| `--text-muted` | `oklch(60% 0.015 260)` (`#94A3B8`) | `oklch(55% 0.012 260)` (`#64748B`) | Captions, unselected tabs, placeholders |
+| `--border-subtle` | `oklch(90% 0.008 260)` (`#E2E8F0`) | `oklch(90% 0.02 260 / 0.10)` (`rgba(255,255,255,0.10)`) | 1px hairline card borders, cell rules |
+| `--border-prominent` | `oklch(80% 0.012 260)` (`#CBD5E1`) | `oklch(90% 0.02 260 / 0.22)` (`rgba(255,255,255,0.22)`) | Active card boundaries, focused outlines |
+| `--brand-emergency` | `oklch(58% 0.24 27)` (`#DC2626`) | `oklch(58% 0.24 27)` (`#DC2626`) | 10% Constant High-Voltage Emergency Red |
+| `--brand-surface-tint`| `oklch(97% 0.025 27)` (`#FEF2F2`) | `oklch(25% 0.08 27 / 0.25)` | Urgent row background highlight |
+| `--accent-radar` | `oklch(68% 0.20 145)` (`#059669`) | `oklch(72% 0.22 145)` (`#10B981`) | Connected LED, Active Technician status |
+| `--accent-caution` | `oklch(70% 0.18 75)` (`#D97706`) | `oklch(75% 0.18 75)` (`#F59E0B`) | Pending verification, Warning alerts |
+| `--card-shadow` | `0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.03)` | `0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)` | Specular depth in dark / soft lift in light |
+
+### 2.2. CSS Token Implementation (`index.css`)
 
 ```css
-/* Tactical Status System */
+/* Light Mode (Default Daylight Console) */
+:root {
+  color-scheme: light;
+  --bg-canvas: oklch(98.5% 0.005 80);
+  --surface-base: oklch(100% 0 0);
+  --surface-raised: oklch(96.5% 0.008 80);
+  --surface-overlay: oklch(100% 0 0);
+  --text-primary: oklch(15% 0.015 260);
+  --text-secondary: oklch(45% 0.02 260);
+  --text-muted: oklch(60% 0.015 260);
+  --border-subtle: oklch(90% 0.008 260);
+  --border-prominent: oklch(80% 0.012 260);
+  --brand-emergency: oklch(58% 0.24 27);
+  --brand-surface-tint: oklch(97% 0.025 27);
+  --accent-radar: oklch(68% 0.20 145);
+  --accent-caution: oklch(70% 0.18 75);
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.03);
+  --backdrop-filter: blur(12px);
+}
+
+/* Dark Mode (Tactical Obsidian Terminal) */
+[data-theme="dark"], .dark {
+  color-scheme: dark;
+  --bg-canvas: oklch(12% 0.015 260);
+  --surface-base: oklch(16% 0.018 260);
+  --surface-raised: oklch(20% 0.022 260);
+  --surface-overlay: oklch(24% 0.025 260);
+  --text-primary: oklch(98% 0.005 260);
+  --text-secondary: oklch(75% 0.015 260);
+  --text-muted: oklch(55% 0.012 260);
+  --border-subtle: oklch(90% 0.02 260 / 0.10);
+  --border-prominent: oklch(90% 0.02 260 / 0.22);
+  --brand-emergency: oklch(58% 0.24 27);
+  --brand-surface-tint: oklch(25% 0.08 27 / 0.25);
+  --accent-radar: oklch(72% 0.22 145);
+  --accent-caution: oklch(75% 0.18 75);
+  --card-shadow: 0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+  --backdrop-filter: blur(16px) saturate(160%);
+}
+```
+
+### 2.3. Zero-Flicker Theme Switching Engine Architecture
+
+To eliminate the jarring white flash (FOUC) when loading or reloading the application, a sub-100-byte blocking inline script executes in `<head>` before the DOM renders:
+
+```html
+<!-- In index.html <head> (Executed synchronously before render) -->
+<script>
+  (function() {
+    try {
+      const stored = localStorage.getItem('xtreme_theme_mode');
+      const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = stored === 'dark' || (!stored && isSystemDark) ? 'dark' : (stored === 'light' ? 'light' : (isSystemDark ? 'dark' : 'light'));
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) {}
+  })();
+</script>
+```
+
+#### Zustand Theme Store Model (`useThemeStore.ts`)
+```typescript
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+export type ThemeMode = 'light' | 'dark' | 'system';
+
+interface ThemeState {
+  mode: ThemeMode;
+  resolvedTheme: 'light' | 'dark';
+  setTheme: (mode: ThemeMode) => void;
+}
+
+export const useThemeStore = create<ThemeState>()(
+  persist(
+    (set, get) => ({
+      mode: 'system',
+      resolvedTheme: 'dark',
+      setTheme: (mode: ThemeMode) => {
+        const isDark =
+          mode === 'dark' ||
+          (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        
+        const root = document.documentElement;
+        if (isDark) {
+          root.classList.add('dark');
+          root.setAttribute('data-theme', 'dark');
+        } else {
+          root.classList.remove('dark');
+          root.setAttribute('data-theme', 'light');
+        }
+
+        set({ mode, resolvedTheme: isDark ? 'dark' : 'light' });
+      },
+    }),
+    { name: 'xtreme_theme_mode' }
+  )
+);
+```
+
+### 2.4. Tactical Theme Switcher Component Blueprint
+
+Mounted in the top navigation bar adjacent to the regional hub selector (`[ CA | US | UK ]`):
+
+```text
++-------------------------------------------------------------+
+| TOP NAVIGATION BAR                                          |
+|                                                             |
+| [XTREME MOBILE TIRE]    [REGIONS: CA | US* | UK]            |
+|                                                             |
+|                          THEME SELECTOR:                    |
+|                         +---------------------------------+ |
+|                         | [☀️ Day] | [🌙 Night*] | [💻 Auto] | |
+|                         +---------------------------------+ |
++-------------------------------------------------------------+
+```
+
+- **Visual Architecture:** High-precision segmented pill (`bg-slate-200/50 dark:bg-white/10 p-0.5 rounded-full border border-slate-300/40 dark:border-white/10`).
+- **Tactile Active Segment:** Elevated white thumb in light mode (`bg-white text-slate-900 shadow-sm`), obsidian graphite thumb in dark mode (`bg-slate-900 text-white shadow-inner border border-white/15`).
+- **Keyboard Shortcut:** `Alt + T` immediately cycles `Light` $\rightarrow$ `Dark` $\rightarrow$ `System`.
+
+### 2.5. Status Indicator LEDs & Badge Styles
+
+```css
+/* Tactical Status System (Adaptive across Light & Dark) */
 .status-pill-urgent {
-  background: oklch(58% 0.24 27 / 0.15);
-  color: oklch(62% 0.25 25);
+  background: var(--brand-surface-tint);
+  color: var(--brand-emergency);
   border: 1px solid oklch(58% 0.24 27 / 0.4);
-  box-shadow: 0 0 10px oklch(58% 0.24 27 / 0.3);
+  box-shadow: 0 0 10px oklch(58% 0.24 27 / 0.25);
   animation: pulseLed 2s infinite ease-in-out;
 }
 
 .status-pill-active {
   background: oklch(72% 0.22 145 / 0.15);
-  color: oklch(72% 0.22 145);
+  color: var(--accent-radar);
   border: 1px solid oklch(72% 0.22 145 / 0.4);
 }
 
@@ -63,7 +195,7 @@ The design system commits strictly to the **Industrial Utilitarian & Tactical Em
 
 .status-pill-pending {
   background: oklch(75% 0.18 75 / 0.15);
-  color: oklch(75% 0.18 75);
+  color: var(--accent-caution);
   border: 1px solid oklch(75% 0.18 75 / 0.4);
 }
 
@@ -515,3 +647,248 @@ Professional multi-job invoice generator matching the verified KT Group invoice 
    - Mobile touch targets $\ge 48\text{px} \times 48\text{px}$ for outdoor technician gloved use.
    - All modals trap focus and support `Esc` to close.
    - Full support for `prefers-reduced-motion`.
+
+---
+
+## 8. Missing Design Specifications & Edge Case Architecture
+
+### 8.1. Error & Edge Cases
+
+1. **Loading States (Skeleton Screens):**
+   - Shimmer animation: `oklch(16% 0.018 260)` background with `oklch(22% 0.025 260)` linear gradient shimmer at `1.5s` infinite loop.
+   - Layout matching: Table skeletons match exact column counts (`Job #`, `Customer`, `Vehicle`, `Address`, `Status`); Card skeletons match exact bento grid aspect ratios.
+   - Zero layout shift (CLS < 0.05).
+2. **Empty States:**
+   - **No Jobs in Queue:** Radar ping icon with text: `"Radar Clear — No Active Roadside Dispatches"` + `[ + Create New Ticket (N) ]` primary CTA.
+   - **No Vehicles Registered:** Wireframe truck icon with text: `"No Vehicles in Fleet Registry"` + `[ + Add Vehicle ]` button.
+   - **No Messages:** Muted chat icon with text: `"Inbox Zero — No active conversations"`.
+3. **Error States:**
+   - **API / Network Failure:** Top banner with Amber/Red striped border: `"Connection lost to regional hub. Auto-reconnecting in 5s..."` + `[ Retry Now ]` button.
+   - **Network Timeout (>10s):** Persistent non-blocking toast with manual retry option.
+   - **GPS / Geolocation Denied:** Banner on intake/driver screen: `"GPS Access Blocked — Manual breakdown address entry required"`.
+4. **Success Confirmations:**
+   - **Job Booked:** Tactical green flash checkmark banner + audible discrete chime (if sound on) + copyable ticket code badge (`JOB-CA-10492`).
+   - **Payment Verified:** Green verified shield badge on ticket + instant status change to `VERIFIED_PAID`.
+
+---
+
+### 8.2. Form Validation Visual Patterns
+
+1. **Validation Trigger Timing:**
+   - **On Blur:** Individual field format checks (Phone E.164, Email format, Tire Size format `235/65R17`).
+   - **On Submit:** Complete form requirement check with auto-scroll and focus to first invalid field.
+   - **On Change (Post-Error):** Live error clearance as user types valid characters.
+2. **Error Placement & Styling:**
+   - Inline message located strictly **below the input field** (`text-xs text-red-500 font-medium mt-1 flex items-center gap-1`).
+   - Input field border transitions to `oklch(58% 0.24 27)` (Red-600) with `2px ring-red-500/20`.
+3. **Required Field Indicators:**
+   - Asterisk with distinct color: `<span class="text-red-500 ml-0.5">*</span>`.
+   - Optional fields explicitly labeled with helper badge: `<span class="text-slate-400 text-xs">(Optional)</span>`.
+4. **Success Indicators:**
+   - Subtly indicated with right-aligned mini checkmark (`text-emerald-500`) inside input container upon valid blur for critical lookup inputs (e.g. Phone, License Plate).
+
+---
+
+### 8.3. Comprehensive Design Tokens Scale
+
+```css
+:root {
+  /* Line-Height Scale */
+  --leading-none: 1.0;
+  --leading-tight: 1.25;    /* Display headers, emergency alerts */
+  --leading-snug: 1.375;   /* Form labels, card titles */
+  --leading-normal: 1.5;    /* Standard UI body text */
+  --leading-relaxed: 1.625; /* Problem notes, long text */
+
+  /* 4px-Base Spacing System */
+  --space-0-5: 0.125rem; /* 2px */
+  --space-1: 0.25rem;    /* 4px */
+  --space-2: 0.5rem;     /* 8px */
+  --space-3: 0.75rem;    /* 12px */
+  --space-4: 1.0rem;     /* 16px - Base unit */
+  --space-5: 1.25rem;    /* 20px */
+  --space-6: 1.5rem;     /* 24px */
+  --space-8: 2.0rem;     /* 32px */
+  --space-10: 2.5rem;    /* 40px */
+  --space-12: 3.0rem;    /* 48px - Mobile touch target */
+  --space-16: 4.0rem;    /* 64px */
+
+  /* Layered Z-Index Scale */
+  --z-negative: -1;
+  --z-base: 0;
+  --z-table-sticky: 10;
+  --z-topbar: 20;
+  --z-dropdown: 30;
+  --z-sticky-header: 40;
+  --z-modal-backdrop: 50;
+  --z-modal: 60;
+  --z-drawer: 70;
+  --z-toast: 100;
+  --z-tooltip: 110;
+
+  /* Border-Radius Scale */
+  --radius-none: 0px;
+  --radius-xs: 2px;     /* Micro-badges, inline tags */
+  --radius-sm: 4px;     /* Buttons, compact inputs, status pills */
+  --radius-md: 8px;     /* Standard cards, popovers, dropdowns */
+  --radius-lg: 12px;    /* Modals, bento grid hero cards */
+  --radius-full: 9999px;/* Circular avatar, active LEDs */
+
+  /* Focus Ring Style */
+  --focus-ring-color: #DC2626; /* Brand Emergency Red */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --focus-ring: 0 0 0 var(--focus-ring-offset) #0A0D14, 0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width)) var(--focus-ring-color);
+
+  /* Disabled State Styling */
+  --disabled-opacity: 0.45;
+  --disabled-cursor: not-allowed;
+  --disabled-bg: #1F2937;
+  --disabled-text: #6B7280;
+}
+```
+
+---
+
+### 8.4. Mobile Driver PWA (Field Technician Mode)
+
+1. **Offline Mode & Network Drops:**
+   - Service Worker caches static shell, offline service catalog, and last assigned job state.
+   - Status updates performed while offline are queued in IndexedDB (`local_dispatch_queue`).
+   - Sticky amber top badge appears when disconnected: `"OFFLINE MODE — 3 Actions Pending Sync"`.
+   - Automatic background replay with exponential backoff on reconnection.
+2. **GPS Denied State:**
+   - Persistent warning card on driver mobile screen: `"GPS Disabled — Tap to enable location permissions in browser settings for accurate arrival tracking"`.
+   - Driver can manually tap `[ I Have Arrived (Manual) ]` with mandatory prompt confirmation.
+3. **Proof-of-Service Photo Capture:**
+   - Direct native camera access via `<input type="file" accept="image/*" capture="environment">`.
+   - Pre-upload client compression (< 1MB WebP) to prevent multi-megabyte cellular uploads from the shoulder of highways.
+   - Timestamp and GPS watermark overlaid on photo metadata preview.
+4. **Telemetry & Hardware Status Indicators:**
+   - Compact header status strip: Battery level (`[🔋 84%]`), Network connectivity (`[📶 5G]`), and GPS accuracy (`[📍 ±5m]`).
+5. **Tactile Haptic Feedback:**
+   - `navigator.vibrate([40])` on critical button presses (e.g. `[ En Route ]`, `[ Arrived ]`, `[ Job Complete ]`).
+   - Double buzz `navigator.vibrate([50, 100, 50])` on urgent call dispatch alert.
+
+---
+
+### 8.5. Real-Time Socket.io Features
+
+1. **Connection Status LED (Top Nav):**
+   - `● Connected`: Tactical Radar Green dot (`#10B981`) with soft glow.
+   - `◌ Reconnecting...`: Amber pulsing dot (`#F59E0B`) with spinner.
+   - `○ Disconnected`: High-voltage Red dot (`#DC2626`) with `"Offline"` text.
+2. **Reconnection Strategy:**
+   - Auto-reconnect with exponential backoff (`1s`, `2s`, `5s`, `10s`, max `30s`).
+   - Automatic room rejoin on reconnect (`dispatch:${countryCode}`, `driver:${id}`).
+3. **Optimistic UI Updates:**
+   - UI updates job status immediately on action click (e.g. `PENDING` -> `ASSIGNED`).
+   - If server rejects or fails within 5s, rollback state and display inline toast: `"Update failed. Reverted to previous state."`.
+4. **Stale Data Warning:**
+   - When tab loses focus for > 15 minutes, yellow subtle ribbon: `"Data may be stale — Auto-refreshing queue..."` with TanStack Query automatic query invalidation.
+
+---
+
+### 8.6. Data Tables & Telemetry Lists
+
+1. **Sort Indicators:**
+   - Unsorted: Muted double chevron (`↕`).
+   - Ascending: Crisp high-contrast red arrow (`▲`).
+   - Descending: Crisp high-contrast red arrow (`▼`).
+2. **Pagination Interface:**
+   - Monospace telemetry footer: `Showing 1–20 of 342 entries`.
+   - Compact controls: `[◀ Prev]` `Page 1 of 18` `[Next ▶]` + rows-per-page dropdown `[ 20 / 50 / 100 ]`.
+3. **Row Interaction & States:**
+   - Row hover: Subtle specular highlight (`bg-white/[0.03]` in dark mode, `bg-slate-50` in light mode).
+   - Urgent row: Red border-left highlight (`border-l-4 border-red-600 bg-red-600/[0.04]`).
+   - Row selection: Checkbox with active row highlight.
+4. **Sticky Headers:**
+   - `thead { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(8px); background: rgba(17, 24, 39, 0.95); }`.
+5. **Column Resizing:**
+   - Clean 1px separator handle with hover highlight (`hover:bg-red-500/50 cursor-col-resize`).
+
+---
+
+### 8.7. Notification System & Audio Alerts
+
+1. **Toast Notifications:**
+   - **Position:** Top-right (`top-4 right-4`) on desktop; Bottom-center (`bottom-4 left-4 right-4`) on mobile.
+   - **Duration:** 4 seconds for standard notices; Persistent with manual `[✕]` dismiss for errors and urgent incoming calls.
+   - **Styling:** Obsidian card with colored left border accent (Red for urgent, Green for success, Amber for warning).
+2. **Sound Toggle:**
+   - Top nav volume icon switch: `[ 🔊 Sound ON ]` / `[ 🔇 Muted ]` persisted in localStorage.
+   - Distinct synthesized frequencies: Emergency ring (880Hz / 440Hz dual tone), Dispatch chime (523Hz high tone).
+3. **Notification Drawer:**
+   - Bell icon with unread count badge (`[ 3 ]`).
+   - Slide-over drawer listing chronological historical notifications with `[ Mark All Read ]` button.
+4. **Web Push Permissions:**
+   - Contextual permission modal displayed after first login explaining: `"Enable push notifications to receive roadside emergency alerts and dispatch updates"`.
+
+---
+
+### 8.8. Accessibility Gaps & Standards
+
+1. **ARIA Live Regions:**
+   - Dedicated hidden live region: `<div role="status" aria-live="polite" aria-atomic="true" class="sr-only"></div>` for background status changes.
+   - Urgent call popups use `role="alert" aria-live="assertive"`.
+2. **Screen Reader Announcements:**
+   - Live announcements on operational changes: `"Job CA-10492 status changed to En Route"`, `"Driver Dave Miller assigned to Ticket US-4019"`.
+3. **Keyboard Shortcuts Modal:**
+   - Triggerable via `?` or `Cmd/Ctrl + /`:
+     - `N`: Open New Intake Form
+     - `Space`: Answer Incoming Call
+     - `Escape`: Close Modals / Deselect
+     - `Alt + 1 / 2 / 3`: Switch Region (CA / US / UK)
+     - `/`: Focus Search Bar
+4. **Skip Navigation Links:**
+   - Top of DOM: `<a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:bg-red-600 focus:text-white focus:px-4 focus:py-2 focus:z-[120]">Skip to main content</a>`.
+
+---
+
+### 8.9. Print & PDF Styles
+
+1. **Invoice PDF Layout Standards:**
+   - Page geometry: North American Standard `Letter (8.5in x 11in)` with fallback to `A4 (210mm x 297mm)` for UK operations.
+   - Strict margins: `0.5in (36pt)` around all borders.
+2. **Print CSS Overrides:**
+   ```css
+   @media print {
+     nav, aside, header, .no-print, button:not(.print-include) {
+       display: none !important;
+     }
+     body {
+       background: #ffffff !important;
+       color: #000000 !important;
+     }
+     .invoice-container {
+       box-shadow: none !important;
+       border: none !important;
+       width: 100% !important;
+       max-width: 100% !important;
+       padding: 0 !important;
+     }
+     .page-break-inside-avoid {
+       break-inside: avoid;
+       page-break-inside: avoid;
+     }
+   }
+   ```
+3. **Page Break Rules:**
+   - Itemized tables use `tr { break-inside: avoid; }`.
+   - Total summary and bank remittance payment blocks never orphaned on new page.
+
+---
+
+### 8.10. Performance & Optimization Targets
+
+1. **Route-Level Code Splitting:**
+   - Every page route lazily loaded via `React.lazy()` with Suspense fallback to skeleton screen.
+2. **Virtual Scrolling:**
+   - Queues exceeding 100 items render via `@tanstack/react-virtual` or lightweight windowing, maintaining fixed 20 DOM nodes.
+3. **Asset Optimization:**
+   - Vehicle silhouettes, brand badges, and photos use WebP format with PNG fallbacks.
+   - Inline SVG icons via Lucide React with tree-shaking.
+4. **Bundle Budgets:**
+   - Initial entry JS bundle < **350 KB** (gzipped).
+   - Largest Contentful Paint (LCP) < **1.2s** on 4G network.
+   - First Input Delay (FID) / Interaction to Next Paint (INP) < **50ms**.
