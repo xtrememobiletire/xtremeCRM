@@ -13,10 +13,13 @@ The software bridges the gap between high-pressure call-center intake, real-time
 | Persona | Role in System | Key Needs |
 | :--- | :--- | :--- |
 | **Global Admin** | "Admin sees everything" — Full God-Mode oversight. | Unrestricted cross-country visibility across Canada, USA, and UK; full control to dispatch, edit invoices, state expenses, and view profit margins without bureaucratic internal blocks. |
-| **Call Center Agent** | Handles inbound phone calls, WhatsApp inquiries, and website bookings. | Active/Inactive presence toggle, Telnyx inbound screen pop with pre-filled caller number, instant customer/vehicle auto-lookup, Google address geocoding, 16-service picker, tax toggle, customer user account provisioning, call disposition logging. |
+| **Call Center Agent** | Handles inbound phone calls and website bookings; qualifies outbound B2B fleet leads (Phase 2). | Tri-state mode toggle (`INACTIVE` / `INBOUND` / `OUTBOUND` — one active at a time), Telnyx inbound screen pop with pre-filled caller number, instant customer/vehicle auto-lookup, Google address geocoding, 16-service picker, tax toggle, customer user account provisioning, call disposition logging, Telnyx warm transfer to Dispatch Manager / Admin for fleet contract close. |
 | **Dispatch Manager** | Assigns roadside jobs to drivers based on proximity and urgency; manages fleet accounts. | Urgent vs Standard queue with expandable accordion, arbitrary address distance measurement tool, single-click driver assignment, live status monitoring, driver messaging, driver cash-in-hand tracking, Fleets directory. |
 | **Accountant** | Audits completed tickets, states job expenses, verifies payments, and manages regional P&L. | States expenses per completed job (wholesale material costs, technician repairer fees, other incidentals), verifies customer payment, audits receipts via Multer, approves repairer payouts, and monitors regional P&L ledgers (CAD, USD, GBP strictly separated). |
-| **Virtual Assistant (VA)** | B2B cold calling & fleet lead acquisition. | ViciDial/BulkVS outreach, warm transfer to Dispatch Manager, automatic tracking of **$2–$3 commission per completed job** for acquired fleet accounts. |
+| **Virtual Assistant (VA)** | B2B fleet lead acquisition & cold-call data sourcing. | Imports fleet prospect data via CSV/Excel upload into CRM (auto-tagged to VA via JWT), system round-robin assigns leads to call agents, warm transfer of interested prospects to Dispatch Manager / Admin via Telnyx attended transfer, automatic tracking of **$2–$3 commission per completed job** for acquired fleet accounts via `FleetCommissionLedger`. |
+
+> [!NOTE]
+> **WhatsApp:** There is currently no WhatsApp Business API integration. `WHATSAPP` exists only as a manual lead source tag — the owner handles WhatsApp conversations outside the CRM, and agents select `WHATSAPP` as the source when creating jobs from those conversations. A full WhatsApp Business API integration (automated message ingestion, template messaging, 24-hour session management) may be added in a future phase.
 
 ### 2.2. External Customer Accounts (NOT Company Staff — Sandboxed Client Portals)
 | Persona | Access Portal | Key Needs |
@@ -29,18 +32,19 @@ The software bridges the gap between high-pressure call-center intake, real-time
 ## 3. Functional Requirements
 
 ### 3.1. Inbound Call Intake & Telnyx WebRTC Softphone Module
-- **FR-1.1: Agent Presence State:** Every agent has an `Active` / `Inactive` presence toggle in the CRM top navigation. Inactive agents receive zero call routing; active agents automatically receive incoming calls and screen pops.
+- **FR-1.1: Agent Presence & Mode State:** Every agent has a tri-state mode toggle in the CRM top navigation: `INACTIVE` / `INBOUND` / `OUTBOUND` (only one active at a time, hard lock). `INACTIVE` agents receive zero call routing and see no outbound queue. `INBOUND` agents automatically receive incoming calls and screen pops. `OUTBOUND` agents are invisible to inbound call routing and instead see their assigned outbound lead queue (Phase 2).
 - **FR-1.2: Embedded Telnyx WebRTC Softphone & Dual-Trigger Screen Pop:**
   - **In-Browser Digital Phone:** Embedded `@telnyx/webrtc` client connected via short-lived JWTs minted by the backend (`GET /api/telephony/token`).
   - **Single-Click Answering:** When a call arrives, the agent hears the ringtone directly through their headset and can answer with 1 click (`[ Answer Call ]` or Spacebar) inside the CRM tab.
   - **Dual-Trigger Screen Pop:** Incoming calls trigger an immediate modal popup simultaneously via the browser WebRTC `ringing` event and the backend Telnyx webhook (`POST /api/telephony/webhook` over Socket.io) ensuring zero lag even under high network latency.
   - **Click-to-Call Outbound:** Agents and dispatchers can click any phone number in tickets, customer profiles, or driver cards to initiate immediate outbound calling through the browser headset.
+  - **Attended (Warm) Transfer:** Agent can place the current call on hold, internally call a Dispatch Manager or Admin to brief them, then bridge the prospect into the conversation or drop off. Used for fleet contract qualification handoffs (Phase 2 outbound) and inbound escalations. Implemented via Telnyx Call Control API (`/v2/calls/{call_leg_id}/actions/transfer`).
 - **FR-1.3: Data Division: Auto-Populated vs. Agent-Entered Intake Details:**
   To maximize operational speed while ensuring accurate roadside dispatching, the intake form explicitly partitions data between automated system ingestion and live agent conversation entry:
   
   **A. Auto-Populated by System (Zero Manual Typing on Ring):**
   1. *Caller Phone Number (`phone`):* Automatically extracted from Telnyx caller ID (`caller_id_number`) and locked into the primary phone input.
-  2. *Default Lead Source (`source`):* Defaults automatically to `DIRECT_CALL` (or `WHATSAPP` / `WEBSITE` if ingested via webhook).
+  2. *Default Lead Source (`source`):* Defaults automatically to `DIRECT_CALL`. Agent can manually override to `WHATSAPP` (owner handles WhatsApp conversations manually — no WhatsApp Business API), `WEBSITE`, `LANDING_PAGE_SELF_BOOK`, `FLEET_PORTAL`, or `MEMBER_PORTAL` based on how the customer reached the company.
   3. *Call Timestamp & Unique Call ID:* System auto-generates call ticket ID and timestamps entry.
   4. *Caller Profile Detection (Returning vs. Non-User / First-Time Caller):*
      - The system executes an instant background lookup (`GET /api/customers/lookup?phone=...`):
@@ -170,6 +174,11 @@ The software bridges the gap between high-pressure call-center intake, real-time
     2. **Last 3 Days:** Rolling 72h window for weekend backlog reconciliation.
     3. **1 Week / 7 Days:** Weekly dispatch cycle for consolidated fleet billing.
     4. **Monthly Amount:** Full calendar month-to-date regional P&L ledger.
+- **FR-6.8: IT Platform Royalties Dashboard (`IT_B`):**
+  - Dedicated admin page displaying accumulated platform developer royalties across all completed jobs.
+  - Breakdown by country/currency (CAD, USD, GBP — never blended or cross-currency).
+  - Same quick date filter presets as accounting (Yesterday, 3 Days, 1 Week, Monthly).
+  - Visible to `ADMIN` role only (platform developers operate under `ADMIN` accounts — no separate `DEVELOPER` role).
 
 ### 3.7. Regional Territorial Hubs
 - **FR-7.1: US Regional Hub:** 11815 Medway Church Loop, Manassas, VA 20109 | (804) 326-5442 (Covers VA, MD, DC, KY, NC, TN in USD).
@@ -181,6 +190,60 @@ The software bridges the gap between high-pressure call-center intake, real-time
   - Inbound submissions auto-poll every 5 seconds with auditory chime.
   - Agents verify customer location, OEM tire size compatibility, and payment method via embedded Telnyx softphone click-to-call before clicking `[ PROMOTE TO URGENT DISPATCH ]`.
   - Non-responsive or invalid submissions are dismissed with dispositions `UNREACHABLE` or `SPAM`.
+
+### 3.9. Outbound Lead Management & B2B Fleet Acquisition Module (Phase 2)
+> **Build Priority:** Inbound operations (Sections 3.1–3.8) are built first. This section documents the outbound workflow to reserve architectural space — schema, enums, and API surface — without blocking Phase 1 delivery.
+
+- **FR-9.1: Virtual Assistant CSV/Excel Lead Import:**
+  - VAs upload CSV/Excel files containing fleet prospect data via the admin portal (`POST /api/leads/import`).
+  - **Required CSV Columns:** Company Name, Company Address, Website, Fleet Manager Name, CEO/Owner Name, Contact Number, Alternative Contact Number, Official Email, Decision Maker Email, Number of Units (NOU — total fleet vehicle count).
+  - System auto-tags every imported lead row with the uploading VA's identity (`uploadedByVaId`) from JWT authentication — no manual "uploaded by" column required in the CSV.
+  - **Duplicate Detection on Import:** On upload, system checks each row's `contactNumber` and `companyName` against existing leads. Matching records are imported but flagged as `POSSIBLE_DUPLICATE` with a reference to the original VA who uploaded the matching record. No silent drops, no hard blocks — VA or manager decides to merge, skip, or keep both.
+
+- **FR-9.2: Round-Robin Lead Assignment:**
+  - Upon CSV import, leads are distributed evenly across available call agents using round-robin assignment.
+  - Each lead record stores `assignedAgentId` set at import time.
+  - Agents in `OUTBOUND` mode see only their personally assigned leads.
+  - Managers can manually reassign leads between agents if needed.
+
+- **FR-9.3: Agent Outbound Mode & Click-to-Call Workflow:**
+  - Agents toggle to `OUTBOUND` mode via the tri-state mode toggle (FR-1.1). While in `OUTBOUND`, the agent is invisible to inbound call routing (hard lock).
+  - Outbound mode displays the agent's assigned lead queue sorted by: **scheduled callbacks first** (by datetime), then newest unworked leads.
+  - Agent clicks **[ Call ]** on a lead → Telnyx WebRTC dials the contact number through the browser headset (same softphone as inbound, same `@telnyx/webrtc` client).
+  - After each call, agent **must** set a disposition and optional notes before moving to the next lead.
+
+- **FR-9.4: Outbound Call Dispositions:**
+  - `CALLBACK` — Prospect requested callback (agent sets callback date, day, and time).
+  - `CONVERTED` — Prospect interested; warm-transferred to Dispatch Manager / Admin for contract close.
+  - `NOT_INTERESTED` — Prospect declined.
+  - `WRONG_NUMBER` — Invalid or disconnected number.
+  - `NO_ANSWER` — No pickup after ring timeout.
+  - `VOICEMAIL` — Left voicemail message.
+  - `RNC` — Relevant, not converted (warm lead, follow up later).
+
+- **FR-9.5: Callback Scheduling:**
+  - When disposition is `CALLBACK`, agent enters callback date, day, and time.
+  - At the scheduled time, the lead resurfaces at the **top of the same agent's** outbound queue (agent retains conversation context from the first call).
+  - Lead card displays a prominent badge: **"Callback scheduled — Thu 2:00 PM"**.
+  - If the original agent is unavailable on the callback date, a manager can reassign the lead to another agent.
+
+- **FR-9.6: Warm Transfer to Dispatch Manager / Admin (Fleet Contract Close):**
+  - Call agents are **qualifiers**, not closers. When a prospect expresses interest in a fleet contract, the agent initiates a **Telnyx attended (warm) transfer** (FR-1.2):
+    1. Agent puts prospect on hold via Telnyx Call Control.
+    2. Agent internally calls Dispatch Manager or Admin.
+    3. Agent verbally briefs them with lead context (company name, NOU, call notes).
+    4. Dispatch Manager / Admin accepts → prospect is bridged into the conversation → agent drops off.
+  - Dispatch Manager / Admin receives a **screen pop** showing the full lead card (company name, NOU, contact details, decision maker email, agent call notes).
+  - Upon contract signing, Dispatch Manager / Admin clicks **[ Convert to Fleet Account ]** — a pre-filled Fleet creation form populated from the lead record, with `acquiredByVaId` automatically linked for VA commission tracking via `FleetCommissionLedger`.
+
+- **FR-9.7: Lead Lifecycle States:**
+  - `NEW` → `CALLED` → `CALLBACK` → `CONVERTED` | `DEAD`
+  - **`CONVERTED`** leads are linked to their resulting Fleet record via `acquiredByVaId` on the Fleet, enabling ongoing VA commission tracking (\$2–\$3 per completed job) through `FleetCommissionLedger`.
+  - **`DEAD`** marks permanently closed leads (`NOT_INTERESTED`, `WRONG_NUMBER` after retries).
+
+- **FR-9.8: Lead Data Schema (Postgres — No Redis Required):**
+  - Lead records stored in PostgreSQL with `SELECT ... FOR UPDATE SKIP LOCKED` for concurrent agent queue access.
+  - Key fields: `companyName`, `companyAddress`, `website`, `fleetManagerName`, `ceoOwnerName`, `contactNumber`, `altContactNumber`, `officialEmail`, `decisionMakerEmail`, `numberOfUnits` (NOU), `uploadedByVaId`, `assignedAgentId`, `disposition`, `callbackAt`, `callbackAssignedToId`, `notes`, `status`, `isDuplicate`.
 
 ---
 
