@@ -49,11 +49,32 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
   // Mandatory Call Outcome Disposition (Rule 6.2)
   const [isDispositionPromptOpen, setIsDispositionPromptOpen] = useState(false);
 
+  const resetForm = () => {
+    setCustomerName('');
+    setCustomerPhone('');
+    setCustomerEmail('');
+    setMakeUserAccount(true);
+    setLookupResult(null);
+    setVehicleMake('');
+    setVehicleModel('');
+    setVehicleYear('');
+    setTireSize('');
+    setLicensePlate('');
+    setLocationAddress('');
+    setUrgency('STANDARD');
+    setSelectedServices(['MOBILE_DISPATCH_FEE']);
+    setNotes('');
+    setPaymentMethod('POS');
+  };
+
   useEffect(() => {
-    if (prefillPhone) {
-      setCustomerPhone(prefillPhone);
+    if (isOpen) {
+      resetForm();
+      if (prefillPhone) {
+        setCustomerPhone(prefillPhone);
+      }
     }
-  }, [prefillPhone]);
+  }, [isOpen, prefillPhone]);
 
   useEffect(() => {
     const clean = customerPhone.replace(/[^0-9]/g, '');
@@ -111,6 +132,7 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
     if (customerPhone || prefillPhone) {
       setIsDispositionPromptOpen(true);
     } else {
+      resetForm();
       onClose();
     }
   };
@@ -118,6 +140,7 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
   const handleDispositionRecorded = (disposition: string, reason: string) => {
     // ponytail: log outcome disposition to prevent lost leads
     console.log(`[DISPOSITION_LOGGED] Phone: ${customerPhone || prefillPhone}, Code: ${disposition}, Reason: ${reason}`);
+    resetForm();
     onClose();
   };
 
@@ -128,6 +151,9 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
       toast.error('Customer phone and breakdown address are required');
       return;
     }
+
+    const mappedUrgency = urgency === 'NORMAL' ? 'STANDARD' : urgency === 'LOW' ? 'FUTURE' : 'URGENT';
+    const mappedCurrency = country === 'US' ? 'USD' : country === 'UK' ? 'GBP' : 'CAD';
 
     const payload = {
       customer: {
@@ -143,7 +169,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
         licensePlate: licensePlate || undefined,
       },
       serviceAddress: locationAddress,
-      urgency: urgency === 'NORMAL' ? 'STANDARD' : urgency,
+      urgency: mappedUrgency,
+      currency: mappedCurrency,
       serviceItems: selectedServices.map((serviceId) => {
         const item = SERVICES_CATALOG.find((s: ServiceCatalogItem) => s.id === serviceId);
         return {
@@ -166,16 +193,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
     try {
       await createJobMutation.mutateAsync(payload);
       toast.success('Job ticket created & dispatched successfully');
+      resetForm();
       onClose();
-      setCustomerName('');
-      setCustomerPhone('');
-      setVehicleMake('');
-      setVehicleModel('');
-      setTireSize('');
-      setLicensePlate('');
-      setLocationAddress('');
-      setSelectedServices(['MOBILE_DISPATCH_FEE']);
-      setNotes('');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to create job ticket');
     }
@@ -189,7 +208,7 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
         title="Intake & Dispatch New Job"
         maxWidth="max-w-2xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off" data-lpignore="true" data-form-type="other">
           {/* Customer Information */}
           <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 space-y-3">
             <div className="flex items-center justify-between">
@@ -214,6 +233,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <input
                   type="tel"
                   required
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   placeholder="+14165550199"
@@ -224,6 +245,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <label className="text-[11px] font-semibold text-slate-600">Full Name</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="John Smith"
@@ -234,6 +257,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <label className="text-[11px] font-semibold text-slate-600">Email</label>
                 <input
                   type="email"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
                   placeholder="john@example.com"
@@ -268,6 +293,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <label className="text-[11px] font-semibold text-slate-600">Make</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={vehicleMake}
                   onChange={(e) => setVehicleMake(e.target.value)}
                   placeholder="Ford"
@@ -278,6 +305,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <label className="text-[11px] font-semibold text-slate-600">Model</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={vehicleModel}
                   onChange={(e) => setVehicleModel(e.target.value)}
                   placeholder="F-150"
@@ -288,6 +317,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <label className="text-[11px] font-semibold text-slate-600">Year</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={vehicleYear}
                   onChange={(e) => setVehicleYear(e.target.value)}
                   placeholder="2022"
@@ -298,6 +329,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <label className="text-[11px] font-semibold text-slate-600">Plate</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={licensePlate}
                   onChange={(e) => setLicensePlate(e.target.value)}
                   placeholder="CFMR 482"
@@ -308,6 +341,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <label className="text-[11px] font-semibold text-slate-600">Tire Size *</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={tireSize}
                   onChange={(e) => setTireSize(e.target.value)}
                   placeholder="275/65R18"
@@ -330,6 +365,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <input
                   type="text"
                   required
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={locationAddress}
                   onChange={(e) => setLocationAddress(e.target.value)}
                   placeholder="Hwy 401 Eastbound near Exit 344, Toronto, ON"
@@ -407,6 +444,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
               <label className="text-[11px] font-semibold text-slate-600">Intake Notes / Driver Instructions</label>
               <input
                 type="text"
+                autoComplete="off"
+                data-lpignore="true"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Front-right passenger tire punctured..."

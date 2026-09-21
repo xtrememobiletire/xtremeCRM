@@ -28,7 +28,15 @@ export const CreateJobSchema = z.object({
   recipientName: z.string().optional(),
   recipientPhone: z.string().optional(),
   urgency: z.preprocess(
-    (val) => (val === 'NORMAL' ? 'STANDARD' : val === 'EMERGENCY' ? 'URGENT' : val),
+    (val) => {
+      if (typeof val === 'string') {
+        const u = val.toUpperCase();
+        if (u === 'NORMAL' || u === 'STANDARD') return 'STANDARD';
+        if (u === 'LOW' || u === 'FUTURE' || u === 'SCHEDULED') return 'FUTURE';
+        if (u === 'HIGH' || u === 'CRITICAL' || u === 'EMERGENCY' || u === 'URGENT') return 'URGENT';
+      }
+      return val;
+    },
     z.enum(['URGENT', 'STANDARD', 'FUTURE']).default('STANDARD')
   ),
   source: z.enum(['DIRECT_CALL', 'WHATSAPP', 'WEBSITE', 'LANDING_PAGE_SELF_BOOK', 'FLEET_PORTAL', 'MEMBER_PORTAL']).optional().default('DIRECT_CALL'),
@@ -74,10 +82,10 @@ export const CreateJobSchema = z.object({
   taxRateBps: z.coerce.number().int().nonnegative().optional(),
   totalCents: z.coerce.number().int().nonnegative().optional(),
   totalAmount: z.coerce.number().optional(),
-  currency: z.enum(['CAD', 'USD', 'GBP']).default('CAD'),
+  currency: z.enum(['CAD', 'USD', 'GBP']).optional(),
   paymentMethod: z.preprocess(
     (val) => (val === 'CREDIT_CARD' ? 'MOTO' : val),
-    z.enum(['E_TRANSFER', 'POS', 'CASH', 'MOTO', 'STRIPE']).optional()
+    z.enum(['E_TRANSFER', 'POS', 'CASH', 'MOTO', 'STRIPE', 'INVOICE_NET30']).optional()
   ),
   countryCode: z.enum(['CA', 'US', 'UK']).default('CA'),
   country: z.enum(['CA', 'US', 'UK']).optional(),
