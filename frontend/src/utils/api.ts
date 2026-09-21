@@ -13,6 +13,10 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
   const storedCountry = localStorage.getItem('xtreme_country') || 'CA';
   config.headers['x-country-code'] = storedCountry;
+  const token = localStorage.getItem('xtreme_token');
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
   return config;
 });
 

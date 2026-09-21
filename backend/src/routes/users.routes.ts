@@ -62,6 +62,13 @@ router.patch(
 );
 
 /**
+ * @route   PATCH /api/users/me/active
+ * @desc    Toggle current agent presence for call intake (FR-1.1)
+ * @access  Private
+ */
+router.patch('/me/active', userController.toggleAgentActive);
+
+/**
  * @route   PATCH /api/users/:id/active
  * @desc    Toggle agent presence for call intake (FR-1.1)
  * @access  Private

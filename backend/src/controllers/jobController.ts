@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcrypt';
 import { prisma } from '../config/database.js';
 import {
   sendSuccess,
@@ -45,7 +46,7 @@ export const jobController = {
       const sortBy = (req.query.sortBy as string) || 'createdAt';
       const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
 
-      const [jobs, totalCount] = await Promise.all([
+      const [rawJobs, totalCount] = await Promise.all([
         prisma.job.findMany({
           where,
           skip,
@@ -74,6 +75,16 @@ export const jobController = {
         }),
         prisma.job.count({ where }),
       ]);
+
+      const isDriver = (req.user as any)?.role === 'DRIVER';
+      const jobs = rawJobs.map((j) => {
+        if (isDriver) {
+          // PRD NFR-4: Driver financial isolation
+          const { materialCostCents: _, itPlatformFeeCents: __, expenseStatedById: ___, ...rest } = j;
+          return rest;
+        }
+        return j;
+      });
 
       const paginated = createPaginatedResponse(jobs, page, limit, totalCount);
       return res.status(200).json(paginated);
@@ -122,6 +133,10 @@ export const jobController = {
       });
 
       if (!job) return sendError(res, 'Job not found', 404);
+      if ((req.user as any)?.role === 'DRIVER') {
+        const { materialCostCents: _, itPlatformFeeCents: __, expenseStatedById: ___, ...rest } = job;
+        return sendSuccess(res, rest);
+      }
       return sendSuccess(res, job);
     } catch (err: any) {
       return sendError(res, err.message);
@@ -134,11 +149,88 @@ export const jobController = {
       const creatorId = (req.user as any)?.id || (await prisma.user.findFirst())?.id;
       if (!creatorId) return sendError(res, 'No user found for job creation', 400);
 
-      const country = data.countryCode || 'CA';
+      const country = data.country || data.countryCode || 'CA';
       const jobCode = `JOB-${country}-${Math.floor(10000 + Math.random() * 90000)}`;
 
-      // Calculate totals if serviceItems provided
-      let subtotalCents = data.quotedPriceCents || 0;
+      // 1. Auto-resolve or create Customer if nested details provided
+      let customerId = data.customerId;
+      const phone = data.customer?.phone || data.recipientPhone;
+      if (!customerId && phone) {
+        const cleanPhone = phone.trim();
+        let cust = await prisma.customer.findFirst({
+          where: { phone: cleanPhone, countryCode: country },
+        });
+        if (!cust) {
+          cust = await prisma.customer.create({
+            data: {
+              fullName: data.customer?.name || data.recipientName || 'Valued Customer',
+              phone: cleanPhone,
+              email: data.customer?.email,
+              countryCode: country,
+            },
+          });
+        }
+        customerId = cust.id;
+      }
+
+      // 2. Auto-provision Customer Member Account if requested (PRD FR-1.3)
+      if (data.makeUserAccount && customerId) {
+        try {
+          const cust = await prisma.customer.findUnique({ where: { id: customerId } });
+          if (cust && !cust.userId) {
+            const userEmail = cust.email || `cx_${cust.phone.replace(/[^0-9]/g, '')}@xtrememobiletire.com`;
+            const existingUser = await prisma.user.findUnique({ where: { email: userEmail } });
+            if (!existingUser) {
+              const passwordHash = await bcrypt.hash('XtremeMember2026!', 10);
+              const newUser = await prisma.user.create({
+                data: {
+                  email: userEmail,
+                  passwordHash,
+                  fullName: cust.fullName,
+                  role: 'CUSTOMER_MEMBER',
+                  countryCode: country,
+                  phone: cust.phone,
+                },
+              });
+              await prisma.customer.update({
+                where: { id: cust.id },
+                data: { userId: newUser.id, customerType: 'MEMBERSHIP' },
+              });
+            }
+          }
+        } catch (provErr) {
+          console.warn('Customer account provisioning skipped:', provErr);
+        }
+      }
+
+      // 3. Auto-resolve or create Vehicle
+      let vehicleId = data.vehicleId;
+      if (!vehicleId) {
+        const plate = data.vehicle?.licensePlate?.trim();
+        let veh = plate
+          ? await prisma.vehicle.findFirst({
+              where: { licensePlate: plate, countryCode: country },
+            })
+          : null;
+        if (!veh) {
+          veh = await prisma.vehicle.create({
+            data: {
+              customerId: customerId || undefined,
+              fleetId: data.fleetId || undefined,
+              countryCode: country,
+              year: Number(data.vehicle?.year) || new Date().getFullYear(),
+              make: data.vehicle?.make || 'Standard',
+              model: data.vehicle?.model || 'Vehicle',
+              licensePlate: plate || undefined,
+              tireSize: data.vehicle?.tireSize || '225/65R17',
+            },
+          });
+        }
+        vehicleId = veh.id;
+      }
+
+      // 4. Calculate totals and service items
+      let subtotalCents = data.subtotalAmount || data.subtotalCents || data.quotedPriceCents || 0;
       let serviceItemsCreate: any[] = [];
 
       if (data.serviceItems && data.serviceItems.length > 0) {
@@ -148,6 +240,17 @@ export const jobController = {
           unitPriceCents: item.unitPriceCents,
           quantity: item.quantity || 1,
           notes: item.notes,
+        }));
+        subtotalCents = serviceItemsCreate.reduce(
+          (sum: number, item: any) => sum + item.unitPriceCents * item.quantity,
+          0
+        );
+      } else if (data.lineItems && data.lineItems.length > 0) {
+        serviceItemsCreate = data.lineItems.map((item: any) => ({
+          serviceName: item.serviceName,
+          category: 'TIRE_SERVICE',
+          unitPriceCents: item.price || 5000,
+          quantity: item.quantity || 1,
         }));
         subtotalCents = serviceItemsCreate.reduce(
           (sum: number, item: any) => sum + item.unitPriceCents * item.quantity,
@@ -165,27 +268,30 @@ export const jobController = {
       }
 
       const taxRateBps = data.taxRateBps ?? (country === 'CA' ? 1300 : country === 'UK' ? 2000 : 800);
-      const taxAmountCents = data.taxCents ?? Math.round((subtotalCents * taxRateBps) / 10000);
-      const totalCents = data.totalCents ?? (subtotalCents + taxAmountCents);
+      const taxAmountCents = data.taxCents ?? data.taxAmount ?? Math.round((subtotalCents * taxRateBps) / 10000);
+      const totalCents = data.totalCents ?? data.totalAmount ?? (subtotalCents + taxAmountCents);
 
       // IT platform royalty fee: CA: 150 cents ($1.50 CAD), US: 100 cents ($1.00 USD), UK: 100 pence (£1.00 GBP)
       const itPlatformFeeCents = country === 'CA' ? 150 : 100;
+      const serviceAddress = data.serviceAddress || data.locationAddress || 'Roadside Breakdown Location';
 
       const job = await prisma.job.create({
         data: {
           jobCode,
           countryCode: country,
           currency: country === 'US' ? 'USD' : country === 'UK' ? 'GBP' : 'CAD',
-          customerId: data.customerId,
-          vehicleId: data.vehicleId,
+          customerId,
+          vehicleId,
           fleetId: data.fleetId,
           createdById: creatorId,
-          serviceAddress: data.serviceAddress,
-          recipientName: data.recipientName,
-          recipientPhone: data.recipientPhone,
-          problemNotes: data.problemNotes,
+          serviceAddress,
+          recipientName: data.recipientName || data.customer?.name,
+          recipientPhone: data.recipientPhone || data.customer?.phone,
+          problemNotes: data.problemNotes || data.notes,
           urgency: data.urgency || 'STANDARD',
-          appointmentDate: data.scheduledFor ? new Date(data.scheduledFor) : undefined,
+          source: data.source || 'DIRECT_CALL',
+          disposition: (data.disposition as any) || 'BOOKED',
+          appointmentDate: data.appointmentDate ? new Date(data.appointmentDate) : data.scheduledFor ? new Date(data.scheduledFor) : undefined,
           subtotalCents,
           taxRateBps,
           taxAmountCents,
@@ -193,7 +299,7 @@ export const jobController = {
           itPlatformFeeCents,
           paymentMethod: data.paymentMethod,
           paymentStatus: 'UNPAID',
-          status: 'PENDING',
+          status: data.source === 'LANDING_PAGE_SELF_BOOK' ? 'UNVERIFIED_PUBLIC' : 'PENDING',
           serviceItems: {
             create: serviceItemsCreate,
           },
@@ -243,6 +349,34 @@ export const jobController = {
           serviceItems: true,
         },
       });
+
+      // VA Commission attribution on completed fleet jobs (PRD FR-2.1 / Rule 6.3)
+      if (status === 'COMPLETED' && updated.fleetId) {
+        try {
+          const fleet = await prisma.fleet.findUnique({
+            where: { id: updated.fleetId },
+            select: { id: true, virtualAssistantId: true },
+          });
+          if (fleet?.virtualAssistantId) {
+            const existingCommission = await prisma.fleetCommissionLedger.findFirst({
+              where: { jobId: updated.id },
+            });
+            if (!existingCommission) {
+              await prisma.fleetCommissionLedger.create({
+                data: {
+                  fleetId: fleet.id,
+                  virtualAssistantId: fleet.virtualAssistantId,
+                  jobId: updated.id,
+                  amountCents: 250, // $2.50 agreed commission
+                  notes: `Commission for completed job ${updated.jobCode}`,
+                },
+              });
+            }
+          }
+        } catch (commErr) {
+          console.warn('VA commission ledger skipped:', commErr);
+        }
+      }
 
       try {
         const io = getIO();
@@ -299,6 +433,10 @@ export const jobController = {
 
   async stateJobExpenses(req: Request, res: Response) {
     try {
+      const userRole = (req.user as any)?.role;
+      if (userRole && !['ADMIN', 'ACCOUNTANT'].includes(userRole)) {
+        return sendError(res, 'Only Administrators and Accountants can state job expenses', 403);
+      }
       const id = String(req.params.id);
       const { materialCostCents, repairerFeeCents, otherExpenseCents, expenseNotes } = req.body;
       const accountantId = (req.user as any)?.id;

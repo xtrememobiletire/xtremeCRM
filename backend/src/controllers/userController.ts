@@ -153,13 +153,15 @@ export const userController = {
 
   async toggleAgentActive(req: Request, res: Response) {
     try {
-      const id = String(req.params.id);
+      const id = req.params.id === 'me' ? (req.user as any)?.id : String(req.params.id || (req.user as any)?.id);
+      if (!id) return sendError(res, 'User identity required', 400);
       const user = await prisma.user.findUnique({ where: { id } });
       if (!user) return sendError(res, 'User not found', 404);
 
+      const targetState = typeof req.body?.isAgentActive === 'boolean' ? req.body.isAgentActive : !user.isAgentActive;
       const updated = await prisma.user.update({
         where: { id },
-        data: { isAgentActive: !user.isAgentActive },
+        data: { isAgentActive: targetState },
         select: {
           id: true,
           email: true,

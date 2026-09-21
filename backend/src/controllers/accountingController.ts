@@ -17,11 +17,37 @@ export const accountingController = {
   async getAccountingSummary(req: Request, res: Response) {
     try {
       const countryCode = (req.query.countryCode as any) || req.countryCode || 'CA';
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, timeframe } = req.query;
 
       const dateFilter: any = {};
-      if (startDate) dateFilter.gte = new Date(startDate as string);
-      if (endDate) dateFilter.lte = new Date(endDate as string);
+      const now = new Date();
+
+      if (timeframe === 'yesterday') {
+        const start = new Date(now);
+        start.setDate(now.getDate() - 1);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(now);
+        end.setDate(now.getDate() - 1);
+        end.setHours(23, 59, 59, 999);
+        dateFilter.gte = start;
+        dateFilter.lte = end;
+      } else if (timeframe === 'last_3_days') {
+        const start = new Date(now);
+        start.setDate(now.getDate() - 3);
+        start.setHours(0, 0, 0, 0);
+        dateFilter.gte = start;
+      } else if (timeframe === 'last_7_days' || timeframe === 'week') {
+        const start = new Date(now);
+        start.setDate(now.getDate() - 7);
+        start.setHours(0, 0, 0, 0);
+        dateFilter.gte = start;
+      } else if (timeframe === 'monthly' || timeframe === 'month_to_date') {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        dateFilter.gte = start;
+      } else {
+        if (startDate) dateFilter.gte = new Date(startDate as string);
+        if (endDate) dateFilter.lte = new Date(endDate as string);
+      }
 
       const where: any = {
         countryCode,
@@ -44,13 +70,15 @@ export const accountingController = {
       });
 
       const totalJobs = jobs.length;
-      const completedJobs = jobs.filter((j) => j.status === 'COMPLETED').length;
+      const completedJobsList = jobs.filter((j) => j.status === 'COMPLETED');
+      const completedJobs = completedJobsList.length;
 
-      const grossRevenueCents = jobs.reduce((sum, j) => sum + j.totalCents, 0);
-      const materialCostCents = jobs.reduce((sum, j) => sum + j.materialCostCents, 0);
-      const repairerFeeCents = jobs.reduce((sum, j) => sum + j.repairerFeeCents, 0);
-      const otherExpenseCents = jobs.reduce((sum, j) => sum + j.otherExpenseCents, 0);
-      const itPlatformFeeCents = jobs.reduce((sum, j) => sum + j.itPlatformFeeCents, 0);
+      // PRD FR-6.3: Revenue and expenses are strictly computed on completed roadside fulfillment
+      const grossRevenueCents = completedJobsList.reduce((sum, j) => sum + j.totalCents, 0);
+      const materialCostCents = completedJobsList.reduce((sum, j) => sum + j.materialCostCents, 0);
+      const repairerFeeCents = completedJobsList.reduce((sum, j) => sum + j.repairerFeeCents, 0);
+      const otherExpenseCents = completedJobsList.reduce((sum, j) => sum + j.otherExpenseCents, 0);
+      const itPlatformFeeCents = completedJobsList.reduce((sum, j) => sum + j.itPlatformFeeCents, 0);
 
       const totalDirectCostsCents = materialCostCents + repairerFeeCents + otherExpenseCents;
       const netProfitCents = grossRevenueCents - totalDirectCostsCents;

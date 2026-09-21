@@ -27,6 +27,13 @@ router.get(
 );
 
 /**
+ * @route   GET /api/customers/lookup
+ * @desc    Fast screen pop customer & fleet lookup by phone (PRD FR-1.3)
+ * @access  Private
+ */
+router.get('/lookup', customerController.lookupCustomer);
+
+/**
  * @route   GET /api/customers/search
  * @desc    Fast search by phone or name for Telnyx screen pop (FR-1.3)
  * @access  Private

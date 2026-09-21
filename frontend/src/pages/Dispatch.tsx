@@ -1,12 +1,18 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Radio, PhoneCall } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import PageHeader from '../components/ui/PageHeader';
 import DriverList from '../components/pages/dispatch/DriverList';
 import ProximityDistanceTool from '../components/pages/dispatch/ProximityDistanceTool';
 import DriverCashTracker from '../components/pages/dispatch/DriverCashTracker';
 import DispatchMap from '../components/pages/dispatch/DispatchMap';
+import UrgentQueueAccordion from '../components/pages/dispatch/UrgentQueueAccordion';
+import AssignDriverModal from '../components/jobs/AssignDriverModal';
 import { useSocket } from '../context/SocketContext';
 import { useTenant } from '../context/TenantContext';
+import { jobService } from '../services/jobService';
+import { userService } from '../services/userService';
 
 const MOCK_FLEET_DRIVERS = [
   { id: 'drv-1', name: 'Marcus Vance', phone: '+1 (416) 555-0199', status: 'AVAILABLE', vehicle: 'Van #04 (Ford Transit 350)', currentJob: 'JOB-CA-1002', location: 'Hwy 401 Eastbound (Toronto)' },
@@ -18,11 +24,40 @@ const MOCK_FLEET_DRIVERS = [
 
 export default function Dispatch() {
   const { country } = useTenant();
+  const navigate = useNavigate();
   const { simulateIncomingCall } = useSocket();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [assigningJob, setAssigningJob] = useState<any | null>(null);
 
-  const filteredDrivers = MOCK_FLEET_DRIVERS.filter((drv) => {
+  const { data: urgentJobsData } = useQuery({
+    queryKey: ['urgent-dispatch-jobs', country],
+    queryFn: () => jobService.getJobs({ urgency: 'EMERGENCY', countryCode: country, limit: 10 }),
+    refetchInterval: 15000,
+  });
+
+  const { data: apiDrivers = [] } = useQuery({
+    queryKey: ['dispatch-drivers'],
+    queryFn: () => userService.getDrivers(),
+  });
+
+  const urgentJobs = (urgentJobsData?.data || []).filter(
+    (j) => j.status !== 'COMPLETED' && j.status !== 'CANCELLED'
+  );
+
+  const driversList = apiDrivers.length > 0
+    ? apiDrivers.map((d, i) => ({
+        id: d.id,
+        name: d.fullName,
+        phone: d.phone || '+1 (416) 555-0100',
+        status: d.isAgentActive ? 'AVAILABLE' : 'OFFLINE',
+        vehicle: `Unit #${String(i + 1).padStart(2, '0')} (Service Van)`,
+        currentJob: undefined,
+        location: `${country} Service Hub`,
+      }))
+    : MOCK_FLEET_DRIVERS;
+
+  const filteredDrivers = driversList.filter((drv) => {
     const matchesSearch = !search || drv.name.toLowerCase().includes(search.toLowerCase()) || drv.vehicle.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter || drv.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -51,6 +86,14 @@ export default function Dispatch() {
         }
       />
 
+      {urgentJobs.length > 0 && (
+        <UrgentQueueAccordion
+          urgentJobs={urgentJobs}
+          onAssignDriver={(job) => setAssigningJob(job)}
+          onViewJob={(job) => navigate(`/jobs?id=${job.id}`)}
+        />
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
@@ -78,6 +121,14 @@ export default function Dispatch() {
           <DriverCashTracker />
         </div>
       </div>
+
+      {assigningJob && (
+        <AssignDriverModal
+          isOpen={!!assigningJob}
+          onClose={() => setAssigningJob(null)}
+          job={assigningJob}
+        />
+      )}
     </div>
   );
 }

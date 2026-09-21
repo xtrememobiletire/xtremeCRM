@@ -7,6 +7,7 @@ import { useTenant } from '../../../context/TenantContext';
 import { formatCurrency, centsToDollars } from '../../../utils/currency';
 import { toast } from 'sonner';
 import JobDispositionModal from './JobDispositionModal';
+import { customerService } from '../../../services/customerService';
 
 interface CreateJobModalProps {
   isOpen: boolean;
@@ -22,6 +23,16 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState(prefillPhone);
   const [customerEmail, setCustomerEmail] = useState('');
+  const [makeUserAccount, setMakeUserAccount] = useState(true);
+
+  // Auto-detection lookup state
+  const [lookupResult, setLookupResult] = useState<{
+    found: boolean;
+    isReturning: boolean;
+    customer: any;
+    fleet: any;
+    driver: any;
+  } | null>(null);
 
   const [vehicleMake, setVehicleMake] = useState('');
   const [vehicleModel, setVehicleModel] = useState('');
@@ -30,10 +41,10 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
   const [licensePlate, setLicensePlate] = useState('');
 
   const [locationAddress, setLocationAddress] = useState('');
-  const [urgency, setUrgency] = useState('NORMAL');
+  const [urgency, setUrgency] = useState('STANDARD');
   const [selectedServices, setSelectedServices] = useState<string[]>(['MOBILE_DISPATCH_FEE']);
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('CREDIT_CARD');
+  const [paymentMethod, setPaymentMethod] = useState('POS');
 
   // Mandatory Call Outcome Disposition (Rule 6.2)
   const [isDispositionPromptOpen, setIsDispositionPromptOpen] = useState(false);
@@ -43,6 +54,41 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
       setCustomerPhone(prefillPhone);
     }
   }, [prefillPhone]);
+
+  useEffect(() => {
+    const clean = customerPhone.replace(/[^0-9]/g, '');
+    if (clean.length >= 10) {
+      customerService.lookupCustomer(customerPhone)
+        .then((res) => {
+          setLookupResult(res);
+          if (res.customer) {
+            setCustomerName(res.customer.fullName || res.customer.name || '');
+            setCustomerEmail(res.customer.email || '');
+            if (res.customer.vehicles?.length > 0) {
+              const v = res.customer.vehicles[0];
+              setVehicleMake(v.make || '');
+              setVehicleModel(v.model || '');
+              setVehicleYear(v.year?.toString() || '');
+              setTireSize(v.tireSize || '');
+              setLicensePlate(v.licensePlate || '');
+            }
+          } else if (res.fleet) {
+            setCustomerName(res.fleet.name || res.fleet.contactPerson || '');
+            if (res.driver) {
+              setNotes(`[Fleet Driver Call] Driver: ${res.driver.name} (Plate: ${res.driver.plate || 'N/A'})`);
+              if (res.driver.plate) setLicensePlate(res.driver.plate);
+            }
+            if (res.fleet.vehicles?.length > 0) {
+              const v = res.fleet.vehicles[0];
+              setTireSize(v.tireSize || '11R22.5');
+            }
+          }
+        })
+        .catch(() => {});
+    } else {
+      setLookupResult(null);
+    }
+  }, [customerPhone]);
 
   // Subtotal & Tax
   const subtotalCents = selectedServices.reduce((sum: number, serviceId: string) => {
@@ -89,32 +135,32 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
         phone: customerPhone,
         email: customerEmail || undefined,
       },
-      vehicle: vehicleMake
-        ? {
-            make: vehicleMake,
-            model: vehicleModel || 'Model',
-            year: vehicleYear ? parseInt(vehicleYear, 10) : undefined,
-            tireSize: tireSize || undefined,
-            licensePlate: licensePlate || undefined,
-          }
-        : undefined,
-      lineItems: selectedServices.map((serviceId) => {
+      vehicle: {
+        make: vehicleMake || 'Standard',
+        model: vehicleModel || 'Vehicle',
+        year: vehicleYear ? parseInt(vehicleYear, 10) : new Date().getFullYear(),
+        tireSize: tireSize || '225/65R17',
+        licensePlate: licensePlate || undefined,
+      },
+      serviceAddress: locationAddress,
+      urgency: urgency === 'NORMAL' ? 'STANDARD' : urgency,
+      serviceItems: selectedServices.map((serviceId) => {
         const item = SERVICES_CATALOG.find((s: ServiceCatalogItem) => s.id === serviceId);
         return {
           serviceName: item?.name || serviceId,
-          price: item?.basePriceCents || 5000,
+          category: 'TIRE_SERVICE' as const,
+          unitPriceCents: item?.basePriceCents || 5000,
           quantity: 1,
         };
       }),
-      locationAddress,
-      urgency,
-      notes: notes || undefined,
-      paymentMethod,
-      country,
-      subtotalAmount: subtotalCents,
-      taxAmount: taxCents,
-      totalAmount: totalCents,
+      problemNotes: notes || undefined,
+      paymentMethod: paymentMethod === 'CREDIT_CARD' ? 'POS' : paymentMethod,
+      countryCode: country,
+      subtotalCents,
+      taxCents,
+      totalCents,
       disposition: 'BOOKED',
+      makeUserAccount,
     };
 
     try {
@@ -146,9 +192,20 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Customer Information */}
           <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 space-y-3">
-            <div className="flex items-center gap-2 font-bold text-xs text-slate-800 uppercase tracking-wider">
-              <User className="w-3.5 h-3.5 text-red-600" />
-              <span>Customer Intake</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-xs text-slate-800 uppercase tracking-wider">
+                <User className="w-3.5 h-3.5 text-red-600" />
+                <span>Customer Intake</span>
+              </div>
+              {lookupResult?.isReturning ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 animate-fade-in">
+                  ✓ RETURNING {lookupResult.fleet ? `FLEET (${lookupResult.fleet.name})` : 'CUSTOMER'}
+                </span>
+              ) : customerPhone.replace(/[^0-9]/g, '').length >= 10 ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                  ✦ NEW CALLER / FIRST-TIME MOTORIST
+                </span>
+              ) : null}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -183,6 +240,19 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                   className="input-base mt-1"
                 />
               </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1 border-t border-slate-200/60">
+              <input
+                type="checkbox"
+                id="makeUserAccount"
+                checked={makeUserAccount}
+                onChange={(e) => setMakeUserAccount(e.target.checked)}
+                className="w-3.5 h-3.5 text-red-600 rounded border-slate-300"
+              />
+              <label htmlFor="makeUserAccount" className="text-[11px] text-slate-600">
+                After all this make user account (auto-provisions customer portal access & SMS tracking)
+              </label>
             </div>
           </div>
 

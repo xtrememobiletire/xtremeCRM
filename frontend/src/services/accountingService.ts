@@ -28,12 +28,27 @@ export const accountingService = {
   },
 
   async getInvoices(): Promise<InvoiceItem[]> {
-    const res = await api.get('/accounting/invoices');
+    const res = await api.get('/invoices');
     return res.data.data || [];
   },
 
   async generateInvoice(jobId: string) {
-    const res = await api.post('/accounting/invoices/generate', { jobId });
+    const res = await api.post('/invoices/generate', { jobId });
+    return res.data.data;
+  },
+
+  async getAccountingSummary(params?: { countryCode?: string; timeframe?: string }) {
+    const res = await api.get('/accounting/summary', { params });
+    return res.data.data;
+  },
+
+  async getCashLedger(params?: { driverId?: string }) {
+    const res = await api.get('/accounting/cash-ledger', { params });
+    return res.data.data || [];
+  },
+
+  async verifyCashTransaction(id: string) {
+    const res = await api.patch(`/accounting/cash-ledger/${id}/verify`);
     return res.data.data;
   },
 };

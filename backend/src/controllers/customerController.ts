@@ -51,6 +51,71 @@ export const customerController = {
     }
   },
 
+  async lookupCustomer(req: Request, res: Response) {
+    try {
+      const phone = ((req.query.phone || req.query.q || '') as string).trim();
+      const countryCode = (req.query.countryCode as any) || req.countryCode || 'CA';
+
+      if (!phone) {
+        return sendError(res, 'Phone parameter is required for lookup', 400);
+      }
+
+      const cleanDigits = phone.replace(/[^0-9]/g, '');
+
+      // 1. Check Customer
+      const customer = await prisma.customer.findFirst({
+        where: {
+          countryCode,
+          phone: { contains: cleanDigits.slice(-10) },
+        },
+        include: {
+          vehicles: true,
+          jobs: {
+            take: 3,
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+      });
+
+      // 2. Check FleetDriver
+      const fleetDriver = await prisma.fleetDriver.findFirst({
+        where: {
+          phone: { contains: cleanDigits.slice(-10) },
+        },
+        include: {
+          fleet: {
+            include: {
+              vehicles: true,
+            },
+          },
+        },
+      });
+
+      // 3. Check Fleet direct
+      const fleetDirect = await prisma.fleet.findFirst({
+        where: {
+          countryCode,
+          phone: { contains: cleanDigits.slice(-10) },
+        },
+        include: {
+          vehicles: true,
+        },
+      });
+
+      const matchedFleet = fleetDriver?.fleet || fleetDirect || null;
+
+      return sendSuccess(res, {
+        found: Boolean(customer || matchedFleet),
+        isReturning: Boolean(customer || matchedFleet),
+        customer: customer || null,
+        fleet: matchedFleet,
+        driver: fleetDriver ? { name: fleetDriver.fullName, phone: fleetDriver.phone, plate: fleetDriver.licensePlate } : null,
+      });
+    } catch (err: any) {
+      return sendError(res, err.message);
+    }
+  },
+
   async searchCustomer(req: Request, res: Response) {
     try {
       const query = ((req.query.q || req.query.phone || '') as string).trim();

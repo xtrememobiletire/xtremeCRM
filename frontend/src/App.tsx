@@ -10,6 +10,7 @@ import MainLayout from './components/layout/MainLayout';
 import { RouteErrorBoundary } from './components/common/RouteErrorBoundary';
 
 // Lazy Loaded Pages
+const Landing = lazy(() => import('./pages/Landing'));
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Jobs = lazy(() => import('./pages/Jobs'));
@@ -37,14 +38,28 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
 function AppRoutes() {
+  const { user, loading } = useAuth();
+  if (loading) return <PageLoader />;
+
   return (
     <RouteErrorBoundary>
       <Routes>
+        {/* Unauthenticated Landing Page */}
+        <Route
+          path="/landing"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <Landing />
+            </Suspense>
+          }
+        />
+
+        {/* Public Login Route */}
         <Route
           path="/login"
           element={
@@ -55,6 +70,26 @@ function AppRoutes() {
             </PublicRoute>
           }
         />
+
+        {/* Root Route: If authenticated -> Dashboard in MainLayout, else Landing */}
+        <Route
+          path="/"
+          element={
+            user ? (
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            ) : (
+              <Suspense fallback={<PageLoader />}>
+                <Landing />
+              </Suspense>
+            )
+          }
+        >
+          {user && <Route index element={<Dashboard />} />}
+        </Route>
+
+        {/* Protected App Routes */}
         <Route
           element={
             <ProtectedRoute>
@@ -62,15 +97,16 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Dashboard />} />
-          <Route path="jobs" element={<Jobs />} />
-          <Route path="dispatch" element={<Dispatch />} />
-          <Route path="customers" element={<Customers />} />
-          <Route path="fleets" element={<Fleets />} />
-          <Route path="vehicles" element={<Vehicles />} />
-          <Route path="accounting" element={<Accounting />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/jobs" element={<Jobs />} />
+          <Route path="/dispatch" element={<Dispatch />} />
+          <Route path="/customers" element={<Customers />} />
+          <Route path="/fleets" element={<Fleets />} />
+          <Route path="/vehicles" element={<Vehicles />} />
+          <Route path="/accounting" element={<Accounting />} />
         </Route>
+
+        <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />
       </Routes>
     </RouteErrorBoundary>
   );
