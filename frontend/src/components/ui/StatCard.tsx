@@ -8,6 +8,7 @@ interface StatCardProps {
   icon?: LucideIcon;
   iconBg?: string;
   iconColor?: string;
+  isLoading?: boolean;
 }
 
 export default function StatCard({
@@ -18,18 +19,31 @@ export default function StatCard({
   icon: Icon,
   iconBg = 'bg-red-50',
   iconColor = 'text-red-600',
+  isLoading = false,
 }: StatCardProps) {
   return (
-    <div className="card-surface p-4 sm:p-5 flex items-center gap-3.5">
+    <div className="card-surface p-4 sm:p-5 flex items-center gap-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
       {Icon && (
         <div className={`p-3 rounded-xl shrink-0 ${iconBg} ${iconColor}`}>
           <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
         </div>
       )}
-      <div className="min-w-0">
-        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">{title}</p>
-        <h3 className="text-xl sm:text-2xl font-mono font-black text-slate-900 mt-0.5 tracking-tight">{value}</h3>
-        {subtitle && <p className={`text-xs font-medium mt-0.5 ${subtitleColor}`}>{subtitle}</p>}
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider leading-tight">
+          {title}
+        </p>
+        {isLoading ? (
+          <div className="h-7 w-24 bg-slate-100 animate-pulse rounded mt-1" />
+        ) : (
+          <h3 className="text-xl sm:text-2xl font-mono font-black text-slate-900 mt-0.5 tracking-tight truncate">
+            {value}
+          </h3>
+        )}
+        {subtitle && (
+          <p className={`text-xs font-medium mt-0.5 truncate ${subtitleColor}`}>
+            {subtitle}
+          </p>
+        )}
       </div>
     </div>
   );

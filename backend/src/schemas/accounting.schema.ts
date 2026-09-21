@@ -27,4 +27,15 @@ export const accountingSummaryQuerySchema = z.object({
   countryCode: z.enum(['CA', 'US', 'UK']).default('CA'),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  timeframe: z.string().optional(),
+});
+
+export const reconciliationQuerySchema = z.object({
+  countryCode: z.enum(['CA', 'US', 'UK']).default('CA'),
+  timeframe: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  search: z.string().optional(),
+  page: z.coerce.number().int().positive().optional().default(1),
+  limit: z.coerce.number().int().positive().max(100).optional().default(50),
 });

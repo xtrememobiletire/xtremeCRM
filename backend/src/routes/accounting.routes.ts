@@ -8,6 +8,7 @@ import {
   createCashLedgerSchema,
   cashLedgerQuerySchema,
   accountingSummaryQuerySchema,
+  reconciliationQuerySchema,
   idParamSchema,
 } from '../schemas/index.js';
 
@@ -25,6 +26,28 @@ router.get(
   '/summary',
   validateRequest({ query: accountingSummaryQuerySchema }),
   accountingController.getAccountingSummary
+);
+
+/**
+ * @route   GET /api/accounting/reconciliation
+ * @desc    Get completed jobs financial breakdown for ledger
+ * @access  Private (ADMIN, ACCOUNTANT)
+ */
+router.get(
+  '/reconciliation',
+  validateRequest({ query: reconciliationQuerySchema }),
+  accountingController.getReconciliationJobs
+);
+
+/**
+ * @route   GET /api/accounting/jobs
+ * @desc    Alias for /reconciliation
+ * @access  Private (ADMIN, ACCOUNTANT)
+ */
+router.get(
+  '/jobs',
+  validateRequest({ query: reconciliationQuerySchema }),
+  accountingController.getReconciliationJobs
 );
 
 /**
