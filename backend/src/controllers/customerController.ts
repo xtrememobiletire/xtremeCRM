@@ -177,13 +177,20 @@ export const customerController = {
   async createCustomer(req: Request, res: Response) {
     try {
       const { fullName, phone, altPhone, email, countryCode, customerType, membershipTier } = req.body;
+      const resolvedName = (fullName || req.body.name || '').trim();
+      const cleanPhone = (phone || '').trim();
+      const effectiveCountry = countryCode || (req as any).countryCode || 'CA';
+
+      if (!resolvedName || !cleanPhone) {
+        return sendError(res, 'Full name and phone number are required', 400);
+      }
 
       // Check unique [countryCode, phone]
       const existing = await prisma.customer.findUnique({
         where: {
           countryCode_phone: {
-            countryCode: countryCode || 'CA',
-            phone,
+            countryCode: effectiveCountry,
+            phone: cleanPhone,
           },
         },
       });
@@ -193,13 +200,13 @@ export const customerController = {
 
       const customer = await prisma.customer.create({
         data: {
-          fullName,
-          phone,
-          altPhone,
-          email,
-          countryCode: countryCode || 'CA',
+          fullName: resolvedName,
+          phone: cleanPhone,
+          altPhone: altPhone?.trim() || null,
+          email: email?.trim() || null,
+          countryCode: effectiveCountry,
           customerType: customerType || 'RETAIL',
-          membershipTier,
+          membershipTier: membershipTier || null,
         },
         include: {
           vehicles: true,

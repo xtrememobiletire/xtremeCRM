@@ -3,12 +3,15 @@ import Modal from '../ui/Modal';
 import { useCreateCustomer } from '../../hooks/useCustomers';
 import { toast } from 'sonner';
 
+import { useTenant } from '../../context/TenantContext';
+
 interface AddCustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
 export default function AddCustomerModal({ isOpen, onClose }: AddCustomerModalProps) {
+  const { country } = useTenant();
   const createCustomerMutation = useCreateCustomer();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -17,17 +20,23 @@ export default function AddCustomerModal({ isOpen, onClose }: AddCustomerModalPr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !phone) {
-      toast.error('Name and Phone number are required');
+    const cleanName = name.trim();
+    const cleanPhone = phone.trim();
+    const cleanEmail = email.trim();
+    const cleanNotes = notes.trim();
+
+    if (!cleanName || !cleanPhone) {
+      toast.error('Full name and phone number are required');
       return;
     }
 
     try {
       await createCustomerMutation.mutateAsync({
-        name,
-        phone,
-        email: email || undefined,
-        notes: notes || undefined,
+        fullName: cleanName,
+        phone: cleanPhone,
+        email: cleanEmail || undefined,
+        notes: cleanNotes || undefined,
+        countryCode: country,
       });
       toast.success('Customer profile added successfully');
       onClose();
@@ -36,7 +45,13 @@ export default function AddCustomerModal({ isOpen, onClose }: AddCustomerModalPr
       setEmail('');
       setNotes('');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to create customer');
+      const fieldErrors = err.response?.data?.errors;
+      let errorMsg = err.response?.data?.message || err.response?.data?.error || 'Failed to create customer';
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        const details = Object.values(fieldErrors).flat().join(', ');
+        if (details) errorMsg = details;
+      }
+      toast.error(errorMsg);
     }
   };
 
