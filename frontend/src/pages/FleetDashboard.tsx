@@ -14,7 +14,7 @@ type Tab = 'dashboard' | 'vehicles' | 'drivers' | 'request' | 'status' | 'pendin
 
 export default function FleetDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
-  const { currencySymbol } = useTenant();
+  const { currencySymbol, country } = useTenant();
   const queryClient = useQueryClient();
 
   // Booking Form State
@@ -115,6 +115,7 @@ export default function FleetDashboard() {
     bookServiceMutation.mutate({
       vehicleId,
       fleetId: dashboardData?.fleet?.id,
+      countryCode: country,
       serviceAddress: address,
       urgency: serviceType === 'EMERGENCY' ? 'URGENT' : 'STANDARD',
       serviceItems: [{ serviceName, quantity: 1, unitPriceCents: 12000 }],

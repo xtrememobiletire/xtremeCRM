@@ -28,7 +28,7 @@ async function getScopedCustomer(req: Request) {
 router.get('/vehicles', async (req: Request, res: Response) => {
   try {
     const customer = await getScopedCustomer(req);
-    if (!customer) return sendError(res, 'No customer profile linked to your account', 404);
+    if (!customer) return sendSuccess(res, []);
 
     const vehicles = await prisma.vehicle.findMany({
       where: { customerId: customer.id },
@@ -47,7 +47,7 @@ router.get('/vehicles', async (req: Request, res: Response) => {
 router.get('/jobs', async (req: Request, res: Response) => {
   try {
     const customer = await getScopedCustomer(req);
-    if (!customer) return sendError(res, 'No customer profile linked', 404);
+    if (!customer) return sendSuccess(res, []);
 
     const jobs = await prisma.job.findMany({
       where: { customerId: customer.id },
@@ -81,7 +81,7 @@ router.get('/jobs', async (req: Request, res: Response) => {
 router.get('/receipts', async (req: Request, res: Response) => {
   try {
     const customer = await getScopedCustomer(req);
-    if (!customer) return sendError(res, 'No customer profile linked', 404);
+    if (!customer) return sendSuccess(res, []);
 
     const jobs = await prisma.job.findMany({
       where: {

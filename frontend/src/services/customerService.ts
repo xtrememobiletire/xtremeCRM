@@ -73,4 +73,13 @@ export const customerService = {
     const res = await api.get('/customers/lookup', { params: { phone } });
     return res.data.data;
   },
+
+  async updateCustomer(id: string, payload: any): Promise<CustomerItem> {
+    const res = await api.patch(`/customers/${id}`, payload);
+    return res.data.data;
+  },
+
+  async deleteCustomer(id: string): Promise<void> {
+    await api.delete(`/customers/${id}`);
+  },
 };

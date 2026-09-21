@@ -114,6 +114,11 @@ export const jobService = {
     return res.data.data;
   },
 
+  async createPublicBooking(payload: any): Promise<any> {
+    const res = await api.post('/jobs/public-booking', payload);
+    return res.data.data;
+  },
+
   async updateJobStatus(id: string, status: string): Promise<JobItem> {
     const res = await api.patch(`/jobs/${id}/status`, { status });
     return res.data.data;

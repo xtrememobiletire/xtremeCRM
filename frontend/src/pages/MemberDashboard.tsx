@@ -11,7 +11,7 @@ type Tab = 'garage' | 'request' | 'history' | 'receipts';
 
 export default function MemberDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('garage');
-  const { currencySymbol } = useTenant();
+  const { currencySymbol, country } = useTenant();
   const queryClient = useQueryClient();
 
   // Booking state
@@ -75,6 +75,7 @@ export default function MemberDashboard() {
 
     bookMemberService.mutate({
       vehicleId,
+      countryCode: country,
       serviceAddress: address,
       urgency: 'URGENT',
       serviceItems: [{ serviceName, quantity: 1, unitPriceCents: 9500 }],

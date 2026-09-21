@@ -48,4 +48,18 @@ export const fleetService = {
     const res = await api.post('/fleets', payload);
     return res.data.data;
   },
+
+  async updateFleet(id: string, payload: any): Promise<FleetItem> {
+    const res = await api.patch(`/fleets/${id}`, payload);
+    return res.data.data;
+  },
+
+  async deleteFleet(id: string): Promise<void> {
+    await api.delete(`/fleets/${id}`);
+  },
+
+  async addFleetDriver(id: string, payload: any): Promise<any> {
+    const res = await api.post(`/fleets/${id}/drivers`, payload);
+    return res.data.data;
+  },
 };

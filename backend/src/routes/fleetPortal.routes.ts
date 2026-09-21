@@ -36,7 +36,14 @@ async function getScopedFleet(req: Request) {
 router.get('/dashboard', async (req: Request, res: Response) => {
   try {
     const fleet = await getScopedFleet(req);
-    if (!fleet) return sendError(res, 'No fleet assigned to your account', 404);
+    if (!fleet) {
+      return sendSuccess(res, {
+        fleet: null,
+        totalVehicles: 0,
+        totalDrivers: 0,
+        totalJobs: 0,
+      });
+    }
 
     return sendSuccess(res, {
       fleet: {
@@ -63,7 +70,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
 router.get('/vehicles', async (req: Request, res: Response) => {
   try {
     const fleet = await getScopedFleet(req);
-    if (!fleet) return sendError(res, 'No fleet assigned', 404);
+    if (!fleet) return sendSuccess(res, []);
 
     const vehicles = await prisma.vehicle.findMany({
       where: { fleetId: fleet.id },
@@ -82,7 +89,7 @@ router.get('/vehicles', async (req: Request, res: Response) => {
 router.get('/drivers', async (req: Request, res: Response) => {
   try {
     const fleet = await getScopedFleet(req);
-    if (!fleet) return sendError(res, 'No fleet assigned', 404);
+    if (!fleet) return sendSuccess(res, []);
 
     const drivers = await prisma.fleetDriver.findMany({
       where: { fleetId: fleet.id },
@@ -101,7 +108,7 @@ router.get('/drivers', async (req: Request, res: Response) => {
 router.get('/jobs', async (req: Request, res: Response) => {
   try {
     const fleet = await getScopedFleet(req);
-    if (!fleet) return sendError(res, 'No fleet assigned', 404);
+    if (!fleet) return sendSuccess(res, []);
 
     const jobs = await prisma.job.findMany({
       where: { fleetId: fleet.id },
@@ -126,7 +133,7 @@ router.get('/jobs', async (req: Request, res: Response) => {
 router.get('/invoices', async (req: Request, res: Response) => {
   try {
     const fleet = await getScopedFleet(req);
-    if (!fleet) return sendError(res, 'No fleet assigned', 404);
+    if (!fleet) return sendSuccess(res, []);
 
     const status = req.query.status as string;
     const where: any = { fleetId: fleet.id };
@@ -151,7 +158,7 @@ router.get('/invoices', async (req: Request, res: Response) => {
 router.get('/messages', async (req: Request, res: Response) => {
   try {
     const fleet = await getScopedFleet(req);
-    if (!fleet) return sendError(res, 'No fleet assigned', 404);
+    if (!fleet) return sendSuccess(res, []);
 
     const messages = await prisma.portalMessage.findMany({
       where: { fleetId: fleet.id },
