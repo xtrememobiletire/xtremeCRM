@@ -340,7 +340,7 @@ export const jobController = {
   async updateJobStatus(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
-      const { status } = req.body;
+      const { status, urgency } = req.body;
 
       const job = await prisma.job.findUnique({ where: { id } });
       if (!job) return sendError(res, 'Job not found', 404);
@@ -349,6 +349,7 @@ export const jobController = {
         status,
         updatedAt: new Date(),
       };
+      if (urgency) updateData.urgency = urgency;
       if (status === 'ARRIVED') updateData.arrivedAt = new Date();
       if (status === 'COMPLETED') updateData.completedAt = new Date();
 

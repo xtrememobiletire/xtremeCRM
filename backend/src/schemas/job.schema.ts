@@ -100,6 +100,7 @@ export type CreateJobInput = z.infer<typeof CreateJobSchema>;
 
 export const UpdateJobStatusSchema = z.object({
   status: z.enum(['PENDING', 'UNVERIFIED_PUBLIC', 'ASSIGNED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']),
+  urgency: z.enum(['EMERGENCY', 'URGENT', 'STANDARD', 'FUTURE']).optional(),
 });
 
 export type UpdateJobStatusInput = z.infer<typeof UpdateJobStatusSchema>;

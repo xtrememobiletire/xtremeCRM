@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wrench, Car, User, MapPin } from 'lucide-react';
+import { Wrench, Car, User, MapPin, Search, ShieldCheck, CheckCircle2, PhoneOff, Compass } from 'lucide-react';
 import Modal from '../../ui/Modal';
 import { SERVICES_CATALOG, type ServiceCatalogItem } from '../../../constants/services';
 import { useCreateJob } from '../../../hooks/useJobs';
@@ -9,12 +9,38 @@ import { toast } from 'sonner';
 import JobDispositionModal from './JobDispositionModal';
 import { customerService } from '../../../services/customerService';
 import { jobService } from '../../../services/jobService';
+import { fleetService } from '../../../services/fleetService';
 
 interface CreateJobModalProps {
   isOpen: boolean;
   onClose: () => void;
   prefillPhone?: string;
 }
+
+const detectRegionFromPhone = (phone: string, currentCountry: string) => {
+  const digits = phone.replace(/[^0-9]/g, '');
+  if (digits.length < 3) return null;
+  const area = digits.startsWith('1') ? digits.slice(1, 4) : digits.slice(0, 3);
+
+  const ontario = ['416', '647', '437', '905', '289', '365', '519', '226', '548', '613', '343', '705', '249', '807'];
+  const quebec = ['514', '438', '450', '579', '418', '581', '819', '873'];
+  const bc = ['604', '778', '236', '672', '250'];
+  const alberta = ['403', '587', '825', '780'];
+  if (ontario.includes(area)) return 'Ontario (Toronto / GTA), CA';
+  if (quebec.includes(area)) return 'Quebec (Montreal), CA';
+  if (bc.includes(area)) return 'British Columbia, CA';
+  if (alberta.includes(area)) return 'Alberta, CA';
+
+  const dcVa = ['703', '571', '202', '301', '240', '410', '443'];
+  const ny = ['212', '718', '917', '646', '347', '516', '631'];
+  if (dcVa.includes(area)) return 'Virginia / DC Metro, US';
+  if (ny.includes(area)) return 'New York Metro, US';
+
+  if (currentCountry === 'CA') return `Canada (Area ${area})`;
+  if (currentCountry === 'US') return `United States (Area ${area})`;
+  if (currentCountry === 'UK') return 'United Kingdom';
+  return null;
+};
 
 export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: CreateJobModalProps) {
   const { country, currencySymbol, taxRate } = useTenant();
@@ -25,6 +51,11 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
   const [customerPhone, setCustomerPhone] = useState(prefillPhone);
   const [customerEmail, setCustomerEmail] = useState('');
   const [makeUserAccount, setMakeUserAccount] = useState(true);
+
+  // 24/7 Roadside Fleet & Plate lookup state (FR-2.1)
+  const [fleetSearchQuery, setFleetSearchQuery] = useState('');
+  const [isSearchingFleet, setIsSearchingFleet] = useState(false);
+  const [verifiedFleetMatch, setVerifiedFleetMatch] = useState<any | null>(null);
 
   // Auto-detection lookup state
   const [lookupResult, setLookupResult] = useState<{
@@ -66,6 +97,48 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
     setSelectedServices(['MOBILE_DISPATCH_FEE']);
     setNotes('');
     setPaymentMethod('POS');
+    setFleetSearchQuery('');
+    setVerifiedFleetMatch(null);
+  };
+
+  const handleFleetLookup = async (q?: string) => {
+    const query = (q ?? fleetSearchQuery).trim();
+    if (!query) {
+      toast.error('Enter a commercial plate or company name to search');
+      return;
+    }
+    try {
+      setIsSearchingFleet(true);
+      const res = await fleetService.lookupFleet(query);
+      if (res && (res.fleet || res.matchedVehicle)) {
+        setVerifiedFleetMatch(res);
+        if (res.fleet) {
+          setCustomerName(res.fleet.name || res.fleet.companyName || '');
+          if (res.fleet.phone && !customerPhone) setCustomerPhone(res.fleet.phone);
+          if (res.fleet.email && !customerEmail) setCustomerEmail(res.fleet.email);
+        }
+        if (res.matchedVehicle) {
+          setVehicleMake(res.matchedVehicle.make || 'Commercial');
+          setVehicleModel(res.matchedVehicle.model || 'Unit');
+          setVehicleYear(res.matchedVehicle.year?.toString() || new Date().getFullYear().toString());
+          setLicensePlate(res.matchedVehicle.licensePlate || query);
+          setTireSize(res.matchedVehicle.tireSize || res.verifiedTireSize || '11R22.5');
+        } else if (res.verifiedTireSize) {
+          setTireSize(res.verifiedTireSize);
+        } else {
+          setTireSize('11R22.5');
+        }
+        setPaymentMethod('INVOICE_NET30');
+        setNotes((prev) => `${prev ? prev + ' • ' : ''}[Verified Fleet: ${res.fleet?.name || 'Account'} (${res.matchType || 'VERIFIED'})]`);
+        toast.success(`Verified fleet account: ${res.fleet?.name || 'Account'}`);
+      } else {
+        toast.info('No registered commercial fleet found for this query');
+      }
+    } catch {
+      toast.error('Fleet plate verification failed');
+    } finally {
+      setIsSearchingFleet(false);
+    }
   };
 
   useEffect(() => {
@@ -165,8 +238,9 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
     const mappedCurrency = country === 'US' ? 'USD' : country === 'UK' ? 'GBP' : 'CAD';
 
     const payload = {
+      fleetId: verifiedFleetMatch?.fleet?.id || undefined,
       customer: {
-        name: customerName || 'Valued Customer',
+        name: customerName || (verifiedFleetMatch?.fleet?.name ? verifiedFleetMatch.fleet.name : 'Valued Customer'),
         phone: customerPhone,
         email: customerEmail || undefined,
       },
@@ -224,6 +298,37 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
         maxWidth="max-w-2xl"
       >
         <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off" data-lpignore="true" data-form-type="other">
+          {/* Quick 1-Click Call Disposition Shortcuts (FR-1.3) */}
+          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-100 rounded-xl border border-slate-200 text-xs">
+            <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+              <PhoneOff className="w-3.5 h-3.5 text-slate-500" />
+              <span>Quick Call Disposition:</span>
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleDispositionRecorded('WN', 'Wrong Number / Misdial')}
+                className="px-2.5 py-1 bg-white hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 transition shadow-2xs"
+              >
+                ✕ Wrong Number (WN)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDispositionRecorded('RNC', 'Price Shopper / Not Converted')}
+                className="px-2.5 py-1 bg-white hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 transition shadow-2xs"
+              >
+                ✕ Price Shopper (RNC)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDispositionRecorded('IR', 'Irrelevant / Unrelated Service')}
+                className="px-2.5 py-1 bg-white hover:bg-slate-200 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 transition shadow-2xs"
+              >
+                ✕ Irrelevant / Spam (IR)
+              </button>
+            </div>
+          </div>
+
           {/* Customer Information */}
           <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 space-y-3">
             <div className="flex items-center justify-between">
@@ -231,15 +336,23 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <User className="w-3.5 h-3.5 text-red-600" />
                 <span>Customer Intake</span>
               </div>
-              {lookupResult?.isReturning ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 animate-fade-in">
-                  ✓ RETURNING {lookupResult.fleet ? `FLEET (${lookupResult.fleet.name})` : 'CUSTOMER'}
-                </span>
-              ) : customerPhone.replace(/[^0-9]/g, '').length >= 10 ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                  ✦ NEW CALLER / FIRST-TIME MOTORIST
-                </span>
-              ) : null}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {detectRegionFromPhone(customerPhone, country) && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                    <Compass className="w-2.5 h-2.5 text-blue-600" />
+                    <span>{detectRegionFromPhone(customerPhone, country)}</span>
+                  </span>
+                )}
+                {lookupResult?.isReturning ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 animate-fade-in">
+                    ✓ RETURNING {lookupResult.fleet ? `FLEET (${lookupResult.fleet.name})` : 'CUSTOMER'}
+                  </span>
+                ) : customerPhone.replace(/[^0-9]/g, '').length >= 10 ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                    ✦ NEW CALLER
+                  </span>
+                ) : null}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -298,9 +411,61 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
 
           {/* Vehicle Information */}
           <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 space-y-3">
-            <div className="flex items-center gap-2 font-bold text-xs text-slate-800 uppercase tracking-wider">
-              <Car className="w-3.5 h-3.5 text-red-600" />
-              <span>Vehicle & Tire Specs</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-xs text-slate-800 uppercase tracking-wider">
+                <Car className="w-3.5 h-3.5 text-red-600" />
+                <span>Vehicle & Tire Specs</span>
+              </div>
+              {verifiedFleetMatch && (
+                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[10px] font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  <span>24/7 FLEET VERIFIED</span>
+                </span>
+              )}
+            </div>
+
+            {/* 24/7 Roadside Fleet & Plate Verification Search (FR-2.1) */}
+            <div className="p-2.5 bg-white rounded-lg border border-slate-200 space-y-2">
+              <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                <span>24/7 Commercial Fleet & Plate Verification Lookup</span>
+              </div>
+
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={fleetSearchQuery}
+                  onChange={(e) => setFleetSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleFleetLookup();
+                    }
+                  }}
+                  placeholder="Enter plate (e.g. KT-15) or commercial fleet name..."
+                  className="input-base text-xs flex-1 py-1.5"
+                />
+                <button
+                  type="button"
+                  disabled={isSearchingFleet}
+                  onClick={() => handleFleetLookup()}
+                  className="btn-secondary py-1.5 px-3 text-xs inline-flex items-center gap-1 font-bold text-blue-700 hover:bg-blue-50 border-blue-200"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  <span>{isSearchingFleet ? 'Verifying...' : 'Verify'}</span>
+                </button>
+              </div>
+
+              {verifiedFleetMatch && (
+                <div className="p-2 bg-emerald-50/70 border border-emerald-200 rounded-md text-[11px] text-emerald-900 space-y-0.5">
+                  <div className="font-bold">
+                    ✓ {verifiedFleetMatch.fleet?.name || 'Commercial Account'} • Terms: {verifiedFleetMatch.fleet?.paymentTerms || 'NET_30'}
+                  </div>
+                  <div className="text-emerald-700">
+                    Pre-authorized Tire Spec: <strong className="font-mono">{tireSize || '11R22.5'}</strong>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">

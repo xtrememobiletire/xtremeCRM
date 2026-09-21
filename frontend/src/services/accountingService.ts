@@ -120,4 +120,32 @@ export const accountingService = {
     const res = await api.patch(`/accounting/cash-ledger/${id}/verify`);
     return res.data.data;
   },
+
+  async getInvoicePdfData(id: string) {
+    const res = await api.get(`/invoices/${id}/pdf`);
+    return res.data.data;
+  },
+
+  async updateInvoiceStatus(id: string, status: string) {
+    const res = await api.patch(`/invoices/${id}/status`, { status });
+    return res.data.data;
+  },
+
+  async uploadReceipt(jobId: string, file: File) {
+    const formData = new FormData();
+    formData.append('receipt', file);
+    const res = await api.post(`/accounting/receipt/${jobId}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data;
+  },
+
+  async uploadMaterialReceipt(jobId: string, file: File) {
+    const formData = new FormData();
+    formData.append('materialReceipt', file);
+    const res = await api.post(`/accounting/material-receipt/${jobId}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data;
+  },
 };

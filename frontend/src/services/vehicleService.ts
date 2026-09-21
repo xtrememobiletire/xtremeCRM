@@ -37,4 +37,18 @@ export const vehicleService = {
     const res = await api.get(`/vehicles/${id}`);
     return res.data.data;
   },
+
+  async createVehicle(payload: any): Promise<VehicleItem> {
+    const res = await api.post('/vehicles', payload);
+    return res.data.data;
+  },
+
+  async updateVehicle(id: string, payload: any): Promise<VehicleItem> {
+    const res = await api.patch(`/vehicles/${id}`, payload);
+    return res.data.data;
+  },
+
+  async deleteVehicle(id: string): Promise<void> {
+    await api.delete(`/vehicles/${id}`);
+  },
 };

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Phone, Car, MapPin, Calculator } from 'lucide-react';
+import { Phone, Car, MapPin, Calculator, FileText, Printer } from 'lucide-react';
 import Modal from '../../ui/Modal';
 import StatusBadge from '../../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../../utils/currency';
@@ -8,6 +8,7 @@ import { useTenant } from '../../../context/TenantContext';
 import { useUpdateJobStatus } from '../../../hooks/useJobs';
 import { JOB_STATUSES } from '../../../constants/statuses';
 import { accountingService } from '../../../services/accountingService';
+import InvoicePdfModal from '../../invoices/InvoicePdfModal';
 import { toast } from 'sonner';
 
 interface JobDetailModalProps {
@@ -20,6 +21,8 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
   const { country, currencySymbol } = useTenant();
   const updateStatusMutation = useUpdateJobStatus();
   const [updating, setUpdating] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(job?.invoice?.id || null);
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
 
   // Accountant expense stating local state
   const itPlatformFeeCents = country === 'CA' ? 150 : 100;
@@ -72,6 +75,19 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
       toast.success('Accountant expenses stated and ledger derived successfully');
     } catch {
       toast.error('Failed to state job expenses');
+    }
+  };
+
+  const handleGenerateInvoice = async () => {
+    try {
+      setIsGeneratingInvoice(true);
+      const inv = await accountingService.generateInvoice(job.id);
+      toast.success(`Invoice #${inv.invoiceNumber} generated successfully`);
+      setSelectedInvoiceId(inv.id);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to generate invoice');
+    } finally {
+      setIsGeneratingInvoice(false);
     }
   };
 
@@ -175,6 +191,50 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
             <span className="text-base font-mono font-black text-slate-900">
               {formatCurrency(centsToDollars(job.totalAmount), currencySymbol)}
             </span>
+          </div>
+        </div>
+
+        {/* FR-5.4 & FR-5.6: Zero-Inventory Commercial Invoicing & PDF */}
+        <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+              <FileText className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-slate-800 block">
+                {job.invoice ? `Commercial Invoice #${job.invoice.invoiceNumber}` : 'Commercial Invoicing & PDF'}
+              </span>
+              <p className="text-[11px] text-slate-500">
+                {job.invoice
+                  ? `Status: ${job.invoice.status} • Total: ${formatCurrency(centsToDollars(job.invoice.totalCents), currencySymbol)}`
+                  : 'Official KT Group branded invoice with regional hub remittance details'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {job.invoice || selectedInvoiceId ? (
+              <button
+                type="button"
+                onClick={() => setSelectedInvoiceId(job.invoice?.id || selectedInvoiceId)}
+                className="btn-secondary py-1.5 px-3 text-xs inline-flex items-center gap-1.5 text-slate-800 hover:bg-slate-100"
+              >
+                <Printer className="w-3.5 h-3.5 text-red-600" />
+                <span>View / Print PDF</span>
+              </button>
+            ) : status === 'COMPLETED' ? (
+              <button
+                type="button"
+                disabled={isGeneratingInvoice}
+                onClick={handleGenerateInvoice}
+                className="btn-primary py-1.5 px-3 text-xs inline-flex items-center gap-1.5"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>{isGeneratingInvoice ? 'Generating...' : '1-Click Invoice Generation'}</span>
+              </button>
+            ) : (
+              <span className="text-[11px] text-slate-400 font-medium italic">Available upon completion</span>
+            )}
           </div>
         </div>
 
@@ -288,6 +348,14 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
           </button>
         </div>
       </div>
+
+      {selectedInvoiceId && (
+        <InvoicePdfModal
+          isOpen={!!selectedInvoiceId}
+          onClose={() => setSelectedInvoiceId(null)}
+          invoiceId={selectedInvoiceId}
+        />
+      )}
     </Modal>
   );
 }

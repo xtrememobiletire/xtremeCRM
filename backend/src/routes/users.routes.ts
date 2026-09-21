@@ -21,7 +21,7 @@ router.use(authenticate);
  */
 router.get(
   '/',
-  authorize(['ADMIN', 'DISPATCHER']),
+  authorize(['ADMIN', 'DISPATCHER', 'CALL_AGENT', 'ACCOUNTANT']),
   validateRequest({ query: userQuerySchema }),
   userController.getUsers
 );

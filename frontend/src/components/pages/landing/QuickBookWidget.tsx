@@ -43,7 +43,7 @@ export default function QuickBookWidget() {
 
     try {
       setLoading(true);
-      const created = await jobService.createJob({
+      const created = await jobService.createPublicBooking({
         countryCode: country,
         urgency: formData.urgency,
         recipientName: formData.fullName,

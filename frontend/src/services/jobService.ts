@@ -50,6 +50,8 @@ export interface JobItem {
   services?: string[];
   problemNotes?: string;
   notes?: string;
+  recipientName?: string;
+  recipientPhone?: string;
 }
 
 export interface PaginationMeta {
@@ -111,6 +113,11 @@ export const jobService = {
 
   async createJob(payload: any): Promise<JobItem> {
     const res = await api.post('/jobs', payload);
+    return res.data.data;
+  },
+
+  async createPublicBooking(payload: any): Promise<any> {
+    const res = await api.post('/jobs/public-booking', payload);
     return res.data.data;
   },
 
