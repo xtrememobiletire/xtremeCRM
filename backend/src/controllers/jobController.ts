@@ -10,6 +10,21 @@ import {
 } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
 
+const stripDriverFinancials = (job: any) => {
+  const {
+    materialCostCents,
+    itPlatformFeeCents,
+    expenseStatedById,
+    otherExpenseCents,
+    expenseNotes,
+    expenseStatedAt,
+    expenseStatedBy,
+    invoice,
+    ...rest
+  } = job;
+  return rest;
+};
+
 export const jobController = {
   async getAllJobs(req: Request, res: Response) {
     try {
@@ -80,8 +95,7 @@ export const jobController = {
       const jobs = rawJobs.map((j) => {
         if (isDriver) {
           // PRD NFR-4: Driver financial isolation
-          const { materialCostCents: _, itPlatformFeeCents: __, expenseStatedById: ___, ...rest } = j;
-          return rest;
+          return stripDriverFinancials(j);
         }
         return j;
       });
@@ -134,8 +148,7 @@ export const jobController = {
 
       if (!job) return sendError(res, 'Job not found', 404);
       if ((req.user as any)?.role === 'DRIVER') {
-        const { materialCostCents: _, itPlatformFeeCents: __, expenseStatedById: ___, ...rest } = job;
-        return sendSuccess(res, rest);
+        return sendSuccess(res, stripDriverFinancials(job));
       }
       return sendSuccess(res, job);
     } catch (err: any) {
@@ -386,6 +399,10 @@ export const jobController = {
         });
       } catch {}
 
+      if ((req.user as any)?.role === 'DRIVER') {
+        return sendSuccess(res, stripDriverFinancials(updated), 'Job status updated successfully');
+      }
+
       return sendSuccess(res, updated, 'Job status updated successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
@@ -418,7 +435,7 @@ export const jobController = {
 
       try {
         const io = getIO();
-        io.to(`driver:${driverId}`).emit('job:assigned', updated);
+        io.to(`driver:${driverId}`).emit('job:assigned', stripDriverFinancials(updated));
         io.to(`dispatch:${updated.countryCode}`).emit('job:driver_assigned', {
           jobId: updated.id,
           driverId,
@@ -468,6 +485,131 @@ export const jobController = {
       await prisma.jobServiceItem.deleteMany({ where: { jobId: id } });
       await prisma.job.delete({ where: { id } });
       return sendSuccess(res, null, 'Job deleted successfully');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  async createPublicBooking(req: Request, res: Response) {
+    try {
+      const data = req.body;
+      const country = data.country || data.countryCode || 'CA';
+      const jobCode = `PUB-${country}-${Math.floor(10000 + Math.random() * 90000)}`;
+
+      const defaultUser = (await prisma.user.findFirst({ where: { role: 'ADMIN' } })) || (await prisma.user.findFirst());
+      if (!defaultUser) return sendError(res, 'System user not configured', 500);
+
+      const veh = await prisma.vehicle.create({
+        data: {
+          countryCode: country,
+          year: Number(data.vehicle?.year) || new Date().getFullYear(),
+          make: data.vehicle?.make || 'Standard',
+          model: data.vehicle?.model || 'Vehicle',
+          tireSize: data.vehicle?.tireSize || '225/65R17',
+          licensePlate: data.vehicle?.licensePlate || undefined,
+        },
+      });
+
+      let subtotalCents = 0;
+      let serviceItemsCreate: any[] = [];
+      if (data.serviceItems?.length) {
+        serviceItemsCreate = data.serviceItems.map((item: any) => ({
+          serviceName: item.serviceName,
+          category: item.category || 'TIRE_SERVICE',
+          unitPriceCents: item.unitPriceCents || 5000,
+          quantity: item.quantity || 1,
+        }));
+        subtotalCents = serviceItemsCreate.reduce((s: number, i: any) => s + i.unitPriceCents * i.quantity, 0);
+      }
+
+      const taxRateBps = country === 'CA' ? 1300 : country === 'UK' ? 2000 : 800;
+      const taxAmountCents = Math.round((subtotalCents * taxRateBps) / 10000);
+      const totalCents = subtotalCents + taxAmountCents;
+      const itPlatformFeeCents = country === 'CA' ? 150 : 100;
+
+      const job = await prisma.job.create({
+        data: {
+          jobCode,
+          countryCode: country,
+          currency: country === 'US' ? 'USD' : country === 'UK' ? 'GBP' : 'CAD',
+          serviceAddress: data.serviceAddress || 'Roadside Breakdown Location',
+          recipientName: data.recipientName || data.customer?.name,
+          recipientPhone: data.recipientPhone || data.customer?.phone,
+          problemNotes: data.problemNotes || data.notes,
+          urgency: data.urgency || 'STANDARD',
+          source: 'LANDING_PAGE_SELF_BOOK',
+          disposition: 'BOOKED',
+          createdById: defaultUser.id,
+          vehicleId: veh.id,
+          subtotalCents,
+          taxRateBps,
+          taxAmountCents,
+          totalCents,
+          itPlatformFeeCents,
+          paymentMethod: data.paymentMethod,
+          paymentStatus: 'UNPAID',
+          status: 'UNVERIFIED_PUBLIC',
+          serviceItems: { create: serviceItemsCreate },
+        },
+        include: { serviceItems: true },
+      });
+
+      try {
+        const io = getIO();
+        io.to(`dispatch:${country}`).emit('job:triage_new', job);
+      } catch {}
+
+      return sendSuccess(res, { id: job.id, jobCode: job.jobCode, status: job.status }, 'Booking received — our team will contact you shortly', 201);
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  async recordDisposition(req: Request, res: Response) {
+    try {
+      const { callerPhone, disposition, reason, countryCode } = req.body;
+      const agentId = (req.user as any)?.id || (await prisma.user.findFirst())?.id;
+      if (!agentId) return sendError(res, 'No agent user found', 400);
+
+      let dispVeh = await prisma.vehicle.findFirst({ where: { licensePlate: 'DISPOSITION' } });
+      if (!dispVeh) {
+        dispVeh = await prisma.vehicle.create({
+          data: {
+            licensePlate: 'DISPOSITION',
+            make: 'Disposition',
+            model: 'Inquiry',
+            year: 2026,
+            tireSize: 'N/A',
+            countryCode: countryCode || 'CA',
+          },
+        });
+      }
+
+      // Store as a job record with disposition vehicle for analytics
+      const jobCode = `DSP-${countryCode || 'CA'}-${Math.floor(10000 + Math.random() * 90000)}`;
+      const job = await prisma.job.create({
+        data: {
+          jobCode,
+          countryCode: countryCode || 'CA',
+          currency: countryCode === 'US' ? 'USD' : countryCode === 'UK' ? 'GBP' : 'CAD',
+          recipientPhone: callerPhone,
+          serviceAddress: 'N/A — Disposition Only',
+          disposition: disposition || 'RNC',
+          problemNotes: reason || undefined,
+          source: 'DIRECT_CALL',
+          urgency: 'STANDARD',
+          status: 'CANCELLED',
+          createdById: agentId,
+          vehicleId: dispVeh.id,
+          subtotalCents: 0,
+          taxRateBps: 0,
+          taxAmountCents: 0,
+          totalCents: 0,
+          itPlatformFeeCents: 0,
+        },
+      });
+
+      return sendSuccess(res, { id: job.id, disposition }, 'Disposition recorded', 201);
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }

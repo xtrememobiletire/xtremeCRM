@@ -27,6 +27,7 @@ async function main() {
       countryCode: 'CA' as const,
       phone: '+14165550199',
       isAgentActive: true,
+      canApprovePayouts: true,
     },
     {
       email: 'agent@xtremecrm.com',
@@ -59,6 +60,7 @@ async function main() {
       countryCode: 'CA' as const,
       phone: '+14165550104',
       isAgentActive: false,
+      canApprovePayouts: true,
     },
     {
       email: 'va@xtremecrm.com',
@@ -81,6 +83,7 @@ async function main() {
         countryCode: u.countryCode,
         phone: u.phone,
         isAgentActive: u.isAgentActive,
+        canApprovePayouts: (u as any).canApprovePayouts,
       },
       create: {
         email: u.email,
@@ -90,6 +93,7 @@ async function main() {
         countryCode: u.countryCode,
         phone: u.phone,
         isAgentActive: u.isAgentActive,
+        canApprovePayouts: (u as any).canApprovePayouts || false,
       },
     });
     createdUsers[u.role] = user;

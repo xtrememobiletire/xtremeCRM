@@ -53,7 +53,6 @@ export default function Accounting() {
   const grossRevenue = metrics?.grossRevenueCents ?? 0;
   const directCosts = metrics?.totalDirectCostsCents ?? 0;
   const netProfit = metrics?.netProfitCents ?? 0;
-  const itRoyalty = metrics?.itPlatformFeeCents ?? 0;
   const netAfterIt = metrics?.netAfterItRoyaltyCents ?? 0;
   const averageMargin = metrics?.averageMarginPercent ?? (grossRevenue > 0 ? (netProfit / grossRevenue) * 100 : 0);
 

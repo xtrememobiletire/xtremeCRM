@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { accountingController } from '../controllers/accountingController.js';
 import { authenticate } from '../middleware/auth.js';
 import { authorize } from '../middleware/authorize.js';
+import upload from '../config/multer.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import {
   stateJobExpensesSchema,
@@ -92,6 +93,30 @@ router.patch(
   '/cash-ledger/:id/verify',
   validateRequest({ params: idParamSchema }),
   accountingController.verifyCashTransaction
+);
+
+/**
+ * @route   POST /api/accounting/receipt/:id
+ * @desc    Upload customer payment receipt
+ * @access  Private (ADMIN, ACCOUNTANT)
+ */
+router.post(
+  '/receipt/:id',
+  validateRequest({ params: idParamSchema }),
+  upload.single('receipt'),
+  accountingController.uploadReceipt
+);
+
+/**
+ * @route   POST /api/accounting/material-receipt/:id
+ * @desc    Upload supplier wholesale parts receipt
+ * @access  Private (ADMIN, ACCOUNTANT)
+ */
+router.post(
+  '/material-receipt/:id',
+  validateRequest({ params: idParamSchema }),
+  upload.single('materialReceipt'),
+  accountingController.uploadMaterialReceipt
 );
 
 export default router;

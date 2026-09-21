@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Radio, PhoneCall } from 'lucide-react';
+import { Radio, PhoneCall, Clock, CalendarClock, ShieldAlert } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import PageHeader from '../components/ui/PageHeader';
 import DriverList from '../components/pages/dispatch/DriverList';
@@ -22,6 +22,56 @@ const MOCK_FLEET_DRIVERS = [
   { id: 'drv-5', name: 'Alex Tremblay', phone: '+1 (514) 555-0122', status: 'OFFLINE', vehicle: 'Service Truck #01', currentJob: undefined, location: 'Depot (Off Shift)' },
 ];
 
+interface QueueSectionProps {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  jobs: any[];
+  badge: string;
+  onViewJob: (job: any) => void;
+  onAssignJob: (job: any) => void;
+}
+
+function QueueSection({ title, icon: Icon, color, jobs, badge, onViewJob, onAssignJob }: QueueSectionProps) {
+  if (!jobs || jobs.length === 0) return null;
+  return (
+    <div className={`border rounded-xl p-3 ${color}`}>
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="w-4 h-4" />
+        <h4 className="font-bold text-sm">{title}</h4>
+        <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${badge}`}>{jobs.length}</span>
+      </div>
+      <div className="space-y-1.5">
+        {jobs.map((job) => (
+          <div
+            key={job.id}
+            onClick={() => onViewJob(job)}
+            className="flex items-center justify-between p-2 bg-white/80 rounded-lg cursor-pointer hover:bg-white transition text-xs"
+          >
+            <div>
+              <span className="font-mono font-bold text-slate-800">{job.jobCode || job.jobNumber}</span>
+              <span className="text-slate-500 ml-2">{job.serviceAddress || job.locationAddress || '—'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500">{job.customer?.fullName || job.customer?.name || '—'}</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAssignJob(job);
+                }}
+                className="text-[10px] px-2 py-0.5 bg-red-600 text-white rounded font-bold hover:bg-red-700"
+              >
+                Assign
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Dispatch() {
   const { country } = useTenant();
   const navigate = useNavigate();
@@ -29,11 +79,34 @@ export default function Dispatch() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [assigningJob, setAssigningJob] = useState<any | null>(null);
+  const prevTriageCount = useRef(0);
 
+  // FR-8.1: Triage queue — UNVERIFIED_PUBLIC jobs, 5s polling
+  const { data: triageData } = useQuery({
+    queryKey: ['triage-queue', country],
+    queryFn: () => jobService.getJobs({ status: 'UNVERIFIED_PUBLIC', countryCode: country, limit: 50 }),
+    refetchInterval: 5000,
+  });
+
+  // FR-4.1: Urgent queue
   const { data: urgentJobsData } = useQuery({
     queryKey: ['urgent-dispatch-jobs', country],
-    queryFn: () => jobService.getJobs({ urgency: 'EMERGENCY', countryCode: country, limit: 10 }),
+    queryFn: () => jobService.getJobs({ urgency: 'EMERGENCY', countryCode: country, limit: 20 }),
     refetchInterval: 15000,
+  });
+
+  // FR-4.1: Standard queue
+  const { data: standardJobsData } = useQuery({
+    queryKey: ['standard-dispatch-jobs', country],
+    queryFn: () => jobService.getJobs({ urgency: 'STANDARD', countryCode: country, limit: 20 }),
+    refetchInterval: 30000,
+  });
+
+  // FR-4.1: Future queue
+  const { data: futureJobsData } = useQuery({
+    queryKey: ['future-dispatch-jobs', country],
+    queryFn: () => jobService.getJobs({ urgency: 'FUTURE', countryCode: country, limit: 20 }),
+    refetchInterval: 60000,
   });
 
   const { data: apiDrivers = [] } = useQuery({
@@ -41,9 +114,18 @@ export default function Dispatch() {
     queryFn: () => userService.getDrivers(),
   });
 
-  const urgentJobs = (urgentJobsData?.data || []).filter(
-    (j) => j.status !== 'COMPLETED' && j.status !== 'CANCELLED'
-  );
+  const triageJobs = (triageData?.data || []).filter(j => j.status === 'UNVERIFIED_PUBLIC');
+  const urgentJobs = (urgentJobsData?.data || []).filter(j => j.status !== 'COMPLETED' && j.status !== 'CANCELLED');
+  const standardJobs = (standardJobsData?.data || []).filter(j => j.status !== 'COMPLETED' && j.status !== 'CANCELLED');
+  const futureJobs = (futureJobsData?.data || []).filter(j => j.status !== 'COMPLETED' && j.status !== 'CANCELLED');
+
+  // FR-8.1: Auditory chime when new triage jobs appear
+  useEffect(() => {
+    if (triageJobs.length > prevTriageCount.current && prevTriageCount.current > 0) {
+      try { new Audio('/chime.mp3').play().catch(() => {}); } catch {}
+    }
+    prevTriageCount.current = triageJobs.length;
+  }, [triageJobs.length]);
 
   const driversList = apiDrivers.length > 0
     ? apiDrivers.map((d, i) => ({
@@ -86,6 +168,18 @@ export default function Dispatch() {
         }
       />
 
+      {/* FR-8.1: Triage Queue */}
+      <QueueSection
+        title="Triage Queue — Unverified Public Bookings"
+        icon={ShieldAlert}
+        color="border-orange-300 bg-orange-50"
+        jobs={triageJobs}
+        badge="bg-orange-600 text-white"
+        onViewJob={(job) => navigate(`/jobs?id=${job.id}`)}
+        onAssignJob={(job) => setAssigningJob(job)}
+      />
+
+      {/* FR-4.1: Urgent Queue */}
       {urgentJobs.length > 0 && (
         <UrgentQueueAccordion
           urgentJobs={urgentJobs}
@@ -93,6 +187,28 @@ export default function Dispatch() {
           onViewJob={(job) => navigate(`/jobs?id=${job.id}`)}
         />
       )}
+
+      {/* FR-4.1: Standard Queue */}
+      <QueueSection
+        title="Standard Jobs"
+        icon={Clock}
+        color="border-yellow-300 bg-yellow-50"
+        jobs={standardJobs}
+        badge="bg-yellow-600 text-white"
+        onViewJob={(job) => navigate(`/jobs?id=${job.id}`)}
+        onAssignJob={(job) => setAssigningJob(job)}
+      />
+
+      {/* FR-4.1: Future Queue */}
+      <QueueSection
+        title="Future / Scheduled Bookings"
+        icon={CalendarClock}
+        color="border-blue-200 bg-blue-50"
+        jobs={futureJobs}
+        badge="bg-blue-600 text-white"
+        onViewJob={(job) => navigate(`/jobs?id=${job.id}`)}
+        onAssignJob={(job) => setAssigningJob(job)}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">

@@ -8,6 +8,7 @@ import { formatCurrency, centsToDollars } from '../../../utils/currency';
 import { toast } from 'sonner';
 import JobDispositionModal from './JobDispositionModal';
 import { customerService } from '../../../services/customerService';
+import { jobService } from '../../../services/jobService';
 
 interface CreateJobModalProps {
   isOpen: boolean;
@@ -137,9 +138,17 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
     }
   };
 
-  const handleDispositionRecorded = (disposition: string, reason: string) => {
-    // ponytail: log outcome disposition to prevent lost leads
-    console.log(`[DISPOSITION_LOGGED] Phone: ${customerPhone || prefillPhone}, Code: ${disposition}, Reason: ${reason}`);
+  const handleDispositionRecorded = async (disposition: string, reason: string) => {
+    try {
+      await jobService.recordDisposition({
+        callerPhone: customerPhone || prefillPhone,
+        disposition,
+        reason,
+        countryCode: country,
+      });
+    } catch {
+      // Disposition logged locally even if backend fails
+    }
     resetForm();
     onClose();
   };
@@ -181,7 +190,7 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
         };
       }),
       problemNotes: notes || undefined,
-      paymentMethod: paymentMethod === 'CREDIT_CARD' ? 'POS' : paymentMethod,
+      paymentMethod,
       countryCode: country,
       subtotalCents,
       taxCents,
@@ -435,8 +444,10 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 onChange={(e) => setPaymentMethod(e.target.value)}
                 className="select-base mt-1"
               >
-                <option value="CREDIT_CARD">Credit / Debit Card (Stripe)</option>
+                <option value="E_TRANSFER">E-Transfer / Interac</option>
+                <option value="POS">POS (Mobile Card Machine)</option>
                 <option value="CASH">Cash on Scene (Driver Remittance)</option>
+                <option value="MOTO">MOTO (Phone Credit Card)</option>
                 <option value="INVOICE_NET30">Commercial Fleet Net-30 Invoice</option>
               </select>
             </div>

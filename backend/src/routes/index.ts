@@ -11,6 +11,8 @@ import telephonyRoutes from './telephony.routes.js';
 import messagesRoutes from './messages.routes.js';
 import docsRoutes from './docs.routes.js';
 import healthRoutes from './health.routes.js';
+import fleetPortalRoutes from './fleetPortal.routes.js';
+import memberPortalRoutes from './memberPortal.routes.js';
 
 const router = Router();
 
@@ -24,6 +26,8 @@ router.use('/invoices', invoicesRoutes);
 router.use('/accounting', accountingRoutes);
 router.use('/telephony', telephonyRoutes);
 router.use('/messages', messagesRoutes);
+router.use('/fleet-portal', fleetPortalRoutes);
+router.use('/member-portal', memberPortalRoutes);
 router.use('/docs', docsRoutes);
 router.use('/', healthRoutes);
 

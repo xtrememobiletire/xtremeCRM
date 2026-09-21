@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, AlertCircle, TrendingUp, Check } from 'lucide-react';
+import { TrendingUp, Check } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { useCreateExpense } from '../../hooks/useAccounting';
 import { useTenant } from '../../context/TenantContext';

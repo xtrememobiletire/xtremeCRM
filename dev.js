@@ -48,10 +48,11 @@ function pipeOutput(stream, prefix) {
 }
 
 function runProcess(cmd, args, cwd, prefix) {
+  const isWin = process.platform === 'win32';
   const child = spawn(cmd, args, {
     cwd,
     stdio: ['inherit', 'pipe', 'pipe'],
-    shell: false,
+    shell: isWin,
     env: { ...process.env, FORCE_COLOR: '1' },
   });
 
@@ -66,10 +67,11 @@ function runSequential(tasks) {
     return promise.then(() => {
       console.log(`${prefixes.system}Running: ${task.name}...`);
       return new Promise((resolve, reject) => {
+        const isWin = process.platform === 'win32';
         const child = spawn(task.cmd, task.args, {
           cwd: task.cwd,
           stdio: 'inherit',
-          shell: false,
+          shell: isWin,
         });
         child.on('close', (code) => {
           if (code === 0) {

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Truck, Plus } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
-import FleetTable from '../components/pages/fleets/FleetTable';
-import AddFleetModal from '../components/pages/fleets/AddFleetModal';
+import FleetTable from '../components/fleets/FleetTable';
+import AddFleetModal from '../components/fleets/AddFleetModal';
 import EmptyState from '../components/ui/EmptyState';
 import { TableSkeleton } from '../components/common/Skeleton';
 import { useFleets } from '../hooks/useFleets';

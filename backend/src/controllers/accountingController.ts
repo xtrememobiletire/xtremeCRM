@@ -383,6 +383,11 @@ export const accountingController = {
       const id = String(req.params.id);
       const accountantId = (req.user as any)?.id;
 
+      const user = await prisma.user.findUnique({ where: { id: accountantId } });
+      if (!user?.canApprovePayouts && user?.role !== 'ADMIN') {
+        return sendError(res, 'Junior accountants cannot approve payouts. Senior accountant or Admin required.', 403);
+      }
+
       const entry = await prisma.driverCashLedger.update({
         where: { id },
         data: {
@@ -394,6 +399,43 @@ export const accountingController = {
       });
 
       return sendSuccess(res, entry, 'Cash transaction verified');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+  async uploadReceipt(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const file = req.file;
+      if (!file) return sendError(res, 'No receipt file uploaded', 400);
+
+      const receiptUrl = `/uploads/receipts/${file.filename}`;
+      const updated = await prisma.job.update({
+        where: { id },
+        data: { receiptUrl },
+        select: { id: true, jobCode: true, receiptUrl: true },
+      });
+
+      return sendSuccess(res, updated, 'Receipt uploaded successfully');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  async uploadMaterialReceipt(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const file = req.file;
+      if (!file) return sendError(res, 'No material receipt file uploaded', 400);
+
+      const materialReceiptUrl = `/uploads/receipts/${file.filename}`;
+      const updated = await prisma.job.update({
+        where: { id },
+        data: { materialReceiptUrl },
+        select: { id: true, jobCode: true, materialReceiptUrl: true },
+      });
+
+      return sendSuccess(res, updated, 'Material receipt uploaded successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }

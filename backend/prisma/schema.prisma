@@ -138,6 +138,7 @@ model User {
 
   // ponytail: isOnline moved to Redis/Socket.io — ephemeral heartbeat, not DB state
   isAgentActive Boolean @default(false) @map("is_agent_active") // Human toggle: "I accept calls" (PRD: Active/Inactive presence toggle)
+  canApprovePayouts Boolean @default(false) @map("can_approve_payouts") // PRD FR-6.6: Senior vs Junior accountant permission
 
   // Soft Deletion (prevents orphan records while respecting onDelete: Restrict on financial ledgers)
   deletedAt DateTime? @db.Timestamptz @map("deleted_at")

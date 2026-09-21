@@ -19,6 +19,8 @@ const Customers = lazy(() => import('./pages/Customers'));
 const Fleets = lazy(() => import('./pages/Fleets'));
 const Vehicles = lazy(() => import('./pages/Vehicles'));
 const Accounting = lazy(() => import('./pages/Accounting'));
+const FleetDashboard = lazy(() => import('./pages/FleetDashboard'));
+const MemberDashboard = lazy(() => import('./pages/MemberDashboard'));
 
 function PageLoader() {
   return (
@@ -104,6 +106,8 @@ function AppRoutes() {
           <Route path="/fleets" element={<Fleets />} />
           <Route path="/vehicles" element={<Vehicles />} />
           <Route path="/accounting" element={<Accounting />} />
+          <Route path="/fleet-dashboard" element={<FleetDashboard />} />
+          <Route path="/member-dashboard" element={<MemberDashboard />} />
         </Route>
 
         <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />

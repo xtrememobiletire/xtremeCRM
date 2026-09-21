@@ -3,6 +3,8 @@ import { useTenant } from '../../context/TenantContext';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
 import { COUNTRY_REGIONS, type CountryCode } from '../../constants/regions';
+import { toast } from 'sonner';
+import { userService } from '../../services/userService';
 
 interface TopNavProps {
   onMobileMenuClick: () => void;
@@ -90,7 +92,16 @@ export default function TopNav({
         {/* Agent Presence Toggle */}
         <button
           type="button"
-          onClick={() => setIsAgentActive(!isAgentActive)}
+          onClick={async () => {
+            const newState = !isAgentActive;
+            setIsAgentActive(newState);
+            try {
+              await userService.toggleMyPresence(newState);
+            } catch {
+              setIsAgentActive(!newState);
+              toast.error('Failed to sync agent status');
+            }
+          }}
           className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold border transition ${
             isAgentActive
               ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'

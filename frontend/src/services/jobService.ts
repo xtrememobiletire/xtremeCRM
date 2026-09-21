@@ -128,4 +128,13 @@ export const jobService = {
     const res = await api.delete(`/jobs/${id}`);
     return res.data.data;
   },
+
+  async recordDisposition(payload: {
+    callerPhone: string;
+    disposition: string;
+    reason: string;
+    countryCode: string;
+  }): Promise<void> {
+    await api.post('/jobs/disposition', payload);
+  },
 };

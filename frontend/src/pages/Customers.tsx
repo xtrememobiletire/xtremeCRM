@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Users, Plus, Search } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
-import CustomerTable from '../components/pages/customers/CustomerTable';
-import AddCustomerModal from '../components/pages/customers/AddCustomerModal';
+import CustomerTable from '../components/customers/CustomerTable';
+import AddCustomerModal from '../components/customers/AddCustomerModal';
 import Pagination from '../components/common/Pagination';
 import EmptyState from '../components/ui/EmptyState';
 import { TableSkeleton } from '../components/common/Skeleton';
