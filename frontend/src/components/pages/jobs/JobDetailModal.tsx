@@ -7,6 +7,7 @@ import { formatDate } from '../../../utils/date';
 import { useTenant } from '../../../context/TenantContext';
 import { useUpdateJobStatus } from '../../../hooks/useJobs';
 import { JOB_STATUSES } from '../../../constants/statuses';
+import { accountingService } from '../../../services/accountingService';
 import { toast } from 'sonner';
 
 interface JobDetailModalProps {
@@ -34,22 +35,23 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
   const [expenseNotes, setExpenseNotes] = useState<string>(job?.expenseNotes || '');
   const [showExpenseForm, setShowExpenseForm] = useState(false);
 
-  if (!job) return null;
-
   // Derived financial metrics (Rule 2.3 & 2.5)
   const matCents = Math.round((parseFloat(materialCost) || 0) * 100);
   const repCents = Math.round((parseFloat(repairerFee) || 0) * 100);
   const othCents = Math.round((parseFloat(otherExpense) || 0) * 100);
   const totalJobExpenseCents = matCents + repCents + othCents;
-  const netProfitCents = (job.totalAmount || 0) - totalJobExpenseCents;
+  const netProfitCents = (job?.totalAmount || 0) - totalJobExpenseCents;
+  const [status, setStatus] = useState<string>(job?.status || 'PENDING');
   const totalNetAfterItbCents = netProfitCents - itPlatformFeeCents;
+
+  if (!job) return null;
 
   const handleStatusChange = async (newStatus: string) => {
     try {
       setUpdating(true);
       await updateStatusMutation.mutateAsync({ id: job.id, status: newStatus });
       toast.success(`Job status updated to ${newStatus}`);
-      job.status = newStatus;
+      setStatus(newStatus);
     } catch {
       toast.error('Failed to update status');
     } finally {
@@ -57,13 +59,20 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
     }
   };
 
-  const handleSaveExpenses = () => {
-    job.materialCostCents = matCents;
-    job.repairerFeeCents = repCents;
-    job.otherExpenseCents = othCents;
-    job.expenseNotes = expenseNotes;
-    setShowExpenseForm(false);
-    toast.success('Accountant expenses stated and ledger derived successfully');
+  const handleSaveExpenses = async () => {
+    try {
+      await accountingService.stateJobExpenses({
+        jobId: job.id,
+        materialCostCents: matCents,
+        repairerFeeCents: repCents,
+        otherExpenseCents: othCents,
+        expenseNotes,
+      });
+      setShowExpenseForm(false);
+      toast.success('Accountant expenses stated and ledger derived successfully');
+    } catch {
+      toast.error('Failed to state job expenses');
+    }
   };
 
   return (
@@ -78,7 +87,7 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
         <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-slate-500">Status:</span>
-            <StatusBadge status={job.status} />
+            <StatusBadge status={status} />
             <StatusBadge status={job.urgency} />
           </div>
           <div className="text-xs text-slate-400">Created: {formatDate(job.createdAt)}</div>
@@ -90,19 +99,19 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
             Update Workflow Status
           </label>
           <div className="flex flex-wrap gap-1.5">
-            {JOB_STATUSES.map((status) => (
+            {JOB_STATUSES.map((st) => (
               <button
-                key={status}
+                key={st}
                 type="button"
-                disabled={updating || job.status === status}
-                onClick={() => handleStatusChange(status)}
+                disabled={updating || status === st}
+                onClick={() => handleStatusChange(st)}
                 className={`px-2.5 py-1 text-xs rounded-lg font-semibold border transition ${
-                  job.status === status
+                  status === st
                     ? 'bg-red-600 text-white border-red-600'
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 disabled:opacity-50'
                 }`}
               >
-                {status.replace('_', ' ')}
+                {st.replace('_', ' ')}
               </button>
             ))}
           </div>

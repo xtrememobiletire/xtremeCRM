@@ -2,12 +2,14 @@ import { Router } from 'express';
 import { accountingController } from '../controllers/accountingController.js';
 import { authenticate } from '../middleware/auth.js';
 import { authorize } from '../middleware/authorize.js';
+import upload from '../config/multer.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import {
   stateJobExpensesSchema,
   createCashLedgerSchema,
   cashLedgerQuerySchema,
   accountingSummaryQuerySchema,
+  reconciliationQuerySchema,
   idParamSchema,
 } from '../schemas/index.js';
 
@@ -25,6 +27,28 @@ router.get(
   '/summary',
   validateRequest({ query: accountingSummaryQuerySchema }),
   accountingController.getAccountingSummary
+);
+
+/**
+ * @route   GET /api/accounting/reconciliation
+ * @desc    Get completed jobs financial breakdown for ledger
+ * @access  Private (ADMIN, ACCOUNTANT)
+ */
+router.get(
+  '/reconciliation',
+  validateRequest({ query: reconciliationQuerySchema }),
+  accountingController.getReconciliationJobs
+);
+
+/**
+ * @route   GET /api/accounting/jobs
+ * @desc    Alias for /reconciliation
+ * @access  Private (ADMIN, ACCOUNTANT)
+ */
+router.get(
+  '/jobs',
+  validateRequest({ query: reconciliationQuerySchema }),
+  accountingController.getReconciliationJobs
 );
 
 /**
@@ -69,6 +93,30 @@ router.patch(
   '/cash-ledger/:id/verify',
   validateRequest({ params: idParamSchema }),
   accountingController.verifyCashTransaction
+);
+
+/**
+ * @route   POST /api/accounting/receipt/:id
+ * @desc    Upload customer payment receipt
+ * @access  Private (ADMIN, ACCOUNTANT)
+ */
+router.post(
+  '/receipt/:id',
+  validateRequest({ params: idParamSchema }),
+  upload.single('receipt'),
+  accountingController.uploadReceipt
+);
+
+/**
+ * @route   POST /api/accounting/material-receipt/:id
+ * @desc    Upload supplier wholesale parts receipt
+ * @access  Private (ADMIN, ACCOUNTANT)
+ */
+router.post(
+  '/material-receipt/:id',
+  validateRequest({ params: idParamSchema }),
+  upload.single('materialReceipt'),
+  accountingController.uploadMaterialReceipt
 );
 
 export default router;

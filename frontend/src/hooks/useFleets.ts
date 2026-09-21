@@ -1,10 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fleetService } from '../services/fleetService';
+import { useTenant } from '../context/TenantContext';
 
-export function useFleets() {
+export function useFleets(params?: { countryCode?: string }) {
+  const { country } = useTenant();
+  const effectiveCountry = params?.countryCode || country;
+
   return useQuery({
-    queryKey: ['fleets'],
-    queryFn: fleetService.getFleets,
+    queryKey: ['fleets', effectiveCountry],
+    queryFn: () => fleetService.getFleets({ countryCode: effectiveCountry }),
   });
 }
 

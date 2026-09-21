@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Car, Search } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
-import VehicleTable from '../components/pages/vehicles/VehicleTable';
+import VehicleTable from '../components/vehicles/VehicleTable';
 import EmptyState from '../components/ui/EmptyState';
 import { TableSkeleton } from '../components/common/Skeleton';
 import { useVehicles } from '../hooks/useVehicles';

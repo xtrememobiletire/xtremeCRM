@@ -6,7 +6,10 @@ export const PaginationQuerySchema = z.object({
   search: z.string().optional(),
   status: z.enum(['PENDING', 'UNVERIFIED_PUBLIC', 'ASSIGNED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
   countryCode: z.enum(['CA', 'US', 'UK']).optional(),
-  urgency: z.enum(['URGENT', 'STANDARD', 'FUTURE']).optional(),
+  urgency: z.preprocess(
+    (val) => (val === 'NORMAL' ? 'STANDARD' : val === 'EMERGENCY' ? 'URGENT' : val),
+    z.enum(['URGENT', 'STANDARD', 'FUTURE'])
+  ).optional(),
   driverId: z.string().optional(),
   fleetId: z.string().optional(),
   customerId: z.string().optional(),
@@ -20,12 +23,33 @@ export const CreateJobSchema = z.object({
   customerId: z.string().uuid().optional(),
   vehicleId: z.string().uuid().optional(),
   fleetId: z.string().uuid().optional(),
-  serviceAddress: z.string().min(3, { message: 'Service address must be at least 3 characters' }),
+  serviceAddress: z.string().optional(),
+  locationAddress: z.string().optional(),
   recipientName: z.string().optional(),
   recipientPhone: z.string().optional(),
-  urgency: z.enum(['URGENT', 'STANDARD', 'FUTURE']).default('STANDARD'),
+  urgency: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const u = val.toUpperCase();
+        if (u === 'NORMAL' || u === 'STANDARD') return 'STANDARD';
+        if (u === 'LOW' || u === 'FUTURE' || u === 'SCHEDULED') return 'FUTURE';
+        if (u === 'HIGH' || u === 'CRITICAL' || u === 'EMERGENCY' || u === 'URGENT') return 'URGENT';
+      }
+      return val;
+    },
+    z.enum(['URGENT', 'STANDARD', 'FUTURE']).default('STANDARD')
+  ),
+  source: z.enum(['DIRECT_CALL', 'WHATSAPP', 'WEBSITE', 'LANDING_PAGE_SELF_BOOK', 'FLEET_PORTAL', 'MEMBER_PORTAL']).optional().default('DIRECT_CALL'),
   scheduledFor: z.string().optional(),
+  appointmentDate: z.string().optional(),
   services: z.array(z.string()).optional(),
+  lineItems: z.array(
+    z.object({
+      serviceName: z.string().min(1),
+      price: z.coerce.number().optional(),
+      quantity: z.coerce.number().optional().default(1),
+    })
+  ).optional(),
   serviceItems: z.array(
     z.object({
       serviceName: z.string().min(1),
@@ -35,14 +59,41 @@ export const CreateJobSchema = z.object({
       notes: z.string().optional(),
     })
   ).optional(),
+  customer: z.object({
+    name: z.string().optional(),
+    fullName: z.string().optional(),
+    phone: z.string().optional(),
+    email: z.string().optional(),
+  }).optional(),
+  vehicle: z.object({
+    make: z.string().optional(),
+    model: z.string().optional(),
+    year: z.coerce.number().optional(),
+    tireSize: z.string().optional(),
+    licensePlate: z.string().optional(),
+  }).optional(),
   problemNotes: z.string().optional(),
+  notes: z.string().optional(),
   quotedPriceCents: z.coerce.number().int().nonnegative().optional(),
-  taxCents: z.coerce.number().int().nonnegative().default(0),
+  subtotalAmount: z.coerce.number().optional(),
+  subtotalCents: z.coerce.number().optional(),
+  taxCents: z.coerce.number().int().nonnegative().optional(),
+  taxAmount: z.coerce.number().optional(),
   taxRateBps: z.coerce.number().int().nonnegative().optional(),
   totalCents: z.coerce.number().int().nonnegative().optional(),
-  currency: z.enum(['CAD', 'USD', 'GBP']).default('CAD'),
-  paymentMethod: z.enum(['E_TRANSFER', 'POS', 'CASH', 'MOTO', 'STRIPE']).optional(),
+  totalAmount: z.coerce.number().optional(),
+  currency: z.enum(['CAD', 'USD', 'GBP']).optional(),
+  paymentMethod: z.preprocess(
+    (val) => (val === 'CREDIT_CARD' ? 'MOTO' : val),
+    z.enum(['E_TRANSFER', 'POS', 'CASH', 'MOTO', 'STRIPE', 'INVOICE_NET30']).optional()
+  ),
   countryCode: z.enum(['CA', 'US', 'UK']).default('CA'),
+  country: z.enum(['CA', 'US', 'UK']).optional(),
+  disposition: z.string().optional(),
+  makeUserAccount: z.boolean().optional(),
+}).refine((data) => data.serviceAddress || data.locationAddress, {
+  message: 'Service breakdown address is required',
+  path: ['serviceAddress'],
 });
 
 export type CreateJobInput = z.infer<typeof CreateJobSchema>;

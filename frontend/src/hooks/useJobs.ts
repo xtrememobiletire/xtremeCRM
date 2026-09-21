@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { jobService, type JobsResponse } from '../services/jobService';
+import { useTenant } from '../context/TenantContext';
 
 export function useJobs(params?: {
   page?: number;
@@ -11,9 +12,16 @@ export function useJobs(params?: {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }) {
+  const { country } = useTenant();
+  const effectiveCountry = params?.countryCode || country;
+  const effectiveParams = {
+    ...params,
+    countryCode: effectiveCountry,
+  };
+
   return useQuery<JobsResponse>({
-    queryKey: ['jobs', params],
-    queryFn: () => jobService.getJobs(params),
+    queryKey: ['jobs', effectiveCountry, effectiveParams],
+    queryFn: () => jobService.getJobs(effectiveParams),
     staleTime: 10000,
   });
 }

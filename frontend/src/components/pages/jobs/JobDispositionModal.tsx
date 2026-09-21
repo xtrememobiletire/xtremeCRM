@@ -11,10 +11,10 @@ interface JobDispositionModalProps {
 }
 
 const DISPOSITIONS = [
-  { code: 'RNC', label: 'Rate Not Competitive', desc: 'Customer declined quoted pricing' },
-  { code: 'WN', label: 'Wrong Number / Spam', desc: 'Misdial or unsolicited telemarketer' },
-  { code: 'IR', label: 'Information Request', desc: 'Outside service area or general quote inquiry' },
-  { code: 'CANCELLED', label: 'Customer Cancelled', desc: 'Found alternate assistance or no longer needed' },
+  { code: 'RNC', label: 'Relevant (Not converted) - RNC', desc: 'Customer declined pricing or chose competitor' },
+  { code: 'WN', label: 'Business (Wrong Number) - WN', desc: 'Misdial or unsolicited telemarketer' },
+  { code: 'IR', label: 'Irrelevant (Another service) - IR', desc: 'Outside service area or requesting unrelated service' },
+  { code: 'CANCELLED', label: 'Appointment Cancelled By CX', desc: 'Customer found alternate assistance or no longer needed' },
 ];
 
 export default function JobDispositionModal({

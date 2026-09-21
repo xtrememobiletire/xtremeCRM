@@ -26,8 +26,8 @@ export interface VehiclesResponse {
 }
 
 export const vehicleService = {
-  async getVehicles(): Promise<VehiclesResponse> {
-    const res = await api.get('/vehicles');
+  async getVehicles(params?: { countryCode?: string }): Promise<VehiclesResponse> {
+    const res = await api.get('/vehicles', { params });
     const raw = res.data;
     const items = Array.isArray(raw.data) ? raw.data : (Array.isArray(raw) ? raw : []);
     return { data: items };

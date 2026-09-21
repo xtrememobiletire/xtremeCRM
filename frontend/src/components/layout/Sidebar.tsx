@@ -20,7 +20,7 @@ interface SidebarProps {
   isCollapsed?: boolean;
 }
 
-const navItems = [
+const baseNavItems = [
   { icon: BarChart3, label: 'Dashboard', path: '/' },
   { icon: Wrench, label: 'Jobs & Orders', path: '/jobs' },
   { icon: Navigation, label: 'Live Dispatch', path: '/dispatch' },
@@ -33,6 +33,23 @@ const navItems = [
 export default function Sidebar({ isOpen, onClose, isCollapsed = false }: SidebarProps) {
   const { user, logout } = useAuth();
   const { country, currencySymbol } = useTenant();
+  const isFleetManager = user?.role === 'FLEET_MANAGER';
+  const isMember = user?.role === 'CUSTOMER_MEMBER';
+  const isAdmin = user?.role === 'ADMIN';
+
+  const navItems = isFleetManager
+    ? [{ icon: Truck, label: 'Fleet Portal', path: '/fleet-dashboard' }]
+    : isMember
+    ? [{ icon: Car, label: 'Member Portal', path: '/member-dashboard' }]
+    : [
+        ...baseNavItems,
+        ...(isAdmin
+          ? [
+              { icon: Truck, label: 'Fleet Portal Preview', path: '/fleet-dashboard' },
+              { icon: Car, label: 'Member Portal Preview', path: '/member-dashboard' },
+            ]
+          : []),
+      ];
 
   return (
     <>

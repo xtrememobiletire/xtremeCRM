@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { api } from '../utils/api';
 
 export interface User {
@@ -26,43 +26,50 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('xtreme_user');
-    return saved ? JSON.parse(saved) : {
-      id: 'mock-admin',
-      email: 'admin@xtremecrm.com',
-      fullName: 'Super Admin',
-      firstName: 'Admin',
-      role: 'ADMIN',
-      countryCode: 'CA',
-      phone: '+14165550199',
-      isAgentActive: true,
-    };
+    return saved ? JSON.parse(saved) : null;
   });
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const res = await api.get('/auth/me');
+        if (res.data.success && res.data.data) {
+          const u = res.data.data;
+          const formattedUser = {
+            ...u,
+            firstName: u.firstName || u.fullName?.split(' ')[0] || 'User',
+          };
+          setUser(formattedUser);
+          localStorage.setItem('xtreme_user', JSON.stringify(formattedUser));
+        }
+      } catch {
+        // If unauthenticated or token expired, clear invalid storage
+        if (!localStorage.getItem('xtreme_token')) {
+          setUser(null);
+          localStorage.removeItem('xtreme_user');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkSession();
+  }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      const res = await api.post('/auth/login', { email, password });
-      if (res.data.success && res.data.data) {
-        const u = res.data.data.user;
-        setUser({
-          ...u,
-          firstName: u.firstName || u.fullName?.split(' ')[0] || 'User',
-        });
-        localStorage.setItem('xtreme_user', JSON.stringify(u));
+    const res = await api.post('/auth/login', { email, password });
+    if (res.data.success && res.data.data) {
+      const { user: u, token } = res.data.data;
+      if (token) {
+        localStorage.setItem('xtreme_token', token);
       }
-    } catch (err) {
-      console.warn('Backend login fallback to mock user for dev:', err);
-      const mockUser: User = {
-        id: 'admin-1',
-        email,
-        fullName: 'Call Center Admin',
-        firstName: 'Admin',
-        role: 'ADMIN',
-        countryCode: 'CA',
-        isAgentActive: true,
+      const formattedUser = {
+        ...u,
+        firstName: u.firstName || u.fullName?.split(' ')[0] || 'User',
       };
-      setUser(mockUser);
-      localStorage.setItem('xtreme_user', JSON.stringify(mockUser));
+      setUser(formattedUser);
+      localStorage.setItem('xtreme_user', JSON.stringify(formattedUser));
     }
   };
 
@@ -72,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {}
     setUser(null);
     localStorage.removeItem('xtreme_user');
+    localStorage.removeItem('xtreme_token');
   };
 
   const updateUser = (data: Partial<User>) => {

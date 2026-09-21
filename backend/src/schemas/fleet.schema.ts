@@ -1,19 +1,46 @@
 import { z } from 'zod';
 
-export const createFleetSchema = z.object({
-  fleetCode: z.string().optional(), // Auto-generated if omitted
-  name: z.string().min(1, 'Company legal name is required'),
-  contactPerson: z.string().min(1, 'Contact person is required'),
-  phone: z.string().min(7, 'Phone number is required'),
-  email: z.string().email().optional(),
-  address: z.string().optional(),
-  website: z.string().url().optional().or(z.literal('')),
-  countryCode: z.enum(['CA', 'US', 'UK']).default('US'),
-  status: z.enum(['PENDING', 'APPROVED', 'SUSPENDED']).default('APPROVED'),
-  virtualAssistantId: z.string().uuid().optional(),
-});
+export const createFleetSchema = z
+  .object({
+    fleetCode: z.string().optional().or(z.literal('')),
+    name: z.string().optional(),
+    companyName: z.string().optional(),
+    contactPerson: z.string().optional(),
+    contactName: z.string().optional(),
+    phone: z.string().optional().or(z.literal('')),
+    email: z.string().email('Invalid email address').optional().or(z.literal('')),
+    address: z.string().optional().or(z.literal('')),
+    website: z.string().optional().or(z.literal('')),
+    countryCode: z.enum(['CA', 'US', 'UK']).optional().default('CA'),
+    country: z.enum(['CA', 'US', 'UK']).optional(),
+    status: z.enum(['PENDING', 'APPROVED', 'SUSPENDED']).optional().default('APPROVED'),
+    virtualAssistantId: z.string().uuid().optional().or(z.literal('')),
+    paymentTerms: z.string().optional(),
+    creditLimitCents: z.coerce.number().optional(),
+  })
+  .refine((data) => Boolean((data.name && data.name.trim()) || (data.companyName && data.companyName.trim())), {
+    message: 'Company name is required',
+    path: ['companyName'],
+  });
 
-export const updateFleetSchema = createFleetSchema.partial();
+export const updateFleetSchema = z
+  .object({
+    fleetCode: z.string().optional().or(z.literal('')),
+    name: z.string().optional(),
+    companyName: z.string().optional(),
+    contactPerson: z.string().optional(),
+    contactName: z.string().optional(),
+    phone: z.string().optional().or(z.literal('')),
+    email: z.string().email('Invalid email address').optional().or(z.literal('')),
+    address: z.string().optional().or(z.literal('')),
+    website: z.string().optional().or(z.literal('')),
+    countryCode: z.enum(['CA', 'US', 'UK']).optional(),
+    country: z.enum(['CA', 'US', 'UK']).optional(),
+    status: z.enum(['PENDING', 'APPROVED', 'SUSPENDED']).optional(),
+    virtualAssistantId: z.string().uuid().optional().or(z.literal('')),
+    paymentTerms: z.string().optional(),
+    creditLimitCents: z.coerce.number().optional(),
+  });
 
 export const fleetQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),

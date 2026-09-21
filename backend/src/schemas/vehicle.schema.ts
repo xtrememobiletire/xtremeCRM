@@ -1,14 +1,14 @@
 import { z } from 'zod';
 
 export const createVehicleSchema = z.object({
-  customerId: z.string().uuid().optional(),
-  fleetId: z.string().uuid().optional(),
-  countryCode: z.enum(['CA', 'US', 'UK']).default('CA'),
+  customerId: z.string().uuid().optional().or(z.literal('')),
+  fleetId: z.string().uuid().optional().or(z.literal('')),
+  countryCode: z.enum(['CA', 'US', 'UK']).optional().default('CA'),
   year: z.coerce.number().int().min(1900).max(2100),
   make: z.string().min(1, 'Make is required'),
   model: z.string().min(1, 'Model is required'),
-  licensePlate: z.string().optional(),
-  vin: z.string().optional(),
+  licensePlate: z.string().optional().or(z.literal('')),
+  vin: z.string().optional().or(z.literal('')),
   tireSize: z.string().min(1, 'Tire size is required'),
 });
 

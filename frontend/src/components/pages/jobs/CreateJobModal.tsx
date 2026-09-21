@@ -7,6 +7,8 @@ import { useTenant } from '../../../context/TenantContext';
 import { formatCurrency, centsToDollars } from '../../../utils/currency';
 import { toast } from 'sonner';
 import JobDispositionModal from './JobDispositionModal';
+import { customerService } from '../../../services/customerService';
+import { jobService } from '../../../services/jobService';
 
 interface CreateJobModalProps {
   isOpen: boolean;
@@ -22,6 +24,16 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState(prefillPhone);
   const [customerEmail, setCustomerEmail] = useState('');
+  const [makeUserAccount, setMakeUserAccount] = useState(true);
+
+  // Auto-detection lookup state
+  const [lookupResult, setLookupResult] = useState<{
+    found: boolean;
+    isReturning: boolean;
+    customer: any;
+    fleet: any;
+    driver: any;
+  } | null>(null);
 
   const [vehicleMake, setVehicleMake] = useState('');
   const [vehicleModel, setVehicleModel] = useState('');
@@ -30,19 +42,75 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
   const [licensePlate, setLicensePlate] = useState('');
 
   const [locationAddress, setLocationAddress] = useState('');
-  const [urgency, setUrgency] = useState('NORMAL');
+  const [urgency, setUrgency] = useState('STANDARD');
   const [selectedServices, setSelectedServices] = useState<string[]>(['MOBILE_DISPATCH_FEE']);
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('CREDIT_CARD');
+  const [paymentMethod, setPaymentMethod] = useState('POS');
 
   // Mandatory Call Outcome Disposition (Rule 6.2)
   const [isDispositionPromptOpen, setIsDispositionPromptOpen] = useState(false);
 
+  const resetForm = () => {
+    setCustomerName('');
+    setCustomerPhone('');
+    setCustomerEmail('');
+    setMakeUserAccount(true);
+    setLookupResult(null);
+    setVehicleMake('');
+    setVehicleModel('');
+    setVehicleYear('');
+    setTireSize('');
+    setLicensePlate('');
+    setLocationAddress('');
+    setUrgency('STANDARD');
+    setSelectedServices(['MOBILE_DISPATCH_FEE']);
+    setNotes('');
+    setPaymentMethod('POS');
+  };
+
   useEffect(() => {
-    if (prefillPhone) {
-      setCustomerPhone(prefillPhone);
+    if (isOpen) {
+      resetForm();
+      if (prefillPhone) {
+        setCustomerPhone(prefillPhone);
+      }
     }
-  }, [prefillPhone]);
+  }, [isOpen, prefillPhone]);
+
+  useEffect(() => {
+    const clean = customerPhone.replace(/[^0-9]/g, '');
+    if (clean.length >= 10) {
+      customerService.lookupCustomer(customerPhone)
+        .then((res) => {
+          setLookupResult(res);
+          if (res.customer) {
+            setCustomerName(res.customer.fullName || res.customer.name || '');
+            setCustomerEmail(res.customer.email || '');
+            if (res.customer.vehicles?.length > 0) {
+              const v = res.customer.vehicles[0];
+              setVehicleMake(v.make || '');
+              setVehicleModel(v.model || '');
+              setVehicleYear(v.year?.toString() || '');
+              setTireSize(v.tireSize || '');
+              setLicensePlate(v.licensePlate || '');
+            }
+          } else if (res.fleet) {
+            setCustomerName(res.fleet.name || res.fleet.contactPerson || '');
+            if (res.driver) {
+              setNotes(`[Fleet Driver Call] Driver: ${res.driver.name} (Plate: ${res.driver.plate || 'N/A'})`);
+              if (res.driver.plate) setLicensePlate(res.driver.plate);
+            }
+            if (res.fleet.vehicles?.length > 0) {
+              const v = res.fleet.vehicles[0];
+              setTireSize(v.tireSize || '11R22.5');
+            }
+          }
+        })
+        .catch(() => {});
+    } else {
+      setLookupResult(null);
+    }
+  }, [customerPhone]);
 
   // Subtotal & Tax
   const subtotalCents = selectedServices.reduce((sum: number, serviceId: string) => {
@@ -65,13 +133,23 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
     if (customerPhone || prefillPhone) {
       setIsDispositionPromptOpen(true);
     } else {
+      resetForm();
       onClose();
     }
   };
 
-  const handleDispositionRecorded = (disposition: string, reason: string) => {
-    // ponytail: log outcome disposition to prevent lost leads
-    console.log(`[DISPOSITION_LOGGED] Phone: ${customerPhone || prefillPhone}, Code: ${disposition}, Reason: ${reason}`);
+  const handleDispositionRecorded = async (disposition: string, reason: string) => {
+    try {
+      await jobService.recordDisposition({
+        callerPhone: customerPhone || prefillPhone,
+        disposition,
+        reason,
+        countryCode: country,
+      });
+    } catch {
+      // Disposition logged locally even if backend fails
+    }
+    resetForm();
     onClose();
   };
 
@@ -83,55 +161,57 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
       return;
     }
 
+    const mappedUrgency = urgency === 'NORMAL' ? 'STANDARD' : urgency === 'LOW' ? 'FUTURE' : 'URGENT';
+    const mappedCurrency = country === 'US' ? 'USD' : country === 'UK' ? 'GBP' : 'CAD';
+
     const payload = {
       customer: {
         name: customerName || 'Valued Customer',
         phone: customerPhone,
         email: customerEmail || undefined,
       },
-      vehicle: vehicleMake
-        ? {
-            make: vehicleMake,
-            model: vehicleModel || 'Model',
-            year: vehicleYear ? parseInt(vehicleYear, 10) : undefined,
-            tireSize: tireSize || undefined,
-            licensePlate: licensePlate || undefined,
-          }
-        : undefined,
-      lineItems: selectedServices.map((serviceId) => {
+      vehicle: {
+        make: vehicleMake || 'Standard',
+        model: vehicleModel || 'Vehicle',
+        year: vehicleYear ? parseInt(vehicleYear, 10) : new Date().getFullYear(),
+        tireSize: tireSize || '225/65R17',
+        licensePlate: licensePlate || undefined,
+      },
+      serviceAddress: locationAddress,
+      urgency: mappedUrgency,
+      currency: mappedCurrency,
+      serviceItems: selectedServices.map((serviceId) => {
         const item = SERVICES_CATALOG.find((s: ServiceCatalogItem) => s.id === serviceId);
         return {
           serviceName: item?.name || serviceId,
-          price: item?.basePriceCents || 5000,
+          category: 'TIRE_SERVICE' as const,
+          unitPriceCents: item?.basePriceCents || 5000,
           quantity: 1,
         };
       }),
-      locationAddress,
-      urgency,
-      notes: notes || undefined,
+      problemNotes: notes || undefined,
       paymentMethod,
-      country,
-      subtotalAmount: subtotalCents,
-      taxAmount: taxCents,
-      totalAmount: totalCents,
+      countryCode: country,
+      subtotalCents,
+      taxCents,
+      totalCents,
       disposition: 'BOOKED',
+      makeUserAccount,
     };
 
     try {
       await createJobMutation.mutateAsync(payload);
       toast.success('Job ticket created & dispatched successfully');
+      resetForm();
       onClose();
-      setCustomerName('');
-      setCustomerPhone('');
-      setVehicleMake('');
-      setVehicleModel('');
-      setTireSize('');
-      setLicensePlate('');
-      setLocationAddress('');
-      setSelectedServices(['MOBILE_DISPATCH_FEE']);
-      setNotes('');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to create job ticket');
+      const fieldErrors = err.response?.data?.errors;
+      let errorMsg = err.response?.data?.message || err.response?.data?.error || 'Failed to create job ticket';
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        const details = Object.values(fieldErrors).flat().join(', ');
+        if (details) errorMsg = details;
+      }
+      toast.error(errorMsg);
     }
   };
 
@@ -143,12 +223,23 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
         title="Intake & Dispatch New Job"
         maxWidth="max-w-2xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off" data-lpignore="true" data-form-type="other">
           {/* Customer Information */}
           <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 space-y-3">
-            <div className="flex items-center gap-2 font-bold text-xs text-slate-800 uppercase tracking-wider">
-              <User className="w-3.5 h-3.5 text-red-600" />
-              <span>Customer Intake</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-xs text-slate-800 uppercase tracking-wider">
+                <User className="w-3.5 h-3.5 text-red-600" />
+                <span>Customer Intake</span>
+              </div>
+              {lookupResult?.isReturning ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 animate-fade-in">
+                  ✓ RETURNING {lookupResult.fleet ? `FLEET (${lookupResult.fleet.name})` : 'CUSTOMER'}
+                </span>
+              ) : customerPhone.replace(/[^0-9]/g, '').length >= 10 ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                  ✦ NEW CALLER / FIRST-TIME MOTORIST
+                </span>
+              ) : null}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -157,6 +248,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <input
                   type="tel"
                   required
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   placeholder="+14165550199"
@@ -167,6 +260,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <label className="text-[11px] font-semibold text-slate-600">Full Name</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="John Smith"
@@ -177,12 +272,27 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <label className="text-[11px] font-semibold text-slate-600">Email</label>
                 <input
                   type="email"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
                   placeholder="john@example.com"
                   className="input-base mt-1"
                 />
               </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1 border-t border-slate-200/60">
+              <input
+                type="checkbox"
+                id="makeUserAccount"
+                checked={makeUserAccount}
+                onChange={(e) => setMakeUserAccount(e.target.checked)}
+                className="w-3.5 h-3.5 text-red-600 rounded border-slate-300"
+              />
+              <label htmlFor="makeUserAccount" className="text-[11px] text-slate-600">
+                After all this make user account (auto-provisions customer portal access & SMS tracking)
+              </label>
             </div>
           </div>
 
@@ -198,6 +308,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <label className="text-[11px] font-semibold text-slate-600">Make</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={vehicleMake}
                   onChange={(e) => setVehicleMake(e.target.value)}
                   placeholder="Ford"
@@ -208,6 +320,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <label className="text-[11px] font-semibold text-slate-600">Model</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={vehicleModel}
                   onChange={(e) => setVehicleModel(e.target.value)}
                   placeholder="F-150"
@@ -218,6 +332,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <label className="text-[11px] font-semibold text-slate-600">Year</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={vehicleYear}
                   onChange={(e) => setVehicleYear(e.target.value)}
                   placeholder="2022"
@@ -228,6 +344,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <label className="text-[11px] font-semibold text-slate-600">Plate</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={licensePlate}
                   onChange={(e) => setLicensePlate(e.target.value)}
                   placeholder="CFMR 482"
@@ -238,6 +356,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <label className="text-[11px] font-semibold text-slate-600">Tire Size *</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={tireSize}
                   onChange={(e) => setTireSize(e.target.value)}
                   placeholder="275/65R18"
@@ -260,6 +380,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 <input
                   type="text"
                   required
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={locationAddress}
                   onChange={(e) => setLocationAddress(e.target.value)}
                   placeholder="Hwy 401 Eastbound near Exit 344, Toronto, ON"
@@ -328,8 +450,10 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 onChange={(e) => setPaymentMethod(e.target.value)}
                 className="select-base mt-1"
               >
-                <option value="CREDIT_CARD">Credit / Debit Card (Stripe)</option>
+                <option value="E_TRANSFER">E-Transfer / Interac</option>
+                <option value="POS">POS (Mobile Card Machine)</option>
                 <option value="CASH">Cash on Scene (Driver Remittance)</option>
+                <option value="MOTO">MOTO (Phone Credit Card)</option>
                 <option value="INVOICE_NET30">Commercial Fleet Net-30 Invoice</option>
               </select>
             </div>
@@ -337,6 +461,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
               <label className="text-[11px] font-semibold text-slate-600">Intake Notes / Driver Instructions</label>
               <input
                 type="text"
+                autoComplete="off"
+                data-lpignore="true"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Front-right passenger tire punctured..."

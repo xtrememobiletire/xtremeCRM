@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { REGIONS, type RegionCode, type RegionConfig } from '../constants/regions';
+import { queryClient } from '../lib/queryClient';
 
 interface TenantContextType {
   country: RegionCode;
@@ -26,6 +27,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const setCountry = (code: RegionCode) => {
     setCountryState(code);
     localStorage.setItem('xtreme_country', code);
+    // ponytail: invalidate all queries on tenant switch to instantly reflect regional silo data
+    queryClient.invalidateQueries();
   };
 
   const setIsAgentActive = (active: boolean) => {

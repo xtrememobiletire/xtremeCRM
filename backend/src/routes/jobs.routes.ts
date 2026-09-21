@@ -13,8 +13,22 @@ import { tenantScope } from '../middleware/tenantScope.js';
 
 const router = Router();
 
+/**
+ * @route   POST /api/jobs/public-booking
+ * @desc    Public landing page self-service booking (no auth required)
+ * @access  Public
+ */
+router.post('/public-booking', validateRequest({ body: CreateJobSchema }), jobController.createPublicBooking);
+
 router.use(authenticate);
 router.use(tenantScope);
+
+/**
+ * @route   POST /api/jobs/disposition
+ * @desc    Record call disposition for unbooked calls
+ * @access  Private
+ */
+router.post('/disposition', jobController.recordDisposition);
 
 /**
  * @route   GET /api/jobs

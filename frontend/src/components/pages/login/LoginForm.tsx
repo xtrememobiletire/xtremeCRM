@@ -11,8 +11,8 @@ export default function LoginForm() {
   const { login } = useAuth();
   const { country, setCountry } = useTenant();
 
-  const [email, setEmail] = useState('dispatcher@xtrememobiletire.com');
-  const [password, setPassword] = useState('Password123!');
+  const [email, setEmail] = useState('admin@xtremecrm.com');
+  const [password, setPassword] = useState('AdminPassword123!');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,13 +31,15 @@ export default function LoginForm() {
 
   const handleQuickFill = (role: string) => {
     if (role === 'admin') {
-      setEmail('admin@xtrememobiletire.com');
+      setEmail('admin@xtremecrm.com');
     } else if (role === 'dispatcher') {
-      setEmail('dispatcher@xtrememobiletire.com');
+      setEmail('dispatcher@xtremecrm.com');
+    } else if (role === 'accountant') {
+      setEmail('accountant@xtremecrm.com');
     } else {
-      setEmail('driver@xtrememobiletire.com');
+      setEmail('driver@xtremecrm.com');
     }
-    setPassword('Password123!');
+    setPassword('AdminPassword123!');
   };
 
   return (
@@ -110,29 +112,39 @@ export default function LoginForm() {
         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center mb-2">
           Fast Demo Accounts
         </p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => handleQuickFill('dispatcher')}
-            className="flex-1 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition"
-          >
-            Dispatcher
-          </button>
+        <div className="grid grid-cols-4 gap-1.5">
           <button
             type="button"
             onClick={() => handleQuickFill('admin')}
-            className="flex-1 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition"
+            className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center"
           >
             Admin
           </button>
           <button
             type="button"
+            onClick={() => handleQuickFill('dispatcher')}
+            className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center"
+          >
+            Dispatcher
+          </button>
+          <button
+            type="button"
+            onClick={() => handleQuickFill('accountant')}
+            className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center"
+          >
+            Accountant
+          </button>
+          <button
+            type="button"
             onClick={() => handleQuickFill('driver')}
-            className="flex-1 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition"
+            className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center"
           >
             Technician
           </button>
         </div>
+        <p className="text-[10px] text-slate-400 text-center mt-2">
+          Default password: <code className="font-mono text-slate-600 font-bold">AdminPassword123!</code>
+        </p>
       </div>
     </div>
   );

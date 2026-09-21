@@ -33,6 +33,7 @@ export const customerService = {
     page?: number;
     limit?: number;
     search?: string;
+    countryCode?: string;
   }): Promise<CustomerResponse> {
     const res = await api.get('/customers', { params });
     const raw = res.data;
@@ -59,6 +60,17 @@ export const customerService = {
 
   async createCustomer(payload: any): Promise<CustomerItem> {
     const res = await api.post('/customers', payload);
+    return res.data.data;
+  },
+
+  async lookupCustomer(phone: string): Promise<{
+    found: boolean;
+    isReturning: boolean;
+    customer: any | null;
+    fleet: any | null;
+    driver: any | null;
+  }> {
+    const res = await api.get('/customers/lookup', { params: { phone } });
     return res.data.data;
   },
 };

@@ -51,6 +51,71 @@ export const customerController = {
     }
   },
 
+  async lookupCustomer(req: Request, res: Response) {
+    try {
+      const phone = ((req.query.phone || req.query.q || '') as string).trim();
+      const countryCode = (req.query.countryCode as any) || req.countryCode || 'CA';
+
+      if (!phone) {
+        return sendError(res, 'Phone parameter is required for lookup', 400);
+      }
+
+      const cleanDigits = phone.replace(/[^0-9]/g, '');
+
+      // 1. Check Customer
+      const customer = await prisma.customer.findFirst({
+        where: {
+          countryCode,
+          phone: { contains: cleanDigits.slice(-10) },
+        },
+        include: {
+          vehicles: true,
+          jobs: {
+            take: 3,
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+      });
+
+      // 2. Check FleetDriver
+      const fleetDriver = await prisma.fleetDriver.findFirst({
+        where: {
+          phone: { contains: cleanDigits.slice(-10) },
+        },
+        include: {
+          fleet: {
+            include: {
+              vehicles: true,
+            },
+          },
+        },
+      });
+
+      // 3. Check Fleet direct
+      const fleetDirect = await prisma.fleet.findFirst({
+        where: {
+          countryCode,
+          phone: { contains: cleanDigits.slice(-10) },
+        },
+        include: {
+          vehicles: true,
+        },
+      });
+
+      const matchedFleet = fleetDriver?.fleet || fleetDirect || null;
+
+      return sendSuccess(res, {
+        found: Boolean(customer || matchedFleet),
+        isReturning: Boolean(customer || matchedFleet),
+        customer: customer || null,
+        fleet: matchedFleet,
+        driver: fleetDriver ? { name: fleetDriver.fullName, phone: fleetDriver.phone, plate: fleetDriver.licensePlate } : null,
+      });
+    } catch (err: any) {
+      return sendError(res, err.message);
+    }
+  },
+
   async searchCustomer(req: Request, res: Response) {
     try {
       const query = ((req.query.q || req.query.phone || '') as string).trim();
@@ -112,13 +177,20 @@ export const customerController = {
   async createCustomer(req: Request, res: Response) {
     try {
       const { fullName, phone, altPhone, email, countryCode, customerType, membershipTier } = req.body;
+      const resolvedName = (fullName || req.body.name || '').trim();
+      const cleanPhone = (phone || '').trim();
+      const effectiveCountry = countryCode || (req as any).countryCode || 'CA';
+
+      if (!resolvedName || !cleanPhone) {
+        return sendError(res, 'Full name and phone number are required', 400);
+      }
 
       // Check unique [countryCode, phone]
       const existing = await prisma.customer.findUnique({
         where: {
           countryCode_phone: {
-            countryCode: countryCode || 'CA',
-            phone,
+            countryCode: effectiveCountry,
+            phone: cleanPhone,
           },
         },
       });
@@ -128,13 +200,13 @@ export const customerController = {
 
       const customer = await prisma.customer.create({
         data: {
-          fullName,
-          phone,
-          altPhone,
-          email,
-          countryCode: countryCode || 'CA',
+          fullName: resolvedName,
+          phone: cleanPhone,
+          altPhone: altPhone?.trim() || null,
+          email: email?.trim() || null,
+          countryCode: effectiveCountry,
           customerType: customerType || 'RETAIL',
-          membershipTier,
+          membershipTier: membershipTier || null,
         },
         include: {
           vehicles: true,

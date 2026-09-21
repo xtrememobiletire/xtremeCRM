@@ -1,0 +1,13 @@
+{
+  "name": "xtremecrm-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node dev.js dev",
+    "build": "node dev.js build",
+    "start": "node dev.js start",
+    "lint": "pnpm --dir backend lint && pnpm --dir frontend lint",
+    "typecheck": "pnpm --dir backend typecheck && pnpm --dir frontend typecheck"
+  }
+}
