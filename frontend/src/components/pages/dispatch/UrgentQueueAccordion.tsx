@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, ChevronDown, ChevronUp, MapPin, UserCheck } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, MapPin, UserCheck, MessageSquare } from 'lucide-react';
 import { formatCurrency, centsToDollars } from '../../../utils/currency';
 import { useTenant } from '../../../context/TenantContext';
 
@@ -7,12 +7,14 @@ interface UrgentQueueAccordionProps {
   urgentJobs: any[];
   onAssignDriver: (job: any) => void;
   onViewJob: (job: any) => void;
+  onChatDriver?: (job: any) => void;
 }
 
 export default function UrgentQueueAccordion({
   urgentJobs,
   onAssignDriver,
   onViewJob,
+  onChatDriver,
 }: UrgentQueueAccordionProps) {
   const { currencySymbol } = useTenant();
   const [expandedJobId, setExpandedJobId] = useState<string | null>(urgentJobs[0]?.id || null);
@@ -123,6 +125,17 @@ export default function UrgentQueueAccordion({
                         <UserCheck size={13} />
                         <span>{job.driver ? 'Reassign' : 'Assign Driver'}</span>
                       </button>
+                      {job.driver && onChatDriver && (
+                        <button
+                          type="button"
+                          onClick={() => onChatDriver(job)}
+                          className="btn-secondary py-1.5 px-2.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          title="Chat with assigned driver"
+                        >
+                          <MessageSquare size={13} />
+                          <span>Chat</span>
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => onViewJob(job)}

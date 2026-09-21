@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, Check } from 'lucide-react';
+import { TrendingUp, Check, Paperclip, Upload, FileCheck } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { useCreateExpense } from '../../hooks/useAccounting';
 import { useTenant } from '../../context/TenantContext';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
-import type { JobReconciliationRecord } from '../../services/accountingService';
+import { accountingService, type JobReconciliationRecord } from '../../services/accountingService';
 import { toast } from 'sonner';
 
 interface ExpenseStatingModalProps {
@@ -28,6 +28,11 @@ export default function ExpenseStatingModal({
   const [repairerFee, setRepairerFee] = useState<string>('');
   const [otherExpense, setOtherExpense] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+
+  // Multer File Upload State (FR-6.5)
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [materialReceiptFile, setMaterialReceiptFile] = useState<File | null>(null);
+  const [uploadingReceipts, setUploadingReceipts] = useState(false);
 
   // Determine active job
   const activeJob = job || completedJobs.find((j) => j.id === selectedJobId) || null;
@@ -81,6 +86,7 @@ export default function ExpenseStatingModal({
     }
 
     try {
+      setUploadingReceipts(true);
       await createExpenseMutation.mutateAsync({
         jobId: targetJobId,
         materialCostCents: tcCents,
@@ -89,10 +95,19 @@ export default function ExpenseStatingModal({
         expenseNotes: notes.trim() || undefined,
       });
 
-      toast.success(`Expenses updated for ${activeJob?.jobNumber || 'Job'}`);
+      if (receiptFile) {
+        await accountingService.uploadReceipt(targetJobId, receiptFile);
+      }
+      if (materialReceiptFile) {
+        await accountingService.uploadMaterialReceipt(targetJobId, materialReceiptFile);
+      }
+
+      toast.success(`Expenses and audit receipts saved for ${activeJob?.jobNumber || 'Job'}`);
       onClose();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to state job expenses');
+      toast.error(err.response?.data?.message || 'Failed to state job expenses or upload receipts');
+    } finally {
+      setUploadingReceipts(false);
     }
   };
 
@@ -228,6 +243,72 @@ export default function ExpenseStatingModal({
           />
         </div>
 
+        {/* FR-6.5: Accountant Proof Receipt Uploads (Multer) */}
+        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+          <label className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
+            Audit Proof & Receipt Documentation (FR-6.5)
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <span className="text-[11px] font-semibold text-slate-700 block mb-1">
+                Customer Payment Receipt
+              </span>
+              <label className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-red-300 transition text-xs shadow-2xs">
+                <Paperclip className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="truncate text-slate-600 font-medium">
+                  {receiptFile ? receiptFile.name : 'Select payment receipt'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                />
+              </label>
+              {(activeJob as any)?.receiptUrl && !receiptFile && (
+                <a
+                  href={`http://localhost:3000${(activeJob as any).receiptUrl}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[10px] text-blue-600 hover:underline inline-flex items-center gap-1 mt-1 font-semibold"
+                >
+                  <FileCheck className="w-3 h-3 text-emerald-600" />
+                  <span>View Uploaded Customer Receipt</span>
+                </a>
+              )}
+            </div>
+
+            <div>
+              <span className="text-[11px] font-semibold text-slate-700 block mb-1">
+                Wholesale Parts / Tire Receipt
+              </span>
+              <label className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-red-300 transition text-xs shadow-2xs">
+                <Upload className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="truncate text-slate-600 font-medium">
+                  {materialReceiptFile ? materialReceiptFile.name : 'Select supplier invoice'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={(e) => setMaterialReceiptFile(e.target.files?.[0] || null)}
+                />
+              </label>
+              {(activeJob as any)?.materialReceiptUrl && !materialReceiptFile && (
+                <a
+                  href={`http://localhost:3000${(activeJob as any).materialReceiptUrl}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[10px] text-blue-600 hover:underline inline-flex items-center gap-1 mt-1 font-semibold"
+                >
+                  <FileCheck className="w-3 h-3 text-emerald-600" />
+                  <span>View Uploaded Supplier Receipt</span>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Live Calculation Preview */}
         <div className="bg-slate-900 text-white rounded-xl p-3.5 space-y-2">
           <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
@@ -278,11 +359,11 @@ export default function ExpenseStatingModal({
           </button>
           <button
             type="submit"
-            disabled={createExpenseMutation.isPending || !activeJob}
+            disabled={createExpenseMutation.isPending || uploadingReceipts || !activeJob}
             className="btn-primary px-4 py-1.5 text-xs inline-flex items-center gap-1.5"
           >
             <Check size={13} />
-            <span>{createExpenseMutation.isPending ? 'Saving Ledger...' : 'Save Job Expenses'}</span>
+            <span>{uploadingReceipts ? 'Uploading Receipts...' : createExpenseMutation.isPending ? 'Saving Ledger...' : 'Save Job Expenses'}</span>
           </button>
         </div>
       </form>

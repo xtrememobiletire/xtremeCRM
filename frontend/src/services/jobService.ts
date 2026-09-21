@@ -50,6 +50,8 @@ export interface JobItem {
   services?: string[];
   problemNotes?: string;
   notes?: string;
+  recipientName?: string;
+  recipientPhone?: string;
 }
 
 export interface PaginationMeta {

@@ -62,4 +62,9 @@ export const fleetService = {
     const res = await api.post(`/fleets/${id}/drivers`, payload);
     return res.data.data;
   },
+
+  async lookupFleet(query: string): Promise<any> {
+    const res = await api.get('/fleets/lookup', { params: { query } });
+    return res.data.data;
+  },
 };

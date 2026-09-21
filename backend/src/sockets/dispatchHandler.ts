@@ -12,6 +12,18 @@ export const registerDispatchHandlers = (_io: Server, socket: Socket) => {
     logger.info(`Job assigned: ${data.jobId} to driver ${data.driverId}`);
     socket.to(`driver:${data.driverId}`).emit('job:assigned', data);
   });
+
+  socket.on('chat:join', (jobId: string) => {
+    const room = `chat:job:${jobId}`;
+    socket.join(room);
+    logger.info(`Socket ${socket.id} joined chat room: ${room}`);
+  });
+
+  socket.on('chat:leave', (jobId: string) => {
+    const room = `chat:job:${jobId}`;
+    socket.leave(room);
+    logger.info(`Socket ${socket.id} left chat room: ${room}`);
+  });
 };
 
 export default registerDispatchHandlers;
