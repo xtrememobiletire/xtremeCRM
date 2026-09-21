@@ -205,7 +205,13 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
       resetForm();
       onClose();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to create job ticket');
+      const fieldErrors = err.response?.data?.errors;
+      let errorMsg = err.response?.data?.message || err.response?.data?.error || 'Failed to create job ticket';
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        const details = Object.values(fieldErrors).flat().join(', ');
+        if (details) errorMsg = details;
+      }
+      toast.error(errorMsg);
     }
   };
 

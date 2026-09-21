@@ -3,12 +3,15 @@ import Modal from '../ui/Modal';
 import { useCreateFleet } from '../../hooks/useFleets';
 import { toast } from 'sonner';
 
+import { useTenant } from '../../context/TenantContext';
+
 interface AddFleetModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
 export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
+  const { country } = useTenant();
   const createFleetMutation = useCreateFleet();
   const [companyName, setCompanyName] = useState('');
   const [contactName, setContactName] = useState('');
@@ -19,17 +22,21 @@ export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyName) {
+    const cleanCompanyName = companyName.trim();
+    if (!cleanCompanyName) {
       toast.error('Company name is required');
       return;
     }
 
     try {
       await createFleetMutation.mutateAsync({
-        companyName,
-        contactName: contactName || undefined,
-        phone: phone || undefined,
-        email: email || undefined,
+        name: cleanCompanyName,
+        companyName: cleanCompanyName,
+        contactPerson: contactName.trim() || 'Fleet Manager',
+        contactName: contactName.trim() || 'Fleet Manager',
+        phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
+        countryCode: country,
         paymentTerms,
         creditLimitCents: creditLimit ? parseInt(creditLimit, 10) * 100 : undefined,
       });
@@ -40,7 +47,13 @@ export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
       setPhone('');
       setEmail('');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to create fleet account');
+      const fieldErrors = err.response?.data?.errors;
+      let errorMsg = err.response?.data?.message || err.response?.data?.error || 'Failed to create fleet account';
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        const details = Object.values(fieldErrors).flat().join(', ');
+        if (details) errorMsg = details;
+      }
+      toast.error(errorMsg);
     }
   };
 

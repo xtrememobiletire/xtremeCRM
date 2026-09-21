@@ -20,4 +20,24 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.data) {
+      const data = error.response.data;
+      if (data.errors && typeof data.errors === 'object') {
+        const errorList = Object.entries(data.errors)
+          .map(([field, msgs]) => Array.isArray(msgs) ? `${field}: ${msgs.join(', ')}` : `${field}: ${msgs}`)
+          .join(' | ');
+        if (errorList) {
+          data.formattedError = errorList;
+          // Replace vague "Validation failed" with human-readable specifics
+          data.message = errorList;
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;

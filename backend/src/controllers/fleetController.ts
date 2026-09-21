@@ -164,17 +164,29 @@ export const fleetController = {
       const {
         fleetCode,
         name,
+        companyName,
         contactPerson,
+        contactName,
         phone,
         email,
         address,
         website,
         countryCode,
+        country,
         status,
         virtualAssistantId,
       } = req.body;
 
-      const code = fleetCode || `XMT-${Math.floor(1000 + Math.random() * 9000)}`;
+      const resolvedName = (companyName || name || '').trim();
+      if (!resolvedName) {
+        return sendError(res, 'Company name is required', 400);
+      }
+
+      const resolvedContact = (contactPerson || contactName || 'Fleet Manager').trim();
+      const resolvedPhone = (phone || '').trim() || '+14165550100';
+      const effectiveCountry = countryCode || country || (req as any).countryCode || 'CA';
+
+      const code = (fleetCode || '').trim() || `XMT-${Math.floor(1000 + Math.random() * 9000)}`;
 
       const existing = await prisma.fleet.findUnique({ where: { fleetCode: code } });
       if (existing) {
@@ -184,16 +196,16 @@ export const fleetController = {
       const fleet = await prisma.fleet.create({
         data: {
           fleetCode: code,
-          name,
-          contactPerson,
-          phone,
-          email,
-          address,
-          website,
-          countryCode: countryCode || 'US',
+          name: resolvedName,
+          contactPerson: resolvedContact,
+          phone: resolvedPhone,
+          email: email?.trim() || null,
+          address: address?.trim() || null,
+          website: website?.trim() || null,
+          countryCode: effectiveCountry,
           status: status || 'APPROVED',
           contractSignedAt: new Date(),
-          virtualAssistantId,
+          virtualAssistantId: virtualAssistantId || null,
         },
       });
 

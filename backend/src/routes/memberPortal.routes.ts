@@ -10,14 +10,24 @@ const router = Router();
 router.use(authenticate);
 router.use(authorize(['CUSTOMER_MEMBER', 'ADMIN']));
 
+async function getScopedCustomer(req: Request) {
+  const userId = (req.user as any)?.id;
+  const role = (req.user as any)?.role;
+
+  let customer = await prisma.customer.findFirst({ where: { userId } });
+  if (!customer && role === 'ADMIN') {
+    customer = await prisma.customer.findFirst({ orderBy: { createdAt: 'desc' } });
+  }
+  return customer;
+}
+
 /**
  * @route   GET /api/member-portal/vehicles
  * @desc    Member's saved vehicles
  */
 router.get('/vehicles', async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any)?.id;
-    const customer = await prisma.customer.findFirst({ where: { userId } });
+    const customer = await getScopedCustomer(req);
     if (!customer) return sendError(res, 'No customer profile linked to your account', 404);
 
     const vehicles = await prisma.vehicle.findMany({
@@ -36,8 +46,7 @@ router.get('/vehicles', async (req: Request, res: Response) => {
  */
 router.get('/jobs', async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any)?.id;
-    const customer = await prisma.customer.findFirst({ where: { userId } });
+    const customer = await getScopedCustomer(req);
     if (!customer) return sendError(res, 'No customer profile linked', 404);
 
     const jobs = await prisma.job.findMany({
@@ -71,8 +80,7 @@ router.get('/jobs', async (req: Request, res: Response) => {
  */
 router.get('/receipts', async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any)?.id;
-    const customer = await prisma.customer.findFirst({ where: { userId } });
+    const customer = await getScopedCustomer(req);
     if (!customer) return sendError(res, 'No customer profile linked', 404);
 
     const jobs = await prisma.job.findMany({

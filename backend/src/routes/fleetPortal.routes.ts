@@ -10,17 +10,32 @@ const router = Router();
 router.use(authenticate);
 router.use(authorize(['FLEET_MANAGER', 'ADMIN']));
 
+async function getScopedFleet(req: Request) {
+  const userId = (req.user as any)?.id;
+  const role = (req.user as any)?.role;
+
+  let fleet = await prisma.fleet.findFirst({
+    where: { managerUserId: userId },
+    include: { _count: { select: { vehicles: true, drivers: true, jobs: true } } },
+  });
+
+  if (!fleet && role === 'ADMIN') {
+    fleet = await prisma.fleet.findFirst({
+      include: { _count: { select: { vehicles: true, drivers: true, jobs: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  return fleet;
+}
+
 /**
  * @route   GET /api/fleet-portal/dashboard
  * @desc    Fleet Manager KPI dashboard scoped to their fleet
  */
 router.get('/dashboard', async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any)?.id;
-    const fleet = await prisma.fleet.findFirst({
-      where: { managerUserId: userId },
-      include: { _count: { select: { vehicles: true, drivers: true, jobs: true } } },
-    });
+    const fleet = await getScopedFleet(req);
     if (!fleet) return sendError(res, 'No fleet assigned to your account', 404);
 
     return sendSuccess(res, {
@@ -47,8 +62,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
  */
 router.get('/vehicles', async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any)?.id;
-    const fleet = await prisma.fleet.findFirst({ where: { managerUserId: userId } });
+    const fleet = await getScopedFleet(req);
     if (!fleet) return sendError(res, 'No fleet assigned', 404);
 
     const vehicles = await prisma.vehicle.findMany({
@@ -67,8 +81,7 @@ router.get('/vehicles', async (req: Request, res: Response) => {
  */
 router.get('/drivers', async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any)?.id;
-    const fleet = await prisma.fleet.findFirst({ where: { managerUserId: userId } });
+    const fleet = await getScopedFleet(req);
     if (!fleet) return sendError(res, 'No fleet assigned', 404);
 
     const drivers = await prisma.fleetDriver.findMany({
@@ -87,8 +100,7 @@ router.get('/drivers', async (req: Request, res: Response) => {
  */
 router.get('/jobs', async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any)?.id;
-    const fleet = await prisma.fleet.findFirst({ where: { managerUserId: userId } });
+    const fleet = await getScopedFleet(req);
     if (!fleet) return sendError(res, 'No fleet assigned', 404);
 
     const jobs = await prisma.job.findMany({
@@ -113,8 +125,7 @@ router.get('/jobs', async (req: Request, res: Response) => {
  */
 router.get('/invoices', async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any)?.id;
-    const fleet = await prisma.fleet.findFirst({ where: { managerUserId: userId } });
+    const fleet = await getScopedFleet(req);
     if (!fleet) return sendError(res, 'No fleet assigned', 404);
 
     const status = req.query.status as string;
@@ -139,8 +150,7 @@ router.get('/invoices', async (req: Request, res: Response) => {
  */
 router.get('/messages', async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any)?.id;
-    const fleet = await prisma.fleet.findFirst({ where: { managerUserId: userId } });
+    const fleet = await getScopedFleet(req);
     if (!fleet) return sendError(res, 'No fleet assigned', 404);
 
     const messages = await prisma.portalMessage.findMany({
