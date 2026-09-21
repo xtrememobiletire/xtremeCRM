@@ -22,8 +22,8 @@ export interface FleetsResponse {
 }
 
 export const fleetService = {
-  async getFleets(): Promise<FleetsResponse> {
-    const res = await api.get('/fleets');
+  async getFleets(params?: { countryCode?: string }): Promise<FleetsResponse> {
+    const res = await api.get('/fleets', { params });
     const raw = res.data;
     const items = Array.isArray(raw.data) ? raw.data : (Array.isArray(raw) ? raw : []);
     const normalized = items.map((f: any) => ({

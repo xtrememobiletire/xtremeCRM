@@ -1,12 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { accountingService } from '../services/accountingService';
+import { useTenant } from '../context/TenantContext';
 
 export function useAccounting() {
   const queryClient = useQueryClient();
+  const { country } = useTenant();
 
   const invoicesQuery = useQuery({
-    queryKey: ['invoices'],
-    queryFn: accountingService.getInvoices,
+    queryKey: ['invoices', country],
+    queryFn: () => accountingService.getInvoices({ countryCode: country }),
   });
 
   const stateExpensesMutation = useMutation({
@@ -25,16 +27,15 @@ export function useAccounting() {
   };
 }
 
-export function useAccountingSummary() {
+export function useAccountingSummary(params?: { timeframe?: string }) {
+  const { country } = useTenant();
+
   return useQuery({
-    queryKey: ['accounting-summary'],
-    queryFn: async () => {
-      return {
-        grossRevenueCents: 138000,
-        directCostCents: 48500,
-        netProfitCents: 89500,
-      };
-    },
+    queryKey: ['accounting-summary', country, params?.timeframe],
+    queryFn: () => accountingService.getAccountingSummary({
+      countryCode: country,
+      timeframe: params?.timeframe,
+    }),
   });
 }
 

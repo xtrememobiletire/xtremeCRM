@@ -1,14 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customerService, type CustomerResponse } from '../services/customerService';
+import { useTenant } from '../context/TenantContext';
 
 export function useCustomers(params?: {
   page?: number;
   limit?: number;
   search?: string;
+  countryCode?: string;
 }) {
+  const { country } = useTenant();
+  const effectiveCountry = params?.countryCode || country;
+  const effectiveParams = {
+    ...params,
+    countryCode: effectiveCountry,
+  };
+
   return useQuery<CustomerResponse>({
-    queryKey: ['customers', params],
-    queryFn: () => customerService.getCustomers(params),
+    queryKey: ['customers', effectiveCountry, effectiveParams],
+    queryFn: () => customerService.getCustomers(effectiveParams),
     staleTime: 10000,
   });
 }

@@ -33,6 +33,7 @@ export const customerService = {
     page?: number;
     limit?: number;
     search?: string;
+    countryCode?: string;
   }): Promise<CustomerResponse> {
     const res = await api.get('/customers', { params });
     const raw = res.data;

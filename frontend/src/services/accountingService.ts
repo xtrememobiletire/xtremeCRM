@@ -27,8 +27,8 @@ export const accountingService = {
     return res.data.data;
   },
 
-  async getInvoices(): Promise<InvoiceItem[]> {
-    const res = await api.get('/invoices');
+  async getInvoices(params?: { countryCode?: string }): Promise<InvoiceItem[]> {
+    const res = await api.get('/invoices', { params });
     return res.data.data || [];
   },
 
