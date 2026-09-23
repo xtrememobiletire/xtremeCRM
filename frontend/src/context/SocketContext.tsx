@@ -34,7 +34,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [isSoftphoneOpen, setIsSoftphoneOpen] = useState(false);
 
   useEffect(() => {
-    const rawApiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+    const defaultApiUrl = import.meta.env.PROD ? 'https://xtremecrm.onrender.com/api' : 'http://localhost:3000/api';
+    const rawApiUrl = import.meta.env.VITE_API_BASE_URL || defaultApiUrl;
     const socketUrl = import.meta.env.VITE_WS_URL || rawApiUrl.replace(/\/api\/?$/, '');
 
     const s = io(socketUrl, {
