@@ -46,6 +46,9 @@ export const jobController = {
       if (status) where.status = status;
       if (urgency) where.urgency = urgency;
       if (driverId) where.driverId = driverId;
+      if ((req.user as any)?.role === 'DRIVER') {
+        where.driverId = (req.user as any).id;
+      }
       if (fleetId) where.fleetId = fleetId;
       if (customerId) where.customerId = customerId;
       if (search) {
@@ -394,10 +397,49 @@ export const jobController = {
 
       try {
         const io = getIO();
-        io.to(`dispatch:${updated.countryCode}`).emit('job:status_updated', {
+        const statusPayload = {
           jobId: updated.id,
+          jobCode: updated.jobCode,
           status: updated.status,
-        });
+          countryCode: updated.countryCode,
+          driverId: updated.driverId,
+          driverName: (updated as any).driver?.fullName,
+          updatedAt: updated.updatedAt ? updated.updatedAt.toISOString() : new Date().toISOString(),
+        };
+
+        // Notify dispatchers and admins
+        io.to(`dispatch:${updated.countryCode}`).emit('job:status_updated', statusPayload);
+
+        // Notify driver
+        if (updated.driverId) {
+          io.to(`driver:${updated.driverId}`).emit('job:status_updated', statusPayload);
+          io.to(`user:${updated.driverId}`).emit('job:status_updated', statusPayload);
+        }
+
+        // Notify ticket creator
+        if (updated.createdById) {
+          io.to(`user:${updated.createdById}`).emit('job:status_updated', statusPayload);
+        }
+
+        // When a job completes, notify Accountant & Dispatch for expense audit handoff (PRD FR-6.1)
+        if (updated.status === 'COMPLETED') {
+          const completionNotification = {
+            type: 'JOB_COMPLETED',
+            title: 'Job Completed — Audit Ready',
+            jobId: updated.id,
+            jobCode: updated.jobCode,
+            driverName: (updated as any).driver?.fullName || 'Technician',
+            customerName: (updated as any).customer?.fullName || updated.recipientName || 'Customer',
+            vehicle: (updated as any).vehicle ? `${(updated as any).vehicle.year} ${(updated as any).vehicle.make} ${(updated as any).vehicle.model}` : 'Vehicle',
+            totalCents: updated.totalCents,
+            paymentMethod: updated.paymentMethod,
+            timestamp: new Date().toISOString(),
+            message: `Job #${updated.jobCode} completed by ${(updated as any).driver?.fullName || 'Technician'}. Ready for expense audit & reconciliation.`,
+          };
+
+          io.to(`accounting:${updated.countryCode}`).emit('accounting:job_completed', completionNotification);
+          io.to(`dispatch:${updated.countryCode}`).emit('notification:toast', completionNotification);
+        }
       } catch {}
 
       if ((req.user as any)?.role === 'DRIVER') {
@@ -436,10 +478,25 @@ export const jobController = {
 
       try {
         const io = getIO();
-        io.to(`driver:${driverId}`).emit('job:assigned', stripDriverFinancials(updated));
+        const stripped = stripDriverFinancials(updated);
+        io.to(`driver:${driverId}`).emit('job:assigned', stripped);
+        io.to(`user:${driverId}`).emit('notification:job_assigned', {
+          type: 'JOB_ASSIGNED',
+          title: 'New Dispatch Assigned',
+          jobId: updated.id,
+          jobCode: updated.jobCode,
+          serviceAddress: updated.serviceAddress,
+          tireSize: (updated as any).vehicle?.tireSize || 'N/A',
+          urgency: updated.urgency,
+          message: `You have been dispatched to Job #${updated.jobCode} at ${updated.serviceAddress}`,
+          timestamp: new Date().toISOString(),
+          job: stripped,
+        });
         io.to(`dispatch:${updated.countryCode}`).emit('job:driver_assigned', {
           jobId: updated.id,
+          jobCode: updated.jobCode,
           driverId,
+          driverName: driver.fullName,
         });
       } catch {}
 

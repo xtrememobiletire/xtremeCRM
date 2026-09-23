@@ -11,7 +11,8 @@ import {
   DollarSign, 
   X, 
   LogOut,
-  Radio
+  Radio,
+  CheckCircle
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -35,16 +36,39 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
   const { country, currencySymbol } = useTenant();
   const isFleetManager = user?.role === 'FLEET_MANAGER';
   const isMember = user?.role === 'CUSTOMER_MEMBER';
+  const isDriver = user?.role === 'DRIVER';
+  const isAccountant = user?.role === 'ACCOUNTANT';
+  const isDispatcher = user?.role === 'DISPATCHER';
   const isAdmin = user?.role === 'ADMIN';
 
   const navItems = isFleetManager
     ? [{ icon: Truck, label: 'Fleet Portal', path: '/fleet-dashboard' }]
     : isMember
     ? [{ icon: Car, label: 'Member Portal', path: '/member-dashboard' }]
+    : isDriver
+    ? [
+        { icon: Wrench, label: 'Technician Console', path: '/technician' },
+        { icon: CheckCircle, label: 'My Work Orders', path: '/jobs' },
+      ]
+    : isAccountant
+    ? [
+        { icon: DollarSign, label: 'Job Costing & Ledger', path: '/accounting' },
+        { icon: Wrench, label: 'Completed Orders', path: '/jobs' },
+        { icon: BarChart3, label: 'Regional Dashboard', path: '/' },
+      ]
+    : isDispatcher
+    ? [
+        { icon: Navigation, label: 'Live Dispatch', path: '/dispatch' },
+        { icon: Wrench, label: 'Jobs & Orders', path: '/jobs' },
+        { icon: Truck, label: 'Fleet Accounts', path: '/fleets' },
+        { icon: Users, label: 'Customers', path: '/customers' },
+        { icon: BarChart3, label: 'Dashboard', path: '/' },
+      ]
     : [
         ...baseNavItems,
         ...(isAdmin
           ? [
+              { icon: Wrench, label: 'Technician Console Preview', path: '/technician' },
               { icon: Truck, label: 'Fleet Portal Preview', path: '/fleet-dashboard' },
               { icon: Car, label: 'Member Portal Preview', path: '/member-dashboard' },
             ]

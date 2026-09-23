@@ -8,6 +8,7 @@ import {
   createPaginatedResponse,
   formatCurrency,
 } from '../utils/index.js';
+import { getIO } from '../config/socket.js';
 
 export const accountingController = {
   /**
@@ -395,8 +396,25 @@ export const accountingController = {
         },
         include: {
           verifiedBy: { select: { id: true, fullName: true } },
+          driver: { select: { id: true, fullName: true, countryCode: true } },
         },
       });
+
+      try {
+        const io = getIO();
+        const notification = {
+          type: 'PAYOUT_VERIFIED',
+          title: 'Cash Remittance Verified',
+          message: `Cash transaction of $${(Math.abs(entry.amountCents) / 100).toFixed(2)} verified by ${entry.verifiedBy?.fullName}`,
+          driverId: entry.driverId,
+          timestamp: new Date().toISOString(),
+        };
+        io.to(`driver:${entry.driverId}`).emit('notification:toast', notification);
+        io.to(`user:${entry.driverId}`).emit('notification:toast', notification);
+        if (entry.driver?.countryCode) {
+          io.to(`dispatch:${entry.driver.countryCode}`).emit('notification:toast', notification);
+        }
+      } catch {}
 
       return sendSuccess(res, entry, 'Cash transaction verified');
     } catch (err: any) {

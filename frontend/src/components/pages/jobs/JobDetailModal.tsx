@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Phone, Car, MapPin, Calculator, FileText, Printer } from 'lucide-react';
+import { Phone, Car, MapPin, Calculator, FileText, Printer, MessageSquare } from 'lucide-react';
 import Modal from '../../ui/Modal';
 import StatusBadge from '../../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../../utils/currency';
 import { formatDate } from '../../../utils/date';
 import { useTenant } from '../../../context/TenantContext';
+import { useSocket } from '../../../context/SocketContext';
 import { useUpdateJobStatus } from '../../../hooks/useJobs';
 import { JOB_STATUSES } from '../../../constants/statuses';
 import { accountingService } from '../../../services/accountingService';
@@ -19,6 +20,7 @@ interface JobDetailModalProps {
 
 export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalProps) {
   const { country, currencySymbol } = useTenant();
+  const { openChatJob } = useSocket();
   const updateStatusMutation = useUpdateJobStatus();
   const [updating, setUpdating] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(job?.invoice?.id || null);
@@ -106,7 +108,24 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
             <StatusBadge status={status} />
             <StatusBadge status={job.urgency} />
           </div>
-          <div className="text-xs text-slate-400">Created: {formatDate(job.createdAt)}</div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                openChatJob({
+                  id: job.id,
+                  jobCode: job.jobCode || job.jobNumber,
+                  driverName: job.driver?.fullName || job.assignedDriver?.fullName || 'Technician',
+                });
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition shadow-2xs"
+              title="Open real-time two-way job chat"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-red-600" />
+              <span>Two-Way Chat</span>
+            </button>
+            <div className="text-xs text-slate-400">Created: {formatDate(job.createdAt)}</div>
+          </div>
         </div>
 
         {/* Quick Status Advancement */}

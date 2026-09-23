@@ -68,7 +68,7 @@ export default function JobChatModal({
                   sender: {
                     id: incoming.senderId,
                     fullName: incoming.sender,
-                    role: 'DRIVER',
+                    role: incoming.senderRole || 'STAFF',
                   },
                 },
               ];
@@ -145,7 +145,9 @@ export default function JobChatModal({
             </div>
           ) : (
             messages.map((m) => {
-              const isMe = m.senderId === user?.id || m.sender?.role === 'DISPATCHER' || m.sender?.role === 'ADMIN';
+              const isMe = m.senderId 
+                ? m.senderId === user?.id 
+                : (user?.role === 'DRIVER' ? m.sender?.role === 'DRIVER' : m.sender?.role !== 'DRIVER');
               return (
                 <div
                   key={m.id}

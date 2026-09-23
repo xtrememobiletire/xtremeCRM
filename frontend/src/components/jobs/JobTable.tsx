@@ -1,8 +1,9 @@
-import { Eye, UserCheck, AlertCircle } from 'lucide-react';
+import { Eye, UserCheck, AlertCircle, MessageSquare } from 'lucide-react';
 import StatusBadge from '../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
 import { useTenant } from '../../context/TenantContext';
+import { useSocket } from '../../context/SocketContext';
 
 interface JobTableProps {
   jobs: any[];
@@ -12,6 +13,7 @@ interface JobTableProps {
 
 export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTableProps) {
   const { currencySymbol } = useTenant();
+  const { openChatJob } = useSocket();
 
   if (!jobs || jobs.length === 0) {
     return null;
@@ -98,6 +100,20 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                     title="Assign / Reassign Driver"
                   >
                     <UserCheck className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      openChatJob({
+                        id: job.id,
+                        jobCode: job.jobCode || job.jobNumber,
+                        driverName: job.driver?.fullName || job.assignedDriver?.fullName || 'Technician',
+                      });
+                    }}
+                    className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                    title="Open Two-Way Chat"
+                  >
+                    <MessageSquare className="w-4 h-4" />
                   </button>
                 </div>
               </td>

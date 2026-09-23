@@ -5,6 +5,8 @@ import TopNav from './TopNav';
 import { RouteErrorBoundary } from '../common/RouteErrorBoundary';
 import SoftphoneModal from '../telephony/SoftphoneModal';
 import IncomingCallPop from '../telephony/IncomingCallPop';
+import JobChatModal from '../dispatch/JobChatModal';
+import { useSocket } from '../../context/SocketContext';
 
 function PageLoader() {
   return (
@@ -16,6 +18,7 @@ function PageLoader() {
 
 export default function MainLayout() {
   const navigate = useNavigate();
+  const { activeChatJob, closeChatJob } = useSocket();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return typeof window !== 'undefined' ? localStorage.getItem('xtreme_sidebar_collapsed') === 'true' : false;
@@ -62,6 +65,17 @@ export default function MainLayout() {
       {/* Global Softphone Modal & Screen Pop */}
       <SoftphoneModal />
       <IncomingCallPop onIntakeJob={handleIntakeJob} />
+
+      {/* Global Two-Way Job Chat for Cross-Role Communication */}
+      {activeChatJob && (
+        <JobChatModal
+          isOpen={!!activeChatJob}
+          onClose={closeChatJob}
+          jobId={activeChatJob.id}
+          jobCode={activeChatJob.jobCode}
+          driverName={activeChatJob.driverName || 'Technician / Dispatcher'}
+        />
+      )}
     </div>
   );
 }

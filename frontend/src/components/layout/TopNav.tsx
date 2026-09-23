@@ -1,10 +1,12 @@
-import { Menu, PanelLeftClose, PanelLeft, Phone, PhoneCall, Globe } from 'lucide-react';
+import { useState } from 'react';
+import { Menu, PanelLeftClose, PanelLeft, Phone, PhoneCall, Globe, Bell } from 'lucide-react';
 import { useTenant } from '../../context/TenantContext';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
 import { COUNTRY_REGIONS, type CountryCode } from '../../constants/regions';
 import { toast } from 'sonner';
 import { userService } from '../../services/userService';
+import NotificationDrawer from '../common/NotificationDrawer';
 
 interface TopNavProps {
   onMobileMenuClick: () => void;
@@ -19,49 +21,66 @@ export default function TopNav({
 }: TopNavProps) {
   const { user } = useAuth();
   const { country, setCountry, isAgentActive, setIsAgentActive } = useTenant();
-  const { isConnected, openSoftphone, activeCall } = useSocket();
+  const { isConnected, openSoftphone, activeCall, unreadCount } = useSocket();
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   return (
-    <header className="h-14 bg-white border-b border-slate-200 px-3.5 sm:px-5 flex items-center justify-between gap-2 sm:gap-4 shrink-0 z-30">
-      {/* Left side: Mobile burger + desktop collapse button + Title */}
-      <div className="flex items-center gap-2 sm:gap-3">
-        <button
-          type="button"
-          onClick={onMobileMenuClick}
-          className="md:hidden p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
-          aria-label="Open sidebar"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          className="hidden md:flex p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {isCollapsed ? <PanelLeft className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
-        </button>
+    <>
+      <header className="h-14 bg-white border-b border-slate-200 px-3.5 sm:px-5 flex items-center justify-between gap-2 sm:gap-4 shrink-0 z-30">
+        {/* Left side: Mobile burger + desktop collapse button + Title */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={onMobileMenuClick}
+            className="md:hidden p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
+            aria-label="Open sidebar"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="hidden md:flex p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? <PanelLeft className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+          </button>
 
-        {/* Socket live indicator */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-50 border border-slate-200">
-          <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-          <span className="text-slate-600">{isConnected ? 'Live Dispatch' : 'Connecting...'}</span>
+          {/* Socket live indicator */}
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-50 border border-slate-200">
+            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+            <span className="text-slate-600">{isConnected ? 'Live Dispatch' : 'Connecting...'}</span>
+          </div>
         </div>
-      </div>
 
-      {/* Right side controls: Softphone trigger, Country Silo, Agent Presence, Profile */}
-      <div className="flex items-center gap-2 sm:gap-3">
-        {/* Softphone Dialer Quick Button */}
-        <button
-          type="button"
-          onClick={openSoftphone}
-          className={`relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs ${
-            activeCall 
-              ? 'bg-emerald-600 text-white animate-bounce' 
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-          }`}
-          title="Open Telnyx WebRTC Softphone"
-        >
+        {/* Right side controls: Softphone trigger, Notifications, Country Silo, Agent Presence, Profile */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Operations Notification Bell */}
+          <button
+            type="button"
+            onClick={() => setIsNotificationsOpen(true)}
+            className="relative p-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
+            title="Operations Feed & Inter-Role Messages"
+          >
+            <Bell className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-black animate-pulse">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* Softphone Dialer Quick Button */}
+          <button
+            type="button"
+            onClick={openSoftphone}
+            className={`relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs ${
+              activeCall 
+                ? 'bg-emerald-600 text-white animate-bounce' 
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+            title="Open Telnyx WebRTC Softphone"
+          >
           {activeCall ? <PhoneCall className="w-3.5 h-3.5" /> : <Phone className="w-3.5 h-3.5" />}
           <span className="hidden md:inline">{activeCall ? 'Call in Progress' : 'Dialer'}</span>
           {activeCall && (
@@ -129,5 +148,10 @@ export default function TopNav({
         </div>
       </div>
     </header>
+    <NotificationDrawer
+      isOpen={isNotificationsOpen}
+      onClose={() => setIsNotificationsOpen(false)}
+    />
+  </>
   );
 }

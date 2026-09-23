@@ -121,26 +121,60 @@ export const messageController = {
 
       const { content } = req.body;
 
-      const message = await prisma.jobMessage.create({
-        data: {
-          jobId,
-          senderId,
-          content,
-        },
-        include: {
-          sender: { select: { id: true, fullName: true, role: true } },
-        },
-      });
+      const [message, job] = await Promise.all([
+        prisma.jobMessage.create({
+          data: {
+            jobId,
+            senderId,
+            content,
+          },
+          include: {
+            sender: { select: { id: true, fullName: true, role: true } },
+          },
+        }),
+        prisma.job.findUnique({
+          where: { id: jobId },
+          select: { id: true, jobCode: true, countryCode: true, driverId: true, createdById: true },
+        }),
+      ]);
 
       try {
         const io = getIO();
-        io.to(`chat:job:${jobId}`).emit('chat:message', {
+        const chatPayload = {
           jobId,
+          jobCode: job?.jobCode || jobId,
           sender: message.sender.fullName,
+          senderRole: message.sender.role,
           senderId,
           text: content,
           timestamp: message.createdAt.toISOString(),
-        });
+        };
+
+        // 1. Emit to active job chat room
+        io.to(`chat:job:${jobId}`).emit('chat:message', chatPayload);
+
+        // 2. Direct alert to counterpart
+        const notificationPayload = {
+          type: 'CHAT_MESSAGE',
+          title: `New Message on Job #${job?.jobCode || jobId}`,
+          message: `${message.sender.fullName}: ${content.slice(0, 80)}${content.length > 80 ? '...' : ''}`,
+          jobId,
+          jobCode: job?.jobCode,
+          sender: message.sender.fullName,
+          timestamp: message.createdAt.toISOString(),
+        };
+
+        if (message.sender.role === 'DRIVER') {
+          // Driver sent message -> alert dispatcher & ticket creator
+          if (job?.createdById) io.to(`user:${job.createdById}`).emit('notification:chat', notificationPayload);
+          if (job?.countryCode) io.to(`dispatch:${job.countryCode}`).emit('notification:chat', notificationPayload);
+        } else {
+          // Staff sent message -> alert assigned driver
+          if (job?.driverId) {
+            io.to(`driver:${job.driverId}`).emit('notification:chat', notificationPayload);
+            io.to(`user:${job.driverId}`).emit('notification:chat', notificationPayload);
+          }
+        }
       } catch {}
 
       return sendSuccess(res, message, 'Job message sent', 201);

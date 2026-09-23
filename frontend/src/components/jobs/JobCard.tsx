@@ -1,7 +1,8 @@
-import { MapPin, Phone, Car, UserCheck, Eye } from 'lucide-react';
+import { MapPin, Phone, Car, UserCheck, Eye, MessageSquare } from 'lucide-react';
 import StatusBadge from '../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { useTenant } from '../../context/TenantContext';
+import { useSocket } from '../../context/SocketContext';
 
 interface JobCardProps {
   job: any;
@@ -11,6 +12,7 @@ interface JobCardProps {
 
 export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps) {
   const { currencySymbol } = useTenant();
+  const { openChatJob } = useSocket();
 
   return (
     <div className="card-surface p-4 space-y-3">
@@ -64,6 +66,21 @@ export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps
           >
             <UserCheck className="w-3.5 h-3.5" />
             <span>Assign</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              openChatJob({
+                id: job.id,
+                jobCode: job.jobCode || job.jobNumber,
+                driverName: job.driver?.fullName || job.assignedDriver?.fullName || 'Technician',
+              });
+            }}
+            className="btn-secondary px-2.5 py-1.5 text-xs text-emerald-700 hover:bg-emerald-50 border-emerald-200"
+            title="Open Chat"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Chat</span>
           </button>
           <button
             type="button"

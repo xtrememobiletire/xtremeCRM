@@ -21,6 +21,24 @@ const Vehicles = lazy(() => import('./pages/Vehicles'));
 const Accounting = lazy(() => import('./pages/Accounting'));
 const FleetDashboard = lazy(() => import('./pages/FleetDashboard'));
 const MemberDashboard = lazy(() => import('./pages/MemberDashboard'));
+const TechnicianPortal = lazy(() => import('./pages/TechnicianPortal'));
+
+function getRoleHome(role?: string) {
+  switch (role) {
+    case 'DRIVER':
+      return '/technician';
+    case 'FLEET_MANAGER':
+      return '/fleet-dashboard';
+    case 'CUSTOMER_MEMBER':
+      return '/member-dashboard';
+    case 'ACCOUNTANT':
+      return '/accounting';
+    case 'DISPATCHER':
+      return '/dispatch';
+    default:
+      return '/dashboard';
+  }
+}
 
 function PageLoader() {
   return (
@@ -40,7 +58,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to={getRoleHome(user.role)} replace />;
   return <>{children}</>;
 }
 
@@ -88,7 +106,7 @@ function AppRoutes() {
             )
           }
         >
-          {user && <Route index element={<Dashboard />} />}
+          {user && <Route index element={<Navigate to={getRoleHome(user.role)} replace />} />}
         </Route>
 
         {/* Protected App Routes */}
@@ -108,9 +126,10 @@ function AppRoutes() {
           <Route path="/accounting" element={<Accounting />} />
           <Route path="/fleet-dashboard" element={<FleetDashboard />} />
           <Route path="/member-dashboard" element={<MemberDashboard />} />
+          <Route path="/technician" element={<TechnicianPortal />} />
         </Route>
 
-        <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />
+        <Route path="*" element={<Navigate to={user ? getRoleHome(user.role) : "/"} replace />} />
       </Routes>
     </RouteErrorBoundary>
   );
