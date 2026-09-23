@@ -5,6 +5,7 @@ import { useCreateExpense } from '../../hooks/useAccounting';
 import { useTenant } from '../../context/TenantContext';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { accountingService, type JobReconciliationRecord } from '../../services/accountingService';
+import { BACKEND_ROOT_URL } from '../../utils/api';
 import { toast } from 'sonner';
 
 interface ExpenseStatingModalProps {
@@ -267,7 +268,7 @@ export default function ExpenseStatingModal({
               </label>
               {(activeJob as any)?.receiptUrl && !receiptFile && (
                 <a
-                  href={`http://localhost:3000${(activeJob as any).receiptUrl}`}
+                  href={`${BACKEND_ROOT_URL}${(activeJob as any).receiptUrl}`}
                   target="_blank"
                   rel="noreferrer"
                   className="text-[10px] text-blue-600 hover:underline inline-flex items-center gap-1 mt-1 font-semibold"
@@ -296,7 +297,7 @@ export default function ExpenseStatingModal({
               </label>
               {(activeJob as any)?.materialReceiptUrl && !materialReceiptFile && (
                 <a
-                  href={`http://localhost:3000${(activeJob as any).materialReceiptUrl}`}
+                  href={`${BACKEND_ROOT_URL}${(activeJob as any).materialReceiptUrl}`}
                   target="_blank"
                   rel="noreferrer"
                   className="text-[10px] text-blue-600 hover:underline inline-flex items-center gap-1 mt-1 font-semibold"

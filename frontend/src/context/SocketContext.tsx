@@ -34,7 +34,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [isSoftphoneOpen, setIsSoftphoneOpen] = useState(false);
 
   useEffect(() => {
-    const s = io('http://localhost:3000', {
+    const rawApiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+    const socketUrl = import.meta.env.VITE_WS_URL || rawApiUrl.replace(/\/api\/?$/, '');
+
+    const s = io(socketUrl, {
       withCredentials: true,
       autoConnect: true,
       reconnectionAttempts: 5,

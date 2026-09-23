@@ -16,7 +16,11 @@ export const authController = {
     try {
       const { email, password } = req.body;
       const result = await authService.login(email, password);
-      res.cookie('token', result.token, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
+      res.cookie('token', result.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      });
       sendSuccess(res, result, 'Logged in successfully');
     } catch (err: any) {
       sendError(res, err.message, 401);
@@ -28,7 +32,11 @@ export const authController = {
   },
 
   async logout(_req: Request, res: Response) {
-    res.clearCookie('token');
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    });
     sendSuccess(res, null, 'Logged out successfully');
   },
 };

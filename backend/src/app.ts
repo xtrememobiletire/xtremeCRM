@@ -21,10 +21,30 @@ app.use(
         crossOriginEmbedderPolicy: false,
       })
 );
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://xtreme-crm.vercel.app',
+  ...(config.FRONTEND_URL ? config.FRONTEND_URL.split(',').map((s) => s.trim()) : []),
+];
+
 app.use(
   cors({
-    origin: config.FRONTEND_URL,
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.includes('*') ||
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.vercel.app') ||
+        origin.includes('localhost')
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-country-code'],
   })
 );
 app.use(morgan(config.NODE_ENV === 'production' ? 'combined' : 'dev'));
