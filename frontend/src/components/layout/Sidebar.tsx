@@ -13,7 +13,8 @@ import {
   LogOut,
   CheckCircle,
   History,
-  PhoneCall
+  PhoneIncoming,
+  PhoneOutgoing
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,7 +25,7 @@ interface SidebarProps {
 
 const baseNavItems = [
   { icon: BarChart3, label: 'Dashboard', path: '/' },
-  { icon: PhoneCall, label: 'Outbound Leads', path: '/leads' },
+  { icon: PhoneOutgoing, label: 'Outbound Leads', path: '/outbound' },
   { icon: Wrench, label: 'Jobs & Orders', path: '/jobs' },
   { icon: Navigation, label: 'Live Dispatch', path: '/dispatch' },
   { icon: Users, label: 'Customers', path: '/customers' },
@@ -64,7 +65,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     : isDispatcher
     ? [
         { icon: Navigation, label: 'Live Dispatch', path: '/dispatch' },
-        { icon: PhoneCall, label: 'Outbound Leads', path: '/leads' },
+        { icon: PhoneOutgoing, label: 'Outbound Leads', path: '/outbound' },
         { icon: Wrench, label: 'Jobs & Orders', path: '/jobs' },
         { icon: Truck, label: 'Fleet Accounts', path: '/fleets' },
         { icon: Users, label: 'Customers', path: '/customers' },
@@ -72,21 +73,20 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       ]
     : isVa
     ? [
-        { icon: PhoneCall, label: 'Outbound Leads', path: '/leads' },
+        { icon: PhoneOutgoing, label: 'Outbound Leads', path: '/outbound' },
         { icon: Truck, label: 'Fleet Accounts', path: '/fleets' },
         { icon: BarChart3, label: 'Dashboard', path: '/' },
       ]
     : isAgent
     ? [
-        { icon: PhoneCall, label: 'Outbound Leads', path: '/leads' },
-        { icon: Wrench, label: 'Jobs & Orders', path: '/jobs' },
-        { icon: Users, label: 'Customers', path: '/customers' },
-        { icon: BarChart3, label: 'Dashboard', path: '/' },
+        { icon: PhoneIncoming, label: 'Inbound', path: '/inbound' },
+        { icon: PhoneOutgoing, label: 'Outbound', path: '/outbound' },
       ]
     : [
         ...baseNavItems,
         ...(isAdmin
           ? [
+              { icon: PhoneIncoming, label: 'Inbound Hotline Preview', path: '/inbound' },
               { icon: BarChart3, label: 'Technician Dashboard Preview', path: '/technician' },
               { icon: History, label: 'Driver History Preview', path: '/history' },
               { icon: Truck, label: 'Fleet Portal Preview', path: '/fleet-dashboard' },

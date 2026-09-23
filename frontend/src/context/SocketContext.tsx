@@ -69,6 +69,7 @@ interface SocketContextType {
     callerName?: string;
     companyName?: string;
     notes?: string;
+    vehicleInfo?: string;
     transferType?: 'INBOUND_MOTORIST' | 'OUTBOUND_LEAD';
   }) => Promise<void>;
   dialOutbound: (phoneNumber: string, contactName?: string, leadId?: string) => void;
@@ -81,7 +82,7 @@ interface SocketContextType {
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
 export function SocketProvider({ children }: { children: ReactNode }) {
-  const { country, isAgentActive } = useTenant();
+  const { country, isAgentActive, agentMode } = useTenant();
   const { user } = useAuth();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -146,6 +147,11 @@ export function SocketProvider({ children }: { children: ReactNode }) {
           role: user.role,
           countryCode: country,
         });
+        s.emit('agent:presence', {
+          userId: user.id,
+          mode: agentMode,
+          countryCode: country,
+        });
       }
     });
 
@@ -153,9 +159,9 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       setIsConnected(false);
     });
 
-    // Inbound phone screen pop
+    // Inbound phone screen pop (PRD FR-1.1: Only active when agentMode === 'INBOUND')
     s.on('call:incoming', (data: any) => {
-      if (isAgentActive) {
+      if (agentMode === 'INBOUND' && isAgentActive) {
         setIncomingCall({
           callId: data.callId || `call-${Date.now()}`,
           from: data.callerNumber || data.from || '+1 (416) 555-0192',
@@ -280,7 +286,18 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     return () => {
       s.disconnect();
     };
-  }, [country, isAgentActive, user]);
+  }, [country, isAgentActive, agentMode, user]);
+
+  // Instantly synchronize presence mode changes without reconnecting
+  useEffect(() => {
+    if (socket?.connected && user) {
+      socket.emit('agent:presence', {
+        userId: user.id,
+        mode: agentMode,
+        countryCode: country,
+      });
+    }
+  }, [socket, agentMode, country, user]);
 
   const openSoftphone = () => setIsSoftphoneOpen(true);
   const closeSoftphone = () => setIsSoftphoneOpen(false);
@@ -314,7 +331,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     from = '+1 (416) 555-0199',
     fromName = 'Roadside Driver Marcus'
   ) => {
-    if (!isAgentActive) return;
+    if (agentMode !== 'INBOUND') {
+      toast.warning('Agent is not in Inbound mode. Switch presence to "Inbound" in top navigation to receive hotline calls.');
+      return;
+    }
     setIncomingCall({
       callId: `call-${Date.now()}`,
       from,
@@ -347,6 +367,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     callerName?: string;
     companyName?: string;
     notes?: string;
+    vehicleInfo?: string;
     transferType?: 'INBOUND_MOTORIST' | 'OUTBOUND_LEAD';
   }) => {
     try {
@@ -356,6 +377,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         callerName: params.callerName || activeCall?.fromName,
         companyName: params.companyName,
         notes: params.notes,
+        vehicleInfo: params.vehicleInfo,
         leadId: params.leadId,
         transferType: params.transferType || (params.leadId ? 'OUTBOUND_LEAD' : 'INBOUND_MOTORIST'),
       });

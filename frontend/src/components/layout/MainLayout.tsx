@@ -1,5 +1,5 @@
 import { useState, Suspense } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopNav from './TopNav';
 import { RouteErrorBoundary } from '../common/RouteErrorBoundary';
@@ -8,6 +8,7 @@ import IncomingCallPop from '../telephony/IncomingCallPop';
 import WarmTransferModal from '../telephony/WarmTransferModal';
 import JobChatModal from '../dispatch/JobChatModal';
 import { useSocket } from '../../context/SocketContext';
+import { useAuth } from '../../context/AuthContext';
 
 function PageLoader() {
   return (
@@ -19,11 +20,21 @@ function PageLoader() {
 
 export default function MainLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
   const { activeChatJob, closeChatJob } = useSocket();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return typeof window !== 'undefined' ? localStorage.getItem('xtreme_sidebar_collapsed') === 'true' : false;
   });
+
+  // Strict role containment: CALL_AGENT only allowed on /inbound and /outbound
+  if (user?.role === 'CALL_AGENT') {
+    const agentAllowed = ['/inbound', '/outbound', '/leads'];
+    if (!agentAllowed.includes(location.pathname)) {
+      return <Navigate to="/inbound" replace />;
+    }
+  }
 
   const toggleCollapse = () => {
     setIsCollapsed((prev) => {
@@ -36,7 +47,11 @@ export default function MainLayout() {
   };
 
   const handleIntakeJob = (phone: string) => {
-    navigate(`/jobs?intakePhone=${encodeURIComponent(phone)}`);
+    if (user?.role === 'CALL_AGENT') {
+      navigate('/inbound');
+    } else {
+      navigate(`/jobs?intakePhone=${encodeURIComponent(phone)}`);
+    }
   };
 
   return (

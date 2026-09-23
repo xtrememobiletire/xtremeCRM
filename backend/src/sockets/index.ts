@@ -36,6 +36,38 @@ export const initSocket = (httpServer: HttpServer): SocketIOServer => {
       }
     });
 
+    // Agent tri-state presence (PRD FR-1.1: Mutually exclusive INACTIVE / INBOUND / OUTBOUND)
+    socket.on('agent:presence', (data: { userId?: string; mode?: string; countryCode?: string }) => {
+      const { userId, mode = 'INACTIVE', countryCode = 'CA' } = data || {};
+
+      // Leave mutually exclusive agent rooms
+      socket.leave(`agents:inbound:${countryCode}`);
+      socket.leave(`agents:outbound:${countryCode}`);
+      socket.leave(`agents:inbound`);
+      socket.leave(`agents:outbound`);
+
+      if (mode === 'INBOUND') {
+        socket.join(`agents:inbound:${countryCode}`);
+        socket.join(`agents:inbound`);
+        logger.info(`Agent ${userId || socket.id} joined INBOUND room for ${countryCode}`);
+      } else if (mode === 'OUTBOUND') {
+        socket.join(`agents:outbound:${countryCode}`);
+        socket.join(`agents:outbound`);
+        logger.info(`Agent ${userId || socket.id} joined OUTBOUND room for ${countryCode}`);
+      } else {
+        logger.info(`Agent ${userId || socket.id} set presence to INACTIVE`);
+      }
+
+      // Notify dispatchers and admins of agent status
+      io.to(`dispatch:${countryCode}`).emit('agent:presence_updated', {
+        userId,
+        socketId: socket.id,
+        mode,
+        countryCode,
+        timestamp: new Date().toISOString(),
+      });
+    });
+
     registerDispatchHandlers(io, socket);
     registerDriverHandlers(io, socket);
     registerChatHandlers(io, socket);

@@ -20,8 +20,8 @@ export default function TopNav({
   isCollapsed,
 }: TopNavProps) {
   const { user, logout } = useAuth();
-  const { country, setCountry, isAgentActive, setIsAgentActive } = useTenant();
-  const { isConnected, openSoftphone, activeCall, unreadCount } = useSocket();
+  const { country, setCountry, agentMode, setAgentMode } = useTenant();
+  const { socket, isConnected, openSoftphone, activeCall, unreadCount } = useSocket();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -109,29 +109,71 @@ export default function TopNav({
           </select>
         </div>
 
-        {/* Agent Presence Toggle */}
-        <button
-          type="button"
-          onClick={async () => {
-            const newState = !isAgentActive;
-            setIsAgentActive(newState);
-            try {
-              await userService.toggleMyPresence(newState);
-            } catch {
-              setIsAgentActive(!newState);
-              toast.error('Failed to sync agent status');
-            }
-          }}
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold border transition ${
-            isAgentActive
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-              : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
-          }`}
-          title={isAgentActive ? 'Click to go Inactive / Break' : 'Click to go Active'}
-        >
-          <span className={`w-2 h-2 rounded-full ${isAgentActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-          <span className="hidden sm:inline">{isAgentActive ? 'Ready' : 'Inactive'}</span>
-        </button>
+        {/* Agent Presence Tri-State Toggle (PRD FR-1.1: INACTIVE / INBOUND / OUTBOUND) */}
+        <div className="flex items-center p-0.5 bg-slate-100 rounded-lg border border-slate-200">
+          <button
+            type="button"
+            onClick={async () => {
+              setAgentMode('INACTIVE');
+              if (socket && user) {
+                socket.emit('agent:presence', { userId: user.id, mode: 'INACTIVE', countryCode: country });
+              }
+              try { await userService.toggleMyPresence(false); } catch {}
+              toast.info('Presence set to Inactive (Break)');
+            }}
+            className={`px-2 py-1 rounded-md text-[11px] font-bold transition flex items-center gap-1 cursor-pointer ${
+              agentMode === 'INACTIVE'
+                ? 'bg-white text-slate-800 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+            title="Inactive / On Break (Zero call routing)"
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${agentMode === 'INACTIVE' ? 'bg-slate-400' : 'bg-transparent'}`} />
+            <span>Inactive</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={async () => {
+              setAgentMode('INBOUND');
+              if (socket && user) {
+                socket.emit('agent:presence', { userId: user.id, mode: 'INBOUND', countryCode: country });
+              }
+              try { await userService.toggleMyPresence(true); } catch {}
+              toast.success('Inbound Mode Active — Listening for hotline calls');
+            }}
+            className={`px-2 py-1 rounded-md text-[11px] font-bold transition flex items-center gap-1 cursor-pointer ${
+              agentMode === 'INBOUND'
+                ? 'bg-emerald-600 text-white shadow-2xs'
+                : 'text-slate-600 hover:text-emerald-700'
+            }`}
+            title="Inbound Mode (Receive live incoming motorist calls)"
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${agentMode === 'INBOUND' ? 'bg-emerald-200 animate-pulse' : 'bg-transparent'}`} />
+            <span>Inbound</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={async () => {
+              setAgentMode('OUTBOUND');
+              if (socket && user) {
+                socket.emit('agent:presence', { userId: user.id, mode: 'OUTBOUND', countryCode: country });
+              }
+              try { await userService.toggleMyPresence(true); } catch {}
+              toast.info('Outbound Mode Active — Isolated for VA lead calling');
+            }}
+            className={`px-2 py-1 rounded-md text-[11px] font-bold transition flex items-center gap-1 cursor-pointer ${
+              agentMode === 'OUTBOUND'
+                ? 'bg-blue-600 text-white shadow-2xs'
+                : 'text-slate-600 hover:text-blue-700'
+            }`}
+            title="Outbound Mode (Calling VA leads, invisible to inbound)"
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${agentMode === 'OUTBOUND' ? 'bg-blue-200 animate-pulse' : 'bg-transparent'}`} />
+            <span>Outbound</span>
+          </button>
+        </div>
 
         {/* User Mini Profile & Dropdown */}
         <div className="relative flex items-center gap-1.5 sm:gap-2 pl-1 sm:pl-2 border-l border-slate-200">

@@ -24,14 +24,16 @@ const MemberDashboard = lazy(() => import('./pages/MemberDashboard'));
 const TechnicianPortal = lazy(() => import('./pages/TechnicianPortal'));
 const History = lazy(() => import('./pages/History'));
 const Leads = lazy(() => import('./pages/Leads'));
+const Inbound = lazy(() => import('./pages/Inbound'));
 
 function getRoleHome(role?: string) {
   switch (role) {
     case 'DRIVER':
       return '/technician';
     case 'CALL_AGENT':
+      return '/inbound';
     case 'VIRTUAL_ASSISTANT':
-      return '/leads';
+      return '/outbound';
     case 'FLEET_MANAGER':
       return '/fleet-dashboard';
     case 'CUSTOMER_MEMBER':
@@ -133,7 +135,9 @@ function AppRoutes() {
           <Route path="/member-dashboard" element={<MemberDashboard />} />
           <Route path="/technician" element={<TechnicianPortal />} />
           <Route path="/history" element={<History />} />
-          <Route path="/leads" element={<Leads />} />
+          <Route path="/inbound" element={<Inbound />} />
+          <Route path="/outbound" element={<Leads />} />
+          <Route path="/leads" element={<Navigate to="/outbound" replace />} />
         </Route>
 
         <Route path="*" element={<Navigate to={user ? getRoleHome(user.role) : "/"} replace />} />

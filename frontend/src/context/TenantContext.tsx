@@ -2,6 +2,8 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 import { REGIONS, type RegionCode, type RegionConfig } from '../constants/regions';
 import { queryClient } from '../lib/queryClient';
 
+export type AgentPresenceMode = 'INACTIVE' | 'INBOUND' | 'OUTBOUND';
+
 interface TenantContextType {
   country: RegionCode;
   region: RegionConfig;
@@ -11,6 +13,8 @@ interface TenantContextType {
   isAgentActive: boolean;
   setIsAgentActive: (active: boolean) => void;
   toggleAgentActive: () => void;
+  agentMode: AgentPresenceMode;
+  setAgentMode: (mode: AgentPresenceMode) => void;
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
@@ -20,8 +24,16 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     return (localStorage.getItem('xtreme_country') as RegionCode) || 'CA';
   });
 
+  const [agentMode, setAgentModeState] = useState<AgentPresenceMode>(() => {
+    const saved = localStorage.getItem('xtreme_agent_mode') as AgentPresenceMode;
+    if (saved && ['INACTIVE', 'INBOUND', 'OUTBOUND'].includes(saved)) {
+      return saved;
+    }
+    return 'INBOUND';
+  });
+
   const [isAgentActive, setIsAgentActiveState] = useState<boolean>(() => {
-    return localStorage.getItem('xtreme_agent_active') !== 'false';
+    return agentMode !== 'INACTIVE';
   });
 
   const setCountry = (code: RegionCode) => {
@@ -31,17 +43,25 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries();
   };
 
-  const setIsAgentActive = (active: boolean) => {
+  const setAgentMode = (mode: AgentPresenceMode) => {
+    setAgentModeState(mode);
+    localStorage.setItem('xtreme_agent_mode', mode);
+    const active = mode !== 'INACTIVE';
     setIsAgentActiveState(active);
     localStorage.setItem('xtreme_agent_active', String(active));
   };
 
+  const setIsAgentActive = (active: boolean) => {
+    setIsAgentActiveState(active);
+    localStorage.setItem('xtreme_agent_active', String(active));
+    const newMode: AgentPresenceMode = active ? 'INBOUND' : 'INACTIVE';
+    setAgentModeState(newMode);
+    localStorage.setItem('xtreme_agent_mode', newMode);
+  };
+
   const toggleAgentActive = () => {
-    setIsAgentActiveState((prev) => {
-      const next = !prev;
-      localStorage.setItem('xtreme_agent_active', String(next));
-      return next;
-    });
+    const next = !isAgentActive;
+    setIsAgentActive(next);
   };
 
   const region = REGIONS[country] || REGIONS.CA;
@@ -57,6 +77,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         isAgentActive,
         setIsAgentActive,
         toggleAgentActive,
+        agentMode,
+        setAgentMode,
       }}
     >
       {children}
