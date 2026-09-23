@@ -2,22 +2,15 @@ import { useState } from 'react';
 import { 
   History as HistoryIcon, 
   RefreshCw, 
-  MapPin, 
-  Phone, 
-  Car, 
   CheckCircle2, 
-  DollarSign, 
-  Eye, 
-  Calendar,
-  Navigation
+  DollarSign
 } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
+import JobTable from '../components/jobs/JobTable';
 import { useJobs } from '../hooks/useJobs';
 import { useAuth } from '../context/AuthContext';
 import { useTenant } from '../context/TenantContext';
 import { formatCurrency, centsToDollars } from '../utils/currency';
-import { formatDate } from '../utils/date';
-import StatusBadge from '../components/ui/StatusBadge';
 import JobDetailModal from '../components/pages/jobs/JobDetailModal';
 import EmptyState from '../components/ui/EmptyState';
 
@@ -102,12 +95,10 @@ export default function History() {
         </div>
       </div>
 
-      {/* History Grid Container */}
+      {/* History Table in Previous Shape */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {[1, 2, 3, 4, 5, 6].map((n) => (
-            <div key={n} className="bg-white rounded-2xl border border-slate-200 p-5 h-64 animate-pulse" />
-          ))}
+        <div className="bg-white rounded-2xl border border-slate-200 p-8 h-64 animate-pulse flex items-center justify-center text-slate-400">
+          Loading history records...
         </div>
       ) : historyJobs.length === 0 ? (
         <EmptyState
@@ -116,107 +107,12 @@ export default function History() {
           description="Completed or archived roadside service orders will automatically appear here."
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {historyJobs.map((job: any) => {
-            const isCompleted = job.status === 'COMPLETED';
-            const leftLineColor = isCompleted ? 'border-l-emerald-500' : 'border-l-slate-400';
-            const customerName = job.customer?.name || job.customer?.fullName || 'Walk-in Customer';
-            const customerPhone = job.customer?.phone || job.contactPhone || '';
-            const serviceAddress = job.serviceAddress || job.locationAddress || '';
-            const vehicleText = job.vehicle ? `${job.vehicle.year || ''} ${job.vehicle.make} ${job.vehicle.model}`.trim() : 'No Vehicle';
-            const tireSize = job.vehicle?.tireSize || '';
-
-            return (
-              <div 
-                key={job.id}
-                className={`bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-200 p-5 flex flex-col justify-between border-l-[6px] ${leftLineColor}`}
-              >
-                <div className="space-y-4">
-                  {/* Top Header */}
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <div className="text-left">
-                      <span className="font-mono font-bold text-sm text-slate-900">
-                        {job.jobCode || job.jobNumber}
-                      </span>
-                      <div className="flex items-center gap-1 text-[11px] text-slate-400 font-medium mt-0.5">
-                        <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span>{formatDate(job.completedAt || job.updatedAt || job.createdAt)}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <StatusBadge status={job.urgency} />
-                      <StatusBadge status={job.status} />
-                    </div>
-                  </div>
-
-                  {/* Left Aligned Clean Details */}
-                  <div className="space-y-3 text-left">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Customer</span>
-                      <p className="text-sm font-bold text-slate-900">{customerName}</p>
-                      {customerPhone && (
-                        <a 
-                          href={`tel:${customerPhone}`}
-                          className="inline-flex items-center gap-1 text-xs text-blue-600 font-mono mt-0.5"
-                        >
-                          <Phone className="w-3 h-3" />
-                          <span>{customerPhone}</span>
-                        </a>
-                      )}
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Vehicle & Tire</span>
-                      <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold mt-0.5">
-                        <Car className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                        <span>{vehicleText}</span>
-                      </div>
-                      {tireSize && (
-                        <span className="inline-block mt-1 px-2 py-0.5 bg-slate-100 border border-slate-200/80 rounded font-mono text-[11px] font-bold text-slate-700">
-                          {tireSize}
-                        </span>
-                      )}
-                    </div>
-
-                    {serviceAddress && (
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Service Location</span>
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(serviceAddress)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-start gap-1.5 text-xs text-slate-700 hover:text-blue-600 mt-0.5"
-                        >
-                          <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
-                          <span className="line-clamp-2 leading-relaxed">{serviceAddress}</span>
-                          <Navigation className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Footer Strip: Financials & Action */}
-                <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <div className="text-left">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Your Labor Earned</span>
-                    <span className="text-sm font-mono font-black text-emerald-600">
-                      {formatCurrency(centsToDollars(job.repairerFeeCents || 0), currencySymbol)}
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedJob(job)}
-                    className="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>View Details</span>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+          <JobTable
+            jobs={historyJobs}
+            onViewJob={setSelectedJob}
+            onAssignDriver={() => {}}
+          />
         </div>
       )}
 

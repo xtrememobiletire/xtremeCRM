@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Phone, Car, MapPin, Calculator, FileText, Printer, MessageSquare } from 'lucide-react';
+import { Phone, Car, MapPin, Calculator, FileText, Printer, MessageSquare, DollarSign } from 'lucide-react';
 import Modal from '../../ui/Modal';
 import StatusBadge from '../../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../../utils/currency';
 import { formatDate } from '../../../utils/date';
 import { useTenant } from '../../../context/TenantContext';
 import { useSocket } from '../../../context/SocketContext';
+import { useAuth } from '../../../context/AuthContext';
 import { useUpdateJobStatus } from '../../../hooks/useJobs';
 import { JOB_STATUSES } from '../../../constants/statuses';
 import { accountingService } from '../../../services/accountingService';
@@ -19,6 +20,9 @@ interface JobDetailModalProps {
 }
 
 export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalProps) {
+  const { user } = useAuth();
+  const isDriver = user?.role === 'DRIVER';
+  const isAdminOrAccountant = user?.role === 'ADMIN' || user?.role === 'ACCOUNTANT';
   const { country, currencySymbol } = useTenant();
   const { openChatJob } = useSocket();
   const updateStatusMutation = useUpdateJobStatus();
@@ -257,108 +261,126 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
           </div>
         </div>
 
-        {/* Rule 2.3 & 2.5: Accountant Job Expense Stating & Profitability Audit */}
-        <div className="p-3.5 bg-slate-900 text-white rounded-xl border border-slate-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Calculator className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
-                Accountant Expense Stating (COGS)
-              </span>
+        {/* Technician Labor Fee Card (Driver Portal - NFR-4 Isolation) */}
+        {isDriver ? (
+          <div className="p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold">
+                <DollarSign className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-800 block">Your Technician Labor Fee</span>
+                <p className="text-[11px] text-slate-500">Direct labor compensation for this service dispatch</p>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowExpenseForm(!showExpenseForm)}
-              className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 underline"
-            >
-              {showExpenseForm ? 'Close Editor' : 'State / Edit Expenses'}
-            </button>
+            <span className="text-lg font-mono font-black text-emerald-700">
+              {formatCurrency(centsToDollars(job.repairerFeeCents || 0), currencySymbol)}
+            </span>
           </div>
+        ) : isAdminOrAccountant ? (
+          /* Rule 2.3 & 2.5: Accountant Job Expense Stating & Profitability Audit (Admin/Accountant only) */
+          <div className="p-4 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Calculator className="w-4 h-4 text-emerald-600" />
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                  Accountant Expense Stating (COGS)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowExpenseForm(!showExpenseForm)}
+                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 underline cursor-pointer"
+              >
+                {showExpenseForm ? 'Close Editor' : 'State / Edit Expenses'}
+              </button>
+            </div>
 
-          {showExpenseForm && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-800">
-              <div>
-                <label className="text-[10px] text-slate-400">Material / Tire Wholesale ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={materialCost}
-                  onChange={(e) => setMaterialCost(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full bg-slate-800 text-white border border-slate-700 rounded px-2 py-1 text-xs font-mono"
-                />
+            {showExpenseForm && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-3 border-t border-slate-200">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Material / Tire Wholesale ({currencySymbol})</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={materialCost}
+                    onChange={(e) => setMaterialCost(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-white text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono font-semibold focus:outline-hidden focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Repairer / Tech Fee ({currencySymbol})</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={repairerFee}
+                    onChange={(e) => setRepairerFee(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-white text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono font-semibold focus:outline-hidden focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Other Expense / Towing ({currencySymbol})</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={otherExpense}
+                    onChange={(e) => setOtherExpense(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-white text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono font-semibold focus:outline-hidden focus:border-emerald-500"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <input
+                    type="text"
+                    value={expenseNotes}
+                    onChange={(e) => setExpenseNotes(e.target.value)}
+                    placeholder="Expense audit notes / supplier invoice ref..."
+                    className="w-full bg-white text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={handleSaveExpenses}
+                    className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg cursor-pointer"
+                  >
+                    Save Expenses
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="text-[10px] text-slate-400">Repairer / Tech Fee ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={repairerFee}
-                  onChange={(e) => setRepairerFee(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full bg-slate-800 text-white border border-slate-700 rounded px-2 py-1 text-xs font-mono"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-400">Other Expense / Towing ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={otherExpense}
-                  onChange={(e) => setOtherExpense(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full bg-slate-800 text-white border border-slate-700 rounded px-2 py-1 text-xs font-mono"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <input
-                  type="text"
-                  value={expenseNotes}
-                  onChange={(e) => setExpenseNotes(e.target.value)}
-                  placeholder="Expense audit notes / supplier invoice ref..."
-                  className="w-full bg-slate-800 text-white border border-slate-700 rounded px-2 py-1 text-xs"
-                />
-              </div>
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={handleSaveExpenses}
-                  className="w-full py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded"
-                >
-                  Save Expenses
-                </button>
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Derived Read-Only Ledger Line */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800 text-center">
-            <div>
-              <div className="text-[10px] text-slate-400">Job Expenses</div>
-              <div className="text-xs font-mono font-bold text-rose-400">
-                {formatCurrency(centsToDollars(totalJobExpenseCents), currencySymbol)}
+            {/* Derived Read-Only Ledger Line in Light Modern Tiles */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2.5 border-t border-slate-200 text-center">
+              <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Job Expenses</div>
+                <div className="text-xs font-mono font-black text-rose-600 mt-0.5">
+                  {formatCurrency(centsToDollars(totalJobExpenseCents), currencySymbol)}
+                </div>
               </div>
-            </div>
-            <div>
-              <div className="text-[10px] text-slate-400">Net Profit</div>
-              <div className={`text-xs font-mono font-bold ${netProfitCents >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {formatCurrency(centsToDollars(netProfitCents), currencySymbol)}
+              <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Net Profit</div>
+                <div className={`text-xs font-mono font-black mt-0.5 ${netProfitCents >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {formatCurrency(centsToDollars(netProfitCents), currencySymbol)}
+                </div>
               </div>
-            </div>
-            <div>
-              <div className="text-[10px] text-slate-400">IT Platform Fee</div>
-              <div className="text-xs font-mono font-bold text-slate-300">
-                {formatCurrency(centsToDollars(itPlatformFeeCents), currencySymbol)}
+              <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">IT Platform Fee</div>
+                <div className="text-xs font-mono font-black text-slate-700 mt-0.5">
+                  {formatCurrency(centsToDollars(itPlatformFeeCents), currencySymbol)}
+                </div>
               </div>
-            </div>
-            <div>
-              <div className="text-[10px] text-slate-400">Net After IT_B</div>
-              <div className={`text-xs font-mono font-bold ${totalNetAfterItbCents >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {formatCurrency(centsToDollars(totalNetAfterItbCents), currencySymbol)}
+              <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Net After IT_B</div>
+                <div className={`text-xs font-mono font-black mt-0.5 ${totalNetAfterItbCents >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {formatCurrency(centsToDollars(totalNetAfterItbCents), currencySymbol)}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        ) : null}
 
         {/* Footer */}
         <div className="flex justify-end pt-2">

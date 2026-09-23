@@ -311,43 +311,43 @@ export default function ExpenseStatingModal({
         </div>
 
         {/* Live Calculation Preview */}
-        <div className="bg-slate-900 text-white rounded-xl p-3.5 space-y-2">
-          <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
-            <TrendingUp size={12} className="text-emerald-400" />
-            <span>Live Margin Calculation</span>
+        <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 space-y-2.5">
+          <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
+            <TrendingUp size={12} className="text-emerald-600" />
+            <span className="text-slate-800">Live Margin Calculation</span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 text-center pt-1 border-t border-slate-800">
-            <div>
-              <span className="text-[10px] text-slate-400 block">Total COGS</span>
-              <span className="font-mono font-bold text-xs text-rose-400">
+          <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-slate-200">
+            <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Total COGS</span>
+              <span className="font-mono font-black text-xs text-rose-600 mt-0.5 block">
                 {formatCurrency(centsToDollars(totalCostCents), currencySymbol)}
               </span>
             </div>
-            <div>
-              <span className="text-[10px] text-slate-400 block">Net Profit</span>
+            <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Net Profit</span>
               <span
-                className={`font-mono font-bold text-xs ${
-                  netProfitCents >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                className={`font-mono font-black text-xs mt-0.5 block ${
+                  netProfitCents >= 0 ? 'text-emerald-600' : 'text-rose-600'
                 }`}
               >
                 {formatCurrency(centsToDollars(netProfitCents), currencySymbol)}
               </span>
             </div>
-            <div>
-              <span className="text-[10px] text-slate-400 block">Gross Margin</span>
+            <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Gross Margin</span>
               <span
-                className={`font-mono font-bold text-xs ${
-                  marginPercent >= 50 ? 'text-emerald-400' : marginPercent >= 0 ? 'text-amber-400' : 'text-rose-400'
+                className={`font-mono font-black text-xs mt-0.5 block ${
+                  marginPercent >= 50 ? 'text-emerald-600' : marginPercent >= 0 ? 'text-amber-600' : 'text-rose-600'
                 }`}
               >
                 {marginPercent.toFixed(1)}%
               </span>
             </div>
           </div>
-          <div className="text-[10px] text-slate-400 text-right pt-1 border-t border-slate-800/80">
+          <div className="text-[11px] text-slate-500 text-right pt-2 border-t border-slate-200">
             Net After Platform Royalty (IT_B):{' '}
-            <span className="font-mono font-bold text-slate-200">
+            <span className="font-mono font-black text-slate-900">
               {formatCurrency(centsToDollars(netAfterItCents), currencySymbol)}
             </span>
           </div>
