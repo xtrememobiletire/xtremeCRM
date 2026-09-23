@@ -142,24 +142,38 @@ async function main() {
   } else if (command === 'build') {
     console.log(`${prefixes.system}Starting XtremeCRM Production Build...\n`);
     try {
-      await runSequential([
+      const isRender = Boolean(process.env.RENDER || process.env.NODE_ENV === 'production');
+
+      const tasks = [
+        { name: 'Backend Dependencies Install', cmd: 'pnpm', args: ['install', '--prod=false'], cwd: backendDir },
         { name: 'Backend Build (Prisma + TSC)', cmd: 'pnpm', args: ['run', 'build'], cwd: backendDir },
-        { name: 'Frontend Build (ESLint + Vite)', cmd: 'pnpm', args: ['run', 'build'], cwd: frontendDir },
-      ]);
+      ];
+
+      // On full local monorepo builds, build frontend as well
+      if (!isRender) {
+        tasks.push(
+          { name: 'Frontend Dependencies Install', cmd: 'pnpm', args: ['install', '--prod=false'], cwd: frontendDir },
+          { name: 'Frontend Build (ESLint + Vite)', cmd: 'pnpm', args: ['run', 'build'], cwd: frontendDir }
+        );
+      }
+
+      await runSequential(tasks);
       console.log(`${prefixes.system}${colors.green}${colors.bold}All builds finished successfully!${colors.reset}`);
     } catch {
       process.exit(1);
     }
   } else if (command === 'start') {
     console.log(`${prefixes.system}Starting XtremeCRM Production Services...`);
-    console.log(`${prefixes.system}Backend:  ${colors.cyan}http://localhost:3000${colors.reset}`);
-    console.log(`${prefixes.system}Frontend: ${colors.magenta}http://localhost:5173 (preview)${colors.reset}\n`);
+    const isRender = Boolean(process.env.RENDER || process.env.NODE_ENV === 'production');
 
     const backendProc = runProcess('pnpm', ['run', 'start'], backendDir, prefixes.backend);
     activeChildren.push(backendProc);
 
-    const frontendProc = runProcess('pnpm', ['run', 'preview'], frontendDir, prefixes.frontend);
-    activeChildren.push(frontendProc);
+    if (!isRender) {
+      console.log(`${prefixes.system}Frontend: ${colors.magenta}http://localhost:5173 (preview)${colors.reset}\n`);
+      const frontendProc = runProcess('pnpm', ['run', 'preview'], frontendDir, prefixes.frontend);
+      activeChildren.push(frontendProc);
+    }
   } else {
     console.error(`${prefixes.system}Unknown command: ${command}`);
     console.log(`Usage: node dev.js [dev|build|start]`);
