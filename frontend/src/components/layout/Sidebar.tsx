@@ -46,8 +46,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     ? [{ icon: Car, label: 'Member Portal', path: '/member-dashboard' }]
     : isDriver
     ? [
-        { icon: Wrench, label: 'Technician Console', path: '/technician' },
-        { icon: CheckCircle, label: 'My Work Orders', path: '/jobs' },
+        { icon: BarChart3, label: 'Dashboard', path: '/technician' },
+        { icon: CheckCircle, label: 'Orders', path: '/jobs' },
       ]
     : isAccountant
     ? [
@@ -67,7 +67,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         ...baseNavItems,
         ...(isAdmin
           ? [
-              { icon: Wrench, label: 'Technician Console Preview', path: '/technician' },
+              { icon: BarChart3, label: 'Technician Dashboard Preview', path: '/technician' },
               { icon: Truck, label: 'Fleet Portal Preview', path: '/fleet-dashboard' },
               { icon: Car, label: 'Member Portal Preview', path: '/member-dashboard' },
             ]

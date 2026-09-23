@@ -8,8 +8,12 @@ import CreateJobModal from '../components/pages/jobs/CreateJobModal';
 import JobDetailModal from '../components/pages/jobs/JobDetailModal';
 import AssignDriverModal from '../components/pages/jobs/AssignDriverModal';
 import { useJobs } from '../hooks/useJobs';
+import { useAuth } from '../context/AuthContext';
 
 export default function Jobs() {
+  const { user } = useAuth();
+  const isDriver = user?.role === 'DRIVER';
+
   const [searchParams, setSearchParams] = useSearchParams();
   const intakePhoneParam = searchParams.get('intakePhone') || '';
 
@@ -34,10 +38,16 @@ export default function Jobs() {
     status: status || undefined,
     urgency: urgency || undefined,
     search: search || undefined,
+    driverId: isDriver ? user?.id : undefined,
   });
 
-  const jobs = jobsResponse?.data || [];
-  const pagination = jobsResponse?.pagination || { total: 0, totalPages: 1, page: 1 };
+  const rawJobs = jobsResponse?.data || [];
+  // Strict driver isolation: only show jobs where driverId matches current user ID
+  const jobs = isDriver && user?.id
+    ? rawJobs.filter((j: any) => j.driverId === user.id || j.driver?.id === user.id)
+    : rawJobs;
+
+  const pagination = jobsResponse?.pagination || { total: jobs.length, totalPages: 1, page: 1 };
 
   const handleCloseCreate = () => {
     setIsCreateOpen(false);
@@ -50,26 +60,28 @@ export default function Jobs() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Jobs & Dispatch Work Orders"
-        subtitle="Manage customer intake, roadside emergency dispatches, and work order lifecycle"
+        title={isDriver ? "Orders" : "Jobs & Dispatch Work Orders"}
+        subtitle={isDriver ? "View and manage your assigned roadside service dispatches" : "Manage customer intake, roadside emergency dispatches, and work order lifecycle"}
         actions={
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => refetch()}
-              className="btn-secondary px-2.5 py-2"
-              title="Refresh job list"
+              className="btn-secondary px-2.5 py-2 cursor-pointer"
+              title="Refresh order list"
             >
               <RefreshCw size={14} />
             </button>
-            <button
-              type="button"
-              onClick={() => setIsCreateOpen(true)}
-              className="btn-primary"
-            >
-              <Plus size={14} />
-              <span>Create Job Ticket</span>
-            </button>
+            {!isDriver && (
+              <button
+                type="button"
+                onClick={() => setIsCreateOpen(true)}
+                className="btn-primary cursor-pointer"
+              >
+                <Plus size={14} />
+                <span>Create Job Ticket</span>
+              </button>
+            )}
           </div>
         }
       />

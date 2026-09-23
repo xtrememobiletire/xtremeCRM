@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { 
-  Wrench, 
   MapPin, 
   Phone, 
   Navigation, 
@@ -8,7 +7,6 @@ import {
   CheckCircle, 
   Clock, 
   DollarSign, 
-  Radio,
   Check,
   Disc,
   ExternalLink
@@ -17,7 +15,6 @@ import { useQuery } from '@tanstack/react-query';
 import { jobService, type JobItem } from '../services/jobService';
 import { useAuth } from '../context/AuthContext';
 import { useTenant } from '../context/TenantContext';
-import { useSocket } from '../context/SocketContext';
 import { formatCurrency, centsToDollars } from '../utils/currency';
 import { formatDate } from '../utils/date';
 import { toast } from 'sonner';
@@ -27,21 +24,24 @@ import JobChatModal from '../components/dispatch/JobChatModal';
 export default function TechnicianPortal() {
   const { user } = useAuth();
   const { country, currencySymbol } = useTenant();
-  const { isConnected } = useSocket();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [chatJob, setChatJob] = useState<JobItem | null>(null);
   const [cashCollectedModal, setCashCollectedModal] = useState<JobItem | null>(null);
   const [cashAmountInput, setCashAmountInput] = useState('');
   const [recordingCash, setRecordingCash] = useState(false);
 
-  // Fetch driver assigned jobs
+  // Fetch driver assigned jobs - strictly scoped to this driver
   const { data: jobsResponse, refetch } = useQuery({
     queryKey: ['technician-jobs', country, user?.id],
-    queryFn: () => jobService.getJobs({ limit: 50, countryCode: country }),
+    queryFn: () => jobService.getJobs({ limit: 50, countryCode: country, driverId: user?.id }),
     refetchInterval: 10000,
   });
 
-  const jobs = jobsResponse?.data || [];
+  const rawJobs = jobsResponse?.data || [];
+  // Strict driver isolation: only show jobs where driverId matches current user ID
+  const jobs = user?.id
+    ? rawJobs.filter((j: any) => j.driverId === user.id || j.driver?.id === user.id)
+    : rawJobs;
 
   // Categorize jobs
   const activeJob = jobs.find(
@@ -91,32 +91,13 @@ export default function TechnicianPortal() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
-      {/* Driver Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-red-50 text-red-600 rounded-xl">
-            <Wrench className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                Technician Command
-              </h1>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <Radio className="w-2.5 h-2.5 animate-pulse text-emerald-500" />
-                <span>{isConnected ? 'Telemetry Active' : 'Connecting...'}</span>
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 font-medium">
-              Welcome back, <strong className="text-slate-800">{user?.fullName || 'Technician'}</strong> — Assigned Region: {country} ({currencySymbol})
-            </p>
-          </div>
-        </div>
-
+      {/* Dashboard Header */}
+      <div className="flex items-center justify-between pb-1">
+        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Dashboard</h1>
         <button
           type="button"
           onClick={() => refetch()}
-          className="btn-secondary text-xs px-3 py-1.5 self-start sm:self-auto"
+          className="btn-secondary text-xs px-3 py-1.5 cursor-pointer"
         >
           <span>Refresh Queue</span>
         </button>

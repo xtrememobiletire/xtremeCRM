@@ -4,6 +4,7 @@ import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
 import { useTenant } from '../../context/TenantContext';
 import { useSocket } from '../../context/SocketContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface JobTableProps {
   jobs: any[];
@@ -12,6 +13,8 @@ interface JobTableProps {
 }
 
 export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTableProps) {
+  const { user } = useAuth();
+  const isDriver = user?.role === 'DRIVER';
   const { currencySymbol } = useTenant();
   const { openChatJob } = useSocket();
 
@@ -58,20 +61,29 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                 )}
               </td>
               <td className="table-td whitespace-nowrap">
-                {job.driver ? (
+                {job.driver || job.assignedDriver ? (
                   <div className="flex items-center gap-1.5 text-xs text-slate-800 font-medium">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    <span>{job.driver.firstName} {job.driver.lastName}</span>
+                    <span>
+                      {job.driver?.fullName || 
+                       job.assignedDriver?.fullName || 
+                       `${job.driver?.firstName || ''} ${job.driver?.lastName || ''}`.trim() || 
+                       (isDriver ? 'You (Assigned)' : 'Assigned Technician')}
+                    </span>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => onAssignDriver(job)}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition"
-                  >
-                    <AlertCircle className="w-3 h-3 text-amber-500" />
-                    <span>Assign</span>
-                  </button>
+                  !isDriver ? (
+                    <button
+                      type="button"
+                      onClick={() => onAssignDriver(job)}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition cursor-pointer"
+                    >
+                      <AlertCircle className="w-3 h-3 text-amber-500" />
+                      <span>Assign</span>
+                    </button>
+                  ) : (
+                    <span className="text-xs text-slate-400">Unassigned</span>
+                  )
                 )}
               </td>
               <td className="table-td whitespace-nowrap">
@@ -88,19 +100,21 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                   <button
                     type="button"
                     onClick={() => onViewJob(job)}
-                    className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                    className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
                     title="View Job Details"
                   >
                     <Eye className="w-4 h-4" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => onAssignDriver(job)}
-                    className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                    title="Assign / Reassign Driver"
-                  >
-                    <UserCheck className="w-4 h-4" />
-                  </button>
+                  {!isDriver && (
+                    <button
+                      type="button"
+                      onClick={() => onAssignDriver(job)}
+                      className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                      title="Assign / Reassign Driver"
+                    >
+                      <UserCheck className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => {

@@ -46,11 +46,24 @@ export const jobController = {
       if (status) where.status = status;
       if (urgency) where.urgency = urgency;
       if (driverId) where.driverId = driverId;
-      if ((req.user as any)?.role === 'DRIVER') {
-        where.driverId = (req.user as any).id;
+
+      // Strict role isolation: users only see their own work strictly on their respective portals
+      const userRole = (req.user as any)?.role;
+      const userId = (req.user as any)?.id;
+      if (userRole === 'DRIVER') {
+        where.driverId = userId;
+      } else if (userRole === 'FLEET_MANAGER') {
+        const fleet = await prisma.fleet.findFirst({ where: { managerUserId: userId } });
+        if (fleet) where.fleetId = fleet.id;
+        else where.fleetId = '00000000-0000-0000-0000-000000000000';
+      } else if (userRole === 'CUSTOMER_MEMBER') {
+        const cust = await prisma.customer.findFirst({ where: { userId } });
+        if (cust) where.customerId = cust.id;
+        else where.customerId = '00000000-0000-0000-0000-000000000000';
       }
-      if (fleetId) where.fleetId = fleetId;
-      if (customerId) where.customerId = customerId;
+
+      if (fleetId && userRole !== 'FLEET_MANAGER') where.fleetId = fleetId;
+      if (customerId && userRole !== 'CUSTOMER_MEMBER') where.customerId = customerId;
       if (search) {
         where.OR = [
           { jobCode: { contains: search, mode: 'insensitive' } },
