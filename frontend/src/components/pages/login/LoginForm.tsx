@@ -32,6 +32,8 @@ export default function LoginForm() {
   const handleQuickFill = (role: string) => {
     if (role === 'admin') {
       setEmail('admin@xtremecrm.com');
+    } else if (role === 'agent') {
+      setEmail('agent@xtremecrm.com');
     } else if (role === 'dispatcher') {
       setEmail('dispatcher@xtremecrm.com');
     } else if (role === 'accountant') {
@@ -112,32 +114,39 @@ export default function LoginForm() {
         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center mb-2">
           Fast Demo Accounts
         </p>
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-5 gap-1.5">
           <button
             type="button"
             onClick={() => handleQuickFill('admin')}
-            className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center"
+            className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center cursor-pointer"
           >
             Admin
           </button>
           <button
             type="button"
+            onClick={() => handleQuickFill('agent')}
+            className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center cursor-pointer"
+          >
+            Agent
+          </button>
+          <button
+            type="button"
             onClick={() => handleQuickFill('dispatcher')}
-            className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center"
+            className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center cursor-pointer"
           >
             Dispatcher
           </button>
           <button
             type="button"
             onClick={() => handleQuickFill('accountant')}
-            className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center"
+            className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center cursor-pointer"
           >
             Accountant
           </button>
           <button
             type="button"
             onClick={() => handleQuickFill('driver')}
-            className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center"
+            className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center cursor-pointer"
           >
             Technician
           </button>

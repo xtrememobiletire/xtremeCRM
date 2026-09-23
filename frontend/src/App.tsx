@@ -29,6 +29,9 @@ function getRoleHome(role?: string) {
   switch (role) {
     case 'DRIVER':
       return '/technician';
+    case 'CALL_AGENT':
+    case 'VIRTUAL_ASSISTANT':
+      return '/leads';
     case 'FLEET_MANAGER':
       return '/fleet-dashboard';
     case 'CUSTOMER_MEMBER':

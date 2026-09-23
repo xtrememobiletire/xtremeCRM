@@ -41,6 +41,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
   const isDriver = user?.role === 'DRIVER';
   const isAccountant = user?.role === 'ACCOUNTANT';
   const isDispatcher = user?.role === 'DISPATCHER';
+  const isAgent = user?.role === 'CALL_AGENT';
   const isVa = user?.role === 'VIRTUAL_ASSISTANT';
   const isAdmin = user?.role === 'ADMIN';
 
@@ -73,6 +74,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     ? [
         { icon: PhoneCall, label: 'Outbound Leads', path: '/leads' },
         { icon: Truck, label: 'Fleet Accounts', path: '/fleets' },
+        { icon: BarChart3, label: 'Dashboard', path: '/' },
+      ]
+    : isAgent
+    ? [
+        { icon: PhoneCall, label: 'Outbound Leads', path: '/leads' },
+        { icon: Wrench, label: 'Jobs & Orders', path: '/jobs' },
+        { icon: Users, label: 'Customers', path: '/customers' },
         { icon: BarChart3, label: 'Dashboard', path: '/' },
       ]
     : [
