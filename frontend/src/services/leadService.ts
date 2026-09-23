@@ -67,6 +67,23 @@ export const leadService = {
     const res = await api.post(`/leads/${id}/convert`, { customFleetCode });
     return res.data.data;
   },
+
+  async uploadLeadsFile(formData: FormData) {
+    const res = await api.post('/leads/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data;
+  },
+
+  async getAgentQueue(countryCode?: string) {
+    const res = await api.get('/leads/agent-queue', { params: { countryCode } });
+    return res.data.data;
+  },
+
+  async setDisposition(id: string, disposition: string, notes?: string) {
+    const res = await api.patch(`/leads/${id}/disposition`, { disposition, notes });
+    return res.data.data;
+  },
 };
 
 export default leadService;

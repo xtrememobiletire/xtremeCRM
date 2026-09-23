@@ -8,7 +8,8 @@ import {
   Plus, 
   Search, 
   RefreshCw, 
-  Truck
+  Truck,
+  ClipboardCheck
 } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Modal from '../components/ui/Modal';
@@ -23,6 +24,12 @@ export default function Leads() {
   const { user } = useAuth();
   const { dialOutbound, transferCallToDm } = useSocket();
   const queryClient = useQueryClient();
+
+  const isAgent = user?.role === 'CALL_AGENT';
+  const [viewMode, setViewMode] = useState<'queue' | 'all'>(isAgent ? 'queue' : 'all');
+  const [selectedDispositionLead, setSelectedDispositionLead] = useState<Lead | null>(null);
+  const [selectedDisposition, setSelectedDisposition] = useState('');
+  const [dispositionNotes, setDispositionNotes] = useState('');
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -44,7 +51,22 @@ export default function Leads() {
     countryCode: country,
   });
 
-  const { data: leadsResponse, isLoading, refetch } = useQuery({
+  // Agent 10-cap round robin auto-fill queue
+  const { data: queueResponse, isLoading: isLoadingQueue, refetch: refetchQueue } = useQuery({
+    queryKey: ['agent-queue', country],
+    queryFn: () => leadService.getAgentQueue(country),
+    enabled: isAgent || viewMode === 'queue',
+    refetchInterval: 15000,
+  });
+
+  const queueData = queueResponse || {
+    leads: [],
+    activeCount: 0,
+    maxCapacity: 10,
+    unassignedPoolCount: 0,
+  };
+
+  const { data: leadsResponse, isLoading: isLoadingAll, refetch: refetchAll } = useQuery({
     queryKey: ['leads', country, statusFilter, search],
     queryFn: () => leadService.getLeads({
       countryCode: country,
@@ -52,9 +74,34 @@ export default function Leads() {
       search: search || undefined,
       limit: 50,
     }),
+    enabled: !isAgent && viewMode === 'all',
   });
 
-  const leads: Lead[] = leadsResponse?.data || [];
+  const allLeads: Lead[] = leadsResponse?.data || [];
+  const activeInQueue = isAgent || viewMode === 'queue';
+  const displayLeads: Lead[] = activeInQueue ? queueData.leads : allLeads;
+  const isLoading = activeInQueue ? isLoadingQueue : isLoadingAll;
+
+  const refetch = () => {
+    if (activeInQueue) refetchQueue();
+    else refetchAll();
+  };
+
+  const dispositionMutation = useMutation({
+    mutationFn: ({ id, disposition, notes }: { id: string; disposition: string; notes?: string }) =>
+      leadService.setDisposition(id, disposition, notes),
+    onSuccess: () => {
+      toast.success('Call outcome recorded! Slot freed & next lead auto-assigned.');
+      setSelectedDispositionLead(null);
+      setSelectedDisposition('');
+      setDispositionNotes('');
+      queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to record disposition');
+    },
+  });
 
   const createMutation = useMutation({
     mutationFn: (data: Partial<Lead>) => leadService.createLead(data),
@@ -159,19 +206,45 @@ export default function Leads() {
   };
 
   const counts = {
-    all: leads.length,
-    new: leads.filter((l) => l.status === 'NEW').length,
-    called: leads.filter((l) => l.status === 'CALLED' || l.status === 'CALLBACK').length,
-    converted: leads.filter((l) => l.status === 'CONVERTED').length,
+    all: displayLeads.length,
+    new: displayLeads.filter((l) => l.status === 'NEW').length,
+    called: displayLeads.filter((l) => l.status === 'CALLED' || l.status === 'CALLBACK').length,
+    converted: displayLeads.filter((l) => l.status === 'CONVERTED').length,
   };
 
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Outbound B2B Fleet Sales & Leads"
-        subtitle={`Virtual Assistant prospect queue, click-to-call qualification, and Dispatch Manager warm transfer (${country} Region)`}
+        title={activeInQueue ? "Outbound Calling Queue (10 Max)" : "Outbound B2B Fleet Sales & Leads"}
+        subtitle={
+          activeInQueue
+            ? `Load-balanced calling queue for ${country} Region. Fast agents auto-receive fresh leads upon dispositioning.`
+            : `Prospect pool and lead qualification for ${country} Region.`
+        }
         actions={
           <div className="flex items-center gap-2">
+            {!isAgent && (
+              <div className="bg-slate-100 p-0.5 rounded-xl border border-slate-200 flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('queue')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    viewMode === 'queue' ? 'bg-red-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  My Queue (10)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    viewMode === 'all' ? 'bg-red-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  All Leads Pool
+                </button>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => refetch()}
@@ -191,6 +264,44 @@ export default function Leads() {
           </div>
         }
       />
+
+      {/* Round-Robin Load-Balanced Queue Banner */}
+      {activeInQueue && (
+        <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-md flex flex-wrap items-center justify-between gap-4 border border-slate-800">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-400 bg-red-950/80 px-2 py-0.5 rounded-full border border-red-800">
+                Round-Robin Dispatch Active
+              </span>
+              <span className="text-xs text-slate-300">
+                Agent Workload: <strong className="text-white font-bold">{queueData.activeCount} / {queueData.maxCapacity}</strong> Calls Assigned
+              </span>
+            </div>
+            <div className="text-xs text-slate-300">
+              {queueData.unassignedPoolCount > 0 ? (
+                <span>
+                  🚀 <strong className="text-emerald-400 font-bold">{queueData.unassignedPoolCount} unassigned leads</strong> available in pool. When you log call dispositions, fresh leads are assigned automatically!
+                </span>
+              ) : (
+                <span className="text-slate-400">
+                  All unassigned leads are currently distributed among active agents.
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => refetchQueue()}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+            >
+              <RefreshCw size={12} className={isLoadingQueue ? 'animate-spin' : ''} />
+              <span>Sync Queue</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* KPI Counters */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -247,12 +358,14 @@ export default function Leads() {
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
         {isLoading ? (
           <div className="p-8 text-center text-xs text-slate-500">Loading outbound leads queue...</div>
-        ) : leads.length === 0 ? (
+        ) : displayLeads.length === 0 ? (
           <div className="p-12 text-center">
             <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-            <h4 className="text-sm font-bold text-slate-700">No Outbound Leads Found</h4>
+            <h4 className="text-sm font-bold text-slate-700">No Outbound Leads in Queue</h4>
             <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-              Virtual Assistants can push fleet prospects using the "Push New Lead" button above to populate the call queue.
+              {activeInQueue
+                ? "Your active queue is empty. Click Sync Queue above to fetch unassigned leads from the pool."
+                : "Virtual Assistants can upload CSV or Excel files to populate the outbound lead pool."}
             </p>
           </div>
         ) : (
@@ -264,12 +377,12 @@ export default function Leads() {
                   <th className="py-3 px-4">Contact Person</th>
                   <th className="py-3 px-4">Phone & Email</th>
                   <th className="py-3 px-4">VA Attribution</th>
-                  <th className="py-3 px-4">Status & Disposition</th>
+                  <th className="py-3 px-4">Status & Outcome</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {leads.map((lead) => {
+                {displayLeads.map((lead) => {
                   const isConverted = lead.status === 'CONVERTED';
                   const isNew = lead.status === 'NEW';
                   return (
@@ -309,7 +422,7 @@ export default function Leads() {
 
                       <td className="py-3.5 px-4">
                         <span className="text-[11px] text-slate-600">
-                          {lead.uploadedByVa?.fullName || 'VA Acquisition'}
+                          {lead.uploadedByVa?.fullName || 'VA Ingestion'}
                         </span>
                       </td>
 
@@ -326,6 +439,11 @@ export default function Leads() {
                           >
                             {lead.status}
                           </span>
+                          {lead.disposition && (
+                            <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                              {lead.disposition.replace('_', ' ')}
+                            </span>
+                          )}
                           {lead.transferredToDm && (
                             <span className="text-[10px] text-amber-700 font-semibold flex items-center gap-0.5">
                               <ArrowRightLeft size={10} />
@@ -345,6 +463,20 @@ export default function Leads() {
                             title="Call Prospect via Telnyx WebRTC"
                           >
                             <PhoneCall size={14} />
+                          </button>
+
+                          {/* 2. Set Call Disposition */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedDispositionLead(lead);
+                              setSelectedDisposition(lead.disposition || '');
+                              setDispositionNotes(lead.notes || '');
+                            }}
+                            className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
+                            title="Log Call Disposition"
+                          >
+                            <ClipboardCheck size={14} />
                           </button>
 
                           {/* 2. Warm Transfer to DM */}
@@ -558,6 +690,96 @@ export default function Leads() {
               >
                 <ArrowRightLeft size={14} />
                 <span>Handover to DM Now</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Set Call Disposition Modal */}
+      {selectedDispositionLead && (
+        <Modal
+          isOpen={!!selectedDispositionLead}
+          onClose={() => setSelectedDispositionLead(null)}
+          title={`Log Call Outcome — ${selectedDispositionLead.companyName}`}
+          maxWidth="max-w-md"
+        >
+          <div className="space-y-4">
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <div className="font-bold text-sm text-slate-900">{selectedDispositionLead.companyName}</div>
+              <div className="text-xs text-slate-600 mt-0.5">
+                Contact: <span className="font-semibold text-slate-800">{selectedDispositionLead.contactPerson}</span> • <span className="font-mono text-slate-700 font-semibold">{selectedDispositionLead.phone}</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Call Disposition *
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: 'CONVERTED', label: 'Converted / Fleet Deal', color: 'border-emerald-500 bg-emerald-50 text-emerald-800' },
+                  { value: 'CALLBACK', label: 'Callback Requested', color: 'border-blue-500 bg-blue-50 text-blue-800' },
+                  { value: 'NOT_INTERESTED', label: 'Not Interested', color: 'border-slate-400 bg-slate-100 text-slate-700' },
+                  { value: 'WRONG_NUMBER', label: 'Wrong Number', color: 'border-rose-400 bg-rose-50 text-rose-700' },
+                  { value: 'NO_ANSWER', label: 'No Answer / Ringing', color: 'border-amber-400 bg-amber-50 text-amber-800' },
+                  { value: 'VOICEMAIL', label: 'Left Voicemail', color: 'border-purple-400 bg-purple-50 text-purple-800' },
+                  { value: 'RNC', label: 'Relevant Not Converted', color: 'border-orange-400 bg-orange-50 text-orange-800' },
+                ].map((disp) => (
+                  <button
+                    key={disp.value}
+                    type="button"
+                    onClick={() => setSelectedDisposition(disp.value)}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold text-left transition cursor-pointer ${
+                      selectedDisposition === disp.value
+                        ? `${disp.color} ring-2 ring-red-500 ring-offset-1`
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    {disp.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Disposition Notes & Pitch Feedback
+              </label>
+              <textarea
+                rows={3}
+                placeholder="e.g. Spoke with fleet supervisor, requested email quote on 11R22.5 steer tires."
+                value={dispositionNotes}
+                onChange={(e) => setDispositionNotes(e.target.value)}
+                className="input-field resize-none text-xs"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setSelectedDispositionLead(null)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!selectedDisposition || dispositionMutation.isPending}
+                onClick={() => {
+                  if (!selectedDisposition) return;
+                  dispositionMutation.mutate({
+                    id: selectedDispositionLead.id,
+                    disposition: selectedDisposition,
+                    notes: dispositionNotes,
+                  });
+                }}
+                className={`btn-primary flex items-center gap-1.5 ${
+                  !selectedDisposition || dispositionMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                <ClipboardCheck size={14} />
+                <span>{dispositionMutation.isPending ? 'Saving...' : 'Save & Claim Next Lead'}</span>
               </button>
             </div>
           </div>

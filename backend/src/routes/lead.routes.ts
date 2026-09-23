@@ -1,8 +1,23 @@
 import { Router } from 'express';
 import { leadController } from '../controllers/leadController.js';
 import { authenticate } from '../middleware/auth.js';
+import { memoryUpload } from '../config/multer.js';
 
 const router = Router();
+
+/**
+ * @route   POST /api/leads/upload
+ * @desc    Upload CSV / Excel spreadsheet with leads (VA)
+ * @access  Private
+ */
+router.post('/upload', authenticate, memoryUpload.single('file'), leadController.uploadLeads);
+
+/**
+ * @route   GET /api/leads/agent-queue
+ * @desc    Get active calling queue for Call Agent with 10-cap round-robin auto-fill
+ * @access  Private
+ */
+router.get('/agent-queue', authenticate, leadController.getAgentQueue);
 
 /**
  * @route   GET /api/leads
@@ -31,6 +46,13 @@ router.get('/:id', authenticate, leadController.getLeadById);
  * @access  Private
  */
 router.patch('/:id', authenticate, leadController.updateLead);
+
+/**
+ * @route   PATCH /api/leads/:id/disposition
+ * @desc    Set call disposition for a lead
+ * @access  Private
+ */
+router.patch('/:id/disposition', authenticate, leadController.setDisposition);
 
 /**
  * @route   POST /api/leads/:id/transfer

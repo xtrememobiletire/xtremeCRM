@@ -36,6 +36,14 @@ export default function MainLayout() {
     }
   }
 
+  // Strict role containment: VIRTUAL_ASSISTANT only allowed on /va-upload
+  if (user?.role === 'VIRTUAL_ASSISTANT') {
+    const vaAllowed = ['/va-upload'];
+    if (!vaAllowed.includes(location.pathname)) {
+      return <Navigate to="/va-upload" replace />;
+    }
+  }
+
   const toggleCollapse = () => {
     setIsCollapsed((prev) => {
       const next = !prev;

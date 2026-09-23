@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import * as XLSX from 'xlsx';
 import { prisma } from '../config/database.js';
 import {
   sendSuccess,
@@ -312,6 +313,260 @@ export const leadController = {
       });
 
       return sendSuccess(res, { fleet, lead: updatedLead }, 'Lead successfully converted to Fleet Account');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Upload Leads via CSV / Excel (.xlsx, .xls, .csv)
+   * Processed by VA, saved to Postgres in unassigned pool (assignedAgentId: null)
+   */
+  async uploadLeads(req: Request, res: Response) {
+    try {
+      if (!req.file) {
+        return sendError(res, 'No file uploaded. Please upload a .csv, .xlsx, or .xls file.', 400);
+      }
+
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      const firstSheetName = workbook.SheetNames[0];
+      if (!firstSheetName) {
+        return sendError(res, 'Spreadsheet contains no sheets', 400);
+      }
+
+      const rawRows: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: '' });
+      if (!rawRows || rawRows.length === 0) {
+        return sendError(res, 'Spreadsheet is empty', 400);
+      }
+
+      const vaUserId = (req as any).user?.id;
+      const targetCountry = (req.body.countryCode as any) || (req as any).countryCode || 'CA';
+
+      const leadsToCreate: any[] = [];
+
+      for (const row of rawRows) {
+        const normalized: Record<string, any> = {};
+        for (const [key, val] of Object.entries(row)) {
+          const cleanKey = key.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+          normalized[cleanKey] = val;
+        }
+
+        const companyName = 
+          normalized['companyname'] || 
+          normalized['company'] || 
+          normalized['businessname'] || 
+          normalized['accountname'] || 
+          normalized['account'] || 
+          '';
+
+        const contactPerson = 
+          normalized['contactperson'] || 
+          normalized['contactname'] || 
+          normalized['contact'] || 
+          normalized['fullname'] || 
+          normalized['name'] || 
+          'Fleet Manager';
+
+        const rawPhone = 
+          normalized['phone'] || 
+          normalized['phonenumber'] || 
+          normalized['telephone'] || 
+          normalized['mobile'] || 
+          '';
+
+        const altPhone = 
+          normalized['altphone'] || 
+          normalized['alternatephone'] || 
+          normalized['secondaryphone'] || 
+          null;
+
+        const email = 
+          normalized['email'] || 
+          normalized['emailaddress'] || 
+          null;
+
+        const address = 
+          normalized['address'] || 
+          normalized['location'] || 
+          normalized['street'] || 
+          null;
+
+        const rawUnits = 
+          normalized['numberofunits'] || 
+          normalized['units'] || 
+          normalized['fleetunits'] || 
+          normalized['fleetsize'] || 
+          normalized['nou'] || 
+          null;
+
+        const notes = 
+          normalized['notes'] || 
+          normalized['comments'] || 
+          normalized['description'] || 
+          null;
+
+        const phone = String(rawPhone || '').trim();
+        const comp = String(companyName || '').trim();
+
+        if (!phone && !comp) continue;
+
+        leadsToCreate.push({
+          companyName: comp || contactPerson || 'Prospect Company',
+          contactPerson: String(contactPerson || 'Fleet Manager').trim(),
+          phone: phone || '+14165550100',
+          altPhone: altPhone ? String(altPhone).trim() : null,
+          email: email ? String(email).trim() : null,
+          address: address ? String(address).trim() : null,
+          numberOfUnits: rawUnits ? Number(rawUnits) || null : null,
+          notes: notes ? String(notes).trim() : null,
+          countryCode: targetCountry,
+          status: 'NEW',
+          uploadedByVaId: vaUserId || null,
+          assignedAgentId: null, // Unassigned for round robin
+        });
+      }
+
+      if (leadsToCreate.length === 0) {
+        return sendError(res, 'No valid lead rows found in file. Please ensure columns include Company, Contact, and Phone.', 400);
+      }
+
+      const result = await prisma.lead.createMany({
+        data: leadsToCreate,
+      });
+
+      return sendSuccess(res, {
+        importedCount: result.count,
+        totalRows: rawRows.length,
+      }, `Successfully imported ${result.count} leads`);
+    } catch (err: any) {
+      return sendError(res, `Failed to process spreadsheet: ${err.message}`, 400);
+    }
+  },
+
+  /**
+   * Get Active Queue for Call Agent with 10-cap Round-Robin Auto-Fill
+   * Ensures agent has up to 10 active leads without bottlenecking other agents
+   */
+  async getAgentQueue(req: Request, res: Response) {
+    try {
+      const agentId = (req as any).user?.id;
+      if (!agentId) return sendError(res, 'Unauthorized', 401);
+
+      const countryCode = (req.query.countryCode as any) || (req as any).countryCode;
+
+      // 1. Fetch currently active leads for this agent
+      const activeLeads = await prisma.lead.findMany({
+        where: {
+          assignedAgentId: agentId,
+          status: { in: ['NEW', 'CALLED', 'CALLBACK'] },
+          OR: [
+            { disposition: null },
+            { disposition: 'CALLBACK' },
+          ],
+        },
+        orderBy: { createdAt: 'asc' },
+        include: {
+          uploadedByVa: {
+            select: { id: true, fullName: true, role: true },
+          },
+        },
+      });
+
+      const currentCount = activeLeads.length;
+      const MAX_ACTIVE = 10;
+      let newlyAssignedCount = 0;
+
+      // 2. If under capacity (< 10), pull unassigned leads from pool in FIFO round-robin order
+      if (currentCount < MAX_ACTIVE) {
+        const slotsNeeded = MAX_ACTIVE - currentCount;
+
+        const unassignedLeads = await prisma.lead.findMany({
+          where: {
+            assignedAgentId: null,
+            status: 'NEW',
+            ...(countryCode ? { countryCode } : {}),
+          },
+          take: slotsNeeded,
+          orderBy: { createdAt: 'asc' },
+          include: {
+            uploadedByVa: {
+              select: { id: true, fullName: true, role: true },
+            },
+          },
+        });
+
+        if (unassignedLeads.length > 0) {
+          const leadIds = unassignedLeads.map((l) => l.id);
+          await prisma.lead.updateMany({
+            where: { id: { in: leadIds } },
+            data: { assignedAgentId: agentId },
+          });
+
+          activeLeads.push(...unassignedLeads);
+          newlyAssignedCount = unassignedLeads.length;
+        }
+      }
+
+      // 3. Count remaining unassigned leads in the pool
+      const unassignedPoolCount = await prisma.lead.count({
+        where: {
+          assignedAgentId: null,
+          status: 'NEW',
+          ...(countryCode ? { countryCode } : {}),
+        },
+      });
+
+      return sendSuccess(res, {
+        leads: activeLeads.slice(0, MAX_ACTIVE),
+        activeCount: Math.min(activeLeads.length, MAX_ACTIVE),
+        maxCapacity: MAX_ACTIVE,
+        newlyAssignedCount,
+        unassignedPoolCount,
+      });
+    } catch (err: any) {
+      return sendError(res, err.message);
+    }
+  },
+
+  /**
+   * Set Lead Call Disposition (CONVERTED, CALLBACK, NOT_INTERESTED, WRONG_NUMBER, NO_ANSWER, VOICEMAIL, RNC)
+   */
+  async setDisposition(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const { disposition, notes } = req.body;
+
+      if (!disposition) {
+        return sendError(res, 'Disposition is required', 400);
+      }
+
+      let newStatus: any = 'CALLED';
+      if (disposition === 'CONVERTED') {
+        newStatus = 'CONVERTED';
+      } else if (disposition === 'CALLBACK') {
+        newStatus = 'CALLBACK';
+      } else if (['NOT_INTERESTED', 'WRONG_NUMBER'].includes(disposition)) {
+        newStatus = 'DEAD';
+      }
+
+      const updated = await prisma.lead.update({
+        where: { id },
+        data: {
+          disposition: disposition as any,
+          notes: notes || undefined,
+          status: newStatus,
+        },
+        include: {
+          uploadedByVa: {
+            select: { id: true, fullName: true },
+          },
+          assignedAgent: {
+            select: { id: true, fullName: true },
+          },
+        },
+      });
+
+      return sendSuccess(res, updated, 'Disposition logged successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }

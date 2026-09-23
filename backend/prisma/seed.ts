@@ -505,6 +505,48 @@ async function main() {
   }
   console.log(`✅ Seeded Canada Completed Jobs for Accounting Ledger`);
 
+  // 7. Seed Unassigned Leads uploaded by VA for Round-Robin Agent Queue
+  const vaUser = createdUsers['VIRTUAL_ASSISTANT'];
+  if (vaUser) {
+    const sampleLeads = [
+      { companyName: 'Apex Transport Logistics', contactPerson: 'Marcus Vance', phone: '+14165550111', numberOfUnits: 24, notes: 'Fleet of 24 Sprinter vans, urgent roadside maintenance needed' },
+      { companyName: 'Metro Courier Services', contactPerson: 'Sandra Bullock', phone: '+14165550112', numberOfUnits: 12, notes: 'Regional distribution couriers, interested in net-30 terms' },
+      { companyName: 'Swift Delivery Fleet', contactPerson: 'Arthur Dent', phone: '+14165550113', numberOfUnits: 18, notes: 'Last-mile logistics vans operating in Greater Toronto' },
+      { companyName: 'Titan Freight Co.', contactPerson: 'Walter White', phone: '+14165550114', numberOfUnits: 45, notes: 'Heavy duty flatbed rigs requiring commercial roadside tire service' },
+      { companyName: 'Rapid Parcel Inc.', contactPerson: 'Jesse Pinkman', phone: '+14165550115', numberOfUnits: 15, notes: 'Local e-commerce delivery vehicles' },
+      { companyName: 'North Star Express', contactPerson: 'Hank Schrader', phone: '+14165550116', numberOfUnits: 30, notes: 'Cross-dock delivery fleet' },
+      { companyName: 'Skyline Shuttle Lines', contactPerson: 'Gustavo Fring', phone: '+14165550117', numberOfUnits: 8, notes: 'Executive passenger van fleet' },
+      { companyName: 'Pinnacle Haulage', contactPerson: 'Mike Ehrmantraut', phone: '+14165550118', numberOfUnits: 22, notes: '24/7 highway cargo haulers' },
+      { companyName: 'Maple Leaf Transit', contactPerson: 'Saul Goodman', phone: '+14165550119', numberOfUnits: 16, notes: 'Charter bus & shuttle service' },
+      { companyName: 'Great Lakes Distribution', contactPerson: 'Kim Wexler', phone: '+14165550120', numberOfUnits: 28, notes: 'Refrigerated transit vans' },
+      { companyName: 'Silverline Cargo', contactPerson: 'Howard Hamlin', phone: '+14165550121', numberOfUnits: 14, notes: 'Regional pharmaceutical transport' },
+      { companyName: 'Boreal Logistics Ltd.', contactPerson: 'Chuck McGill', phone: '+14165550122', numberOfUnits: 20, notes: 'Temperature-controlled food delivery' },
+      { companyName: 'Horizon Freightway', contactPerson: 'Nacho Varga', phone: '+14165550123', numberOfUnits: 35, notes: 'Long-haul dry van fleet' },
+      { companyName: 'Urban Route Express', contactPerson: 'Lalo Salamanca', phone: '+14165550124', numberOfUnits: 10, notes: 'Downtown parcel and food distributors' },
+      { companyName: 'Canuck Courier Systems', contactPerson: 'Tuco Salamanca', phone: '+14165550125', numberOfUnits: 19, notes: 'Express parcel vans' },
+    ];
+
+    for (const ld of sampleLeads) {
+      const existing = await prisma.lead.findFirst({ where: { phone: ld.phone } });
+      if (!existing) {
+        await prisma.lead.create({
+          data: {
+            companyName: ld.companyName,
+            contactPerson: ld.contactPerson,
+            phone: ld.phone,
+            numberOfUnits: ld.numberOfUnits,
+            notes: ld.notes,
+            countryCode: 'CA',
+            status: 'NEW',
+            uploadedByVaId: vaUser.id,
+            assignedAgentId: null, // Unassigned pool
+          },
+        });
+      }
+    }
+    console.log(`✅ Seeded 15 Unassigned VA Leads for Call Agent Round-Robin Queue`);
+  }
+
   console.log('🎉 Database seeding completed successfully!');
 }
 

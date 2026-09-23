@@ -25,6 +25,7 @@ const TechnicianPortal = lazy(() => import('./pages/TechnicianPortal'));
 const History = lazy(() => import('./pages/History'));
 const Leads = lazy(() => import('./pages/Leads'));
 const Inbound = lazy(() => import('./pages/Inbound'));
+const VaUpload = lazy(() => import('./pages/VaUpload'));
 
 function getRoleHome(role?: string) {
   switch (role) {
@@ -33,7 +34,7 @@ function getRoleHome(role?: string) {
     case 'CALL_AGENT':
       return '/inbound';
     case 'VIRTUAL_ASSISTANT':
-      return '/outbound';
+      return '/va-upload';
     case 'FLEET_MANAGER':
       return '/fleet-dashboard';
     case 'CUSTOMER_MEMBER':
@@ -137,6 +138,7 @@ function AppRoutes() {
           <Route path="/history" element={<History />} />
           <Route path="/inbound" element={<Inbound />} />
           <Route path="/outbound" element={<Leads />} />
+          <Route path="/va-upload" element={<VaUpload />} />
           <Route path="/leads" element={<Navigate to="/outbound" replace />} />
         </Route>
 

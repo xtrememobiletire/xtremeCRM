@@ -14,7 +14,8 @@ import {
   CheckCircle,
   History,
   PhoneIncoming,
-  PhoneOutgoing
+  PhoneOutgoing,
+  UploadCloud
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -73,9 +74,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       ]
     : isVa
     ? [
-        { icon: PhoneOutgoing, label: 'Outbound Leads', path: '/outbound' },
-        { icon: Truck, label: 'Fleet Accounts', path: '/fleets' },
-        { icon: BarChart3, label: 'Dashboard', path: '/' },
+        { icon: UploadCloud, label: 'Upload Leads', path: '/va-upload' },
       ]
     : isAgent
     ? [
