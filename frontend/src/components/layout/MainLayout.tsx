@@ -39,13 +39,13 @@ export default function MainLayout() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans antialiased">
+    <div className="flex h-[100dvh] max-h-[100dvh] overflow-hidden bg-slate-50 text-slate-900 font-sans antialiased">
       <Sidebar 
         isOpen={isMobileMenuOpen} 
         onClose={() => setIsMobileMenuOpen(false)}
         isCollapsed={isCollapsed}
       />
-      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col h-[100dvh] max-h-[100dvh] overflow-hidden min-w-0">
         <TopNav 
           onMobileMenuClick={() => setIsMobileMenuOpen(true)}
           onToggleCollapse={toggleCollapse}

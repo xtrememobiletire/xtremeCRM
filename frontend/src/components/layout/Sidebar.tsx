@@ -79,19 +79,19 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       {/* Mobile backdrop overlay */}
       {isOpen && (
         <div 
-          className="md:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 transition-opacity" 
+          className="md:hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 transition-opacity" 
           onClick={onClose}
           aria-hidden="true"
         />
       )}
 
       <aside 
-        className={`fixed md:relative top-0 left-0 h-screen bg-white border-r border-slate-200 flex flex-col z-50 transition-all duration-200 shrink-0 select-none ${
+        className={`fixed inset-y-0 left-0 md:relative h-[100dvh] max-h-[100dvh] bg-white border-r border-slate-200 flex flex-col z-50 transition-all duration-200 shrink-0 select-none shadow-2xl md:shadow-none ${
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        } ${isCollapsed ? 'md:w-20' : 'md:w-64'} w-64`}
+        } ${isCollapsed ? 'md:w-20' : 'md:w-64'} w-72 max-w-[85vw]`}
       >
         {/* Brand Header */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 bg-white">
+        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 bg-white shrink-0">
           <div className={`flex items-center gap-2.5 ${isCollapsed ? 'md:justify-center md:w-full' : ''}`}>
             <div className="bg-slate-950 px-2.5 py-1.5 rounded-xl border border-slate-800 shadow-xs flex items-center justify-center shrink-0">
               <img 
@@ -110,16 +110,16 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
           </div>
           <button 
             type="button"
-            className="md:hidden p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition" 
+            className="md:hidden p-2 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition cursor-pointer" 
             onClick={onClose}
             aria-label="Close navigation"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-3 px-3 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -149,19 +149,32 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
           })}
         </nav>
 
-        {/* User Info / Sign Out */}
-        <div className="p-3 border-t border-slate-100 bg-white">
+        {/* User Info / Sign Out Footer (Pinned to bottom, never pushed offscreen) */}
+        <div className="shrink-0 p-3 sm:p-4 border-t border-slate-200 bg-slate-50/95 backdrop-blur-xs">
+          {(!isCollapsed || isOpen) && (
+            <div className="flex items-center gap-2.5 mb-2.5 px-1">
+              <div className="w-8 h-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold text-xs shrink-0">
+                {user?.firstName?.[0] || 'U'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-slate-800 truncate">
+                  {user?.firstName || 'User'} {user?.lastName || ''}
+                </p>
+                <p className="text-[10px] text-slate-500 uppercase font-semibold">
+                  {user?.role || 'OPERATOR'}
+                </p>
+              </div>
+            </div>
+          )}
           <button 
             type="button"
             onClick={logout}
             title={isCollapsed ? 'Sign Out' : undefined}
-            className={`w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition-colors ${
-              isCollapsed ? 'md:px-0 px-3' : 'px-3'
-            }`}
+            className={`w-full flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-bold rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 border border-rose-200 shadow-2xs transition-colors cursor-pointer`}
           >
-            <LogOut size={15} className="shrink-0" />
+            <LogOut size={16} className="shrink-0 text-rose-600" />
             {(!isCollapsed || isOpen) && (
-              <span className="truncate">Sign Out ({user?.firstName || 'User'})</span>
+              <span>Sign Out</span>
             )}
           </button>
         </div>
