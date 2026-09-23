@@ -30,7 +30,7 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
             <th className="table-th">Job # / Date</th>
             <th className="table-th">Customer</th>
             <th className="table-th">Vehicle & Tire</th>
-            <th className="table-th">Driver Assigned</th>
+            {!isDriver && <th className="table-th">Driver Assigned</th>}
             <th className="table-th">Status</th>
             <th className="table-th">Urgency</th>
             <th className="table-th text-right">Total</th>
@@ -60,19 +60,19 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                   </span>
                 )}
               </td>
-              <td className="table-td whitespace-nowrap">
-                {job.driver || job.assignedDriver ? (
-                  <div className="flex items-center gap-1.5 text-xs text-slate-800 font-medium">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    <span>
-                      {job.driver?.fullName || 
-                       job.assignedDriver?.fullName || 
-                       `${job.driver?.firstName || ''} ${job.driver?.lastName || ''}`.trim() || 
-                       (isDriver ? 'You (Assigned)' : 'Assigned Technician')}
-                    </span>
-                  </div>
-                ) : (
-                  !isDriver ? (
+              {!isDriver && (
+                <td className="table-td whitespace-nowrap">
+                  {job.driver || job.assignedDriver ? (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-800 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span>
+                        {job.driver?.fullName || 
+                         job.assignedDriver?.fullName || 
+                         `${job.driver?.firstName || ''} ${job.driver?.lastName || ''}`.trim() || 
+                         'Assigned Technician'}
+                      </span>
+                    </div>
+                  ) : (
                     <button
                       type="button"
                       onClick={() => onAssignDriver(job)}
@@ -81,11 +81,9 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                       <AlertCircle className="w-3 h-3 text-amber-500" />
                       <span>Assign</span>
                     </button>
-                  ) : (
-                    <span className="text-xs text-slate-400">Unassigned</span>
-                  )
-                )}
-              </td>
+                  )}
+                </td>
+              )}
               <td className="table-td whitespace-nowrap">
                 <StatusBadge status={job.status} />
               </td>

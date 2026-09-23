@@ -3,6 +3,7 @@ import StatusBadge from '../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { useTenant } from '../../context/TenantContext';
 import { useSocket } from '../../context/SocketContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface JobCardProps {
   job: any;
@@ -11,6 +12,8 @@ interface JobCardProps {
 }
 
 export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps) {
+  const { user } = useAuth();
+  const isDriver = user?.role === 'DRIVER';
   const { currencySymbol } = useTenant();
   const { openChatJob } = useSocket();
 
@@ -59,14 +62,16 @@ export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps
         </div>
 
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => onAssignDriver(job)}
-            className="btn-secondary px-2.5 py-1.5 text-xs"
-          >
-            <UserCheck className="w-3.5 h-3.5" />
-            <span>Assign</span>
-          </button>
+          {!isDriver && (
+            <button
+              type="button"
+              onClick={() => onAssignDriver(job)}
+              className="btn-secondary px-2.5 py-1.5 text-xs cursor-pointer"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Assign</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
