@@ -92,14 +92,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       >
         {/* Brand Header */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 bg-white shrink-0">
-          <div className={`flex items-center gap-2.5 ${isCollapsed ? 'md:justify-center md:w-full' : ''}`}>
-            <div className="bg-slate-950 px-2.5 py-1.5 rounded-xl border border-slate-800 shadow-xs flex items-center justify-center shrink-0">
-              <img 
-                src="/logo.webp" 
-                alt="Xtreme Mobile Tire" 
-                className={isCollapsed ? "h-8 w-8 object-contain" : "h-9 w-auto max-w-[130px] object-contain"} 
-              />
-            </div>
+          <div className={`flex items-center gap-2 ${isCollapsed ? 'md:justify-center md:w-full' : ''}`}>
+            <img 
+              src="/logo-signin.png" 
+              alt="Xtreme Mobile Tire" 
+              className={isCollapsed ? "h-8 w-8 object-contain shrink-0" : "h-10 sm:h-11 w-auto max-w-[145px] object-contain shrink-0 drop-shadow-xs"} 
+            />
             {(!isCollapsed || isOpen) && (
               <div className="min-w-0">
                 <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-700 border border-slate-200 font-mono">
