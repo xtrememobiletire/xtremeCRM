@@ -303,7 +303,7 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
             <img 
               src="/logo.webp" 
               alt="Xtreme Mobile Tire" 
-              className="h-9 sm:h-11 w-auto object-contain drop-shadow" 
+              className="h-12 sm:h-14 w-auto object-contain drop-shadow" 
             />
             <div className="text-right">
               <span className="text-[10px] font-bold uppercase tracking-wider text-red-400 block font-mono">

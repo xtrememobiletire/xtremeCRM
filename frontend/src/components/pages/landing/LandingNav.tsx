@@ -8,24 +8,15 @@ export default function LandingNav() {
   const { country, setCountry } = useTenant();
 
   return (
-    <nav className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-8 py-3.5 transition">
+    <nav className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-8 py-2 sm:py-2.5 transition">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         {/* Logo */}
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+        <div className="flex items-center cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
           <img 
             src="/logo.webp" 
             alt="Xtreme Mobile Tire" 
-            className="h-11 sm:h-14 w-auto object-contain drop-shadow-md hover:scale-105 transition-transform" 
+            className="h-16 sm:h-20 w-auto object-contain drop-shadow-lg hover:scale-105 transition-transform" 
           />
-          <div className="hidden sm:block border-l border-slate-800 pl-3">
-            <div className="text-base font-black tracking-tight text-white flex items-center gap-0.5">
-              <span>Xtreme</span>
-              <span className="text-red-500">CRM</span>
-            </div>
-            <div className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase">
-              24/7 Mobile Tire Service
-            </div>
-          </div>
         </div>
 
         {/* Center Links (Desktop) */}

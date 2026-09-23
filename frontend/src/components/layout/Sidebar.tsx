@@ -91,23 +91,20 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         } ${isCollapsed ? 'md:w-20' : 'md:w-64'} w-64`}
       >
         {/* Brand Header */}
-        <div className="h-14 flex items-center justify-between px-4 border-b border-slate-100 bg-white">
+        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 bg-white">
           <div className={`flex items-center gap-2.5 ${isCollapsed ? 'md:justify-center md:w-full' : ''}`}>
-            <div className="bg-slate-950 px-2 py-1 rounded-xl border border-slate-800 shadow-xs flex items-center justify-center shrink-0">
+            <div className="bg-slate-950 px-2.5 py-1.5 rounded-xl border border-slate-800 shadow-xs flex items-center justify-center shrink-0">
               <img 
                 src="/logo.webp" 
                 alt="Xtreme Mobile Tire" 
-                className={isCollapsed ? "h-7 w-7 object-contain" : "h-8 w-auto max-w-[110px] object-contain"} 
+                className={isCollapsed ? "h-8 w-8 object-contain" : "h-9 w-auto max-w-[130px] object-contain"} 
               />
             </div>
             {(!isCollapsed || isOpen) && (
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm font-black tracking-tight text-slate-900 truncate">
-                  Xtreme<span className="text-red-600">CRM</span>
-                </p>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {country} Region ({currencySymbol})
-                </p>
+                <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-700 border border-slate-200 font-mono">
+                  {country} ({currencySymbol})
+                </span>
               </div>
             )}
           </div>

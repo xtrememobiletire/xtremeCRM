@@ -204,7 +204,7 @@ export default function QuickBookWidget() {
                     <img 
                       src="/logo.webp" 
                       alt="Xtreme Mobile Tire" 
-                      className="h-10 sm:h-12 w-auto object-contain drop-shadow" 
+                      className="h-14 sm:h-16 w-auto object-contain drop-shadow-md" 
                     />
                     <div>
                       <h3 className="text-base sm:text-lg font-black text-white">Emergency Roadside Request</h3>
