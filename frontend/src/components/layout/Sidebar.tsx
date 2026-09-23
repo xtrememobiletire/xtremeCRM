@@ -12,7 +12,8 @@ import {
   X, 
   LogOut,
   CheckCircle,
-  History
+  History,
+  PhoneCall
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -23,6 +24,7 @@ interface SidebarProps {
 
 const baseNavItems = [
   { icon: BarChart3, label: 'Dashboard', path: '/' },
+  { icon: PhoneCall, label: 'Outbound Leads', path: '/leads' },
   { icon: Wrench, label: 'Jobs & Orders', path: '/jobs' },
   { icon: Navigation, label: 'Live Dispatch', path: '/dispatch' },
   { icon: Users, label: 'Customers', path: '/customers' },
@@ -39,6 +41,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
   const isDriver = user?.role === 'DRIVER';
   const isAccountant = user?.role === 'ACCOUNTANT';
   const isDispatcher = user?.role === 'DISPATCHER';
+  const isVa = user?.role === 'VIRTUAL_ASSISTANT';
   const isAdmin = user?.role === 'ADMIN';
 
   const navItems = isFleetManager
@@ -60,9 +63,16 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     : isDispatcher
     ? [
         { icon: Navigation, label: 'Live Dispatch', path: '/dispatch' },
+        { icon: PhoneCall, label: 'Outbound Leads', path: '/leads' },
         { icon: Wrench, label: 'Jobs & Orders', path: '/jobs' },
         { icon: Truck, label: 'Fleet Accounts', path: '/fleets' },
         { icon: Users, label: 'Customers', path: '/customers' },
+        { icon: BarChart3, label: 'Dashboard', path: '/' },
+      ]
+    : isVa
+    ? [
+        { icon: PhoneCall, label: 'Outbound Leads', path: '/leads' },
+        { icon: Truck, label: 'Fleet Accounts', path: '/fleets' },
         { icon: BarChart3, label: 'Dashboard', path: '/' },
       ]
     : [

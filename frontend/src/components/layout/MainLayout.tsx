@@ -5,6 +5,7 @@ import TopNav from './TopNav';
 import { RouteErrorBoundary } from '../common/RouteErrorBoundary';
 import SoftphoneModal from '../telephony/SoftphoneModal';
 import IncomingCallPop from '../telephony/IncomingCallPop';
+import WarmTransferModal from '../telephony/WarmTransferModal';
 import JobChatModal from '../dispatch/JobChatModal';
 import { useSocket } from '../../context/SocketContext';
 
@@ -62,9 +63,10 @@ export default function MainLayout() {
         </main>
       </div>
 
-      {/* Global Softphone Modal & Screen Pop */}
+      {/* Global Softphone Modal, Screen Pop & Warm Transfer Pop */}
       <SoftphoneModal />
       <IncomingCallPop onIntakeJob={handleIntakeJob} />
+      <WarmTransferModal />
 
       {/* Global Two-Way Job Chat for Cross-Role Communication */}
       {activeChatJob && (

@@ -95,6 +95,24 @@ enum JobDisposition {
   CANCELLED_BY_CUSTOMER
 }
 
+enum LeadStatus {
+  NEW
+  CALLED
+  CALLBACK
+  CONVERTED
+  DEAD
+}
+
+enum LeadDisposition {
+  CALLBACK
+  CONVERTED
+  NOT_INTERESTED
+  WRONG_NUMBER
+  NO_ANSWER
+  VOICEMAIL
+  RNC
+}
+
 enum PaymentMethod {
   E_TRANSFER
   POS
@@ -161,6 +179,8 @@ model User {
   vaCommissions       FleetCommissionLedger[] @relation("VACommissions")
   sentPortalMessages  PortalMessage[]         @relation("SentPortalMessages")
   sentJobMessages     JobMessage[]            @relation("SentJobMessages")
+  uploadedLeads       Lead[]                  @relation("VaUploadedLeads")
+  assignedLeads       Lead[]                  @relation("AgentAssignedLeads")
 
   // External Portal Client Relations
   customerAccount Customer? @relation("UserCustomer")
@@ -577,4 +597,46 @@ model JobMessage {
 
   @@index([jobId, createdAt])
   @@map("job_messages")
+}
+
+// --------------------------------------------------------
+// OUTBOUND LEADS & B2B FLEET PROSPECTS (PRD FR-9)
+// --------------------------------------------------------
+
+model Lead {
+  id                 String           @id @default(uuid())
+  companyName        String           @map("company_name")
+  contactPerson      String           @map("contact_person")
+  phone              String           // Primary contact phone
+  altPhone           String?          @map("alt_phone")
+  email              String?
+  address            String?
+  website            String?
+  numberOfUnits      Int?             @map("number_of_units") // NOU: fleet size
+  countryCode        CountryCode      @default(CA) @map("country_code")
+  status             LeadStatus       @default(NEW)
+  disposition        LeadDisposition?
+  notes              String?          @db.Text
+
+  // VA & Agent Attributions (PRD FR-9.1, FR-9.2)
+  uploadedByVaId     String?          @map("uploaded_by_va_id")
+  uploadedByVa       User?            @relation("VaUploadedLeads", fields: [uploadedByVaId], references: [id])
+  assignedAgentId    String?          @map("assigned_agent_id")
+  assignedAgent      User?            @relation("AgentAssignedLeads", fields: [assignedAgentId], references: [id])
+
+  // Warm Transfer & WhatsApp Closing Flow
+  transferredToDm    Boolean          @default(false) @map("transferred_to_dm")
+  transferredToDmAt  DateTime?        @db.Timestamptz @map("transferred_to_dm_at")
+  whatsappFollowUp   Boolean          @default(false) @map("whatsapp_follow_up")
+  whatsappNotes      String?          @map("whatsapp_notes")
+  convertedFleetId   String?          @map("converted_fleet_id")
+
+  createdAt          DateTime         @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt          DateTime         @updatedAt @db.Timestamptz @map("updated_at")
+
+  @@index([countryCode, status])
+  @@index([phone])
+  @@index([uploadedByVaId])
+  @@index([assignedAgentId])
+  @@map("leads")
 }

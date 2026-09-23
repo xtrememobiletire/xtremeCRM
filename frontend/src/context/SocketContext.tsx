@@ -4,6 +4,7 @@ import { useTenant } from './TenantContext';
 import { useAuth } from './AuthContext';
 import { queryClient } from '../lib/queryClient';
 import { toast } from 'sonner';
+import { telephonyService } from '../services/telephonyService';
 
 export interface CallEvent {
   callId: string;
@@ -31,11 +32,27 @@ export interface ActiveChatJob {
   driverName?: string;
 }
 
+export interface WarmTransferEvent {
+  transferType: 'INBOUND_MOTORIST' | 'OUTBOUND_LEAD';
+  callId: string;
+  callerPhone: string;
+  callerName?: string;
+  companyName?: string;
+  numberOfUnits?: number;
+  notes?: string;
+  vehicleInfo?: string;
+  leadId?: string;
+  transferringAgent: string;
+  countryCode: string;
+  timestamp: string;
+}
+
 interface SocketContextType {
   socket: Socket | null;
   isConnected: boolean;
   incomingCall: CallEvent | null;
   activeCall: CallEvent | null;
+  incomingTransfer: WarmTransferEvent | null;
   isSoftphoneOpen: boolean;
   notifications: AppNotification[];
   unreadCount: number;
@@ -44,6 +61,17 @@ interface SocketContextType {
   closeSoftphone: () => void;
   answerCall: () => void;
   endCall: () => void;
+  acceptTransfer: () => void;
+  declineTransfer: () => void;
+  transferCallToDm: (params: {
+    leadId?: string;
+    callerPhone?: string;
+    callerName?: string;
+    companyName?: string;
+    notes?: string;
+    transferType?: 'INBOUND_MOTORIST' | 'OUTBOUND_LEAD';
+  }) => Promise<void>;
+  dialOutbound: (phoneNumber: string, contactName?: string, leadId?: string) => void;
   simulateIncomingCall: (from?: string, fromName?: string) => void;
   markNotificationsAsRead: () => void;
   openChatJob: (job: ActiveChatJob) => void;
@@ -59,6 +87,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
   const [incomingCall, setIncomingCall] = useState<CallEvent | null>(null);
   const [activeCall, setActiveCall] = useState<CallEvent | null>(null);
+  const [incomingTransfer, setIncomingTransfer] = useState<WarmTransferEvent | null>(null);
   const [isSoftphoneOpen, setIsSoftphoneOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [activeChatJob, setActiveChatJob] = useState<ActiveChatJob | null>(null);
@@ -135,6 +164,38 @@ export function SocketProvider({ children }: { children: ReactNode }) {
           timestamp: new Date().toISOString(),
         });
       }
+    });
+
+    // Attended / Warm Transfer to Dispatcher Manager (FR-1.2, FR-9.6)
+    s.on('call:transfer', (data: any) => {
+      if (['DISPATCHER', 'ADMIN'].includes(user?.role || '')) {
+        setIncomingTransfer({
+          transferType: data.transferType || 'INBOUND_MOTORIST',
+          callId: data.callId || `call-${Date.now()}`,
+          callerPhone: data.callerPhone || '+1 (416) 555-0192',
+          callerName: data.callerName || data.companyName || 'Stranded Motorist / Lead',
+          companyName: data.companyName,
+          numberOfUnits: data.numberOfUnits,
+          notes: data.notes,
+          vehicleInfo: data.vehicleInfo,
+          leadId: data.leadId,
+          transferringAgent: data.transferringAgent || 'Call Center Agent',
+          countryCode: data.countryCode || country,
+          timestamp: data.timestamp || new Date().toISOString(),
+        });
+        playChime();
+        toast.info(`Warm Transfer: ${data.companyName || data.callerName || 'Caller'}`, {
+          description: `Transferred by ${data.transferringAgent || 'Agent'}. Click to accept.`,
+        });
+      }
+    });
+
+    // Outbound Lead Queue invalidation
+    s.on('lead:created', () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    });
+    s.on('lead:updated', () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
     });
 
     // Real-Time Driver Assignment Notice
@@ -263,6 +324,59 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const acceptTransfer = () => {
+    if (incomingTransfer) {
+      setActiveCall({
+        callId: incomingTransfer.callId,
+        from: incomingTransfer.callerPhone,
+        fromName: incomingTransfer.companyName || incomingTransfer.callerName || 'Transferred Call',
+        region: incomingTransfer.countryCode,
+        timestamp: new Date().toISOString(),
+      });
+      setIsSoftphoneOpen(true);
+    }
+  };
+
+  const declineTransfer = () => {
+    setIncomingTransfer(null);
+  };
+
+  const transferCallToDm = async (params: {
+    leadId?: string;
+    callerPhone?: string;
+    callerName?: string;
+    companyName?: string;
+    notes?: string;
+    transferType?: 'INBOUND_MOTORIST' | 'OUTBOUND_LEAD';
+  }) => {
+    try {
+      await telephonyService.transferCall({
+        callId: activeCall?.callId,
+        callerPhone: params.callerPhone || activeCall?.from,
+        callerName: params.callerName || activeCall?.fromName,
+        companyName: params.companyName,
+        notes: params.notes,
+        leadId: params.leadId,
+        transferType: params.transferType || (params.leadId ? 'OUTBOUND_LEAD' : 'INBOUND_MOTORIST'),
+      });
+      toast.success('Warm transfer initiated to Dispatcher Manager!');
+    } catch (err: any) {
+      toast.error('Failed to initiate transfer');
+    }
+  };
+
+  const dialOutbound = (phoneNumber: string, contactName?: string, _leadId?: string) => {
+    setActiveCall({
+      callId: `call-${Date.now()}`,
+      from: phoneNumber,
+      fromName: contactName || 'Outbound Call',
+      region: country,
+      timestamp: new Date().toISOString(),
+    });
+    setIsSoftphoneOpen(true);
+    toast.success(`Dialing ${contactName ? contactName + ' (' + phoneNumber + ')' : phoneNumber}...`);
+  };
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
@@ -272,6 +386,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         isConnected,
         incomingCall,
         activeCall,
+        incomingTransfer,
         isSoftphoneOpen,
         notifications,
         unreadCount,
@@ -280,6 +395,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         closeSoftphone,
         answerCall,
         endCall,
+        acceptTransfer,
+        declineTransfer,
+        transferCallToDm,
+        dialOutbound,
         simulateIncomingCall,
         markNotificationsAsRead,
         openChatJob,

@@ -25,4 +25,11 @@ router.post('/webhook', telephonyController.handleWebhook);
  */
 router.post('/call', authenticate, telephonyController.makeCall);
 
+/**
+ * @route   POST /api/telephony/transfer
+ * @desc    Attended (warm) transfer to Dispatcher Manager (FR-1.2, FR-9.6)
+ * @access  Private
+ */
+router.post('/transfer', authenticate, telephonyController.transferCall);
+
 export default router;
