@@ -11,7 +11,8 @@ import {
   DollarSign, 
   X, 
   LogOut,
-  CheckCircle
+  CheckCircle,
+  History
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -48,6 +49,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     ? [
         { icon: BarChart3, label: 'Dashboard', path: '/technician' },
         { icon: CheckCircle, label: 'Orders', path: '/jobs' },
+        { icon: History, label: 'History', path: '/history' },
       ]
     : isAccountant
     ? [
@@ -68,6 +70,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         ...(isAdmin
           ? [
               { icon: BarChart3, label: 'Technician Dashboard Preview', path: '/technician' },
+              { icon: History, label: 'Driver History Preview', path: '/history' },
               { icon: Truck, label: 'Fleet Portal Preview', path: '/fleet-dashboard' },
               { icon: Car, label: 'Member Portal Preview', path: '/member-dashboard' },
             ]

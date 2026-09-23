@@ -356,10 +356,14 @@ export const jobController = {
   async updateJobStatus(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
-      const { status, urgency } = req.body;
+      const { status, urgency, cashAmountCents, cashCollected } = req.body;
 
       const job = await prisma.job.findUnique({ where: { id } });
       if (!job) return sendError(res, 'Job not found', 404);
+
+      const effectiveCashCents = cashAmountCents !== undefined 
+        ? Math.round(Number(cashAmountCents)) 
+        : (cashCollected !== undefined ? Math.round(Number(cashCollected) * 100) : 0);
 
       const updateData: any = {
         status,
@@ -367,7 +371,13 @@ export const jobController = {
       };
       if (urgency) updateData.urgency = urgency;
       if (status === 'ARRIVED') updateData.arrivedAt = new Date();
-      if (status === 'COMPLETED') updateData.completedAt = new Date();
+      if (status === 'COMPLETED') {
+        updateData.completedAt = new Date();
+        if (effectiveCashCents > 0) {
+          updateData.paymentMethod = 'CASH';
+          updateData.paymentStatus = 'PAID_PENDING_VERIFICATION';
+        }
+      }
 
       const updated = await prisma.job.update({
         where: { id },
@@ -379,6 +389,26 @@ export const jobController = {
           serviceItems: true,
         },
       });
+
+      // Record driver cash collection ledger if cash was collected on scene
+      if (status === 'COMPLETED' && effectiveCashCents > 0) {
+        try {
+          const driverId = updated.driverId || (req.user as any)?.id;
+          if (driverId) {
+            await prisma.driverCashLedger.create({
+              data: {
+                driverId,
+                amountCents: effectiveCashCents,
+                type: 'JOB_COLLECTION',
+                jobId: updated.id,
+                notes: `Cash collected on scene for Job #${updated.jobCode}`,
+              },
+            });
+          }
+        } catch (cashErr) {
+          console.warn('Driver cash ledger creation failed:', cashErr);
+        }
+      }
 
       // VA Commission attribution on completed fleet jobs (PRD FR-2.1 / Rule 6.3)
       if (status === 'COMPLETED' && updated.fleetId) {

@@ -22,6 +22,7 @@ const Accounting = lazy(() => import('./pages/Accounting'));
 const FleetDashboard = lazy(() => import('./pages/FleetDashboard'));
 const MemberDashboard = lazy(() => import('./pages/MemberDashboard'));
 const TechnicianPortal = lazy(() => import('./pages/TechnicianPortal'));
+const History = lazy(() => import('./pages/History'));
 
 function getRoleHome(role?: string) {
   switch (role) {
@@ -127,6 +128,7 @@ function AppRoutes() {
           <Route path="/fleet-dashboard" element={<FleetDashboard />} />
           <Route path="/member-dashboard" element={<MemberDashboard />} />
           <Route path="/technician" element={<TechnicianPortal />} />
+          <Route path="/history" element={<History />} />
         </Route>
 
         <Route path="*" element={<Navigate to={user ? getRoleHome(user.role) : "/"} replace />} />
