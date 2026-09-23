@@ -1,4 +1,4 @@
-import { Radio, Phone, LogIn, Globe } from 'lucide-react';
+import { Phone, LogIn, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTenant } from '../../../context/TenantContext';
 import { COUNTRY_REGIONS, type CountryCode } from '../../../constants/regions';
@@ -12,11 +12,13 @@ export default function LandingNav() {
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         {/* Logo */}
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-md shadow-red-600/30">
-            <Radio className="w-5 h-5 animate-pulse" />
-          </div>
-          <div>
-            <div className="text-lg font-black tracking-tight text-white flex items-center gap-0.5">
+          <img 
+            src="/logo.webp" 
+            alt="Xtreme Mobile Tire" 
+            className="h-11 sm:h-14 w-auto object-contain drop-shadow-md hover:scale-105 transition-transform" 
+          />
+          <div className="hidden sm:block border-l border-slate-800 pl-3">
+            <div className="text-base font-black tracking-tight text-white flex items-center gap-0.5">
               <span>Xtreme</span>
               <span className="text-red-500">CRM</span>
             </div>

@@ -298,6 +298,23 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
         maxWidth="max-w-2xl"
       >
         <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off" data-lpignore="true" data-form-type="other">
+          {/* Official Brand Logo Banner */}
+          <div className="flex items-center justify-between bg-slate-950 px-3.5 py-2.5 rounded-xl border border-slate-800 shadow-xs">
+            <img 
+              src="/logo.webp" 
+              alt="Xtreme Mobile Tire" 
+              className="h-9 sm:h-11 w-auto object-contain drop-shadow" 
+            />
+            <div className="text-right">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-red-400 block font-mono">
+                {country} Regional Silo
+              </span>
+              <span className="text-xs font-semibold text-slate-300">
+                Roadside Dispatch Intake
+              </span>
+            </div>
+          </div>
+
           {/* Quick 1-Click Call Disposition Shortcuts (FR-1.3) */}
           <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-100 rounded-xl border border-slate-200 text-xs">
             <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">

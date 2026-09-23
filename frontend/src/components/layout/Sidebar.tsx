@@ -11,7 +11,6 @@ import {
   DollarSign, 
   X, 
   LogOut,
-  Radio,
   CheckCircle
 } from 'lucide-react';
 
@@ -94,15 +93,19 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         {/* Brand Header */}
         <div className="h-14 flex items-center justify-between px-4 border-b border-slate-100 bg-white">
           <div className={`flex items-center gap-2.5 ${isCollapsed ? 'md:justify-center md:w-full' : ''}`}>
-            <div className="grid place-items-center rounded-xl p-2 bg-red-50 text-red-600 shrink-0">
-              <Radio className="w-5 h-5 animate-pulse" />
+            <div className="bg-slate-950 px-2 py-1 rounded-xl border border-slate-800 shadow-xs flex items-center justify-center shrink-0">
+              <img 
+                src="/logo.webp" 
+                alt="Xtreme Mobile Tire" 
+                className={isCollapsed ? "h-7 w-7 object-contain" : "h-8 w-auto max-w-[110px] object-contain"} 
+              />
             </div>
             {(!isCollapsed || isOpen) && (
               <div className="min-w-0">
-                <p className="text-sm sm:text-base font-black tracking-tight text-slate-900 truncate">
+                <p className="text-xs sm:text-sm font-black tracking-tight text-slate-900 truncate">
                   Xtreme<span className="text-red-600">CRM</span>
                 </p>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   {country} Region ({currencySymbol})
                 </p>
               </div>

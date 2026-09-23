@@ -199,10 +199,18 @@ export default function QuickBookWidget() {
                 onSubmit={handleSubmit}
                 className="bg-slate-950 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-5 shadow-2xl"
               >
-                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <span>Emergency Roadside Request</span>
-                  </h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src="/logo.webp" 
+                      alt="Xtreme Mobile Tire" 
+                      className="h-10 sm:h-12 w-auto object-contain drop-shadow" 
+                    />
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-white">Emergency Roadside Request</h3>
+                      <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">Fast Mobile Tire Dispatch</p>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1 border border-slate-800 text-xs">
                     <button
                       type="button"

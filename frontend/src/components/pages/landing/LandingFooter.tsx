@@ -1,4 +1,4 @@
-import { Radio, Phone, Mail, MapPin, LogIn, ExternalLink } from 'lucide-react';
+import { Phone, Mail, MapPin, LogIn, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function LandingFooter() {
@@ -10,10 +10,12 @@ export default function LandingFooter() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Col 1: Brand */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center">
-                <Radio className="w-4 h-4 animate-pulse" />
-              </div>
+            <div className="flex items-center gap-3">
+              <img 
+                src="/logo.webp" 
+                alt="Xtreme Mobile Tire" 
+                className="h-10 sm:h-12 w-auto object-contain drop-shadow" 
+              />
               <span className="text-base font-black text-white">Xtreme<span className="text-red-500">CRM</span></span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
