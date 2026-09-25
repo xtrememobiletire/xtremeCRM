@@ -121,8 +121,8 @@ export default function Dispatch() {
   });
 
   const { data: apiDrivers = [] } = useQuery({
-    queryKey: ['dispatch-drivers'],
-    queryFn: () => userService.getDrivers(),
+    queryKey: ['dispatch-drivers', country],
+    queryFn: () => userService.getDrivers(country),
   });
 
   const triageJobs = (triageData?.data || []).filter(j => j.status === 'UNVERIFIED_PUBLIC');

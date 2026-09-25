@@ -11,8 +11,8 @@ export interface UserItem {
 }
 
 export const userService = {
-  async getDrivers(): Promise<UserItem[]> {
-    const res = await api.get('/users', { params: { role: 'DRIVER', limit: 100 } });
+  async getDrivers(countryCode?: string): Promise<UserItem[]> {
+    const res = await api.get('/users', { params: { role: 'DRIVER', countryCode, limit: 100 } });
     const raw = res.data;
     return Array.isArray(raw.data) ? raw.data : (Array.isArray(raw) ? raw : []);
   },
