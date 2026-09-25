@@ -14,10 +14,17 @@ router.post('/upload', authenticate, memoryUpload.single('file'), leadController
 
 /**
  * @route   GET /api/leads/agent-queue
- * @desc    Get active calling queue for Call Agent with 10-cap round-robin auto-fill
+ * @desc    Get active calling queue for Call Agent with 5-cap auto-fill
  * @access  Private
  */
 router.get('/agent-queue', authenticate, leadController.getAgentQueue);
+
+/**
+ * @route   POST /api/leads/start-batch
+ * @desc    Start campaign batch and assign 5 leads to active agents (Admin)
+ * @access  Private
+ */
+router.post('/start-batch', authenticate, leadController.startBatch);
 
 /**
  * @route   GET /api/leads

@@ -200,17 +200,21 @@ The software bridges the gap between high-pressure call-center intake, real-time
   - System auto-tags every imported lead row with the uploading VA's identity (`uploadedByVaId`) from JWT authentication — no manual "uploaded by" column required in the CSV.
   - **Duplicate Detection on Import:** On upload, system checks each row's `contactNumber` and `companyName` against existing leads. Matching records are imported but flagged as `POSSIBLE_DUPLICATE` with a reference to the original VA who uploaded the matching record. No silent drops, no hard blocks — VA or manager decides to merge, skip, or keep both.
 
-- **FR-9.2: Round-Robin Lead Assignment:**
-  - Upon CSV import, leads are distributed evenly across available call agents using round-robin assignment.
-  - Each lead record stores `assignedAgentId` set at import time.
-  - Agents in `OUTBOUND` mode see only their personally assigned leads.
-  - Managers can manually reassign leads between agents if needed.
+- **FR-9.2: Admin-Controlled Campaign Batch Start & 5-Cap Auto-Replenishment:**
+  - Upon CSV/Excel import by VA, all leads sit in the **unassigned pool** (`assignedAgentId: null`, `status: NEW`). No leads are distributed at import time.
+  - An **Admin** initiates the outbound campaign by clicking **[ Start Batch ]** on the admin panel. This action:
+    1. Queries all agents currently in `OUTBOUND` mode (active agents only).
+    2. Assigns **5 leads** from the unassigned pool to each active agent (FIFO order — oldest uploaded first).
+    3. Each lead record stores `assignedAgentId` referencing the assigned agent.
+  - **Auto-Replenishment (5-Cap Rule):** After every completed call disposition, the system immediately checks: if the agent's active lead count is `< 5`, it pulls `5 - K` leads from the unassigned pool and assigns them to that agent — keeping the agent at exactly **5 active leads** at all times until the batch pool is exhausted.
+  - **Anti-Bottleneck Design:** Performing agents who complete dispositions quickly receive fresh leads immediately. Underperforming agents who take longer do not bottleneck faster agents — each agent's queue refills independently based on their own pace.
+  - Admins can manually reassign leads between agents at any time via the leads panel.
 
-- **FR-9.3: Agent Outbound Mode & Click-to-Call Workflow:**
-  - Agents toggle to `OUTBOUND` mode via the tri-state mode toggle (FR-1.1). While in `OUTBOUND`, the agent is invisible to inbound call routing (hard lock).
-  - Outbound mode displays the agent's assigned lead queue sorted by: **scheduled callbacks first** (by datetime), then newest unworked leads.
-  - Agent clicks **[ Call ]** on a lead → Telnyx WebRTC dials the contact number through the browser headset (same softphone as inbound, same `@telnyx/webrtc` client).
-  - After each call, agent **must** set a disposition and optional notes before moving to the next lead.
+- **FR-9.3: Agent Outbound Mode & Auto-Dial Workflow:**
+  - **Same agent pool** handles both inbound and outbound work — there are no separate inbound-only or outbound-only agents. The **existing tri-state mode toggle** (FR-1.1: `INACTIVE` / `INBOUND` / `OUTBOUND`) determines what an agent is doing at any given moment. Simultaneous inbound + outbound is not possible — agents switch modes via the toggle.
+  - When an agent switches to `OUTBOUND` mode, the system displays their assigned lead queue sorted by: **scheduled callbacks first** (by callback datetime), then oldest unworked leads.
+  - **Auto-Dialer:** The system **automatically dials** the lead's contact number via Telnyx WebRTC as soon as the agent enters `OUTBOUND` mode or after each disposition is saved. The agent does not need to click a call button — the next lead is dialed automatically.
+  - After each call, the agent **must** set a disposition and optional notes before the system auto-dials the next lead.
 
 - **FR-9.4: Outbound Call Dispositions:**
   - `CALLBACK` — Prospect requested callback (agent sets callback date, day, and time).
@@ -221,11 +225,12 @@ The software bridges the gap between high-pressure call-center intake, real-time
   - `VOICEMAIL` — Left voicemail message.
   - `RNC` — Relevant, not converted (warm lead, follow up later).
 
-- **FR-9.5: Callback Scheduling:**
+- **FR-9.5: Callback Scheduling & Available Agent Routing:**
   - When disposition is `CALLBACK`, agent enters callback date, day, and time.
-  - At the scheduled time, the lead resurfaces at the **top of the same agent's** outbound queue (agent retains conversation context from the first call).
-  - Lead card displays a prominent badge: **"Callback scheduled — Thu 2:00 PM"**.
-  - If the original agent is unavailable on the callback date, a manager can reassign the lead to another agent.
+  - At the scheduled callback datetime, the system routes the callback to any **available active agent** currently in `OUTBOUND` mode (prioritizing available capacity so callbacks are never missed or delayed if a specific agent is offline or occupied).
+  - The lead resurfaces at the **top of the available agent's** outbound queue with a prominent badge: **"Callback scheduled — Thu 2:00 PM"**.
+  - The system auto-dials the lead when it resurfaces (same auto-dial rule as FR-9.3).
+  - Callbacks are **never** automatically escalated to Admins — Admin involvement only happens via explicit warm transfer (FR-9.6).
 
 - **FR-9.6: Warm Transfer to Dispatch Manager / Admin (Fleet Contract Close):**
   - Call agents are **qualifiers**, not closers. When a prospect expresses interest in a fleet contract, the agent initiates a **Telnyx attended (warm) transfer** (FR-1.2):

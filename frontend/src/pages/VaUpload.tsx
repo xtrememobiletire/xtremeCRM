@@ -9,11 +9,13 @@ import {
   Phone, 
   Users, 
   RefreshCw,
-  FileCheck
+  FileCheck,
+  Plus
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
+import Modal from '../components/ui/Modal';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../context/AuthContext';
 import { leadService } from '../services/leadService';
@@ -114,14 +116,78 @@ export default function VaUpload() {
     uploadMutation.mutate(selectedFile);
   };
 
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [manualFormData, setManualFormData] = useState({
+    companyName: '',
+    companyAddress: '',
+    website: '',
+    fleetManager: '',
+    ceoOwnerName: '',
+    phone: '',
+    altPhone: '',
+    email: '',
+    poaEmail: '',
+    numberOfUnits: '',
+    notes: '',
+  });
+
+  const createLeadMutation = useMutation({
+    mutationFn: (data: any) => leadService.createLead(data),
+    onSuccess: () => {
+      toast.success('Fleet lead created and added to unassigned pool!');
+      setIsAddModalOpen(false);
+      setManualFormData({
+        companyName: '',
+        companyAddress: '',
+        website: '',
+        fleetManager: '',
+        ceoOwnerName: '',
+        phone: '',
+        altPhone: '',
+        email: '',
+        poaEmail: '',
+        numberOfUnits: '',
+        notes: '',
+      });
+      queryClient.invalidateQueries({ queryKey: ['va-my-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to create lead');
+    },
+  });
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualFormData.companyName || !manualFormData.phone) {
+      toast.error('Company Name and Primary Phone are required');
+      return;
+    }
+    createLeadMutation.mutate({
+      companyName: manualFormData.companyName,
+      address: manualFormData.companyAddress || undefined,
+      website: manualFormData.website || undefined,
+      fleetManager: manualFormData.fleetManager || undefined,
+      ceoOwnerName: manualFormData.ceoOwnerName || undefined,
+      contactPerson: manualFormData.fleetManager || manualFormData.ceoOwnerName || 'Fleet Manager',
+      phone: manualFormData.phone,
+      altPhone: manualFormData.altPhone || undefined,
+      email: manualFormData.email || undefined,
+      poaEmail: manualFormData.poaEmail || undefined,
+      numberOfUnits: manualFormData.numberOfUnits ? Number(manualFormData.numberOfUnits) : undefined,
+      notes: manualFormData.notes || undefined,
+      countryCode: country as any,
+    });
+  };
+
   const handleDownloadTemplate = () => {
-    const headers = 'Company Name,Contact Person,Phone,Alt Phone,Email,Address,Number of Units,Notes\n';
-    const sampleRow = 'Apex Fleet Transport,Marcus Vance,+14165550111,+14165550199,marcus@apexfleet.com,"100 King St W, Toronto, ON",24,"Requires 24/7 commercial roadside coverage"\n';
+    const headers = 'Company Name,Company Address,Website,Fleet Manager,CEO/Owner Name,Contact Number,Alternative Contact no,Official Email,POA : Email,NOU\n';
+    const sampleRow = 'HC&C Contracting,"11904 Woodbine Ave, Whitchurch-Stouffville, ON",https://hcccontracting.ca,Muhammad Naqib,Harry Henderson,+1 (647) 828-1186,+1 (647) 555-0144,fleet@axo1corp.com,invoices@hcccontracting.ca,100\n';
     const blob = new Blob([headers + sampleRow], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'xtreme_leads_template.csv');
+    link.setAttribute('download', 'xtreme_fleet_leads_template.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -136,8 +202,26 @@ export default function VaUpload() {
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="btn-primary flex items-center gap-1.5 cursor-pointer text-xs"
+            >
+              <Plus size={14} />
+              <span>Add Fleet Lead</span>
+            </button>
+            <a
+              href="/Data Base Sample.xlsx"
+              download="Data Base Sample.xlsx"
+              className="btn-secondary flex items-center gap-1.5 cursor-pointer text-xs"
+              title="Download standardized .xlsx spreadsheet template"
+            >
+              <Download size={14} />
+              <span>Download Excel Sample</span>
+            </a>
+            <button
+              type="button"
               onClick={handleDownloadTemplate}
               className="btn-secondary flex items-center gap-1.5 cursor-pointer text-xs"
+              title="Download CSV format template"
             >
               <Download size={14} />
               <span>Download CSV Template</span>
@@ -354,6 +438,158 @@ export default function VaUpload() {
           </div>
         )}
       </Card>
+
+      {/* Manual Fleet Lead Intake Modal */}
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        title="Add Single Fleet Lead to Pool"
+        maxWidth="max-w-2xl"
+      >
+        <form onSubmit={handleManualSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Company Name *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Apex Fleet Transport"
+                value={manualFormData.companyName}
+                onChange={(e) => setManualFormData({ ...manualFormData, companyName: e.target.value })}
+                className="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Number of Units (NOU)</label>
+              <input
+                type="number"
+                placeholder="e.g. 24"
+                value={manualFormData.numberOfUnits}
+                onChange={(e) => setManualFormData({ ...manualFormData, numberOfUnits: e.target.value })}
+                className="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Fleet Manager</label>
+              <input
+                type="text"
+                placeholder="e.g. Marcus Vance"
+                value={manualFormData.fleetManager}
+                onChange={(e) => setManualFormData({ ...manualFormData, fleetManager: e.target.value })}
+                className="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">CEO / Owner Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Robert Vance"
+                value={manualFormData.ceoOwnerName}
+                onChange={(e) => setManualFormData({ ...manualFormData, ceoOwnerName: e.target.value })}
+                className="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Primary Contact Number *</label>
+              <input
+                type="tel"
+                required
+                placeholder="e.g. +14165550111"
+                value={manualFormData.phone}
+                onChange={(e) => setManualFormData({ ...manualFormData, phone: e.target.value })}
+                className="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Alternative Contact No</label>
+              <input
+                type="tel"
+                placeholder="e.g. +14165550199"
+                value={manualFormData.altPhone}
+                onChange={(e) => setManualFormData({ ...manualFormData, altPhone: e.target.value })}
+                className="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Official Email</label>
+              <input
+                type="email"
+                placeholder="e.g. marcus@apexfleet.com"
+                value={manualFormData.email}
+                onChange={(e) => setManualFormData({ ...manualFormData, email: e.target.value })}
+                className="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">POA : Email (Billing / Decision Maker)</label>
+              <input
+                type="email"
+                placeholder="e.g. invoices@apexfleet.com"
+                value={manualFormData.poaEmail}
+                onChange={(e) => setManualFormData({ ...manualFormData, poaEmail: e.target.value })}
+                className="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-600"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold text-slate-700 mb-1">Company Address</label>
+              <input
+                type="text"
+                placeholder="e.g. 100 King St W, Toronto, ON"
+                value={manualFormData.companyAddress}
+                onChange={(e) => setManualFormData({ ...manualFormData, companyAddress: e.target.value })}
+                className="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-600"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold text-slate-700 mb-1">Website</label>
+              <input
+                type="url"
+                placeholder="e.g. https://apexfleet.com"
+                value={manualFormData.website}
+                onChange={(e) => setManualFormData({ ...manualFormData, website: e.target.value })}
+                className="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-600"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold text-slate-700 mb-1">Notes / Fleet Requirements</label>
+              <textarea
+                rows={2}
+                placeholder="e.g. Commercial 24/7 coverage for long-haul rigs, tire specs 11R22.5"
+                value={manualFormData.notes}
+                onChange={(e) => setManualFormData({ ...manualFormData, notes: e.target.value })}
+                className="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-600"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={createLeadMutation.isPending}
+              className="btn-primary text-xs px-5 py-2 font-bold cursor-pointer"
+            >
+              {createLeadMutation.isPending ? 'Saving Lead...' : 'Push to Pool'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

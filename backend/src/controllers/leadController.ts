@@ -105,19 +105,26 @@ export const leadController = {
       const {
         companyName,
         contactPerson,
+        fleetManager,
+        ceoOwnerName,
         phone,
         altPhone,
         email,
+        poaEmail,
         address,
         website,
         numberOfUnits,
         countryCode = 'CA',
         notes,
         assignedAgentId,
+        callbackDate,
+        callbackDay,
+        callbackTime,
       } = req.body;
 
-      if (!companyName || !contactPerson || !phone) {
-        return sendError(res, 'Company name, contact person, and phone number are required', 400);
+      const resolvedContact = contactPerson || fleetManager || ceoOwnerName || 'Fleet Manager';
+      if (!companyName || !phone) {
+        return sendError(res, 'Company name and phone number are required', 400);
       }
 
       const user = req.user as any;
@@ -131,13 +138,19 @@ export const leadController = {
         },
       });
 
+      const parsedCallbackDate = callbackDate ? new Date(callbackDate) : null;
+      const status = parsedCallbackDate ? 'CALLBACK' : 'NEW';
+
       const lead = await prisma.lead.create({
         data: {
           companyName: companyName.trim(),
-          contactPerson: contactPerson.trim(),
+          contactPerson: String(resolvedContact).trim(),
+          fleetManager: fleetManager?.trim() || null,
+          ceoOwnerName: ceoOwnerName?.trim() || null,
           phone: phone.trim(),
           altPhone: altPhone?.trim() || null,
           email: email?.trim() || null,
+          poaEmail: poaEmail?.trim() || null,
           address: address?.trim() || null,
           website: website?.trim() || null,
           numberOfUnits: numberOfUnits ? Number(numberOfUnits) : null,
@@ -145,7 +158,10 @@ export const leadController = {
           notes: notes?.trim() || null,
           uploadedByVaId,
           assignedAgentId: assignedAgentId || null,
-          status: 'NEW',
+          status,
+          callbackDate: parsedCallbackDate,
+          callbackDay: callbackDay || null,
+          callbackTime: callbackTime || null,
         },
         include: {
           uploadedByVa: {
@@ -290,8 +306,11 @@ export const leadController = {
           fleetCode,
           name: lead.companyName,
           contactPerson: lead.contactPerson,
+          fleetManager: lead.fleetManager || undefined,
+          ceoOwnerName: lead.ceoOwnerName || undefined,
           phone: lead.phone,
           email: lead.email,
+          poaEmail: lead.poaEmail || undefined,
           address: lead.address,
           website: lead.website,
           countryCode: lead.countryCode,
@@ -329,14 +348,36 @@ export const leadController = {
       }
 
       const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-      const firstSheetName = workbook.SheetNames[0];
-      if (!firstSheetName) {
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
         return sendError(res, 'Spreadsheet contains no sheets', 400);
       }
 
-      const rawRows: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: '' });
+      // 1. Intelligent Sheet Selection: Check specified sheet, or search for lead/outbound sheet
+      let chosenSheetName = req.body.sheetName as string;
+      if (!chosenSheetName || !workbook.Sheets[chosenSheetName]) {
+        const leadSheetKeywords = /outbound|dial|lead|fleet|trucking|verified|master/i;
+        const matchingSheet = workbook.SheetNames.find((name) => leadSheetKeywords.test(name));
+        if (matchingSheet && workbook.Sheets[matchingSheet]) {
+          chosenSheetName = matchingSheet;
+        } else {
+          // Find first sheet that has rows
+          for (const sName of workbook.SheetNames) {
+            const testRows = XLSX.utils.sheet_to_json(workbook.Sheets[sName], { header: 1 }) as any[];
+            if (testRows && testRows.length > 1) {
+              chosenSheetName = sName;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!chosenSheetName || !workbook.Sheets[chosenSheetName]) {
+        chosenSheetName = workbook.SheetNames[0];
+      }
+
+      const rawRows: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[chosenSheetName], { defval: '' });
       if (!rawRows || rawRows.length === 0) {
-        return sendError(res, 'Spreadsheet is empty', 400);
+        return sendError(res, `Sheet "${chosenSheetName}" is empty. Please check your spreadsheet data.`, 400);
       }
 
       const vaUserId = (req as any).user?.id;
@@ -357,7 +398,24 @@ export const leadController = {
           normalized['businessname'] || 
           normalized['accountname'] || 
           normalized['account'] || 
+          normalized['prospect'] || 
           '';
+
+        const fleetManager = 
+          normalized['fleetmanager'] || 
+          normalized['fleetmanagername'] || 
+          normalized['fm'] || 
+          null;
+
+        const ceoOwnerName = 
+          normalized['ceoownername'] || 
+          normalized['ceoowner'] || 
+          normalized['ownerceo'] || 
+          normalized['ceo'] || 
+          normalized['owner'] || 
+          normalized['ownername'] || 
+          normalized['dirname'] || 
+          null;
 
         const contactPerson = 
           normalized['contactperson'] || 
@@ -365,43 +423,85 @@ export const leadController = {
           normalized['contact'] || 
           normalized['fullname'] || 
           normalized['name'] || 
+          fleetManager || 
+          ceoOwnerName || 
           'Fleet Manager';
 
         const rawPhone = 
+          normalized['contactnumber'] || 
           normalized['phone'] || 
           normalized['phonenumber'] || 
           normalized['telephone'] || 
           normalized['mobile'] || 
+          normalized['number'] || 
+          normalized['officialno'] || 
+          normalized['officialcontact'] || 
+          normalized['cell'] || 
           '';
 
         const altPhone = 
+          normalized['alternativecontactno'] || 
           normalized['altphone'] || 
           normalized['alternatephone'] || 
           normalized['secondaryphone'] || 
+          normalized['altno'] || 
+          normalized['office'] || 
           null;
 
         const email = 
+          normalized['officialemail'] || 
           normalized['email'] || 
           normalized['emailaddress'] || 
           null;
 
+        const poaEmail = 
+          normalized['poaemail'] || 
+          normalized['poa'] || 
+          normalized['accountdept'] || 
+          normalized['billingemail'] || 
+          normalized['email1'] || 
+          normalized['decisionmakeremail'] || 
+          null;
+
         const address = 
+          normalized['companyaddress'] || 
           normalized['address'] || 
           normalized['location'] || 
+          normalized['serviceaddress'] || 
           normalized['street'] || 
           null;
 
+        const website = 
+          normalized['website'] || 
+          normalized['websiteurl'] || 
+          normalized['web'] || 
+          normalized['url'] || 
+          null;
+
         const rawUnits = 
+          normalized['nou'] || 
           normalized['numberofunits'] || 
           normalized['units'] || 
           normalized['fleetunits'] || 
           normalized['fleetsize'] || 
-          normalized['nou'] || 
+          normalized['noofv'] || 
+          normalized['trucksvans'] || 
+          normalized['trucks'] || 
           null;
+
+        let parsedUnits: number | null = null;
+        if (rawUnits !== null && rawUnits !== undefined && String(rawUnits).trim() !== '') {
+          const match = String(rawUnits).match(/\d+/);
+          if (match) {
+            parsedUnits = parseInt(match[0], 10);
+          }
+        }
 
         const notes = 
           normalized['notes'] || 
           normalized['comments'] || 
+          normalized['commentsbefore'] || 
+          normalized['commentsafter'] || 
           normalized['description'] || 
           null;
 
@@ -413,16 +513,20 @@ export const leadController = {
         leadsToCreate.push({
           companyName: comp || contactPerson || 'Prospect Company',
           contactPerson: String(contactPerson || 'Fleet Manager').trim(),
+          fleetManager: fleetManager ? String(fleetManager).trim() : null,
+          ceoOwnerName: ceoOwnerName ? String(ceoOwnerName).trim() : null,
           phone: phone || '+14165550100',
           altPhone: altPhone ? String(altPhone).trim() : null,
           email: email ? String(email).trim() : null,
+          poaEmail: poaEmail ? String(poaEmail).trim() : null,
           address: address ? String(address).trim() : null,
-          numberOfUnits: rawUnits ? Number(rawUnits) || null : null,
+          website: website ? String(website).trim() : null,
+          numberOfUnits: parsedUnits,
           notes: notes ? String(notes).trim() : null,
           countryCode: targetCountry,
           status: 'NEW',
           uploadedByVaId: vaUserId || null,
-          assignedAgentId: null, // Unassigned for round robin
+          assignedAgentId: null, // Unassigned for campaign batch assignment
         });
       }
 
@@ -437,15 +541,115 @@ export const leadController = {
       return sendSuccess(res, {
         importedCount: result.count,
         totalRows: rawRows.length,
-      }, `Successfully imported ${result.count} leads`);
+        sheetUsed: chosenSheetName,
+      }, `Successfully imported ${result.count} leads from "${chosenSheetName}"`);
     } catch (err: any) {
       return sendError(res, `Failed to process spreadsheet: ${err.message}`, 400);
     }
   },
 
   /**
-   * Get Active Queue for Call Agent with 10-cap Round-Robin Auto-Fill
-   * Ensures agent has up to 10 active leads without bottlenecking other agents
+   * Start Outbound Campaign Batch (Admin Control - PRD FR-9.2)
+   * Assigns 5 leads to each currently active OUTBOUND agent in FIFO order
+   */
+  async startBatch(req: Request, res: Response) {
+    try {
+      const countryCode = (req.body.countryCode as any) || (req as any).countryCode || 'CA';
+      const BATCH_CAP = 5;
+
+      // 1. Find all available Call Agents
+      const activeAgents = await prisma.user.findMany({
+        where: {
+          role: 'CALL_AGENT',
+          countryCode: countryCode as any,
+          deletedAt: null,
+        },
+      });
+
+      if (activeAgents.length === 0) {
+        return sendError(res, 'No Call Agents found for this region to assign leads to.', 400);
+      }
+
+      const batchId = `BATCH-${Date.now().toString(36).toUpperCase()}`;
+      let totalAssigned = 0;
+      const agentSummary: any[] = [];
+
+      for (const agent of activeAgents) {
+        const activeCount = await prisma.lead.count({
+          where: {
+            assignedAgentId: agent.id,
+            status: { in: ['NEW', 'CALLED'] },
+            OR: [{ disposition: null }],
+          },
+        });
+
+        const slotsNeeded = Math.max(0, BATCH_CAP - activeCount);
+        if (slotsNeeded > 0) {
+          const unassigned = await prisma.lead.findMany({
+            where: {
+              assignedAgentId: null,
+              status: 'NEW',
+              countryCode: countryCode as any,
+            },
+            take: slotsNeeded,
+            orderBy: { createdAt: 'asc' },
+          });
+
+          if (unassigned.length > 0) {
+            const ids = unassigned.map((l) => l.id);
+            await prisma.lead.updateMany({
+              where: { id: { in: ids } },
+              data: {
+                assignedAgentId: agent.id,
+                batchId,
+              },
+            });
+            totalAssigned += unassigned.length;
+          }
+
+          agentSummary.push({
+            agentId: agent.id,
+            agentName: agent.fullName,
+            previousActive: activeCount,
+            assignedNow: unassigned.length,
+            totalActive: activeCount + unassigned.length,
+          });
+        } else {
+          agentSummary.push({
+            agentId: agent.id,
+            agentName: agent.fullName,
+            previousActive: activeCount,
+            assignedNow: 0,
+            totalActive: activeCount,
+          });
+        }
+      }
+
+      // Notify agents via Socket.io
+      try {
+        const io = getIO();
+        io.to(`dispatch:${countryCode}`).emit('campaign:batch_started', {
+          batchId,
+          totalAssigned,
+          agentsCount: activeAgents.length,
+        });
+        io.to('role:CALL_AGENT').emit('campaign:batch_started', { batchId });
+      } catch {}
+
+      return sendSuccess(res, {
+        batchId,
+        totalAssigned,
+        agentsCount: activeAgents.length,
+        agentSummary,
+      }, `Campaign batch started! ${totalAssigned} leads assigned across ${activeAgents.length} agents (5-cap).`);
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Get Active Queue for Call Agent with 5-cap Auto-Replenishment (PRD FR-9.2, FR-9.5)
+   * Scheduled callbacks appear first, followed by active leads up to 5 total
    */
   async getAgentQueue(req: Request, res: Response) {
     try {
@@ -453,15 +657,35 @@ export const leadController = {
       if (!agentId) return sendError(res, 'Unauthorized', 401);
 
       const countryCode = (req.query.countryCode as any) || (req as any).countryCode;
+      const MAX_ACTIVE = 5;
 
-      // 1. Fetch currently active leads for this agent
+      // 1. Fetch scheduled callbacks due (available to any active agent when due)
+      const now = new Date();
+      const scheduledCallbacks = await prisma.lead.findMany({
+        where: {
+          status: 'CALLBACK',
+          OR: [
+            { assignedAgentId: agentId },
+            { assignedAgentId: null, callbackDate: { lte: now } },
+          ],
+          ...(countryCode ? { countryCode } : {}),
+        },
+        orderBy: [{ callbackDate: 'asc' }, { createdAt: 'asc' }],
+        take: 5,
+        include: {
+          uploadedByVa: {
+            select: { id: true, fullName: true, role: true },
+          },
+        },
+      });
+
+      // 2. Fetch currently active leads for this agent (NEW or CALLED with no terminal outcome)
       const activeLeads = await prisma.lead.findMany({
         where: {
           assignedAgentId: agentId,
-          status: { in: ['NEW', 'CALLED', 'CALLBACK'] },
+          status: { in: ['NEW', 'CALLED'] },
           OR: [
             { disposition: null },
-            { disposition: 'CALLBACK' },
           ],
         },
         orderBy: { createdAt: 'asc' },
@@ -473,10 +697,9 @@ export const leadController = {
       });
 
       const currentCount = activeLeads.length;
-      const MAX_ACTIVE = 10;
       let newlyAssignedCount = 0;
 
-      // 2. If under capacity (< 10), pull unassigned leads from pool in FIFO round-robin order
+      // 3. If under capacity (< 5), pull unassigned leads from pool in FIFO order (FR-9.2)
       if (currentCount < MAX_ACTIVE) {
         const slotsNeeded = MAX_ACTIVE - currentCount;
 
@@ -507,7 +730,7 @@ export const leadController = {
         }
       }
 
-      // 3. Count remaining unassigned leads in the pool
+      // 4. Count remaining unassigned leads in the pool
       const unassignedPoolCount = await prisma.lead.count({
         where: {
           assignedAgentId: null,
@@ -518,6 +741,7 @@ export const leadController = {
 
       return sendSuccess(res, {
         leads: activeLeads.slice(0, MAX_ACTIVE),
+        scheduledCallbacks,
         activeCount: Math.min(activeLeads.length, MAX_ACTIVE),
         maxCapacity: MAX_ACTIVE,
         newlyAssignedCount,
@@ -529,12 +753,13 @@ export const leadController = {
   },
 
   /**
-   * Set Lead Call Disposition (CONVERTED, CALLBACK, NOT_INTERESTED, WRONG_NUMBER, NO_ANSWER, VOICEMAIL, RNC)
+   * Set Lead Call Disposition (FR-9.4) & Inline 5-Cap Auto-Replenishment (FR-9.2)
    */
   async setDisposition(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
-      const { disposition, notes } = req.body;
+      const { disposition, notes, callbackDate, callbackDay, callbackTime } = req.body;
+      const agentId = (req as any).user?.id;
 
       if (!disposition) {
         return sendError(res, 'Disposition is required', 400);
@@ -549,13 +774,23 @@ export const leadController = {
         newStatus = 'DEAD';
       }
 
+      const updateData: any = {
+        disposition: disposition as any,
+        notes: notes || undefined,
+        status: newStatus,
+      };
+
+      if (disposition === 'CALLBACK') {
+        updateData.callbackDate = callbackDate ? new Date(callbackDate) : new Date(Date.now() + 24 * 3600 * 1000);
+        updateData.callbackDay = callbackDay || undefined;
+        updateData.callbackTime = callbackTime || undefined;
+        // Enters available callbacks pool for when due
+        updateData.assignedAgentId = null;
+      }
+
       const updated = await prisma.lead.update({
         where: { id },
-        data: {
-          disposition: disposition as any,
-          notes: notes || undefined,
-          status: newStatus,
-        },
+        data: updateData,
         include: {
           uploadedByVa: {
             select: { id: true, fullName: true },
@@ -566,7 +801,47 @@ export const leadController = {
         },
       });
 
-      return sendSuccess(res, updated, 'Disposition logged successfully');
+      // Inline Auto-Replenishment: Keep agent at 5 active leads (FR-9.2)
+      let nextLeadAssigned: any = null;
+      if (agentId) {
+        const MAX_ACTIVE = 5;
+        const currentActiveCount = await prisma.lead.count({
+          where: {
+            assignedAgentId: agentId,
+            status: { in: ['NEW', 'CALLED'] },
+            OR: [{ disposition: null }],
+          },
+        });
+
+        if (currentActiveCount < MAX_ACTIVE) {
+          const freshLead = await prisma.lead.findFirst({
+            where: {
+              assignedAgentId: null,
+              status: 'NEW',
+              countryCode: updated.countryCode,
+            },
+            orderBy: { createdAt: 'asc' },
+          });
+
+          if (freshLead) {
+            nextLeadAssigned = await prisma.lead.update({
+              where: { id: freshLead.id },
+              data: { assignedAgentId: agentId },
+            });
+          }
+        }
+      }
+
+      // Notify live queue
+      try {
+        const io = getIO();
+        io.to(`dispatch:${updated.countryCode}`).emit('lead:updated', updated);
+      } catch {}
+
+      return sendSuccess(res, {
+        lead: updated,
+        replenishedLead: nextLeadAssigned,
+      }, 'Disposition logged successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }
