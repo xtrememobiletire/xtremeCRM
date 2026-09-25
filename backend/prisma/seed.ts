@@ -508,22 +508,69 @@ async function main() {
   // 7. Seed Unassigned Leads uploaded by VA for Round-Robin Agent Queue
   const vaUser = createdUsers['VIRTUAL_ASSISTANT'];
   if (vaUser) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(11, 0, 0, 0);
+
     const sampleLeads = [
-      { companyName: 'Apex Transport Logistics', contactPerson: 'Marcus Vance', phone: '+14165550111', numberOfUnits: 24, notes: 'Fleet of 24 Sprinter vans, urgent roadside maintenance needed' },
-      { companyName: 'Metro Courier Services', contactPerson: 'Sandra Bullock', phone: '+14165550112', numberOfUnits: 12, notes: 'Regional distribution couriers, interested in net-30 terms' },
-      { companyName: 'Swift Delivery Fleet', contactPerson: 'Arthur Dent', phone: '+14165550113', numberOfUnits: 18, notes: 'Last-mile logistics vans operating in Greater Toronto' },
-      { companyName: 'Titan Freight Co.', contactPerson: 'Walter White', phone: '+14165550114', numberOfUnits: 45, notes: 'Heavy duty flatbed rigs requiring commercial roadside tire service' },
-      { companyName: 'Rapid Parcel Inc.', contactPerson: 'Jesse Pinkman', phone: '+14165550115', numberOfUnits: 15, notes: 'Local e-commerce delivery vehicles' },
-      { companyName: 'North Star Express', contactPerson: 'Hank Schrader', phone: '+14165550116', numberOfUnits: 30, notes: 'Cross-dock delivery fleet' },
-      { companyName: 'Skyline Shuttle Lines', contactPerson: 'Gustavo Fring', phone: '+14165550117', numberOfUnits: 8, notes: 'Executive passenger van fleet' },
-      { companyName: 'Pinnacle Haulage', contactPerson: 'Mike Ehrmantraut', phone: '+14165550118', numberOfUnits: 22, notes: '24/7 highway cargo haulers' },
-      { companyName: 'Maple Leaf Transit', contactPerson: 'Saul Goodman', phone: '+14165550119', numberOfUnits: 16, notes: 'Charter bus & shuttle service' },
-      { companyName: 'Great Lakes Distribution', contactPerson: 'Kim Wexler', phone: '+14165550120', numberOfUnits: 28, notes: 'Refrigerated transit vans' },
-      { companyName: 'Silverline Cargo', contactPerson: 'Howard Hamlin', phone: '+14165550121', numberOfUnits: 14, notes: 'Regional pharmaceutical transport' },
-      { companyName: 'Boreal Logistics Ltd.', contactPerson: 'Chuck McGill', phone: '+14165550122', numberOfUnits: 20, notes: 'Temperature-controlled food delivery' },
-      { companyName: 'Horizon Freightway', contactPerson: 'Nacho Varga', phone: '+14165550123', numberOfUnits: 35, notes: 'Long-haul dry van fleet' },
-      { companyName: 'Urban Route Express', contactPerson: 'Lalo Salamanca', phone: '+14165550124', numberOfUnits: 10, notes: 'Downtown parcel and food distributors' },
-      { companyName: 'Canuck Courier Systems', contactPerson: 'Tuco Salamanca', phone: '+14165550125', numberOfUnits: 19, notes: 'Express parcel vans' },
+      { 
+        companyName: 'Apex Transport Logistics', 
+        contactPerson: 'Marcus Vance', 
+        fleetManager: 'Marcus Vance',
+        ceoOwnerName: 'Robert Vance',
+        phone: '+14165550111', 
+        altPhone: '+14165550190',
+        email: 'marcus@apextransport.ca',
+        poaEmail: 'billing@apextransport.ca',
+        numberOfUnits: 24, 
+        address: '100 King St W, Toronto, ON',
+        website: 'https://apextransport.ca',
+        notes: 'Fleet of 24 Sprinter vans, urgent roadside maintenance needed' 
+      },
+      { 
+        companyName: 'Premium Fire Protection', 
+        contactPerson: 'Mark Davis', 
+        fleetManager: 'Mark Davis',
+        ceoOwnerName: 'David Clark',
+        phone: '+19054363473', 
+        altPhone: '+19055550188',
+        email: 'sales@premiumfireprotection.ca',
+        poaEmail: 'accounts@premiumfireprotection.ca',
+        numberOfUnits: 12, 
+        address: '2020 Wentworth St, Unit #9, Whitby, ON',
+        website: 'https://premiumfireprotection.ca',
+        notes: '3 service vehicles currently, looking for quotation on mobile tire swap',
+        status: 'CALLBACK' as const,
+        callbackDate: tomorrow,
+        callbackDay: 'Tomorrow',
+        callbackTime: '11:00 AM'
+      },
+      { 
+        companyName: 'HC&C Contracting [PO# 7706]', 
+        contactPerson: 'Muhammad Naqib', 
+        fleetManager: 'Muhammad Naqib',
+        ceoOwnerName: 'Harry Henderson',
+        phone: '+16478281186', 
+        altPhone: '+16475550144',
+        email: 'fleet@axo1corp.com',
+        poaEmail: 'invoices@hcccontracting.ca',
+        numberOfUnits: 100, 
+        address: '11904 Woodbine Ave, Whitchurch-Stouffville, ON',
+        website: 'https://hcccontracting.ca',
+        notes: '100 big trucks, special negotiated contract pricing requested' 
+      },
+      { companyName: 'Titan Freight Co.', contactPerson: 'Walter White', fleetManager: 'Walter White', phone: '+14165550114', numberOfUnits: 45, notes: 'Heavy duty flatbed rigs requiring commercial roadside tire service' },
+      { companyName: 'Rapid Parcel Inc.', contactPerson: 'Jesse Pinkman', fleetManager: 'Jesse Pinkman', phone: '+14165550115', numberOfUnits: 15, notes: 'Local e-commerce delivery vehicles' },
+      { companyName: 'North Star Express', contactPerson: 'Hank Schrader', fleetManager: 'Hank Schrader', phone: '+14165550116', numberOfUnits: 30, notes: 'Cross-dock delivery fleet' },
+      { companyName: 'Skyline Shuttle Lines', contactPerson: 'Gustavo Fring', fleetManager: 'Gustavo Fring', phone: '+14165550117', numberOfUnits: 8, notes: 'Executive passenger van fleet' },
+      { companyName: 'Pinnacle Haulage', contactPerson: 'Mike Ehrmantraut', fleetManager: 'Mike Ehrmantraut', phone: '+14165550118', numberOfUnits: 22, notes: '24/7 highway cargo haulers' },
+      { companyName: 'Maple Leaf Transit', contactPerson: 'Saul Goodman', fleetManager: 'Saul Goodman', phone: '+14165550119', numberOfUnits: 16, notes: 'Charter bus & shuttle service' },
+      { companyName: 'Great Lakes Distribution', contactPerson: 'Kim Wexler', fleetManager: 'Kim Wexler', phone: '+14165550120', numberOfUnits: 28, notes: 'Refrigerated transit vans' },
+      { companyName: 'Silverline Cargo', contactPerson: 'Howard Hamlin', fleetManager: 'Howard Hamlin', phone: '+14165550121', numberOfUnits: 14, notes: 'Regional pharmaceutical transport' },
+      { companyName: 'Boreal Logistics Ltd.', contactPerson: 'Chuck McGill', fleetManager: 'Chuck McGill', phone: '+14165550122', numberOfUnits: 20, notes: 'Temperature-controlled food delivery' },
+      { companyName: 'Horizon Freightway', contactPerson: 'Nacho Varga', fleetManager: 'Nacho Varga', phone: '+14165550123', numberOfUnits: 35, notes: 'Long-haul dry van fleet' },
+      { companyName: 'Urban Route Express', contactPerson: 'Lalo Salamanca', fleetManager: 'Lalo Salamanca', phone: '+14165550124', numberOfUnits: 10, notes: 'Downtown parcel and food distributors' },
+      { companyName: 'Canuck Courier Systems', contactPerson: 'Tuco Salamanca', fleetManager: 'Tuco Salamanca', phone: '+14165550125', numberOfUnits: 19, notes: 'Express parcel vans' },
     ];
 
     for (const ld of sampleLeads) {
@@ -533,18 +580,28 @@ async function main() {
           data: {
             companyName: ld.companyName,
             contactPerson: ld.contactPerson,
+            fleetManager: ld.fleetManager || null,
+            ceoOwnerName: (ld as any).ceoOwnerName || null,
             phone: ld.phone,
+            altPhone: (ld as any).altPhone || null,
+            email: (ld as any).email || null,
+            poaEmail: (ld as any).poaEmail || null,
+            address: (ld as any).address || null,
+            website: (ld as any).website || null,
             numberOfUnits: ld.numberOfUnits,
             notes: ld.notes,
             countryCode: 'CA',
-            status: 'NEW',
+            status: (ld as any).status || 'NEW',
+            callbackDate: (ld as any).callbackDate || null,
+            callbackDay: (ld as any).callbackDay || null,
+            callbackTime: (ld as any).callbackTime || null,
             uploadedByVaId: vaUser.id,
             assignedAgentId: null, // Unassigned pool
           },
         });
       }
     }
-    console.log(`✅ Seeded 15 Unassigned VA Leads for Call Agent Round-Robin Queue`);
+    console.log(`✅ Seeded 15 Unassigned VA Fleet Leads for Campaign Batches & Callbacks`);
   }
 
   console.log('🎉 Database seeding completed successfully!');

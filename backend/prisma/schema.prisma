@@ -239,6 +239,9 @@ model Fleet {
   contactPerson String      @map("contact_person")
   phone         String      // E.164 formatted primary management phone (e.g. +17035550144)
   email         String?     // Billing/contact email
+  poaEmail      String?     @map("poa_email") // POA : Email
+  fleetManager  String?     @map("fleet_manager")
+  ceoOwnerName  String?     @map("ceo_owner_name")
   address       String?     // e.g. "10100 Richmond Hwy, Lorton, VA 22079"
   website       String?     // Fleet company website (PRD: Fleet Dashboard KPI card)
   // ponytail: fleetSize derived dynamically: fleet.vehicles.count
@@ -606,10 +609,13 @@ model JobMessage {
 model Lead {
   id                 String           @id @default(uuid())
   companyName        String           @map("company_name")
-  contactPerson      String           @map("contact_person")
+  contactPerson      String           @map("contact_person") // Fallback / combined contact
+  fleetManager       String?          @map("fleet_manager")  // Fleet Manager Name
+  ceoOwnerName       String?          @map("ceo_owner_name") // CEO / Owner Name
   phone              String           // Primary contact phone
   altPhone           String?          @map("alt_phone")
-  email              String?
+  email              String?          // Official email
+  poaEmail           String?          @map("poa_email")      // POA : Email (Billing / Authority)
   address            String?
   website            String?
   numberOfUnits      Int?             @map("number_of_units") // NOU: fleet size
@@ -618,7 +624,13 @@ model Lead {
   disposition        LeadDisposition?
   notes              String?          @db.Text
 
-  // VA & Agent Attributions (PRD FR-9.1, FR-9.2)
+  // Callback Scheduling (Available Agent Routing)
+  callbackDate       DateTime?        @db.Timestamptz @map("callback_date")
+  callbackDay        String?          @map("callback_day")    // e.g. "Monday", "Tuesday"
+  callbackTime       String?          @map("callback_time")   // e.g. "10:30 AM"
+
+  // Campaign Batch & Attributions
+  batchId            String?          @map("batch_id")
   uploadedByVaId     String?          @map("uploaded_by_va_id")
   uploadedByVa       User?            @relation("VaUploadedLeads", fields: [uploadedByVaId], references: [id])
   assignedAgentId    String?          @map("assigned_agent_id")
@@ -635,8 +647,9 @@ model Lead {
   updatedAt          DateTime         @updatedAt @db.Timestamptz @map("updated_at")
 
   @@index([countryCode, status])
+  @@index([assignedAgentId, status])
+  @@index([callbackDate, status])
   @@index([phone])
   @@index([uploadedByVaId])
-  @@index([assignedAgentId])
   @@map("leads")
 }

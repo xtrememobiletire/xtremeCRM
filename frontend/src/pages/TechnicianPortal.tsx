@@ -9,7 +9,8 @@ import {
   DollarSign, 
   Check,
   Disc,
-  ExternalLink
+  ExternalLink,
+  XCircle
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { jobService, type JobItem } from '../services/jobService';
@@ -288,6 +289,21 @@ export default function TechnicianPortal() {
                 >
                   <DollarSign className="w-4 h-4 text-emerald-600" />
                   <span>Record Cash Collected</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={updatingId === activeJob.id}
+                  onClick={() => {
+                    const confirmed = window.confirm('Are you sure you want to cancel this dispatch? Dispatcher will be notified.');
+                    if (confirmed) {
+                      handleUpdateStatus(activeJob.id, 'CANCELLED');
+                    }
+                  }}
+                  className="py-2.5 px-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <XCircle className="w-4 h-4 text-rose-600" />
+                  <span>Cancel Dispatch</span>
                 </button>
               </div>
 

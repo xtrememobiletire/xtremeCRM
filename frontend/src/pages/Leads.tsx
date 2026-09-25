@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Building2, 
@@ -9,7 +9,10 @@ import {
   Search, 
   RefreshCw, 
   Truck,
-  ClipboardCheck
+  ClipboardCheck,
+  Play,
+  Calendar,
+  Zap
 } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Modal from '../components/ui/Modal';
@@ -26,10 +29,20 @@ export default function Leads() {
   const queryClient = useQueryClient();
 
   const isAgent = user?.role === 'CALL_AGENT';
+  const isAdminOrDispatcher = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
   const [viewMode, setViewMode] = useState<'queue' | 'all'>(isAgent ? 'queue' : 'all');
   const [selectedDispositionLead, setSelectedDispositionLead] = useState<Lead | null>(null);
   const [selectedDisposition, setSelectedDisposition] = useState('');
   const [dispositionNotes, setDispositionNotes] = useState('');
+
+  // Callback Scheduling Form State (Available Agent Routing - PRD FR-9.5)
+  const [callbackDate, setCallbackDate] = useState('');
+  const [callbackDay, setCallbackDay] = useState('');
+  const [callbackTime, setCallbackTime] = useState('');
+
+  // Auto-Dialer Toggle State (PRD FR-9.3)
+  const [autoDialEnabled, setAutoDialEnabled] = useState(true);
+  const hasAutoDialedRef = useRef(false);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -37,13 +50,16 @@ export default function Leads() {
   const [transferringLead, setTransferringLead] = useState<Lead | null>(null);
   const [transferNotes, setTransferNotes] = useState('');
 
-  // Form State for VA pushing leads
+  // Form State for manual lead push
   const [formData, setFormData] = useState({
     companyName: '',
     contactPerson: '',
+    fleetManager: '',
+    ceoOwnerName: '',
     phone: '',
     altPhone: '',
     email: '',
+    poaEmail: '',
     address: '',
     website: '',
     numberOfUnits: '',
@@ -51,7 +67,7 @@ export default function Leads() {
     countryCode: country,
   });
 
-  // Agent 10-cap round robin auto-fill queue
+  // Agent 5-cap round robin auto-fill queue (PRD FR-9.2)
   const { data: queueResponse, isLoading: isLoadingQueue, refetch: refetchQueue } = useQuery({
     queryKey: ['agent-queue', country],
     queryFn: () => leadService.getAgentQueue(country),
@@ -61,8 +77,9 @@ export default function Leads() {
 
   const queueData = queueResponse || {
     leads: [],
+    scheduledCallbacks: [],
     activeCount: 0,
-    maxCapacity: 10,
+    maxCapacity: 5,
     unassignedPoolCount: 0,
   };
 
@@ -87,16 +104,56 @@ export default function Leads() {
     else refetchAll();
   };
 
+  // Start Campaign Batch Mutation (Admin Control - PRD FR-9.2)
+  const startBatchMutation = useMutation({
+    mutationFn: () => leadService.startBatch(country),
+    onSuccess: (data: any) => {
+      toast.success(data?.message || 'Campaign batch started! 5 leads assigned to active agents.');
+      queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to start campaign batch');
+    },
+  });
+
   const dispositionMutation = useMutation({
-    mutationFn: ({ id, disposition, notes }: { id: string; disposition: string; notes?: string }) =>
-      leadService.setDisposition(id, disposition, notes),
-    onSuccess: () => {
-      toast.success('Call outcome recorded! Slot freed & next lead auto-assigned.');
+    mutationFn: ({ 
+      id, 
+      disposition, 
+      notes,
+      callbackData,
+    }: { 
+      id: string; 
+      disposition: string; 
+      notes?: string;
+      callbackData?: { callbackDate?: string; callbackDay?: string; callbackTime?: string };
+    }) =>
+      leadService.setDisposition(id, disposition, notes, callbackData),
+    onSuccess: async () => {
+      toast.success('Call outcome recorded! 5-cap slot auto-replenished.');
       setSelectedDispositionLead(null);
       setSelectedDisposition('');
       setDispositionNotes('');
+      setCallbackDate('');
+      setCallbackDay('');
+      setCallbackTime('');
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+
+      // Auto-Dialer: Dial next lead in queue automatically
+      if (autoDialEnabled && isAgent) {
+        setTimeout(async () => {
+          const freshQueue: any = await queryClient.fetchQuery({
+            queryKey: ['agent-queue', country],
+            queryFn: () => leadService.getAgentQueue(country),
+          });
+          const nextLead = freshQueue?.scheduledCallbacks?.[0] || freshQueue?.leads?.[0];
+          if (nextLead && nextLead.phone) {
+            handleCallLead(nextLead);
+          }
+        }, 1200);
+      }
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to record disposition');
@@ -111,9 +168,12 @@ export default function Leads() {
       setFormData({
         companyName: '',
         contactPerson: '',
+        fleetManager: '',
+        ceoOwnerName: '',
         phone: '',
         altPhone: '',
         email: '',
+        poaEmail: '',
         address: '',
         website: '',
         numberOfUnits: '',
@@ -153,6 +213,18 @@ export default function Leads() {
       data: { status: 'CALLED' },
     });
   };
+
+  // Auto-Dial on queue load when in OUTBOUND mode (PRD FR-9.3)
+  useEffect(() => {
+    if (isAgent && autoDialEnabled && queueData?.leads?.length > 0 && !hasAutoDialedRef.current) {
+      hasAutoDialedRef.current = true;
+      const initialLead = queueData.scheduledCallbacks?.[0] || queueData.leads[0];
+      if (initialLead && initialLead.phone && !initialLead.disposition) {
+        toast.info(`Auto-Dialer: Dialing next prospect ${initialLead.companyName}...`);
+        handleCallLead(initialLead);
+      }
+    }
+  }, [isAgent, autoDialEnabled, queueData]);
 
   const handleOpenTransferModal = (lead: Lead) => {
     setTransferringLead(lead);
@@ -215,14 +287,40 @@ export default function Leads() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title={activeInQueue ? "Outbound Calling Queue (10 Max)" : "Outbound B2B Fleet Sales & Leads"}
+        title={activeInQueue ? "Outbound Calling Queue (5 Max)" : "Outbound B2B Fleet Sales & Leads"}
         subtitle={
           activeInQueue
-            ? `Load-balanced calling queue for ${country} Region. Fast agents auto-receive fresh leads upon dispositioning.`
+            ? `Admin-started 5-cap batch queue for ${country} Region. Fast agents auto-receive fresh leads upon dispositioning.`
             : `Prospect pool and lead qualification for ${country} Region.`
         }
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {isAdminOrDispatcher && (
+              <button
+                type="button"
+                onClick={() => startBatchMutation.mutate()}
+                disabled={startBatchMutation.isPending}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer disabled:opacity-50"
+                title="Assign 5 leads to each active agent and kick off outbound campaign"
+              >
+                <Play size={13} fill="currentColor" />
+                <span>{startBatchMutation.isPending ? 'Starting Batch...' : 'Start Campaign Batch'}</span>
+              </button>
+            )}
+
+            {activeInQueue && (
+              <label className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer select-none">
+                <Zap size={13} className={autoDialEnabled ? 'text-amber-500 fill-amber-500' : 'text-slate-400'} />
+                <span>Auto-Dialer</span>
+                <input
+                  type="checkbox"
+                  checked={autoDialEnabled}
+                  onChange={(e) => setAutoDialEnabled(e.target.checked)}
+                  className="rounded text-red-600 focus:ring-red-500 ml-0.5 cursor-pointer"
+                />
+              </label>
+            )}
+
             {!isAgent && (
               <div className="bg-slate-100 p-0.5 rounded-xl border border-slate-200 flex items-center">
                 <button
@@ -232,7 +330,7 @@ export default function Leads() {
                     viewMode === 'queue' ? 'bg-red-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  My Queue (10)
+                  My Queue (5)
                 </button>
                 <button
                   type="button"
@@ -265,13 +363,13 @@ export default function Leads() {
         }
       />
 
-      {/* Round-Robin Load-Balanced Queue Banner */}
+      {/* 5-Cap Batch Queue Banner */}
       {activeInQueue && (
         <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-md flex flex-wrap items-center justify-between gap-4 border border-slate-800">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-400 bg-red-950/80 px-2 py-0.5 rounded-full border border-red-800">
-                Round-Robin Dispatch Active
+                Campaign Batch Active (5 Max)
               </span>
               <span className="text-xs text-slate-300">
                 Agent Workload: <strong className="text-white font-bold">{queueData.activeCount} / {queueData.maxCapacity}</strong> Calls Assigned
@@ -280,7 +378,7 @@ export default function Leads() {
             <div className="text-xs text-slate-300">
               {queueData.unassignedPoolCount > 0 ? (
                 <span>
-                  🚀 <strong className="text-emerald-400 font-bold">{queueData.unassignedPoolCount} unassigned leads</strong> available in pool. When you log call dispositions, fresh leads are assigned automatically!
+                  🚀 <strong className="text-emerald-400 font-bold">{queueData.unassignedPoolCount} unassigned leads</strong> available in pool. When you log call dispositions, fresh leads refill your queue automatically!
                 </span>
               ) : (
                 <span className="text-slate-400">
@@ -299,6 +397,43 @@ export default function Leads() {
               <RefreshCw size={12} className={isLoadingQueue ? 'animate-spin' : ''} />
               <span>Sync Queue</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Scheduled Callbacks Due Banner */}
+      {activeInQueue && queueData.scheduledCallbacks && queueData.scheduledCallbacks.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-amber-600" />
+              <span className="font-bold text-xs text-amber-900 uppercase tracking-wider">
+                Scheduled Callbacks Due ({queueData.scheduledCallbacks.length})
+              </span>
+            </div>
+            <span className="text-[11px] text-amber-700 font-semibold">Resurfaced for available agent</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+            {queueData.scheduledCallbacks.map((cb: Lead) => (
+              <div key={cb.id} className="bg-white border border-amber-200 rounded-xl p-3 flex flex-col justify-between shadow-2xs">
+                <div>
+                  <div className="font-bold text-xs text-slate-900">{cb.companyName}</div>
+                  <div className="text-[11px] text-slate-600">{cb.contactPerson} • {cb.phone}</div>
+                  <div className="text-[10px] text-amber-700 font-semibold mt-1 flex items-center gap-1">
+                    <Calendar size={10} />
+                    <span>{cb.callbackDay || 'Scheduled'} at {cb.callbackTime || '11:00 AM'}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCallLead(cb)}
+                  className="mt-2.5 w-full py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <PhoneCall size={12} />
+                  <span>Call Scheduled Prospect</span>
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -412,12 +547,24 @@ export default function Leads() {
                       </td>
 
                       <td className="py-3.5 px-4 font-semibold text-slate-800">
-                        {lead.contactPerson}
+                        <div>{lead.contactPerson}</div>
+                        {(lead.fleetManager || lead.ceoOwnerName) && (
+                          <div className="text-[10px] text-slate-500 font-normal">
+                            {lead.fleetManager && <span>FM: {lead.fleetManager}</span>}
+                            {lead.fleetManager && lead.ceoOwnerName && <span> • </span>}
+                            {lead.ceoOwnerName && <span>CEO: {lead.ceoOwnerName}</span>}
+                          </div>
+                        )}
                       </td>
 
                       <td className="py-3.5 px-4">
                         <div className="font-mono font-bold text-slate-800">{lead.phone}</div>
                         {lead.email && <div className="text-[11px] text-slate-500 truncate max-w-[180px]">{lead.email}</div>}
+                        {lead.poaEmail && (
+                          <div className="text-[10px] text-amber-700 font-semibold truncate max-w-[180px]" title="Point of Authority / Billing Email">
+                            POA: {lead.poaEmail}
+                          </div>
+                        )}
                       </td>
 
                       <td className="py-3.5 px-4">
@@ -542,13 +689,35 @@ export default function Leads() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Fleet Manager / Contact *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Number of Units (NOU)</label>
+              <input
+                type="number"
+                placeholder="e.g. 18"
+                value={formData.numberOfUnits}
+                onChange={(e) => setFormData({ ...formData, numberOfUnits: e.target.value })}
+                className="input-field"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Fleet Manager</label>
               <input
                 type="text"
-                required
                 placeholder="e.g. Robert Sterling"
-                value={formData.contactPerson}
-                onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+                value={formData.fleetManager}
+                onChange={(e) => setFormData({ ...formData, fleetManager: e.target.value, contactPerson: e.target.value || formData.contactPerson })}
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">CEO / Owner Name</label>
+              <input
+                type="text"
+                placeholder="e.g. David Vance"
+                value={formData.ceoOwnerName}
+                onChange={(e) => setFormData({ ...formData, ceoOwnerName: e.target.value })}
                 className="input-field"
               />
             </div>
@@ -580,7 +749,7 @@ export default function Leads() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Email / Decision Maker</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Official Email</label>
               <input
                 type="email"
                 placeholder="robert@apexlogistics.com"
@@ -590,12 +759,12 @@ export default function Leads() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Number of Units (NOU)</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">POA : Email (Billing)</label>
               <input
-                type="number"
-                placeholder="e.g. 18"
-                value={formData.numberOfUnits}
-                onChange={(e) => setFormData({ ...formData, numberOfUnits: e.target.value })}
+                type="email"
+                placeholder="invoices@apexlogistics.com"
+                value={formData.poaEmail}
+                onChange={(e) => setFormData({ ...formData, poaEmail: e.target.value })}
                 className="input-field"
               />
             </div>
@@ -742,6 +911,60 @@ export default function Leads() {
               </div>
             </div>
 
+            {/* Callback Scheduling Section (Available Agent Routing - PRD FR-9.5) */}
+            {selectedDisposition === 'CALLBACK' && (
+              <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-blue-900">
+                  <Calendar size={14} className="text-blue-600" />
+                  <span>Schedule Callback Details</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-bold text-blue-800 mb-1">Callback Date *</label>
+                    <input
+                      type="date"
+                      required
+                      value={callbackDate}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCallbackDate(val);
+                        if (val) {
+                          const [y, m, d] = val.split('-').map(Number);
+                          const dt = new Date(y, m - 1, d);
+                          const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                          setCallbackDay(days[dt.getDay()]);
+                        }
+                      }}
+                      className="w-full text-xs rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-blue-800 mb-1">Day</label>
+                    <input
+                      type="text"
+                      readOnly
+                      placeholder="e.g. Wednesday"
+                      value={callbackDay}
+                      className="w-full text-xs rounded-lg border border-blue-200 bg-blue-100/50 px-2.5 py-1.5 font-semibold text-blue-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-blue-800 mb-1">Time</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 11:00 AM"
+                      value={callbackTime}
+                      onChange={(e) => setCallbackTime(e.target.value)}
+                      className="w-full text-xs rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="text-[10px] text-blue-700 italic">
+                  💡 When this callback time arrives, the lead resurfaces at the top of the queue for the next available active agent with auto-dial.
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Disposition Notes & Pitch Feedback
@@ -772,6 +995,11 @@ export default function Leads() {
                     id: selectedDispositionLead.id,
                     disposition: selectedDisposition,
                     notes: dispositionNotes,
+                    callbackData: selectedDisposition === 'CALLBACK' ? {
+                      callbackDate: callbackDate || undefined,
+                      callbackDay: callbackDay || undefined,
+                      callbackTime: callbackTime || '11:00 AM',
+                    } : undefined,
                   });
                 }}
                 className={`btn-primary flex items-center gap-1.5 ${
