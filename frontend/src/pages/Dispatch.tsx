@@ -17,14 +17,6 @@ import { userService } from '../services/userService';
 import { api } from '../utils/api';
 import { toast } from 'sonner';
 
-const MOCK_FLEET_DRIVERS = [
-  { id: 'drv-1', name: 'Marcus Vance', phone: '+1 (416) 555-0199', status: 'AVAILABLE', vehicle: 'Van #04 (Ford Transit 350)', currentJob: 'JOB-CA-1002', location: 'Hwy 401 Eastbound (Toronto)' },
-  { id: 'drv-2', name: 'Devon Lee', phone: '+1 (416) 555-0188', status: 'AVAILABLE', vehicle: 'Rig #08 (RAM 3500 HD)', currentJob: undefined, location: 'Gardiner Expy & Spadina' },
-  { id: 'drv-3', name: 'Samir Patel', phone: '+1 (416) 555-0144', status: 'BUSY', vehicle: 'Van #02 (Sprinter High-Roof)', currentJob: 'JOB-CA-1005', location: 'QEW Westbound near Mississauga' },
-  { id: 'drv-4', name: 'Tyler Ross', phone: '+1 (416) 555-0133', status: 'BUSY', vehicle: 'Van #07 (Ford Transit)', currentJob: 'JOB-CA-1008', location: '407 ETR & Markham Rd' },
-  { id: 'drv-5', name: 'Alex Tremblay', phone: '+1 (514) 555-0122', status: 'OFFLINE', vehicle: 'Service Truck #01', currentJob: undefined, location: 'Depot (Off Shift)' },
-];
-
 interface QueueSectionProps {
   title: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -183,7 +175,7 @@ export default function Dispatch() {
         currentJob: undefined,
         location: `${country} Service Hub`,
       }))
-    : MOCK_FLEET_DRIVERS;
+    : [];
 
   const filteredDrivers = driversList.filter((drv) => {
     const matchesSearch = !search || drv.name.toLowerCase().includes(search.toLowerCase()) || drv.vehicle.toLowerCase().includes(search.toLowerCase());

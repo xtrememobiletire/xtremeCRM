@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useTenant } from './TenantContext';
 import { useAuth } from './AuthContext';
@@ -89,9 +89,18 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [incomingCall, setIncomingCall] = useState<CallEvent | null>(null);
   const [activeCall, setActiveCall] = useState<CallEvent | null>(null);
   const [incomingTransfer, setIncomingTransfer] = useState<WarmTransferEvent | null>(null);
-  const [isSoftphoneOpen, setIsSoftphoneOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [activeChatJob, setActiveChatJob] = useState<ActiveChatJob | null>(null);
+
+  const agentModeRef = useRef(agentMode);
+  const isAgentActiveRef = useRef(isAgentActive);
+  const userRef = useRef(user);
+
+  useEffect(() => {
+    agentModeRef.current = agentMode;
+    isAgentActiveRef.current = isAgentActive;
+    userRef.current = user;
+  }, [agentMode, isAgentActive, user]);
 
   const playChime = () => {
     try {
@@ -141,15 +150,15 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     s.on('connect', () => {
       setIsConnected(true);
       s.emit('dispatch:join', country);
-      if (user) {
+      if (userRef.current) {
         s.emit('auth:register', {
-          userId: user.id,
-          role: user.role,
+          userId: userRef.current.id,
+          role: userRef.current.role,
           countryCode: country,
         });
         s.emit('agent:presence', {
-          userId: user.id,
-          mode: agentMode,
+          userId: userRef.current.id,
+          mode: isAgentActiveRef.current ? agentModeRef.current : 'INACTIVE',
           countryCode: country,
         });
       }
@@ -161,7 +170,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     // Inbound phone screen pop (PRD FR-1.1: Only active when agentMode === 'INBOUND')
     s.on('call:incoming', (data: any) => {
-      if (agentMode === 'INBOUND' && isAgentActive) {
+      if (agentModeRef.current === 'INBOUND' && isAgentActiveRef.current) {
         setIncomingCall({
           callId: data.callId || `call-${Date.now()}`,
           from: data.callerNumber || data.from || '+1 (416) 555-0192',
@@ -174,7 +183,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     // Attended / Warm Transfer to Dispatcher Manager (FR-1.2, FR-9.6)
     s.on('call:transfer', (data: any) => {
-      if (['DISPATCHER', 'ADMIN'].includes(user?.role || '')) {
+      if (['DISPATCHER', 'ADMIN'].includes(userRef.current?.role || '')) {
         setIncomingTransfer({
           transferType: data.transferType || 'INBOUND_MOTORIST',
           callId: data.callId || `call-${Date.now()}`,
@@ -286,27 +295,26 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     return () => {
       s.disconnect();
     };
-  }, [country, isAgentActive, agentMode, user]);
+  }, [country, user?.id]);
 
   // Instantly synchronize presence mode changes without reconnecting
   useEffect(() => {
-    if (socket?.connected && user) {
+    if (socket?.connected && user?.id) {
       socket.emit('agent:presence', {
         userId: user.id,
-        mode: agentMode,
+        mode: isAgentActive ? agentMode : 'INACTIVE',
         countryCode: country,
       });
     }
-  }, [socket, agentMode, country, user]);
+  }, [socket, agentMode, isAgentActive, country, user?.id]);
 
-  const openSoftphone = () => setIsSoftphoneOpen(true);
-  const closeSoftphone = () => setIsSoftphoneOpen(false);
+  const openSoftphone = () => {};
+  const closeSoftphone = () => {};
 
   const answerCall = () => {
     if (incomingCall) {
       setActiveCall(incomingCall);
       setIncomingCall(null);
-      setIsSoftphoneOpen(true);
     }
   };
 
@@ -353,7 +361,6 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         region: incomingTransfer.countryCode,
         timestamp: new Date().toISOString(),
       });
-      setIsSoftphoneOpen(true);
     }
   };
 
@@ -395,7 +402,6 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       region: country,
       timestamp: new Date().toISOString(),
     });
-    setIsSoftphoneOpen(true);
     toast.success(`Dialing ${contactName ? contactName + ' (' + phoneNumber + ')' : phoneNumber}...`);
   };
 
@@ -409,7 +415,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         incomingCall,
         activeCall,
         incomingTransfer,
-        isSoftphoneOpen,
+        isSoftphoneOpen: false,
         notifications,
         unreadCount,
         activeChatJob,

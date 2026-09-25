@@ -11,7 +11,6 @@ import {
   DollarSign, 
   X, 
   LogOut,
-  CheckCircle,
   History,
   PhoneIncoming,
   PhoneOutgoing,
@@ -53,9 +52,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     ? [{ icon: Car, label: 'Member Portal', path: '/member-dashboard' }]
     : isDriver
     ? [
-        { icon: BarChart3, label: 'Dashboard', path: '/technician' },
-        { icon: CheckCircle, label: 'Orders', path: '/jobs' },
-        { icon: History, label: 'History', path: '/history' },
+        { icon: Wrench, label: 'Active Orders', path: '/technician' },
+        { icon: History, label: 'Earnings & History', path: '/history' },
       ]
     : isAccountant
     ? [
@@ -66,7 +64,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     : isDispatcher
     ? [
         { icon: Navigation, label: 'Live Dispatch', path: '/dispatch' },
-        { icon: PhoneOutgoing, label: 'Outbound Leads', path: '/outbound' },
         { icon: Wrench, label: 'Jobs & Orders', path: '/jobs' },
         { icon: Truck, label: 'Fleet Accounts', path: '/fleets' },
         { icon: Users, label: 'Customers', path: '/customers' },
@@ -85,11 +82,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         ...baseNavItems,
         ...(isAdmin
           ? [
-              { icon: PhoneIncoming, label: 'Inbound Hotline Preview', path: '/inbound' },
-              { icon: BarChart3, label: 'Technician Dashboard Preview', path: '/technician' },
-              { icon: History, label: 'Driver History Preview', path: '/history' },
-              { icon: Truck, label: 'Fleet Portal Preview', path: '/fleet-dashboard' },
-              { icon: Car, label: 'Member Portal Preview', path: '/member-dashboard' },
+              { icon: PhoneIncoming, label: 'Inbound Hotline', path: '/inbound' },
+              { icon: Truck, label: 'Fleet Portal View', path: '/fleet-dashboard' },
+              { icon: Car, label: 'Member Portal View', path: '/member-dashboard' },
             ]
           : []),
       ];
