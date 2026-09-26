@@ -27,20 +27,20 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Roadside Dispatch & Command"
-        subtitle={`Real-time operations center for ${country} Region (${currencySymbol})`}
+        title="Dashboard"
+        subtitle={`Operations overview for ${country} Region (${currencySymbol})`}
         badge={
           <span className="badge-brand inline-flex items-center gap-1">
             <Radio className="w-3 h-3 text-red-600 animate-pulse" />
-            <span>Live Regional Operations</span>
+            <span>Live</span>
           </span>
         }
         actions={
           <div className="flex items-center gap-2">
             <TimeframeDropdown value={timeframe} onChange={setTimeframe} />
-            <button type="button" onClick={() => setIsCreateOpen(true)} className="btn-primary">
+            <button type="button" onClick={() => setIsCreateOpen(true)} className="btn-primary cursor-pointer">
               <Plus size={14} />
-              <span>New Dispatch Ticket</span>
+              <span>New Job</span>
             </button>
           </div>
         }
@@ -51,11 +51,11 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
           <Card
-            title="Live Roadside Dispatch Stream"
+            title="Recent Jobs"
             icon={Wrench}
             action={
               <Link to="/jobs" className="text-xs font-semibold text-red-600 hover:text-red-700 flex items-center gap-1">
-                <span>View All Jobs</span>
+                <span>View All</span>
                 <ArrowRight size={13} />
               </Link>
             }

@@ -21,6 +21,9 @@ import { formatDate } from '../utils/date';
 import { toast } from 'sonner';
 import { api } from '../utils/api';
 import JobChatModal from '../components/dispatch/JobChatModal';
+import { useUpdateJobStatus } from '../hooks/useJobs';
+import { useSocket } from '../context/SocketContext';
+import { useEffect } from 'react';
 
 export default function TechnicianPortal() {
   const { user } = useAuth();
@@ -31,12 +34,29 @@ export default function TechnicianPortal() {
   const [cashAmountInput, setCashAmountInput] = useState('');
   const [recordingCash, setRecordingCash] = useState(false);
 
+  const { socket } = useSocket();
+  const updateStatusMutation = useUpdateJobStatus();
+
   // Fetch driver assigned jobs - strictly scoped to this driver
   const { data: jobsResponse, refetch } = useQuery({
     queryKey: ['technician-jobs', country, user?.id],
     queryFn: () => jobService.getJobs({ limit: 50, countryCode: country, driverId: user?.id }),
-    refetchInterval: 10000,
+    refetchInterval: 30000,
   });
+
+  // Socket.io instant sync for driver jobs
+  useEffect(() => {
+    if (!socket) return;
+    const handleJobUpdate = () => refetch();
+    socket.on('job:assigned', handleJobUpdate);
+    socket.on('job:status_updated', handleJobUpdate);
+    socket.on('notification:job_assigned', handleJobUpdate);
+    return () => {
+      socket.off('job:assigned', handleJobUpdate);
+      socket.off('job:status_updated', handleJobUpdate);
+      socket.off('notification:job_assigned', handleJobUpdate);
+    };
+  }, [socket, refetch]);
 
   const rawJobs = jobsResponse?.data || [];
   // Strict driver isolation: only show jobs where driverId matches current user ID
@@ -53,17 +73,23 @@ export default function TechnicianPortal() {
   // Calculate driver-only isolated metrics (NFR-4)
   const totalEarningsCents = completedJobs.reduce((sum, j) => sum + (j.repairerFeeCents || 0), 0);
 
-  const handleUpdateStatus = async (jobId: string, nextStatus: string) => {
-    try {
-      setUpdatingId(jobId);
-      await api.patch(`/jobs/${jobId}/status`, { status: nextStatus });
-      toast.success(`Status updated to ${nextStatus.replace('_', ' ')}`);
-      refetch();
-    } catch {
-      toast.error('Failed to update status');
-    } finally {
-      setUpdatingId(null);
-    }
+  const handleUpdateStatus = (jobId: string, nextStatus: string) => {
+    setUpdatingId(jobId);
+    updateStatusMutation.mutate(
+      { id: jobId, status: nextStatus },
+      {
+        onSuccess: () => {
+          toast.success(`Status updated: ${nextStatus.replace('_', ' ')}`);
+          refetch();
+        },
+        onError: () => {
+          toast.error('Failed to update status');
+        },
+        onSettled: () => {
+          setUpdatingId(null);
+        },
+      }
+    );
   };
 
   const handleRecordCash = async (e: React.FormEvent) => {
@@ -251,10 +277,10 @@ export default function TechnicianPortal() {
                     type="button"
                     disabled={updatingId === activeJob.id}
                     onClick={() => handleUpdateStatus(activeJob.id, 'EN_ROUTE')}
-                    className="btn-primary py-2.5 px-4 text-xs font-bold bg-amber-600 hover:bg-amber-700 inline-flex items-center gap-2 shadow-xs"
+                    className="btn-primary py-2 px-3.5 text-xs font-bold bg-amber-600 hover:bg-amber-700 inline-flex items-center gap-1.5 shadow-xs"
                   >
-                    <Navigation className="w-4 h-4" />
-                    <span>Accept Job & Head Out (En Route)</span>
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>En Route</span>
                   </button>
                 )}
 
@@ -263,10 +289,10 @@ export default function TechnicianPortal() {
                     type="button"
                     disabled={updatingId === activeJob.id}
                     onClick={() => handleUpdateStatus(activeJob.id, 'IN_PROGRESS')}
-                    className="btn-primary py-2.5 px-4 text-xs font-bold bg-blue-600 hover:bg-blue-700 inline-flex items-center gap-2 shadow-xs"
+                    className="btn-primary py-2 px-3.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 inline-flex items-center gap-1.5 shadow-xs"
                   >
-                    <Check className="w-4 h-4" />
-                    <span>Arrived on Scene (In Progress)</span>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Arrived</span>
                   </button>
                 )}
 
@@ -274,42 +300,49 @@ export default function TechnicianPortal() {
                   <button
                     type="button"
                     disabled={updatingId === activeJob.id}
-                    onClick={() => handleUpdateStatus(activeJob.id, 'COMPLETED')}
-                    className="btn-primary py-2.5 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 inline-flex items-center gap-2 shadow-xs"
+                    onClick={() => {
+                      if (!activeJob.totalCents || activeJob.totalCents <= 0) {
+                        toast.error('Record charges or cash collected before completing');
+                        setCashCollectedModal(activeJob);
+                        return;
+                      }
+                      handleUpdateStatus(activeJob.id, 'COMPLETED');
+                    }}
+                    className="btn-primary py-2 px-3.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 inline-flex items-center gap-1.5 shadow-xs"
                   >
-                    <CheckCircle className="w-4 h-4" />
-                    <span>Mark Job Completed</span>
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Complete Job</span>
                   </button>
                 )}
 
                 <button
                   type="button"
                   onClick={() => setCashCollectedModal(activeJob)}
-                  className="btn-secondary py-2.5 px-3 text-xs font-bold text-slate-700 hover:bg-slate-100 inline-flex items-center gap-1.5"
+                  className="btn-secondary py-2 px-3 text-xs font-bold text-slate-700 hover:bg-slate-100 inline-flex items-center gap-1.5"
                 >
-                  <DollarSign className="w-4 h-4 text-emerald-600" />
-                  <span>Record Cash Collected</span>
+                  <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Record Cash</span>
                 </button>
 
                 <button
                   type="button"
                   disabled={updatingId === activeJob.id}
                   onClick={() => {
-                    const confirmed = window.confirm('Are you sure you want to cancel this dispatch? Dispatcher will be notified.');
+                    const confirmed = window.confirm('Cancel this dispatch? Dispatcher will be notified.');
                     if (confirmed) {
                       handleUpdateStatus(activeJob.id, 'CANCELLED');
                     }
                   }}
-                  className="py-2.5 px-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer"
+                  className="py-2 px-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer"
                 >
-                  <XCircle className="w-4 h-4 text-rose-600" />
-                  <span>Cancel Dispatch</span>
+                  <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Cancel</span>
                 </button>
               </div>
 
               <div className="text-right">
-                <span className="text-[11px] font-bold text-slate-400 block">Assigned Technician Labor</span>
-                <span className="text-base font-black text-emerald-600">
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">Technician Payout</span>
+                <span className="text-sm font-black text-emerald-600">
                   {formatCurrency(centsToDollars(activeJob.repairerFeeCents || 4500), country)}
                 </span>
               </div>
@@ -317,13 +350,13 @@ export default function TechnicianPortal() {
           </div>
         </div>
       ) : (
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center space-y-3 shadow-xs">
-          <div className="w-12 h-12 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle className="w-6 h-6 text-emerald-500" />
+        <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center space-y-2 shadow-xs">
+          <div className="w-10 h-10 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+            <CheckCircle className="w-5 h-5 text-emerald-500" />
           </div>
-          <h3 className="text-base font-bold text-slate-900">All Dispatches Clear</h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            You currently have no active roadside assignments. When a dispatcher assigns a new ticket, you will receive an instant audio chime and screen alert.
+          <h3 className="text-sm font-bold text-slate-900">All Dispatches Clear</h3>
+          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            No active assignments. New roadside calls appear automatically.
           </p>
         </div>
       )}

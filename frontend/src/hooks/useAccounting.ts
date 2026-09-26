@@ -56,6 +56,7 @@ export function useReconciliationJobs(params?: {
     queryFn: () =>
       accountingService.getReconciliationJobs({
         countryCode: country,
+        status: 'COMPLETED',
         timeframe: params?.timeframe,
         search: params?.search,
         startDate: params?.startDate,

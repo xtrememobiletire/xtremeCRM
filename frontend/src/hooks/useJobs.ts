@@ -33,6 +33,7 @@ export function useCreateJob() {
     mutationFn: (payload: any) => jobService.createJob(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['technician-jobs'] });
     },
   });
 }
@@ -44,6 +45,9 @@ export function useUpdateJobStatus() {
       jobService.updateJobStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['technician-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['reconciliation-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-summary'] });
     },
   });
 }
@@ -55,6 +59,7 @@ export function useAssignDriver() {
       jobService.assignDriver(jobId, driverId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['technician-jobs'] });
     },
   });
 }

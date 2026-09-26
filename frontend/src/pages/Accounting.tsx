@@ -116,8 +116,8 @@ export default function Accounting() {
     <div className="space-y-6">
       {/* Top Header */}
       <PageHeader
-        title={accountingTab === 'reconciliation' ? 'Job Costing & Financial Reconciliation' : 'Commercial Invoices & Accounts'}
-        subtitle={`Real-time margin analysis, COGS ledger, and billing for ${regionName} (${currencySymbol})`}
+        title={accountingTab === 'reconciliation' ? 'Reconciliation' : 'Invoices'}
+        subtitle={`${regionName} (${currencySymbol})`}
         actions={
           <div className="flex items-center gap-2">
             <button
@@ -126,7 +126,7 @@ export default function Accounting() {
                 handleRefresh();
                 refetchInvoices();
               }}
-              className="btn-secondary px-2.5 py-2"
+              className="btn-secondary px-2.5 py-2 cursor-pointer"
               title="Refresh ledger data"
             >
               <RefreshCw size={14} className={isSummaryLoading || isJobsLoading || isInvoicesLoading ? 'animate-spin' : ''} />
@@ -136,10 +136,10 @@ export default function Accounting() {
               <button
                 type="button"
                 onClick={handleOpenNewExpense}
-                className="btn-primary inline-flex items-center gap-1.5"
+                className="btn-primary inline-flex items-center gap-1.5 cursor-pointer"
               >
                 <Plus size={14} />
-                <span>Record Job Expense / Part</span>
+                <span>Add Expense</span>
               </button>
             )}
           </div>
@@ -151,27 +151,27 @@ export default function Accounting() {
         <button
           type="button"
           onClick={() => setAccountingTab('reconciliation')}
-          className={`py-2.5 px-4 font-bold text-xs border-b-2 flex items-center gap-2 transition ${
+          className={`py-2.5 px-4 font-bold text-xs border-b-2 flex items-center gap-2 transition cursor-pointer ${
             accountingTab === 'reconciliation'
               ? 'border-red-600 text-red-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <TrendingUp className="w-4 h-4" />
-          <span>Job Costing & Reconciliation</span>
+          <span>Reconciliation</span>
         </button>
 
         <button
           type="button"
           onClick={() => setAccountingTab('invoices')}
-          className={`py-2.5 px-4 font-bold text-xs border-b-2 flex items-center gap-2 transition ${
+          className={`py-2.5 px-4 font-bold text-xs border-b-2 flex items-center gap-2 transition cursor-pointer ${
             accountingTab === 'invoices'
               ? 'border-red-600 text-red-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <FileText className="w-4 h-4" />
-          <span>Invoices & Commercial Accounts</span>
+          <span>Invoices</span>
           {invoices.length > 0 && (
             <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-700">
               {invoices.length}
@@ -263,10 +263,10 @@ export default function Accounting() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-sm text-slate-900">
-                  Job Cost Breakdown & Reconciliation
+                  Completed Jobs — Expense Audit
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Click any row to audit wholesale materials (TC), technician fee (DC), and incidental notes.
+                  Click a row to audit expenses and approve technician payouts.
                 </p>
               </div>
               <span className="text-xs font-semibold text-slate-500">

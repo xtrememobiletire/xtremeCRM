@@ -78,8 +78,8 @@ export default function Jobs() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title={isDriver ? "Orders" : "Jobs & Dispatch Work Orders"}
-        subtitle={isDriver ? "View and manage your active roadside service dispatches" : "Manage customer intake, roadside emergency dispatches, and work order lifecycle"}
+        title={isDriver ? "Orders" : "Jobs"}
+        subtitle={isDriver ? "Active service dispatches" : "Manage roadside work orders"}
         actions={
           <div className="flex items-center gap-2">
             <button
@@ -97,7 +97,7 @@ export default function Jobs() {
                 className="btn-primary cursor-pointer"
               >
                 <Plus size={14} />
-                <span>Create Job Ticket</span>
+                <span>New Job</span>
               </button>
             )}
           </div>
@@ -115,7 +115,7 @@ export default function Jobs() {
           <EmptyState
             icon={CheckCircle2}
             title="No active orders"
-            description="You currently have no open roadside service dispatches. Completed jobs can be found in your History."
+            description="No open roadside dispatches."
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">

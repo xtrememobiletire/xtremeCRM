@@ -74,6 +74,7 @@ export interface ReconciliationResponse {
 export const accountingService = {
   async getReconciliationJobs(params?: {
     countryCode?: string;
+    status?: string;
     timeframe?: string;
     search?: string;
     startDate?: string;

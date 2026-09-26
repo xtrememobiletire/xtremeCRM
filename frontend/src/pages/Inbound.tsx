@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
+import { Sparkles } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import InboundIntakeForm from '../components/pages/inbound/InboundIntakeForm';
 import InboundCallStation, { type CallLogEntry } from '../components/pages/inbound/InboundCallStation';
 import { useTenant } from '../context/TenantContext';
 import { useSocket } from '../context/SocketContext';
 import { jobService } from '../services/jobService';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { toast } from 'sonner';
-import { Sparkles } from 'lucide-react';
 
 export default function Inbound() {
   const { country } = useTenant();
@@ -19,7 +20,7 @@ export default function Inbound() {
     simulateIncomingCall 
   } = useSocket();
 
-  // Intake Form State (Sequential)
+  // Intake Form State
   const [callerPhone, setCallerPhone] = useState('');
   const [callerName, setCallerName] = useState('');
   const [leadSource, setLeadSource] = useState('DIRECT_CALL');
@@ -32,13 +33,13 @@ export default function Inbound() {
   const [notes, setNotes] = useState('');
   const [isProvisionAccount, setIsProvisionAccount] = useState(true);
 
-  // Call & Telephony State
+  // Telephony & Call State
   const [callDuration, setCallDuration] = useState(0);
   const [isTransferring, setIsTransferring] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
   const [callLogs, setCallLogs] = useState<CallLogEntry[]>([]);
 
-  // Auto-populate caller phone & name on incoming call pop
+  // Synchronize incoming caller into form when call pops
   useEffect(() => {
     if (!incomingCall) return;
     const timer = setTimeout(() => {
@@ -92,7 +93,7 @@ export default function Inbound() {
         ...prev,
       ]);
 
-      toast.success('Call transferred to Dispatcher Manager!');
+      toast.success('Call transferred to Dispatcher Manager');
       endCall();
     } catch {
       toast.error('Failed to initiate warm transfer');
@@ -101,10 +102,10 @@ export default function Inbound() {
     }
   };
 
-  // Direct Book Job Ticket into Dispatch Queue (No Money Specified)
+  // Direct Book Job Ticket into Dispatch Queue
   const handleDirectBookJob = async () => {
     if (!callerPhone || !serviceAddress) {
-      toast.error('Please enter caller phone and breakdown address');
+      toast.error('Caller phone and breakdown address are required');
       return;
     }
     setIsBooking(true);
@@ -132,14 +133,13 @@ export default function Inbound() {
           callerName: callerName || 'Roadside Motorist',
           time: 'Just now',
           service: selectedService,
-          disposition: 'Job Ticket Created',
+          disposition: 'Booked Direct',
           transferredToDm: false,
         },
         ...prev,
       ]);
 
-      toast.success('Roadside job created and queued for dispatch!');
-      // Reset form after successful booking
+      toast.success('Job ticket created & dispatched');
       setCallerPhone('');
       setCallerName('');
       setServiceAddress('');
@@ -154,7 +154,7 @@ export default function Inbound() {
     }
   };
 
-  // Quick Dispositions for Non-Booking Calls
+  // Quick Dispositions
   const handleQuickDisposition = (disp: string) => {
     if (!callerPhone && !activeCall && !incomingCall) {
       toast.info('No active call to disposition');
@@ -172,7 +172,7 @@ export default function Inbound() {
       },
       ...prev,
     ]);
-    toast.info(`Call dispositioned as: ${disp}`);
+    toast.info(`Call logged: ${disp}`);
     endCall();
   };
 
@@ -182,31 +182,41 @@ export default function Inbound() {
     setVehicleMakeModel('2022 Ford F-150');
     setTireSize('275/65R18');
     setSelectedService('Tire Repair (plug)');
-    toast.info('Simulated motorist call incoming!');
+    toast.info('Simulated call incoming');
   };
 
+  // Keyboard Shortcuts for Telephony
+  useKeyboardShortcuts({
+    'Alt+t': () => handleWarmTransferToDm(),
+    'Alt+w': () => handleQuickDisposition('Wrong Number'),
+    'Alt+p': () => handleQuickDisposition('Price Shopper'),
+    'Alt+s': () => handleQuickDisposition('Spam'),
+    'Escape': () => {
+      if (activeCall || incomingCall) endCall();
+    },
+  });
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <PageHeader
-        title="Inbound Roadside Hotline"
-        subtitle={`Live motorist call intake, sequential ticket creation & dispatch coordination (${country} Region)`}
+        title="Inbound Hotline"
+        subtitle={`Live call intake & dispatch triage (${country})`}
         actions={
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleSimulateCall}
-              className="btn-secondary text-xs px-3 py-2 cursor-pointer flex items-center gap-1.5 shadow-2xs"
+              className="btn-primary py-1.5 px-3 text-xs cursor-pointer flex items-center gap-1.5 shadow-2xs"
             >
-              <Sparkles size={14} className="text-amber-500" />
-              <span>⚡ Test Incoming Call</span>
+              <Sparkles size={14} />
+              <span>Simulate Call</span>
             </button>
           </div>
         }
       />
 
-      {/* Main Grid: Sequential Form (Left 2 Cols) + Live Call Station (Right 1 Col) */}
+      {/* Main Grid: Funnel Stepper Intake Form (Left 2 Cols) + Call Station (Right 1 Col) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
-        {/* Left 2 Columns: Sequential Intake Form */}
         <div className="lg:col-span-2">
           <InboundIntakeForm
             callerPhone={callerPhone}
@@ -236,7 +246,6 @@ export default function Inbound() {
           />
         </div>
 
-        {/* Right 1 Column: Telephony Call Station & Shift Log */}
         <div className="lg:col-span-1">
           <InboundCallStation
             incomingCall={incomingCall}
