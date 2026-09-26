@@ -5,8 +5,6 @@ import {
   Navigation, 
   MessageSquare, 
   CheckCircle, 
-  Clock, 
-  DollarSign, 
   Disc, 
   ExternalLink, 
   XCircle,
@@ -35,12 +33,12 @@ export default function TechnicianPortal() {
   const { socket } = useSocket();
   const updateStatusMutation = useUpdateJobStatus();
 
-  // Fetch driver assigned jobs - strictly scoped to this driver without country restriction
+  // Fetch driver assigned jobs - strictly scoped to this driver without country restriction or background polling
   const { data: jobsResponse, refetch } = useQuery({
     queryKey: ['technician-jobs', user?.id],
     queryFn: () => jobService.getJobs({ limit: 10, driverId: user?.id }),
-    staleTime: 5000,
-    refetchInterval: 15000,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
   });
 
   // Socket.io instant sync for driver jobs
@@ -77,9 +75,6 @@ export default function TechnicianPortal() {
       }
     }
   }, [activeJob?.id, activeJob?.status]);
-
-  // Calculate driver-only isolated metrics (NFR-4)
-  const totalEarningsCents = completedJobs.reduce((sum, j) => sum + (j.repairerFeeCents || 0), 0);
 
   const handleUpdateStatus = (jobId: string, nextStatus: string, cashAmountCents?: number) => {
     setUpdatingId(jobId);
@@ -130,40 +125,6 @@ export default function TechnicianPortal() {
         >
           <span>Refresh Queue</span>
         </button>
-      </div>
-
-      {/* Driver Performance Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Current Assignment</span>
-            <Clock className="w-4 h-4 text-emerald-600" />
-          </div>
-          <p className="text-2xl font-black text-slate-900">{activeJob ? 'Active Work Order' : 'Standing By'}</p>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {activeJob ? `Order #${activeJob.jobCode || activeJob.jobNumber}` : 'Ready for next dispatch'}
-          </p>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Completed Today</span>
-            <CheckCircle className="w-4 h-4 text-emerald-500" />
-          </div>
-          <p className="text-2xl font-black text-slate-900">{completedJobs.length}</p>
-          <p className="text-xs text-slate-500 mt-0.5">Resolved service calls</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Driver Compensation</span>
-            <DollarSign className="w-4 h-4 text-emerald-600" />
-          </div>
-          <p className="text-2xl font-black text-emerald-600">
-            {formatCurrency(centsToDollars(totalEarningsCents), country)}
-          </p>
-          <p className="text-xs text-slate-500 mt-0.5">Direct technician payout</p>
-        </div>
       </div>
 
       {/* Primary Active Job Card - Modern High-End Styling */}
