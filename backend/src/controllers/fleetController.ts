@@ -218,9 +218,44 @@ export const fleetController = {
   async updateFleet(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
+      const {
+        fleetCode,
+        name,
+        companyName,
+        contactPerson,
+        contactName,
+        phone,
+        email,
+        poaEmail,
+        fleetManager,
+        ceoOwnerName,
+        address,
+        website,
+        countryCode,
+        status,
+        contractSignedAt,
+        virtualAssistantId,
+      } = req.body;
+
+      const data: any = {};
+      if (fleetCode !== undefined) data.fleetCode = fleetCode;
+      if (name || companyName) data.name = (name || companyName).trim();
+      if (contactPerson || contactName) data.contactPerson = (contactPerson || contactName).trim();
+      if (phone !== undefined) data.phone = phone.trim();
+      if (email !== undefined) data.email = email?.trim() || null;
+      if (poaEmail !== undefined) data.poaEmail = poaEmail?.trim() || null;
+      if (fleetManager !== undefined) data.fleetManager = fleetManager?.trim() || null;
+      if (ceoOwnerName !== undefined) data.ceoOwnerName = ceoOwnerName?.trim() || null;
+      if (address !== undefined) data.address = address?.trim() || null;
+      if (website !== undefined) data.website = website?.trim() || null;
+      if (countryCode !== undefined) data.countryCode = countryCode;
+      if (status !== undefined) data.status = status;
+      if (contractSignedAt !== undefined) data.contractSignedAt = contractSignedAt;
+      if (virtualAssistantId !== undefined) data.virtualAssistantId = virtualAssistantId || null;
+
       const updated = await prisma.fleet.update({
         where: { id },
-        data: req.body,
+        data,
       });
 
       return sendSuccess(res, updated, 'Fleet updated successfully');

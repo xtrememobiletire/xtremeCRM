@@ -696,14 +696,17 @@ export const jobController = {
 
       // Store as a job record with disposition vehicle for analytics
       const jobCode = `DSP-${countryCode || 'CA'}-${Math.floor(10000 + Math.random() * 90000)}`;
+      const validDispositions = ['BOOKED', 'RELEVANT_NOT_CONVERTED', 'WRONG_NUMBER', 'IRRELEVANT_SERVICE', 'CANCELLED_BY_CUSTOMER'];
+      const resolvedDisp = validDispositions.includes(disposition) ? disposition : 'RELEVANT_NOT_CONVERTED';
+
       const job = await prisma.job.create({
         data: {
           jobCode,
           countryCode: countryCode || 'CA',
           currency: countryCode === 'US' ? 'USD' : countryCode === 'UK' ? 'GBP' : 'CAD',
-          recipientPhone: callerPhone,
+          recipientPhone: callerPhone || undefined,
           serviceAddress: 'N/A — Disposition Only',
-          disposition: disposition || 'RNC',
+          disposition: resolvedDisp,
           problemNotes: reason || undefined,
           source: 'DIRECT_CALL',
           urgency: 'STANDARD',
