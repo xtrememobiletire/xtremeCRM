@@ -52,6 +52,7 @@ export const jobController = {
       const userId = (req.user as any)?.id;
       if (userRole === 'DRIVER') {
         where.driverId = userId;
+        delete where.countryCode;
       } else if (userRole === 'FLEET_MANAGER') {
         const fleet = await prisma.fleet.findFirst({ where: { managerUserId: userId } });
         if (fleet) where.fleetId = fleet.id;
@@ -372,10 +373,17 @@ export const jobController = {
       if (urgency) updateData.urgency = urgency;
       if (status === 'ARRIVED') updateData.arrivedAt = new Date();
       if (status === 'COMPLETED') {
+        if (effectiveCashCents <= 0 && (!job.totalCents || job.totalCents <= 0)) {
+          return sendError(res, 'Payment amount or cash collected on scene is required to complete this job', 400);
+        }
         updateData.completedAt = new Date();
         if (effectiveCashCents > 0) {
           updateData.paymentMethod = 'CASH';
           updateData.paymentStatus = 'PAID_PENDING_VERIFICATION';
+          if (!job.totalCents || job.totalCents === 0) {
+            updateData.totalCents = effectiveCashCents;
+            updateData.subtotalCents = effectiveCashCents;
+          }
         }
       }
 
