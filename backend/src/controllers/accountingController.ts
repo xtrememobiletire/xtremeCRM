@@ -17,7 +17,7 @@ export const accountingController = {
    */
   async getAccountingSummary(req: Request, res: Response) {
     try {
-      const countryCode = (req.query.countryCode as any) || req.countryCode || 'CA';
+      const countryCode = (req.query.countryCode as any) || req.countryCode;
       const { startDate, endDate, timeframe } = req.query;
 
       const dateFilter: any = {};
@@ -51,9 +51,11 @@ export const accountingController = {
       }
 
       const where: any = {
-        countryCode,
         ...(Object.keys(dateFilter).length ? { createdAt: dateFilter } : {}),
       };
+      if (countryCode && countryCode !== 'ALL') {
+        where.countryCode = countryCode;
+      }
 
       const jobs = await prisma.job.findMany({
         where,
@@ -130,7 +132,7 @@ export const accountingController = {
    */
   async getReconciliationJobs(req: Request, res: Response) {
     try {
-      const countryCode = (req.query.countryCode as any) || req.countryCode || 'CA';
+      const countryCode = (req.query.countryCode as any) || req.countryCode;
       const { startDate, endDate, timeframe, search } = req.query;
       const pageParam = req.query.page ? Number(req.query.page) : 1;
       const limitParam = req.query.limit ? Number(req.query.limit) : 50;
@@ -168,10 +170,12 @@ export const accountingController = {
       }
 
       const where: any = {
-        countryCode,
         status: 'COMPLETED',
         ...(Object.keys(dateFilter).length ? { createdAt: dateFilter } : {}),
       };
+      if (countryCode && countryCode !== 'ALL') {
+        where.countryCode = countryCode;
+      }
 
       if (search) {
         where.OR = [
@@ -240,13 +244,16 @@ export const accountingController = {
         const otherExpenseCents = j.otherExpenseCents || 0;
         const totalCostCents = materialCostCents + repairerFeeCents + otherExpenseCents;
         const netProfitCents = revenueCents - totalCostCents;
-        const itPlatformFeeCents = j.itPlatformFeeCents || (j.countryCode === 'CA' ? 150 : 100);
-        const netAfterItRoyaltyCents = netProfitCents - itPlatformFeeCents;
         const marginPercent = revenueCents > 0 ? (netProfitCents / revenueCents) * 100 : 0;
+        const currencySymbol = j.countryCode === 'UK' ? '£' : j.countryCode === 'CA' ? 'CA$' : '$';
+        const currency = j.currency || (j.countryCode === 'UK' ? 'GBP' : j.countryCode === 'CA' ? 'CAD' : 'USD');
 
         return {
           id: j.id,
-          jobNumber: j.jobCode,
+          jobNumber: j.jobCode || `JOB-${j.countryCode}-${j.id.slice(0, 5).toUpperCase()}`,
+          countryCode: j.countryCode,
+          currency,
+          currencySymbol,
           customerName,
           customer: j.customer,
           vehicle: j.vehicle,
@@ -259,9 +266,7 @@ export const accountingController = {
           repairerFeeCents,
           otherExpenseCents,
           expenseNotes: j.expenseNotes,
-          itPlatformFeeCents,
           profitCents: netProfitCents,
-          netAfterItRoyaltyCents,
           marginPercent: Math.round(marginPercent * 10) / 10,
           paymentStatus: j.paymentStatus,
           paymentMethod: j.paymentMethod,
@@ -456,6 +461,64 @@ export const accountingController = {
       return sendSuccess(res, updated, 'Material receipt uploaded successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Admin-Only: Developer / IT Sector Profit Counters
+   * Tracks CA (CA$1.50/job), US ($1.00/job), UK (£1.00/job)
+   */
+  async getDeveloperProfit(req: Request, res: Response) {
+    try {
+      const userRole = (req.user as any)?.role;
+      if (userRole !== 'ADMIN') {
+        return sendError(res, 'Unauthorized: Access restricted to System Administrators only', 403);
+      }
+
+      const [caCompleted, usCompleted, ukCompleted] = await Promise.all([
+        prisma.job.count({ where: { status: 'COMPLETED', countryCode: 'CA' } }),
+        prisma.job.count({ where: { status: 'COMPLETED', countryCode: 'US' } }),
+        prisma.job.count({ where: { status: 'COMPLETED', countryCode: 'UK' } }),
+      ]);
+
+      const caRateCents = 150; // CA$1.50
+      const usRateCents = 100; // $1.00
+      const ukRateCents = 100; // £1.00
+
+      const profitData = {
+        canada: {
+          countryCode: 'CA',
+          currency: 'CAD',
+          currencySymbol: 'CA$',
+          completedDispatches: caCompleted,
+          rateCents: caRateCents,
+          totalProfitCents: caCompleted * caRateCents,
+          formattedProfit: `CA$${((caCompleted * caRateCents) / 100).toFixed(2)}`,
+        },
+        unitedStates: {
+          countryCode: 'US',
+          currency: 'USD',
+          currencySymbol: '$',
+          completedDispatches: usCompleted,
+          rateCents: usRateCents,
+          totalProfitCents: usCompleted * usRateCents,
+          formattedProfit: `$${((usCompleted * usRateCents) / 100).toFixed(2)}`,
+        },
+        unitedKingdom: {
+          countryCode: 'UK',
+          currency: 'GBP',
+          currencySymbol: '£',
+          completedDispatches: ukCompleted,
+          rateCents: ukRateCents,
+          totalProfitCents: ukCompleted * ukRateCents,
+          formattedProfit: `£${((ukCompleted * ukRateCents) / 100).toFixed(2)}`,
+        },
+        totalDispatches: caCompleted + usCompleted + ukCompleted,
+      };
+
+      return sendSuccess(res, profitData);
+    } catch (err: any) {
+      return sendError(res, err.message);
     }
   },
 };

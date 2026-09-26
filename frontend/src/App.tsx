@@ -26,6 +26,7 @@ const History = lazy(() => import('./pages/History'));
 const Leads = lazy(() => import('./pages/Leads'));
 const Inbound = lazy(() => import('./pages/Inbound'));
 const VaUpload = lazy(() => import('./pages/VaUpload'));
+const DeveloperProfit = lazy(() => import('./pages/DeveloperProfit'));
 
 function getRoleHome(role?: string) {
   switch (role) {
@@ -139,6 +140,7 @@ function AppRoutes() {
           <Route path="/inbound" element={<Inbound />} />
           <Route path="/outbound" element={<Leads />} />
           <Route path="/va-upload" element={<VaUpload />} />
+          <Route path="/developer-profit" element={<DeveloperProfit />} />
           <Route path="/leads" element={<Navigate to="/outbound" replace />} />
         </Route>
 

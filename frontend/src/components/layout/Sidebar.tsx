@@ -14,7 +14,8 @@ import {
   History,
   PhoneIncoming,
   PhoneOutgoing,
-  UploadCloud
+  UploadCloud,
+  Shield
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -88,6 +89,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
               { icon: History, label: 'History Preview', path: '/history' },
               { icon: Truck, label: 'Fleet Preview', path: '/fleet-dashboard' },
               { icon: Car, label: 'Member Preview', path: '/member-dashboard' },
+              { icon: Shield, label: 'Developer Profit', path: '/developer-profit' },
             ]
           : []),
       ];

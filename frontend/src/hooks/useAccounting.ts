@@ -29,19 +29,21 @@ export function useAccounting() {
   };
 }
 
-export function useAccountingSummary(params?: { timeframe?: string; startDate?: string; endDate?: string }) {
+export function useAccountingSummary(params?: { countryCode?: string; timeframe?: string; startDate?: string; endDate?: string }) {
   const { country } = useTenant();
+  const effectiveCountry = params?.countryCode || country;
 
   return useQuery({
-    queryKey: ['accounting-summary', country, params?.timeframe, params?.startDate, params?.endDate],
+    queryKey: ['accounting-summary', effectiveCountry, params?.timeframe, params?.startDate, params?.endDate],
     queryFn: () => accountingService.getAccountingSummary({
-      countryCode: country,
+      countryCode: effectiveCountry,
       timeframe: params?.timeframe,
     }),
   });
 }
 
 export function useReconciliationJobs(params?: {
+  countryCode?: string;
   timeframe?: string;
   search?: string;
   startDate?: string;
@@ -50,12 +52,13 @@ export function useReconciliationJobs(params?: {
   limit?: number;
 }) {
   const { country } = useTenant();
+  const effectiveCountry = params?.countryCode || country;
 
   return useQuery({
-    queryKey: ['reconciliation-jobs', country, params?.timeframe, params?.search, params?.page],
+    queryKey: ['reconciliation-jobs', effectiveCountry, params?.timeframe, params?.search, params?.page],
     queryFn: () =>
       accountingService.getReconciliationJobs({
-        countryCode: country,
+        countryCode: effectiveCountry,
         status: 'COMPLETED',
         timeframe: params?.timeframe,
         search: params?.search,
@@ -64,6 +67,14 @@ export function useReconciliationJobs(params?: {
         page: params?.page,
         limit: params?.limit,
       }),
+  });
+}
+
+export function useDeveloperProfit() {
+  return useQuery({
+    queryKey: ['developer-profit'],
+    queryFn: () => accountingService.getDeveloperProfit(),
+    staleTime: 10000,
   });
 }
 

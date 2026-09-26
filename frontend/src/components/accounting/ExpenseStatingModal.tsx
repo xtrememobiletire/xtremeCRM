@@ -1,11 +1,9 @@
-import { useState, useEffect } from 'react';
-import { TrendingUp, Check, Paperclip, Upload, FileCheck } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Check, Upload } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { useCreateExpense } from '../../hooks/useAccounting';
-import { useTenant } from '../../context/TenantContext';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { accountingService, type JobReconciliationRecord } from '../../services/accountingService';
-import { BACKEND_ROOT_URL } from '../../utils/api';
 import { toast } from 'sonner';
 
 interface ExpenseStatingModalProps {
@@ -21,64 +19,82 @@ export default function ExpenseStatingModal({
   job,
   completedJobs = [],
 }: ExpenseStatingModalProps) {
-  const { currencySymbol, country } = useTenant();
   const createExpenseMutation = useCreateExpense();
 
   const [selectedJobId, setSelectedJobId] = useState<string>('');
   const [materialCost, setMaterialCost] = useState<string>('');
-  const [repairerFee, setRepairerFee] = useState<string>('');
   const [otherExpense, setOtherExpense] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-
-  // Multer File Upload State (FR-6.5)
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [materialReceiptFile, setMaterialReceiptFile] = useState<File | null>(null);
-  const [uploadingReceipts, setUploadingReceipts] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Field focus refs for keyboard navigation
+  const materialInputRef = useRef<HTMLInputElement>(null);
+  const otherInputRef = useRef<HTMLInputElement>(null);
+  const notesInputRef = useRef<HTMLInputElement>(null);
 
   // Determine active job
   const activeJob = job || completedJobs.find((j) => j.id === selectedJobId) || null;
+
+  // Authentic currency symbol from the job's country
+  const jobCurrencySymbol = activeJob?.currencySymbol || 
+    (activeJob?.countryCode === 'UK' ? '£' : activeJob?.countryCode === 'CA' ? 'CA$' : '$');
+  const jobCountryFlag = activeJob?.countryCode === 'UK' ? '🇬🇧' : activeJob?.countryCode === 'US' ? '🇺🇸' : '🇨🇦';
 
   useEffect(() => {
     if (job) {
       setSelectedJobId(job.id);
       setMaterialCost(job.materialCostCents ? (job.materialCostCents / 100).toFixed(2) : '');
-      setRepairerFee(job.repairerFeeCents ? (job.repairerFeeCents / 100).toFixed(2) : '');
       setOtherExpense(job.otherExpenseCents ? (job.otherExpenseCents / 100).toFixed(2) : '');
       setNotes(job.expenseNotes || '');
     } else if (completedJobs.length > 0 && !selectedJobId) {
       const first = completedJobs[0];
       setSelectedJobId(first.id);
       setMaterialCost(first.materialCostCents ? (first.materialCostCents / 100).toFixed(2) : '');
-      setRepairerFee(first.repairerFeeCents ? (first.repairerFeeCents / 100).toFixed(2) : '');
       setOtherExpense(first.otherExpenseCents ? (first.otherExpenseCents / 100).toFixed(2) : '');
       setNotes(first.expenseNotes || '');
     }
   }, [job, isOpen, completedJobs]);
 
-  const handleJobSelectChange = (newJobId: string) => {
-    setSelectedJobId(newJobId);
-    const found = completedJobs.find((j) => j.id === newJobId);
-    if (found) {
-      setMaterialCost(found.materialCostCents ? (found.materialCostCents / 100).toFixed(2) : '');
-      setRepairerFee(found.repairerFeeCents ? (found.repairerFeeCents / 100).toFixed(2) : '');
-      setOtherExpense(found.otherExpenseCents ? (found.otherExpenseCents / 100).toFixed(2) : '');
-      setNotes(found.expenseNotes || '');
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => materialInputRef.current?.focus(), 150);
     }
-  };
+  }, [isOpen]);
 
   // Live computations
   const revenueCents = activeJob?.revenueCents || 0;
   const tcCents = Math.round((parseFloat(materialCost) || 0) * 100);
-  const dcCents = Math.round((parseFloat(repairerFee) || 0) * 100);
+  const dcCents = activeJob?.repairerFeeCents || 0; // Technician labor payout auto-pulled from dispatch
   const otherCents = Math.round((parseFloat(otherExpense) || 0) * 100);
   const totalCostCents = tcCents + dcCents + otherCents;
   const netProfitCents = revenueCents - totalCostCents;
-  const itFeeCents = activeJob?.itPlatformFeeCents || (country === 'CA' ? 150 : 100);
-  const netAfterItCents = netProfitCents - itFeeCents;
   const marginPercent = revenueCents > 0 ? (netProfitCents / revenueCents) * 100 : 0;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Keyboard navigation: Alt+ArrowDown, Alt+ArrowUp, Alt+Enter
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.altKey && e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (document.activeElement === materialInputRef.current) {
+        otherInputRef.current?.focus();
+      } else if (document.activeElement === otherInputRef.current) {
+        notesInputRef.current?.focus();
+      }
+    } else if (e.altKey && e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (document.activeElement === notesInputRef.current) {
+        otherInputRef.current?.focus();
+      } else if (document.activeElement === otherInputRef.current) {
+        materialInputRef.current?.focus();
+      }
+    } else if (e.altKey && e.key === 'Enter') {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     const targetJobId = activeJob?.id || selectedJobId;
 
     if (!targetJobId) {
@@ -87,7 +103,7 @@ export default function ExpenseStatingModal({
     }
 
     try {
-      setUploadingReceipts(true);
+      setIsSubmitting(true);
       await createExpenseMutation.mutateAsync({
         jobId: targetJobId,
         materialCostCents: tcCents,
@@ -99,16 +115,13 @@ export default function ExpenseStatingModal({
       if (receiptFile) {
         await accountingService.uploadReceipt(targetJobId, receiptFile);
       }
-      if (materialReceiptFile) {
-        await accountingService.uploadMaterialReceipt(targetJobId, materialReceiptFile);
-      }
 
-      toast.success(`Expenses and audit receipts saved for ${activeJob?.jobNumber || 'Job'}`);
+      toast.success(`COGS expenses saved for ${activeJob?.jobNumber || 'Job'}`);
       onClose();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to state job expenses or upload receipts');
+      toast.error(err.response?.data?.message || 'Failed to record job expenses');
     } finally {
-      setUploadingReceipts(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -116,10 +129,10 @@ export default function ExpenseStatingModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Record / State Job Expense (COGS)"
-      maxWidth="max-w-lg"
+      title="Record Job Expenses & COGS"
+      maxWidth="max-w-xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="space-y-5">
         {/* Job Selector if not preselected */}
         {!job && completedJobs.length > 0 && (
           <div>
@@ -128,244 +141,223 @@ export default function ExpenseStatingModal({
             </label>
             <select
               value={selectedJobId}
-              onChange={(e) => handleJobSelectChange(e.target.value)}
-              className="select-base font-mono text-xs w-full"
+              onChange={(e) => {
+                setSelectedJobId(e.target.value);
+                const found = completedJobs.find((j) => j.id === e.target.value);
+                if (found) {
+                  setMaterialCost(found.materialCostCents ? (found.materialCostCents / 100).toFixed(2) : '');
+                  setOtherExpense(found.otherExpenseCents ? (found.otherExpenseCents / 100).toFixed(2) : '');
+                  setNotes(found.expenseNotes || '');
+                }
+              }}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
               required
             >
               {completedJobs.map((j) => (
                 <option key={j.id} value={j.id}>
-                  {j.jobNumber} — {j.customerName} ({formatCurrency(centsToDollars(j.revenueCents), currencySymbol)})
+                  {j.countryCode === 'UK' ? '🇬🇧' : j.countryCode === 'US' ? '🇺🇸' : '🇨🇦'} {j.jobNumber} — {j.customerName} ({formatCurrency(centsToDollars(j.revenueCents), j.currencySymbol || '$')})
                 </option>
               ))}
             </select>
           </div>
         )}
 
-        {/* Selected Job Header Summary */}
+        {/* Selected Job Header Summary Card */}
         {activeJob && (
-          <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="font-mono font-black text-red-600 text-sm">{activeJob.jobNumber}</span>
-                <p className="text-xs font-bold text-slate-800 mt-0.5">{activeJob.customerName}</p>
-                {activeJob.vehicle && (
-                  <p className="text-[11px] text-slate-500">
-                    {activeJob.vehicle.year} {activeJob.vehicle.make} {activeJob.vehicle.model} •{' '}
-                    <span className="font-mono font-semibold">{activeJob.vehicle.licensePlate}</span>
-                  </p>
-                )}
+          <div className="bg-slate-900 text-white rounded-2xl p-4.5 border border-slate-800 space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{jobCountryFlag}</span>
+                <div>
+                  <span className="font-mono font-bold text-sm text-emerald-400">
+                    {activeJob.jobNumber}
+                  </span>
+                  <p className="text-xs font-semibold text-slate-200 mt-0.5">{activeJob.customerName}</p>
+                </div>
               </div>
+
               <div className="text-right">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Gross Revenue</span>
-                <span className="text-base font-mono font-black text-slate-900">
-                  {formatCurrency(centsToDollars(revenueCents), currencySymbol)}
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Billed Revenue
+                </span>
+                <span className="text-base font-black font-mono text-emerald-400">
+                  {formatCurrency(centsToDollars(activeJob.revenueCents), jobCurrencySymbol)}
                 </span>
               </div>
             </div>
+
+            {activeJob.vehicle && (
+              <p className="text-[11px] text-slate-400 pt-1 border-t border-slate-800">
+                Vehicle: {activeJob.vehicle.year} {activeJob.vehicle.make} {activeJob.vehicle.model} • Tire: {activeJob.vehicle.tireSize || 'Standard'}
+              </p>
+            )}
           </div>
         )}
 
-        {/* Input Fields */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-bold text-slate-700 block">
-              Material Cost (TC) ({currencySymbol})
+        {/* Sequential Field 1: Material / Tire Purchase Cost */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              1. Material & Tire Purchase Cost ({jobCurrencySymbol}) *
             </label>
-            <p className="text-[10px] text-slate-400 mb-1">Wholesale tire, rim & parts</p>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">
-                {currencySymbol}
-              </span>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={materialCost}
-                onChange={(e) => setMaterialCost(e.target.value)}
-                placeholder="0.00"
-                className="input-base pl-7 font-mono font-bold text-sm"
-              />
-            </div>
+            <span className="text-[10px] text-slate-400">Alt+↓ to next</span>
           </div>
-
-          <div>
-            <label className="text-xs font-bold text-slate-700 block">
-              Repairer Fee (DC) ({currencySymbol})
-            </label>
-            <p className="text-[10px] text-slate-400 mb-1">Technician labor payout</p>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">
-                {currencySymbol}
-              </span>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={repairerFee}
-                onChange={(e) => setRepairerFee(e.target.value)}
-                placeholder="0.00"
-                className="input-base pl-7 font-mono font-bold text-sm"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <label className="text-xs font-bold text-slate-700 block">
-            Other Expenses ({currencySymbol})
-          </label>
-          <p className="text-[10px] text-slate-400 mb-1">Incidentals (towing fee, tire disposal, tolls)</p>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">
-              {currencySymbol}
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-bold text-sm">
+              {jobCurrencySymbol}
             </span>
             <input
+              ref={materialInputRef}
               type="number"
               step="0.01"
               min="0"
-              value={otherExpense}
-              onChange={(e) => setOtherExpense(e.target.value)}
               placeholder="0.00"
-              className="input-base pl-7 font-mono font-bold text-sm"
+              value={materialCost}
+              onChange={(e) => setMaterialCost(e.target.value)}
+              className="w-full pl-8 pr-4 py-3 text-base font-bold font-mono text-slate-900 bg-white rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition shadow-2xs"
             />
           </div>
+          <p className="text-[11px] text-slate-500">
+            Wholesale tire purchase cost or plug/patch repair kit unit cost.
+          </p>
         </div>
 
-        <div>
-          <label className="text-xs font-bold text-slate-700 block mb-1">
-            Part Description & Notes
+        {/* Sequential Field 2: Other Miscellaneous Direct Expenses */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              2. Other Direct Job Expenses ({jobCurrencySymbol})
+            </label>
+            <span className="text-[10px] text-slate-400">Alt+↓ to notes</span>
+          </div>
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-bold text-sm">
+              {jobCurrencySymbol}
+            </span>
+            <input
+              ref={otherInputRef}
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={otherExpense}
+              onChange={(e) => setOtherExpense(e.target.value)}
+              className="w-full pl-8 pr-4 py-2.5 text-base font-bold font-mono text-slate-900 bg-white rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition shadow-2xs"
+            />
+          </div>
+          <p className="text-[11px] text-slate-500">
+            Disposal fees, valve stems, roadside towing assist, or specialized hardware.
+          </p>
+        </div>
+
+        {/* Locked Field: Technician Labor Compensation (Auto-pulled) */}
+        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Technician Labor Payout (Locked from Dispatch)
+            </span>
+            <span className="text-xs font-semibold text-slate-700">
+              Recorded Driver Compensation
+            </span>
+          </div>
+          <span className="font-mono font-bold text-sm text-slate-900">
+            {formatCurrency(centsToDollars(dcCents), jobCurrencySymbol)}
+          </span>
+        </div>
+
+        {/* Field 3: Audit Note */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-800 block">
+            Audit Notes
           </label>
           <input
+            ref={notesInputRef}
             type="text"
+            placeholder="e.g. Michelin wholesale invoice #8841 via local distributor"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g. Michelin 235/65R16 replacement from wholesale distributor"
-            className="input-base text-xs"
+            className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition"
           />
         </div>
 
-        {/* FR-6.5: Accountant Proof Receipt Uploads (Multer) */}
-        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
-          <label className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
-            Audit Proof & Receipt Documentation (FR-6.5)
+        {/* Optional Receipt Attachment */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-800 block">
+            Wholesale Receipt Attachment (Optional)
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <span className="text-[11px] font-semibold text-slate-700 block mb-1">
-                Customer Payment Receipt
-              </span>
-              <label className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-red-300 transition text-xs shadow-2xs">
-                <Paperclip className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span className="truncate text-slate-600 font-medium">
-                  {receiptFile ? receiptFile.name : 'Select payment receipt'}
-                </span>
-                <input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  className="hidden"
-                  onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
-                />
-              </label>
-              {(activeJob as any)?.receiptUrl && !receiptFile && (
-                <a
-                  href={`${BACKEND_ROOT_URL}${(activeJob as any).receiptUrl}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[10px] text-blue-600 hover:underline inline-flex items-center gap-1 mt-1 font-semibold"
-                >
-                  <FileCheck className="w-3 h-3 text-emerald-600" />
-                  <span>View Uploaded Customer Receipt</span>
-                </a>
-              )}
-            </div>
-
-            <div>
-              <span className="text-[11px] font-semibold text-slate-700 block mb-1">
-                Wholesale Parts / Tire Receipt
-              </span>
-              <label className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-red-300 transition text-xs shadow-2xs">
-                <Upload className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span className="truncate text-slate-600 font-medium">
-                  {materialReceiptFile ? materialReceiptFile.name : 'Select supplier invoice'}
-                </span>
-                <input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  className="hidden"
-                  onChange={(e) => setMaterialReceiptFile(e.target.files?.[0] || null)}
-                />
-              </label>
-              {(activeJob as any)?.materialReceiptUrl && !materialReceiptFile && (
-                <a
-                  href={`${BACKEND_ROOT_URL}${(activeJob as any).materialReceiptUrl}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[10px] text-blue-600 hover:underline inline-flex items-center gap-1 mt-1 font-semibold"
-                >
-                  <FileCheck className="w-3 h-3 text-emerald-600" />
-                  <span>View Uploaded Supplier Receipt</span>
-                </a>
-              )}
-            </div>
+          <div className="flex items-center gap-2">
+            <label className="flex-1 border border-dashed border-slate-300 rounded-xl p-3 flex items-center justify-center gap-2 text-xs text-slate-500 hover:border-emerald-500 hover:text-slate-700 transition cursor-pointer bg-slate-50/50">
+              <Upload className="w-4 h-4 text-emerald-600" />
+              <span>{receiptFile ? receiptFile.name : 'Choose receipt image / PDF'}</span>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            {receiptFile && (
+              <button
+                type="button"
+                onClick={() => setReceiptFile(null)}
+                className="text-xs text-rose-600 hover:underline px-2"
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Live Calculation Preview */}
-        <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 space-y-2.5">
-          <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
-            <TrendingUp size={12} className="text-emerald-600" />
-            <span className="text-slate-800">Live Margin Calculation</span>
+        {/* Real-Time Live P&L and Margin Summary Card */}
+        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2.5">
+          <div className="flex items-center justify-between text-xs text-slate-600">
+            <span>Billed Job Revenue:</span>
+            <span className="font-mono font-bold text-slate-900">
+              {formatCurrency(centsToDollars(revenueCents), jobCurrencySymbol)}
+            </span>
           </div>
-
-          <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-slate-200">
-            <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block">Total COGS</span>
-              <span className="font-mono font-black text-xs text-rose-600 mt-0.5 block">
-                {formatCurrency(centsToDollars(totalCostCents), currencySymbol)}
-              </span>
-            </div>
-            <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block">Net Profit</span>
-              <span
-                className={`font-mono font-black text-xs mt-0.5 block ${
-                  netProfitCents >= 0 ? 'text-emerald-600' : 'text-rose-600'
-                }`}
-              >
-                {formatCurrency(centsToDollars(netProfitCents), currencySymbol)}
-              </span>
-            </div>
-            <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block">Gross Margin</span>
-              <span
-                className={`font-mono font-black text-xs mt-0.5 block ${
-                  marginPercent >= 50 ? 'text-emerald-600' : marginPercent >= 0 ? 'text-amber-600' : 'text-rose-600'
-                }`}
-              >
-                {marginPercent.toFixed(1)}%
-              </span>
-            </div>
+          <div className="flex items-center justify-between text-xs text-slate-600">
+            <span>Total Direct COGS (Material + Labor + Misc):</span>
+            <span className="font-mono font-bold text-rose-600">
+              -{formatCurrency(centsToDollars(totalCostCents), jobCurrencySymbol)}
+            </span>
           </div>
-          <div className="text-[11px] text-slate-500 text-right pt-2 border-t border-slate-200">
-            Net After Platform Royalty (IT_B):{' '}
-            <span className="font-mono font-black text-slate-900">
-              {formatCurrency(centsToDollars(netAfterItCents), currencySymbol)}
+          <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+            <div>
+              <span className="text-xs font-black text-slate-900 block">Projected Gross Profit</span>
+              <span className={`text-[11px] font-bold ${marginPercent >= 50 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                Gross Margin: {marginPercent.toFixed(1)}%
+              </span>
+            </div>
+            <span className={`text-lg font-black font-mono ${netProfitCents >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {formatCurrency(centsToDollars(netProfitCents), jobCurrencySymbol)}
             </span>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-          <button type="button" onClick={onClose} className="btn-secondary px-3 py-1.5 text-xs">
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={createExpenseMutation.isPending || uploadingReceipts || !activeJob}
-            className="btn-primary px-4 py-1.5 text-xs inline-flex items-center gap-1.5"
-          >
-            <Check size={13} />
-            <span>{uploadingReceipts ? 'Uploading Receipts...' : createExpenseMutation.isPending ? 'Saving Ledger...' : 'Save Job Expenses'}</span>
-          </button>
+        {/* Modal Actions */}
+        <div className="flex items-center justify-between pt-2">
+          <span className="text-[11px] text-slate-400">
+            Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 font-mono text-[10px]">Alt+Enter</kbd> to save
+          </span>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-secondary text-xs px-4 py-2"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="py-2.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-2 transition shadow-xs cursor-pointer disabled:opacity-50"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>{isSubmitting ? 'Saving...' : 'Save COGS'}</span>
+            </button>
+          </div>
         </div>
       </form>
     </Modal>

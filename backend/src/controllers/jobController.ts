@@ -42,7 +42,7 @@ export const jobController = {
       const search = req.query.search as string;
 
       const where: any = {};
-      if (countryCode) where.countryCode = countryCode;
+      if (countryCode && countryCode !== 'ALL') where.countryCode = countryCode;
       if (status) where.status = status;
       if (urgency) where.urgency = urgency;
       if (driverId) where.driverId = driverId;

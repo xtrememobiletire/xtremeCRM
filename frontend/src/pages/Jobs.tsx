@@ -8,6 +8,7 @@ import DriverActiveOrderCard from '../components/jobs/DriverActiveOrderCard';
 import CreateJobModal from '../components/pages/jobs/CreateJobModal';
 import JobDetailModal from '../components/pages/jobs/JobDetailModal';
 import AssignDriverModal from '../components/pages/jobs/AssignDriverModal';
+import ExpenseStatingModal from '../components/accounting/ExpenseStatingModal';
 import EmptyState from '../components/ui/EmptyState';
 import { useJobs } from '../hooks/useJobs';
 import { useAuth } from '../context/AuthContext';
@@ -17,6 +18,7 @@ import { toast } from 'sonner';
 export default function Jobs() {
   const { user } = useAuth();
   const isDriver = user?.role === 'DRIVER';
+  const isAccountant = user?.role === 'ACCOUNTANT';
 
   const [searchParams, setSearchParams] = useSearchParams();
   const intakePhoneParam = searchParams.get('intakePhone') || '';
@@ -25,18 +27,21 @@ export default function Jobs() {
   const [status, setStatus] = useState('');
   const [urgency, setUrgency] = useState('');
   const [page, setPage] = useState(1);
+  const [selectedCountry, setSelectedCountry] = useState<'ALL' | 'CA' | 'UK' | 'US'>('ALL');
 
   const [isCreateOpen, setIsCreateOpen] = useState(Boolean(intakePhoneParam));
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [assignJob, setAssignJob] = useState<any>(null);
+  const [cogsJob, setCogsJob] = useState<any>(null);
 
   const { data: jobsResponse, isLoading, refetch } = useJobs({
     page: isDriver ? 1 : page,
-    limit: isDriver ? 50 : 10,
-    status: status || undefined,
+    limit: isDriver ? 50 : 20,
+    status: isAccountant ? 'COMPLETED' : (status || undefined),
     urgency: urgency || undefined,
     search: search || undefined,
     driverId: isDriver ? user?.id : undefined,
+    countryCode: selectedCountry === 'ALL' ? undefined : selectedCountry,
   });
 
   const rawJobs = jobsResponse?.data || [];
@@ -75,11 +80,23 @@ export default function Jobs() {
     }
   };
 
+  const pageTitle = isDriver 
+    ? 'Orders' 
+    : isAccountant 
+    ? 'Completed Work Orders' 
+    : 'Jobs';
+
+  const pageSubtitle = isDriver 
+    ? 'Active service dispatches' 
+    : isAccountant 
+    ? 'Review resolved roadside dispatches and record COGS across regions' 
+    : 'Manage roadside work orders';
+
   return (
     <div className="space-y-4">
       <PageHeader
-        title={isDriver ? "Orders" : "Jobs"}
-        subtitle={isDriver ? "Active service dispatches" : "Manage roadside work orders"}
+        title={pageTitle}
+        subtitle={pageSubtitle}
         actions={
           <div className="flex items-center gap-2">
             <button
@@ -88,9 +105,9 @@ export default function Jobs() {
               className="btn-secondary px-2.5 py-2 cursor-pointer"
               title="Refresh order list"
             >
-              <RefreshCw size={14} />
+              <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
             </button>
-            {!isDriver && (
+            {!isDriver && !isAccountant && (
               <button
                 type="button"
                 onClick={() => setIsCreateOpen(true)}
@@ -103,6 +120,41 @@ export default function Jobs() {
           </div>
         }
       />
+
+      {/* Country Filter Pills with Mobile Scroll-X (No Stacking/Grid Wrap) */}
+      {!isDriver && (
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar whitespace-nowrap py-1">
+          {[
+            { code: 'ALL', label: 'All Regions', flag: '🌐' },
+            { code: 'CA', label: 'Canada', flag: '🇨🇦' },
+            { code: 'UK', label: 'United Kingdom', flag: '🇬🇧' },
+            { code: 'US', label: 'United States', flag: '🇺🇸' },
+          ].map((tab) => {
+            const isActive = selectedCountry === tab.code;
+            return (
+              <button
+                key={tab.code}
+                type="button"
+                onClick={() => {
+                  setSelectedCountry(tab.code as any);
+                  setPage(1);
+                }}
+                className={`py-2 px-4 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
+                  isActive
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                <span>{tab.flag}</span>
+                <span>{tab.label}</span>
+                {isActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {isDriver ? (
         isLoading ? (
@@ -130,21 +182,29 @@ export default function Jobs() {
         )
       ) : (
         <>
-          <JobFilters
-            search={search}
-            onSearchChange={(v) => { setSearch(v); setPage(1); }}
-            status={status}
-            onStatusChange={(v) => { setStatus(v); setPage(1); }}
-            urgency={urgency}
-            onUrgencyChange={(v) => { setUrgency(v); setPage(1); }}
-          />
+          {!isAccountant && (
+            <JobFilters
+              search={search}
+              onSearchChange={(v) => { setSearch(v); setPage(1); }}
+              status={status}
+              onStatusChange={(v) => { setStatus(v); setPage(1); }}
+              urgency={urgency}
+              onUrgencyChange={(v) => { setUrgency(v); setPage(1); }}
+            />
+          )}
 
           <JobListContainer
             isLoading={isLoading}
             jobs={jobs}
             pagination={pagination}
             onPageChange={setPage}
-            onViewJob={setSelectedJob}
+            onViewJob={(job) => {
+              if (isAccountant) {
+                setCogsJob(job);
+              } else {
+                setSelectedJob(job);
+              }
+            }}
             onAssignDriver={setAssignJob}
             onCreateJobClick={() => setIsCreateOpen(true)}
           />
@@ -166,6 +226,34 @@ export default function Jobs() {
         onClose={() => setAssignJob(null)}
         job={assignJob}
       />
+      {cogsJob && (
+        <ExpenseStatingModal
+          isOpen={!!cogsJob}
+          onClose={() => {
+            setCogsJob(null);
+            refetch();
+          }}
+          job={{
+            id: cogsJob.id,
+            jobNumber: cogsJob.jobCode || cogsJob.jobNumber,
+            customerName: cogsJob.customer?.name || cogsJob.recipientName || 'Customer',
+            countryCode: cogsJob.countryCode,
+            currencySymbol: cogsJob.countryCode === 'UK' ? '£' : cogsJob.countryCode === 'CA' ? 'CA$' : '$',
+            revenueCents: cogsJob.totalAmount || cogsJob.totalCents || 0,
+            costCents: (cogsJob.materialCostCents || 0) + (cogsJob.repairerFeeCents || 0) + (cogsJob.otherExpenseCents || 0),
+            materialCostCents: cogsJob.materialCostCents || 0,
+            repairerFeeCents: cogsJob.repairerFeeCents || 0,
+            otherExpenseCents: cogsJob.otherExpenseCents || 0,
+            expenseNotes: cogsJob.expenseNotes,
+            profitCents: (cogsJob.totalAmount || cogsJob.totalCents || 0) - ((cogsJob.materialCostCents || 0) + (cogsJob.repairerFeeCents || 0) + (cogsJob.otherExpenseCents || 0)),
+            marginPercent: 0,
+            paymentStatus: cogsJob.paymentStatus || 'UNPAID',
+            date: cogsJob.createdAt,
+            itPlatformFeeCents: cogsJob.countryCode === 'CA' ? 150 : 100,
+            netAfterItRoyaltyCents: 0,
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { useTenant } from '../context/TenantContext';
 import { useSocket } from '../context/SocketContext';
 import { jobService } from '../services/jobService';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { REGIONAL_SIMULATION_DATA } from '../constants/simulation';
 import { toast } from 'sonner';
 
 export default function Inbound() {
@@ -177,12 +178,16 @@ export default function Inbound() {
   };
 
   const handleSimulateCall = () => {
-    simulateIncomingCall('+1 (416) 555-0199', 'Roadside Motorist (Highway 401)');
-    setServiceAddress('Hwy 401 EB shoulder near Exit 342');
-    setVehicleMakeModel('2022 Ford F-150');
-    setTireSize('275/65R18');
-    setSelectedService('Tire Repair (plug)');
-    toast.info('Simulated call incoming');
+    const list = REGIONAL_SIMULATION_DATA[country] || REGIONAL_SIMULATION_DATA.CA;
+    const blueprint = list[Math.floor(Math.random() * list.length)];
+    simulateIncomingCall(blueprint.phone, `${blueprint.callerName} (${country})`);
+    setCallerPhone(blueprint.phone);
+    setCallerName(blueprint.callerName);
+    setServiceAddress(blueprint.serviceAddress);
+    setVehicleMakeModel(blueprint.vehicleMakeModel);
+    setTireSize(blueprint.tireSize);
+    setSelectedService(blueprint.service);
+    toast.info(`Simulated incoming call for ${country}: ${blueprint.serviceAddress}`);
   };
 
   // Keyboard Shortcuts for Telephony

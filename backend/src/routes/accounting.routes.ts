@@ -119,4 +119,15 @@ router.post(
   accountingController.uploadMaterialReceipt
 );
 
+/**
+ * @route   GET /api/accounting/developer-profit
+ * @desc    Get total IT/developer profits across regions
+ * @access  Private (ADMIN strictly)
+ */
+router.get(
+  '/developer-profit',
+  authorize(['ADMIN']),
+  accountingController.getDeveloperProfit
+);
+
 export default router;
