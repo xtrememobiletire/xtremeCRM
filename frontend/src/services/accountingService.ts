@@ -125,6 +125,11 @@ export const accountingService = {
     return res.data.data;
   },
 
+  async verifyJobPayment(jobId: string) {
+    const res = await api.patch(`/accounting/jobs/${jobId}/verify-payment`);
+    return res.data.data;
+  },
+
   async getInvoicePdfData(id: string) {
     const res = await api.get(`/invoices/${id}/pdf`);
     return res.data.data;

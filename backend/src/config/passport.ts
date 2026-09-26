@@ -26,6 +26,7 @@ passport.use(
           countryCode: true,
           phone: true,
           isAgentActive: true,
+          canApprovePayouts: true,
           deletedAt: true,
         },
       });

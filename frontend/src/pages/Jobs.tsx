@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Navigate } from 'react-router-dom';
 import { Plus, RefreshCw, CheckCircle2 } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import JobFilters from '../components/pages/jobs/JobFilters';
@@ -43,6 +43,10 @@ export default function Jobs() {
     driverId: isDriver ? user?.id : undefined,
     countryCode: selectedCountry === 'ALL' ? undefined : selectedCountry,
   });
+
+  if (isAccountant) {
+    return <Navigate to="/accounting" replace />;
+  }
 
   const rawJobs = jobsResponse?.data || [];
   // Strict driver isolation: only show jobs where driverId matches current user ID

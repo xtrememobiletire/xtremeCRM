@@ -59,8 +59,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     : isAccountant
     ? [
         { icon: DollarSign, label: 'Accounting', path: '/accounting' },
-        { icon: Wrench, label: 'Completed Jobs', path: '/jobs' },
-        { icon: BarChart3, label: 'Dashboard', path: '/' },
       ]
     : isDispatcher
     ? [

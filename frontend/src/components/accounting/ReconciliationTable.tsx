@@ -1,7 +1,10 @@
-import { TrendingUp, TrendingDown, Edit3, PlusCircle, CheckCircle2, Clock } from 'lucide-react';
+import { TrendingUp, TrendingDown, Edit3, PlusCircle, CheckCircle2, Clock, Check, ShieldAlert } from 'lucide-react';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
 import type { JobReconciliationRecord } from '../../services/accountingService';
+import { useAuth } from '../../context/AuthContext';
+import { useVerifyJobPayment } from '../../hooks/useAccounting';
+import { toast } from 'sonner';
 
 interface ReconciliationTableProps {
   records: JobReconciliationRecord[];
@@ -14,6 +17,22 @@ export default function ReconciliationTable({
   onSelectJob,
   isLoading = false,
 }: ReconciliationTableProps) {
+  const { user } = useAuth();
+  const verifyJobPaymentMutation = useVerifyJobPayment();
+  const isSeniorAccountant = user?.role === 'ADMIN' || Boolean(user?.canApprovePayouts);
+
+  const handleVerify = async (jobId: string) => {
+    if (!isSeniorAccountant) {
+      toast.error('Senior Accountant approval required to verify cash payouts.');
+      return;
+    }
+    try {
+      await verifyJobPaymentMutation.mutateAsync(jobId);
+      toast.success('Cash payment verified by Senior Accountant');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to verify payment');
+    }
+  };
   if (isLoading) {
     return (
       <div className="table-container p-8 text-center bg-white rounded-xl border border-slate-200">
@@ -88,21 +107,62 @@ export default function ReconciliationTable({
                   ) : (
                     <div className="text-[10px] text-slate-400 mt-0.5">Mobile roadside service</div>
                   )}
-                  <div className="mt-1">
+                  <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                     <span
-                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
                         r.paymentStatus === 'VERIFIED_PAID' || r.paymentStatus === 'PAID'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-amber-50 text-amber-700'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border-amber-200'
                       }`}
                     >
                       {r.paymentStatus === 'VERIFIED_PAID' || r.paymentStatus === 'PAID' ? (
-                        <CheckCircle2 size={10} />
+                        <>
+                          <CheckCircle2 size={10} />
+                          <span>Verified Paid</span>
+                        </>
                       ) : (
-                        <Clock size={10} />
+                        <>
+                          <Clock size={10} />
+                          <span>Pending Verification</span>
+                        </>
                       )}
-                      <span>{r.paymentStatus || 'UNPAID'}</span>
                     </span>
+
+                    {/* 1-Click Verification for Senior Accountant / Barrier for Junior */}
+                    {r.paymentStatus !== 'VERIFIED_PAID' && r.paymentStatus !== 'PAID' && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleVerify(r.id);
+                        }}
+                        disabled={verifyJobPaymentMutation.isPending}
+                        title={
+                          isSeniorAccountant
+                            ? 'Senior Accountant: Click to verify cash payment'
+                            : 'Senior Accountant credentials required to verify cash payment'
+                        }
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                          isSeniorAccountant
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-500 border border-slate-200 cursor-not-allowed'
+                        }`}
+                      >
+                        {verifyJobPaymentMutation.isPending ? (
+                          <div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
+                        ) : isSeniorAccountant ? (
+                          <>
+                            <Check size={10} />
+                            <span>Verify Cash</span>
+                          </>
+                        ) : (
+                          <>
+                            <ShieldAlert size={10} />
+                            <span>Awaiting Senior</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </td>
 

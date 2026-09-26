@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Wrench, Plus, Radio, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import PageHeader from '../components/ui/PageHeader';
 import TimeframeDropdown from '../components/ui/TimeframeDropdown';
 import Card from '../components/ui/Card';
@@ -13,8 +13,10 @@ import ProximityDistanceTool from '../components/dispatch/ProximityDistanceTool'
 import DriverCashTracker from '../components/dispatch/DriverCashTracker';
 import { useJobs } from '../hooks/useJobs';
 import { useTenant } from '../context/TenantContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const { country, currencySymbol } = useTenant();
   const [timeframe, setTimeframe] = useState('today');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -22,6 +24,11 @@ export default function Dashboard() {
   const [assignJob, setAssignJob] = useState<any>(null);
 
   const { data: jobsData, isLoading } = useJobs({ page: 1, limit: 6 });
+
+  if (user?.role === 'ACCOUNTANT') {
+    return <Navigate to="/accounting" replace />;
+  }
+
   const jobs = jobsData?.data || [];
 
   return (

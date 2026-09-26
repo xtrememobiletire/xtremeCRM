@@ -405,6 +405,14 @@ export const accountingController = {
         },
       });
 
+      // If associated with a job, also update job paymentStatus to VERIFIED_PAID
+      if (entry.jobId) {
+        await prisma.job.update({
+          where: { id: entry.jobId },
+          data: { paymentStatus: 'VERIFIED_PAID' },
+        });
+      }
+
       try {
         const io = getIO();
         const notification = {
@@ -422,6 +430,55 @@ export const accountingController = {
       } catch {}
 
       return sendSuccess(res, entry, 'Cash transaction verified');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Senior Accountant verifies job cash payment (marks VERIFIED_PAID)
+   */
+  async verifyJobPayment(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const accountantId = (req.user as any)?.id;
+
+      // Barrier check: Senior Accountant or Admin required
+      const user = await prisma.user.findUnique({ where: { id: accountantId } });
+      if (!user?.canApprovePayouts && user?.role !== 'ADMIN') {
+        return sendError(
+          res,
+          'Junior accountants cannot verify cash payments. Senior accountant approval required.',
+          403
+        );
+      }
+
+      const job = await prisma.job.findUnique({ where: { id } });
+      if (!job) return sendError(res, 'Job not found', 404);
+
+      // Update Job paymentStatus to VERIFIED_PAID
+      const updatedJob = await prisma.job.update({
+        where: { id },
+        data: {
+          paymentStatus: 'VERIFIED_PAID',
+        },
+      });
+
+      // Also verify any associated driver cash ledger entry
+      await prisma.driverCashLedger.updateMany({
+        where: { jobId: id, verifiedById: null },
+        data: { verifiedById: accountantId },
+      });
+
+      try {
+        const io = getIO();
+        io.to(`accounting:${job.countryCode}`).emit('job:payment_verified', {
+          jobId: job.id,
+          verifiedById: accountantId,
+        });
+      } catch {}
+
+      return sendSuccess(res, updatedJob, 'Payment verified successfully by Senior Accountant');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }

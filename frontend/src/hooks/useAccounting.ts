@@ -89,3 +89,16 @@ export function useCreateExpense() {
     },
   });
 }
+
+export function useVerifyJobPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (jobId: string) => accountingService.verifyJobPayment(jobId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounting-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['reconciliation-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['cash-ledger'] });
+    },
+  });
+}
