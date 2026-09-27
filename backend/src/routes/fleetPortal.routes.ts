@@ -279,6 +279,35 @@ router.delete('/drivers/:id', async (req: Request, res: Response) => {
 });
 
 /**
+ * @route   PATCH /api/fleet-portal/drivers/:id
+ * @desc    Update driver details (e.g. assign vehicle license plate)
+ */
+router.patch('/drivers/:id', async (req: Request, res: Response) => {
+  try {
+    const fleet = await getScopedFleet(req);
+    if (!fleet) return sendError(res, 'Fleet not found', 404);
+
+    const id = String(req.params.id);
+    const { fullName, phone, licensePlate } = req.body;
+
+    await prisma.fleetDriver.updateMany({
+      where: { id, fleetId: fleet.id },
+      data: {
+        ...(fullName && { fullName: fullName.trim() }),
+        ...(phone && { phone: phone.trim() }),
+        ...(licensePlate !== undefined && {
+          licensePlate: licensePlate ? licensePlate.trim().toUpperCase() : null,
+        }),
+      },
+    });
+
+    return sendSuccess(res, null, 'Driver updated successfully');
+  } catch (err: any) {
+    return sendError(res, err.message, 400);
+  }
+});
+
+/**
  * @route   GET /api/fleet-portal/jobs
  * @desc    Jobs / service requests for fleet
  */

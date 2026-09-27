@@ -32,6 +32,9 @@ export default function FleetDashboard() {
   // Modals for adding vehicle & driver
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [isAddDriverOpen, setIsAddDriverOpen] = useState(false);
+  const [isAssignVehicleOpen, setIsAssignVehicleOpen] = useState(false);
+  const [assigningDriver, setAssigningDriver] = useState<any | null>(null);
+  const [assignPlate, setAssignPlate] = useState('');
 
   // New vehicle form state
   const [newVehicle, setNewVehicle] = useState({
@@ -232,6 +235,22 @@ export default function FleetDashboard() {
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'Failed to delete driver');
+    },
+  });
+
+  // Update Driver Mutation (for assigning vehicle)
+  const updateDriverMutation = useMutation({
+    mutationFn: async ({ id, licensePlate }: { id: string; licensePlate: string }) => {
+      return await api.patch(`/fleet-portal/drivers/${id}`, { licensePlate });
+    },
+    onSuccess: () => {
+      toast.success('Vehicle assigned to driver successfully');
+      queryClient.invalidateQueries({ queryKey: ['fleet-portal-drivers'] });
+      setIsAssignVehicleOpen(false);
+      setAssigningDriver(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to assign vehicle');
     },
   });
 
@@ -575,7 +594,7 @@ export default function FleetDashboard() {
           {/* 3. MY DRIVERS TAB */}
           {activeTab === 'drivers' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-bold text-white flex items-center gap-2">
                     <Users className="w-5 h-5 text-red-500" />
@@ -583,13 +602,22 @@ export default function FleetDashboard() {
                   </h2>
                   <p className="text-xs text-slate-400 mt-1">Drivers verified by dispatch during 24/7 roadside breakdown calls</p>
                 </div>
-                <button
-                  onClick={() => setIsAddDriverOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-md shadow-red-900/30"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Driver</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsAddVehicleOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#252733] hover:bg-[#323444] text-slate-200 border border-[#3b3d4f] text-xs font-bold transition shadow-xs cursor-pointer"
+                  >
+                    <Truck className="w-4 h-4 text-red-500" />
+                    <span>+ Add Vehicle</span>
+                  </button>
+                  <button
+                    onClick={() => setIsAddDriverOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-md shadow-red-900/30 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ Add Driver</span>
+                  </button>
+                </div>
               </div>
 
               <div className="bg-[#18191e] border border-[#272832] rounded-xl divide-y divide-[#252733] overflow-hidden">
@@ -612,13 +640,32 @@ export default function FleetDashboard() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <span className="px-2.5 py-1 bg-emerald-950/70 text-emerald-400 border border-emerald-500/30 rounded-full font-semibold text-[11px] flex items-center gap-1">
+                      {/* Add/Assign Vehicle button for this driver */}
+                      <button
+                        onClick={() => {
+                          setAssigningDriver(d);
+                          setAssignPlate(d.licensePlate || '');
+                          setIsAssignVehicleOpen(true);
+                        }}
+                        className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1.5 border transition cursor-pointer ${
+                          d.licensePlate
+                            ? 'bg-[#252733] hover:bg-[#323444] text-slate-200 border-[#3a3c4c]'
+                            : 'bg-red-950/40 hover:bg-red-900/50 text-red-400 border-red-500/30'
+                        }`}
+                        title="Add or Change Assigned Vehicle"
+                      >
+                        <Truck className="w-3.5 h-3.5 text-red-500" />
+                        <span>{d.licensePlate ? `Vehicle: ${d.licensePlate}` : '+ Add Vehicle'}</span>
+                      </button>
+
+                      <span className="px-2.5 py-1 bg-emerald-950/70 text-emerald-400 border border-emerald-500/30 rounded-full font-semibold text-[11px] hidden sm:flex items-center gap-1">
                         <ShieldCheck className="w-3 h-3" />
-                        <span>Authorized Driver</span>
+                        <span>Authorized</span>
                       </span>
+
                       <button
                         onClick={() => deleteDriverMutation.mutate(d.id)}
-                        className="text-slate-500 hover:text-red-400 transition p-1"
+                        className="text-slate-500 hover:text-red-400 transition p-1 cursor-pointer"
                         title="Remove Driver"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -631,13 +678,23 @@ export default function FleetDashboard() {
                   <div className="py-12 text-center text-slate-400 text-xs space-y-3">
                     <Users className="w-8 h-8 text-slate-600 mx-auto" />
                     <div>No authorized drivers registered yet.</div>
-                    <button
-                      onClick={() => setIsAddDriverOpen(true)}
-                      className="inline-flex items-center gap-1 text-red-500 hover:text-red-400 font-bold"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Register your first driver</span>
-                    </button>
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        onClick={() => setIsAddDriverOpen(true)}
+                        className="inline-flex items-center gap-1 text-red-500 hover:text-red-400 font-bold"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Register your first driver</span>
+                      </button>
+                      <span className="text-slate-600">•</span>
+                      <button
+                        onClick={() => setIsAddVehicleOpen(true)}
+                        className="inline-flex items-center gap-1 text-slate-400 hover:text-white font-bold"
+                      >
+                        <Truck className="w-3.5 h-3.5 text-red-500" />
+                        <span>Add Vehicle</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1205,14 +1262,29 @@ export default function FleetDashboard() {
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Assigned License Plate (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. KT-15"
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">Assigned Vehicle (Optional)</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddVehicleOpen(true)}
+                    className="text-[10px] font-bold text-red-500 hover:text-red-400 inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>+ Add New Vehicle</span>
+                  </button>
+                </div>
+                <select
                   value={newDriver.licensePlate}
                   onChange={(e) => setNewDriver({ ...newDriver, licensePlate: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs font-mono uppercase"
-                />
+                  className="w-full px-3 py-2 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs font-mono uppercase"
+                >
+                  <option value="">-- No vehicle assigned --</option>
+                  {vehicles.map((v: any) => (
+                    <option key={v.id} value={v.licensePlate || `${v.make} ${v.model}`}>
+                      {v.licensePlate ? `[${v.licensePlate}] ` : ''}{v.year} {v.make} {v.model} ({v.tireSize || '11R22.5'})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="pt-2 flex justify-end gap-2">
@@ -1229,6 +1301,97 @@ export default function FleetDashboard() {
                   className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md shadow-red-900/30"
                 >
                   {addDriverMutation.isPending ? 'Registering...' : 'Register Driver'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ASSIGN / ADD VEHICLE TO DRIVER MODAL */}
+      {isAssignVehicleOpen && assigningDriver && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-[#18191e] border border-[#272832] rounded-2xl w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Truck className="w-4 h-4 text-red-500" />
+                <span>Assign Vehicle to {assigningDriver.fullName}</span>
+              </h3>
+              <button 
+                onClick={() => {
+                  setIsAssignVehicleOpen(false);
+                  setAssigningDriver(null);
+                }}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                updateDriverMutation.mutate({
+                  id: assigningDriver.id,
+                  licensePlate: assignPlate,
+                });
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">Select Registered Fleet Vehicle</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddVehicleOpen(true)}
+                    className="text-[10px] font-bold text-red-500 hover:text-red-400 inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>+ Add New Vehicle</span>
+                  </button>
+                </div>
+                <select
+                  value={assignPlate}
+                  onChange={(e) => setAssignPlate(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs font-mono uppercase"
+                >
+                  <option value="">-- No vehicle assigned / Unassign --</option>
+                  {vehicles.map((v: any) => (
+                    <option key={v.id} value={v.licensePlate || `${v.make} ${v.model}`}>
+                      {v.licensePlate ? `[${v.licensePlate}] ` : ''}{v.year} {v.make} {v.model} ({v.tireSize || '11R22.5'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase">Or Enter Custom License Plate</label>
+                <input
+                  type="text"
+                  placeholder="e.g. KT-15"
+                  value={assignPlate}
+                  onChange={(e) => setAssignPlate(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs font-mono uppercase"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAssignVehicleOpen(false);
+                    setAssigningDriver(null);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-[#252733] hover:bg-[#323444] text-slate-300 text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updateDriverMutation.isPending}
+                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md shadow-red-900/30 cursor-pointer"
+                >
+                  {updateDriverMutation.isPending ? 'Saving...' : 'Save Vehicle Assignment'}
                 </button>
               </div>
             </form>
