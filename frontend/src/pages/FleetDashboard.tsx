@@ -5,13 +5,17 @@ import {
   Truck, Users, Clock, FileText, CheckCircle2,
   MapPin, Phone, Mail, Globe, Plus, Trash2,
   LogOut, ArrowLeft, Building2, X,
-  Calendar, Layers, ShieldCheck
+  Calendar, Layers, ShieldCheck, DollarSign,
+  Wrench, ArrowRight, Radio, Bell, Menu
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useTenant } from '../context/TenantContext';
 import { useSocket } from '../context/SocketContext';
 import { formatCurrency, centsToDollars } from '../utils/currency';
+import PageHeader from '../components/ui/PageHeader';
+import Card from '../components/ui/Card';
+import StatCard from '../components/ui/StatCard';
 import InvoicePdfModal from '../components/invoices/InvoicePdfModal';
 import { toast } from 'sonner';
 
@@ -20,16 +24,17 @@ type Tab = 'dashboard' | 'vehicles' | 'drivers' | 'request' | 'status' | 'pendin
 export default function FleetDashboard() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { currencySymbol } = useTenant();
+  const { country, currencySymbol } = useTenant();
   const { socket } = useSocket();
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [pendingSearch, setPendingSearch] = useState('');
   const [paidSearch, setPaidSearch] = useState('');
 
-  // Modals for adding vehicle & driver
+  // Modals for adding vehicle, driver, and assigning vehicle
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [isAddDriverOpen, setIsAddDriverOpen] = useState(false);
   const [isAssignVehicleOpen, setIsAssignVehicleOpen] = useState(false);
@@ -254,37 +259,24 @@ export default function FleetDashboard() {
     },
   });
 
-  // Vehicle select handler for booking form
-  const handleVehicleSelect = (vId: string) => {
-    const selectedVeh = vehicles.find((v: any) => v.id === vId);
+  // Handle vehicle select in booking form
+  const handleVehicleSelect = (vehId: string) => {
+    const selected = vehicles.find((v: any) => v.id === vehId);
     setBookingForm((prev) => ({
       ...prev,
-      vehicleId: vId,
-      tireSize: selectedVeh?.tireSize || prev.tireSize,
+      vehicleId: vehId,
+      tireSize: selected?.tireSize || prev.tireSize,
     }));
   };
 
+  // Handle submit service
   const handleBookService = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bookingForm.vehicleId && !bookingForm.tireSize) {
-      toast.error('Please select a vehicle or enter tire size');
+    if (!bookingForm.appointmentDate) {
+      toast.error('Please choose an appointment date and time');
       return;
     }
-    if (!bookingForm.address) {
-      toast.error('Please provide a breakdown / service location address');
-      return;
-    }
-
-    bookServiceMutation.mutate({
-      vehicleId: bookingForm.vehicleId || undefined,
-      appointmentDate: bookingForm.appointmentDate || undefined,
-      serviceName: bookingForm.serviceName,
-      serviceType: bookingForm.serviceType,
-      serviceAddress: bookingForm.address,
-      contactPhone: bookingForm.contactPhone || fleet?.contactPhone,
-      tireSize: bookingForm.tireSize,
-      notes: bookingForm.notes,
-    });
+    bookServiceMutation.mutate(bookingForm);
   };
 
   // Filtered pending invoices
@@ -307,218 +299,427 @@ export default function FleetDashboard() {
     );
   }, [paidInvoices, paidSearch]);
 
+  // KPI Calculations
+  const pendingAmountCents = useMemo(() => {
+    return pendingInvoices.reduce((sum: number, inv: any) => sum + (inv.totalCents || 0), 0);
+  }, [pendingInvoices]);
+
+  const activeJobsCount = useMemo(() => {
+    return jobs.filter((j: any) =>
+      ['DISPATCHED', 'EN_ROUTE', 'ON_SCENE', 'IN_PROGRESS', 'ASSIGNED', 'PENDING'].includes(j.status)
+    ).length;
+  }, [jobs]);
+
   const navTabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: Layers },
-    { id: 'vehicles', label: 'Vehicles', icon: Truck },
-    { id: 'drivers', label: 'My Drivers', icon: Users },
-    { id: 'request', label: 'Request New Service', icon: Calendar },
-    { id: 'status', label: 'Service Status', icon: Clock },
-    { id: 'pending-invoices', label: 'Pending Invoices', icon: FileText },
-    { id: 'paid-invoices', label: 'Paid Invoices', icon: CheckCircle2 },
+    { id: 'dashboard', label: 'Dashboard', icon: Layers, count: null },
+    { id: 'vehicles', label: 'Vehicles', icon: Truck, count: vehicles.length },
+    { id: 'drivers', label: 'My Drivers', icon: Users, count: drivers.length },
+    { id: 'request', label: 'Request Service', icon: Calendar, count: null },
+    { id: 'status', label: 'Service Status', icon: Clock, count: jobs.length },
+    { id: 'pending-invoices', label: 'Pending Invoices', icon: FileText, count: pendingInvoices.length },
+    { id: 'paid-invoices', label: 'Paid Invoices', icon: CheckCircle2, count: paidInvoices.length },
   ];
 
   return (
-    <div className="min-h-screen bg-[#0d0e12] text-slate-100 font-sans flex flex-col antialiased selection:bg-red-600 selection:text-white">
-      {/* TOP HEADER (Matches Screenshot 1) */}
-      <header className="h-16 bg-[#131419] border-b border-[#22232c] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <span className="text-red-600 font-black tracking-wider text-xs uppercase">Xtreme Mobile Tire</span>
-              <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">|</span>
-              <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Fleet Manager Portal</span>
-            </div>
-            <div className="flex items-center gap-2 mt-0.5">
-              <h1 className="text-base font-bold text-white leading-tight">
-                {fleet?.companyName || 'KT Group'}
-              </h1>
-              <span className="text-xs font-mono font-bold text-red-500">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex antialiased">
+      {/* Mobile Backdrop Overlay */}
+      {isMobileNavOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 transition-opacity" 
+          onClick={() => setIsMobileNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* LEFT SIDEBAR - Identical to XtremeCRM Sidebar */}
+      <aside 
+        className={`fixed inset-y-0 left-0 md:sticky top-0 h-[100dvh] max-h-[100dvh] bg-white border-r border-slate-200 flex flex-col z-50 transition-all duration-200 shrink-0 select-none shadow-2xl md:shadow-none ${
+          isMobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        } w-64`}
+      >
+        {/* Brand Header */}
+        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 bg-white shrink-0">
+          <div className="flex items-center gap-2">
+            <img 
+              src="/logo-signin.png" 
+              alt="Xtreme Mobile Tire" 
+              className="h-9 sm:h-10 w-auto max-w-[145px] object-contain shrink-0 drop-shadow-xs cursor-pointer"
+              onClick={() => setActiveTab('dashboard')} 
+            />
+            <div className="min-w-0">
+              <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-700 border border-slate-200 font-mono truncate max-w-[90px]">
                 {fleet?.accountCode || 'XMT-5132'}
               </span>
             </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Admin Exit Preview button */}
-          {user?.role === 'ADMIN' && (
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="text-xs bg-[#1f2029] hover:bg-[#2b2c38] text-slate-300 hover:text-white px-3 py-1.5 rounded-lg border border-[#2e303d] flex items-center gap-1.5 transition"
-              title="Return to Staff CRM"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Exit to CRM</span>
-            </button>
-          )}
-
-          {/* Approved Badge */}
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/70 border border-emerald-500/40 text-emerald-400">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Approved</span>
-          </span>
-
-          {/* Sign Out Button */}
-          <button
-            onClick={() => logout()}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#1a1b22] hover:bg-[#262731] border border-[#2d2e3a] text-slate-300 hover:text-white transition cursor-pointer"
+          <button 
+            type="button"
+            className="md:hidden p-2 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition cursor-pointer" 
+            onClick={() => setIsMobileNavOpen(false)}
+            aria-label="Close navigation"
           >
-            <LogOut className="w-3.5 h-3.5 text-slate-400" />
-            <span>Sign Out</span>
+            <X size={20} />
           </button>
         </div>
-      </header>
 
-      <div className="flex-1 flex flex-col md:flex-row min-w-0">
-        {/* SIDEBAR NAVIGATION (Matches Screenshots) */}
-        <aside className="w-full md:w-64 bg-[#111216] border-r border-[#1f2028] p-3 md:p-4 shrink-0 flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible">
-          {navTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
+        {/* Navigation Items (Light Red Accent when active) */}
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-3 px-3 space-y-1">
+          {navTabs.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
             return (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as Tab)}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition whitespace-nowrap text-left ${
-                  isActive
-                    ? 'bg-[#e5252a] text-white shadow-md shadow-red-900/30'
-                    : 'text-slate-400 hover:text-white hover:bg-[#1a1b22]'
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(item.id as Tab);
+                  setIsMobileNavOpen(false);
+                }}
+                className={`w-full flex items-center justify-between rounded-xl text-xs sm:text-sm transition-all duration-150 px-3.5 py-2.5 cursor-pointer text-left ${
+                  isActive 
+                    ? 'bg-red-50 text-red-700 font-bold shadow-2xs' 
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-medium'
                 }`}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                <span>{tab.label}</span>
+                <div className="flex items-center gap-3">
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span className="truncate tracking-tight">{item.label}</span>
+                </div>
+                {item.count !== null && item.count > 0 && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                    isActive ? 'bg-red-200/60 text-red-800' : 'bg-slate-200/70 text-slate-700'
+                  }`}>
+                    {item.count}
+                  </span>
+                )}
               </button>
             );
           })}
-        </aside>
+        </nav>
 
-        {/* MAIN CONTENT AREA */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto max-w-6xl w-full">
-          {/* 1. DASHBOARD TAB */}
+        {/* User Info / Sign Out Footer (Pinned to bottom) */}
+        <div className="shrink-0 p-3 sm:p-4 border-t border-slate-200 bg-slate-50/95 backdrop-blur-xs space-y-2.5">
+          <div className="flex items-center gap-2.5 px-1">
+            <div className="w-8 h-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold text-xs shrink-0">
+              {user?.firstName?.[0] || 'F'}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-slate-800 truncate">
+                {fleet?.companyName || user?.fullName || 'Fleet Manager'}
+              </p>
+              <p className="text-[10px] text-slate-500 uppercase font-semibold">
+                FLEET MANAGER
+              </p>
+            </div>
+          </div>
+          <button 
+            type="button"
+            onClick={() => logout()}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-bold rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 border border-rose-200 shadow-2xs transition-colors cursor-pointer"
+          >
+            <LogOut size={16} className="shrink-0 text-rose-600" />
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* RIGHT MAIN VIEW */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* TOP NAVBAR - Matching XtremeCRM Topbar */}
+        <header className="h-16 bg-white border-b border-slate-200/90 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsMobileNavOpen(true)}
+              className="md:hidden p-2 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 cursor-pointer"
+              aria-label="Open navigation"
+            >
+              <Menu size={20} />
+            </button>
+
+            {/* Live Dispatch Status Pill */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Live Fleet Dispatch</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Admin return button */}
+            {user?.role === 'ADMIN' && (
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 flex items-center gap-1.5 transition font-semibold cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Exit to CRM</span>
+              </button>
+            )}
+
+            {/* Fleet / Region Pill */}
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold font-mono">
+              <span>{country || 'US'}</span>
+              <span>•</span>
+              <span className="text-red-600">{fleet?.accountCode || 'XMT-5132'}</span>
+            </div>
+
+            {/* Active Status Badge */}
+            <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Active</span>
+            </div>
+
+            {/* Notification Bell */}
+            <div className="p-2 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition cursor-pointer">
+              <Bell size={18} />
+            </div>
+
+            {/* User Avatar */}
+            <div className="w-8 h-8 rounded-full bg-red-100 text-red-700 font-bold text-xs flex items-center justify-center border border-red-200">
+              {user?.firstName?.[0] || 'F'}
+            </div>
+          </div>
+        </header>
+
+        {/* MAIN BODY AREA */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+          {/* 1. DASHBOARD TAB - EXACT LAYOUT AS SHOWN IN SCREENSHOT */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-white">Dashboard</h2>
+              <PageHeader
+                title="Dashboard"
+                subtitle={`Operations overview for ${fleet?.companyName || 'KT Group'} [${fleet?.accountCode || 'XMT-5132'}]`}
+                badge={
+                  <span className="badge-brand inline-flex items-center gap-1">
+                    <Radio className="w-3 h-3 text-red-600 animate-pulse" />
+                    <span>Live</span>
+                  </span>
+                }
+                actions={
+                  <div className="flex items-center gap-2">
+                    <button 
+                      type="button" 
+                      onClick={() => setActiveTab('request')} 
+                      className="btn-primary cursor-pointer"
+                    >
+                      <Plus size={14} />
+                      <span>+ Request Service</span>
+                    </button>
+                  </div>
+                }
+              />
 
-              {/* 3 Top Cards (Image 1) */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* Vehicles Card */}
-                <div 
-                  onClick={() => setActiveTab('vehicles')}
-                  className="bg-[#18191e] border border-[#272832] rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-red-600/50 transition group"
-                >
-                  <div className="w-10 h-10 rounded-full bg-red-950/40 border border-red-500/20 flex items-center justify-center text-red-500 mb-2 group-hover:scale-110 transition">
-                    <Truck className="w-5 h-5" />
-                  </div>
-                  <div className="text-3xl font-bold text-white font-mono">
-                    {vehicles.length}
-                  </div>
-                  <div className="text-[11px] font-bold text-slate-400 tracking-wider uppercase mt-1">
-                    Vehicles
-                  </div>
-                </div>
-
-                {/* Drivers Card */}
-                <div 
-                  onClick={() => setActiveTab('drivers')}
-                  className="bg-[#18191e] border border-[#272832] rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-red-600/50 transition group"
-                >
-                  <div className="w-10 h-10 rounded-full bg-red-950/40 border border-red-500/20 flex items-center justify-center text-red-500 mb-2 group-hover:scale-110 transition">
-                    <Users className="w-5 h-5" />
-                  </div>
-                  <div className="text-3xl font-bold text-white font-mono">
-                    {drivers.length}
-                  </div>
-                  <div className="text-[11px] font-bold text-slate-400 tracking-wider uppercase mt-1">
-                    Drivers
-                  </div>
-                </div>
-
-                {/* Company Card */}
-                <div className="bg-[#18191e] border border-[#272832] rounded-xl p-6 flex flex-col items-center justify-center text-center">
-                  <div className="w-10 h-10 rounded-full bg-red-950/40 border border-red-500/20 flex items-center justify-center text-red-500 mb-2">
-                    <Building2 className="w-5 h-5" />
-                  </div>
-                  <div className="text-lg font-bold text-white truncate max-w-[200px]">
-                    {fleet?.companyName || 'KT Group'}
-                  </div>
-                  <div className="text-[11px] font-bold text-slate-400 tracking-wider uppercase mt-1">
-                    Company
-                  </div>
-                </div>
+              {/* 4 KPI Stat Cards (Matching DashboardKpiGrid Style) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard
+                  title="ACTIVE FLEET VEHICLES"
+                  value={vehicles.length.toString()}
+                  subtitle="Commercial units registered"
+                  subtitleColor="text-emerald-600"
+                  icon={Truck}
+                  iconBg="bg-red-50"
+                  iconColor="text-red-600"
+                />
+                <StatCard
+                  title="PENDING INVOICES"
+                  value={formatCurrency(centsToDollars(pendingAmountCents), currencySymbol)}
+                  subtitle={`${pendingInvoices.length} unpaid invoices`}
+                  subtitleColor="text-slate-500"
+                  icon={DollarSign}
+                  iconBg="bg-emerald-50"
+                  iconColor="text-emerald-600"
+                />
+                <StatCard
+                  title="ACTIVE SERVICE JOBS"
+                  value={activeJobsCount.toString()}
+                  subtitle="Units en route or on scene"
+                  subtitleColor="text-blue-600"
+                  icon={Clock}
+                  iconBg="bg-blue-50"
+                  iconColor="text-blue-600"
+                />
+                <StatCard
+                  title="ASSIGNED DRIVERS"
+                  value={`${drivers.length} / ${vehicles.length || 1}`}
+                  subtitle="Fleet driver coverage"
+                  subtitleColor="text-amber-600"
+                  icon={Users}
+                  iconBg="bg-amber-50"
+                  iconColor="text-amber-600"
+                />
               </div>
 
-              {/* Company Details Card (Image 1) */}
-              <div className="bg-[#18191e] border border-[#272832] rounded-xl p-6 space-y-4">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Company Details
-                </h3>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-xs">
-                  {/* Email */}
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 text-red-500">
-                      <Mail className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email</div>
-                      <div className="text-white mt-0.5 font-medium select-all">
-                        {fleet?.contactEmail || 'piratheep@xtrememobiletire.com'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Phone */}
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 text-red-500">
-                      <Phone className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phone</div>
-                      <div className="text-white mt-0.5 font-mono font-medium">
-                        {fleet?.contactPhone || '1-866-686-9660'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Address */}
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 text-red-500">
-                      <MapPin className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Address</div>
-                      <div className="text-white mt-0.5 font-medium">
-                        {fleet?.address || '10100 Richmond Hwy, Lorton, VA 22079'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Website */}
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 text-red-500">
-                      <Globe className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Website</div>
-                      <a 
-                        href={fleet?.website || 'https://www.ktgroupcanada.ca/'}
-                        target="_blank" 
-                        rel="noreferrer" 
-                        className="text-white hover:text-red-400 mt-0.5 font-medium inline-flex items-center gap-1 transition underline-offset-2 hover:underline"
+              {/* 2-Column Grid (Recent Service Requests + Fleet Profile & Actions) */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left 2 Cols: Recent Service Requests */}
+                <div className="lg:col-span-2 space-y-4">
+                  <Card
+                    title="Recent Service Requests"
+                    icon={Wrench}
+                    action={
+                      <button 
+                        onClick={() => setActiveTab('status')} 
+                        className="text-xs font-semibold text-red-600 hover:text-red-700 flex items-center gap-1 cursor-pointer"
                       >
-                        <span>{fleet?.website || 'https://www.ktgroupcanada.ca/'}</span>
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                        <span>View All</span>
+                        <ArrowRight size={13} />
+                      </button>
+                    }
+                  >
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs whitespace-nowrap">
+                        <thead>
+                          <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            <th className="py-2.5 px-3">JOB # / DATE</th>
+                            <th className="py-2.5 px-3">SERVICE</th>
+                            <th className="py-2.5 px-3">VEHICLE & TIRE</th>
+                            <th className="py-2.5 px-3">DRIVER</th>
+                            <th className="py-2.5 px-3">STATUS</th>
+                            <th className="py-2.5 px-3 text-right">TOTAL</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {jobs.slice(0, 5).map((j: any) => {
+                            const serviceName = j.serviceItems?.[0]?.serviceName || 'Tire Service';
+                            const dateStr = j.scheduledFor || j.appointmentDate || j.createdAt
+                              ? new Date(j.scheduledFor || j.appointmentDate || j.createdAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                })
+                              : 'Immediate';
+                            return (
+                              <tr key={j.id} className="hover:bg-slate-50/80 transition">
+                                <td className="py-3 px-3">
+                                  <div className="font-bold text-red-600 font-mono text-xs">{j.jobCode}</div>
+                                  <div className="text-[11px] text-slate-400 mt-0.5">{dateStr}</div>
+                                </td>
+                                <td className="py-3 px-3">
+                                  <div className="font-semibold text-slate-800">{serviceName}</div>
+                                  <div className="text-[10px] text-slate-400 uppercase font-mono">{j.urgency || 'STANDARD'}</div>
+                                </td>
+                                <td className="py-3 px-3">
+                                  <div className="text-slate-800 font-medium">
+                                    {j.vehicle ? `${j.vehicle.make} ${j.vehicle.model}` : 'Standard Vehicle'}
+                                  </div>
+                                  <div className="text-[11px] font-mono text-slate-500">
+                                    {j.vehicle?.licensePlate ? `Plate: ${j.vehicle.licensePlate}` : (j.vehicle?.tireSize || '11R22.5')}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-3">
+                                  <div className="text-slate-700 font-medium flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                    <span>{j.driver?.fullName || 'Assigned Tech'}</span>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-3">
+                                  <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                    j.status === 'COMPLETED'
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                      : j.status === 'IN_PROGRESS' || j.status === 'ARRIVED'
+                                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                      : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                  }`}>
+                                    {j.status}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">
+                                  {j.totalCents ? formatCurrency(centsToDollars(j.totalCents), currencySymbol) : '—'}
+                                </td>
+                              </tr>
+                            );
+                          })}
 
-              {/* Bottom Support Banner (Image 1) */}
-              <div className="bg-[#2a1315] border border-red-900/40 rounded-xl p-4 text-center text-xs text-red-400">
-                Need help or have questions about your fleet account? Contact us at{' '}
-                <a href="mailto:admin@xtrememobiletire.com" className="font-bold underline hover:text-red-300">
-                  admin@xtrememobiletire.com
-                </a>
+                          {jobs.length === 0 && (
+                            <tr>
+                              <td colSpan={6} className="py-8 text-center text-slate-400 text-xs">
+                                No service requests submitted yet.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Right 1 Col: Fleet Profile & Quick Actions */}
+                <div className="space-y-6">
+                  {/* Fleet Profile Card */}
+                  <Card title="Fleet Account Profile" icon={Building2}>
+                    <div className="space-y-3.5 text-xs">
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Company Name</div>
+                        <div className="font-bold text-slate-900 text-sm mt-0.5">{fleet?.companyName || 'KT Group'}</div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                        <div>
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Account Code</div>
+                          <div className="font-mono font-bold text-red-600 mt-0.5">{fleet?.accountCode || 'XMT-5132'}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</div>
+                          <div className="text-emerald-700 font-bold mt-0.5">Approved B2B</div>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-100 space-y-2">
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <Mail className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                          <span className="truncate">{fleet?.contactEmail || 'piratheep@xtrememobiletire.com'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-600 font-mono">
+                          <Phone className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                          <span>{fleet?.contactPhone || '1-866-686-9660'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <MapPin className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                          <span className="truncate">{fleet?.address || '10100 Richmond Hwy, Lorton, VA 22079'}</span>
+                        </div>
+                        {fleet?.website && (
+                          <div className="flex items-center gap-2 text-red-600">
+                            <Globe className="w-3.5 h-3.5 shrink-0" />
+                            <a href={fleet.website} target="_blank" rel="noreferrer" className="truncate hover:underline">
+                              {fleet.website}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Quick Dispatch Actions */}
+                  <Card title="Quick Fleet Actions" icon={Plus}>
+                    <div className="space-y-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('request')}
+                        className="w-full btn-primary py-2.5 text-xs font-bold justify-center cursor-pointer shadow-sm shadow-red-600/20"
+                      >
+                        <Calendar size={14} />
+                        <span>+ Request Roadside Service</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsAddVehicleOpen(true)}
+                        className="w-full btn-secondary py-2.5 text-xs font-semibold justify-center cursor-pointer"
+                      >
+                        <Truck size={14} className="text-red-600" />
+                        <span>+ Register Vehicle</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsAddDriverOpen(true)}
+                        className="w-full btn-secondary py-2.5 text-xs font-semibold justify-center cursor-pointer"
+                      >
+                        <Users size={14} className="text-red-600" />
+                        <span>+ Add Authorized Driver</span>
+                      </button>
+                    </div>
+                  </Card>
+                </div>
               </div>
             </div>
           )}
@@ -526,35 +727,32 @@ export default function FleetDashboard() {
           {/* 2. VEHICLES TAB */}
           {activeTab === 'vehicles' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Truck className="w-5 h-5 text-red-500" />
-                    <span>Registered Fleet Vehicles ({vehicles.length})</span>
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-1">Manage vehicles authorized for 24/7 roadside tire repair and maintenance</p>
-                </div>
-                <button
-                  onClick={() => setIsAddVehicleOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-md shadow-red-900/30"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Vehicle</span>
-                </button>
-              </div>
+              <PageHeader
+                title="Registered Fleet Vehicles"
+                subtitle={`Commercial fleet units authorized for 24/7 roadside tire repair (${vehicles.length} total)`}
+                actions={
+                  <button
+                    onClick={() => setIsAddVehicleOpen(true)}
+                    className="btn-primary cursor-pointer"
+                  >
+                    <Plus size={14} />
+                    <span>+ Add Vehicle</span>
+                  </button>
+                }
+              />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {vehicles.map((v: any) => (
-                  <div key={v.id} className="bg-[#18191e] border border-[#272832] rounded-xl p-4 space-y-3 relative group hover:border-[#383a48] transition">
+                  <div key={v.id} className="card-surface p-5 space-y-3 relative group hover:border-slate-300 hover:shadow-md transition">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-bold px-2 py-0.5 bg-[#252733] border border-[#343644] rounded text-white">
+                      <span className="text-xs font-mono font-bold px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-slate-800">
                         {v.licensePlate || 'NO PLATE'}
                       </span>
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-slate-400 font-mono">{v.year}</span>
+                        <span className="text-xs text-slate-500 font-mono">{v.year}</span>
                         <button
                           onClick={() => deleteVehicleMutation.mutate(v.id)}
-                          className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition p-1"
+                          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-600 transition p-1 cursor-pointer"
                           title="Remove Vehicle"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -563,26 +761,28 @@ export default function FleetDashboard() {
                     </div>
 
                     <div>
-                      <div className="font-bold text-sm text-white">{v.make} {v.model}</div>
-                      {v.vin && <div className="text-[10px] font-mono text-slate-500 mt-0.5">VIN: {v.vin}</div>}
+                      <div className="font-bold text-base text-slate-900">{v.make} {v.model}</div>
+                      {v.vin && <div className="text-[11px] font-mono text-slate-400 mt-0.5">VIN: {v.vin}</div>}
                     </div>
 
-                    <div className="pt-2 border-t border-[#252733] flex items-center justify-between text-xs">
-                      <span className="text-slate-400">Tire Spec:</span>
-                      <strong className="text-red-500 font-mono font-bold">{v.tireSize || '11R22.5'}</strong>
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                      <span className="text-slate-500 font-medium">Tire Spec:</span>
+                      <span className="px-2 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded font-mono font-bold text-xs">
+                        {v.tireSize || '11R22.5'}
+                      </span>
                     </div>
                   </div>
                 ))}
 
                 {vehicles.length === 0 && (
-                  <div className="col-span-full bg-[#18191e] border border-[#272832] rounded-xl py-12 text-center text-slate-400 text-xs space-y-3">
-                    <Truck className="w-8 h-8 text-slate-600 mx-auto" />
-                    <div>No fleet vehicles registered yet.</div>
+                  <div className="col-span-full card-surface py-12 text-center text-slate-500 text-xs space-y-3">
+                    <Truck className="w-10 h-10 text-slate-300 mx-auto" />
+                    <div className="font-semibold text-slate-700">No fleet vehicles registered yet.</div>
                     <button
                       onClick={() => setIsAddVehicleOpen(true)}
-                      className="inline-flex items-center gap-1 text-red-500 hover:text-red-400 font-bold"
+                      className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 font-bold cursor-pointer"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-4 h-4" />
                       <span>Register your first vehicle</span>
                     </button>
                   </div>
@@ -594,44 +794,41 @@ export default function FleetDashboard() {
           {/* 3. MY DRIVERS TAB */}
           {activeTab === 'drivers' && (
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Users className="w-5 h-5 text-red-500" />
-                    <span>Authorized Fleet Drivers ({drivers.length})</span>
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-1">Drivers verified by dispatch during 24/7 roadside breakdown calls</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setIsAddVehicleOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#252733] hover:bg-[#323444] text-slate-200 border border-[#3b3d4f] text-xs font-bold transition shadow-xs cursor-pointer"
-                  >
-                    <Truck className="w-4 h-4 text-red-500" />
-                    <span>+ Add Vehicle</span>
-                  </button>
-                  <button
-                    onClick={() => setIsAddDriverOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-md shadow-red-900/30 cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>+ Add Driver</span>
-                  </button>
-                </div>
-              </div>
+              <PageHeader
+                title="Authorized Fleet Drivers"
+                subtitle={`Drivers verified by dispatch during 24/7 roadside breakdown calls (${drivers.length} registered)`}
+                actions={
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setIsAddVehicleOpen(true)}
+                      className="btn-secondary text-xs cursor-pointer"
+                    >
+                      <Truck className="w-4 h-4 text-red-600" />
+                      <span>+ Add Vehicle</span>
+                    </button>
+                    <button
+                      onClick={() => setIsAddDriverOpen(true)}
+                      className="btn-primary text-xs cursor-pointer"
+                    >
+                      <Plus size={14} />
+                      <span>+ Add Driver</span>
+                    </button>
+                  </div>
+                }
+              />
 
-              <div className="bg-[#18191e] border border-[#272832] rounded-xl divide-y divide-[#252733] overflow-hidden">
+              <div className="card-surface divide-y divide-slate-100 overflow-hidden shadow-xs">
                 {drivers.map((d: any) => (
-                  <div key={d.id} className="p-4 flex items-center justify-between text-xs hover:bg-[#1d1f27] transition">
+                  <div key={d.id} className="p-4 sm:p-5 flex items-center justify-between text-xs hover:bg-slate-50/80 transition">
                     <div className="space-y-1">
-                      <div className="font-bold text-white text-sm">{d.fullName}</div>
-                      <div className="text-slate-400 font-mono flex items-center gap-2">
-                        <Phone className="w-3 h-3 text-red-500" />
+                      <div className="font-bold text-slate-900 text-sm">{d.fullName}</div>
+                      <div className="text-slate-500 font-mono flex items-center gap-2">
+                        <Phone className="w-3.5 h-3.5 text-red-600" />
                         <span>{d.phone}</span>
                         {d.licensePlate && (
                           <>
-                            <span className="text-slate-600">•</span>
-                            <span className="px-1.5 py-0.5 bg-[#252733] text-slate-300 rounded font-mono text-[10px]">
+                            <span className="text-slate-300">•</span>
+                            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-mono text-[11px] font-semibold">
                               Plate: {d.licensePlate}
                             </span>
                           </>
@@ -640,32 +837,31 @@ export default function FleetDashboard() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      {/* Add/Assign Vehicle button for this driver */}
                       <button
                         onClick={() => {
                           setAssigningDriver(d);
                           setAssignPlate(d.licensePlate || '');
                           setIsAssignVehicleOpen(true);
                         }}
-                        className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1.5 border transition cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition cursor-pointer ${
                           d.licensePlate
-                            ? 'bg-[#252733] hover:bg-[#323444] text-slate-200 border-[#3a3c4c]'
-                            : 'bg-red-950/40 hover:bg-red-900/50 text-red-400 border-red-500/30'
+                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                            : 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
                         }`}
                         title="Add or Change Assigned Vehicle"
                       >
-                        <Truck className="w-3.5 h-3.5 text-red-500" />
+                        <Truck className="w-3.5 h-3.5 text-red-600" />
                         <span>{d.licensePlate ? `Vehicle: ${d.licensePlate}` : '+ Add Vehicle'}</span>
                       </button>
 
-                      <span className="px-2.5 py-1 bg-emerald-950/70 text-emerald-400 border border-emerald-500/30 rounded-full font-semibold text-[11px] hidden sm:flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3" />
+                      <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-semibold text-xs hidden sm:flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5" />
                         <span>Authorized</span>
                       </span>
 
                       <button
                         onClick={() => deleteDriverMutation.mutate(d.id)}
-                        className="text-slate-500 hover:text-red-400 transition p-1 cursor-pointer"
+                        className="text-slate-400 hover:text-red-600 transition p-1.5 cursor-pointer rounded-lg hover:bg-red-50"
                         title="Remove Driver"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -675,23 +871,23 @@ export default function FleetDashboard() {
                 ))}
 
                 {drivers.length === 0 && (
-                  <div className="py-12 text-center text-slate-400 text-xs space-y-3">
-                    <Users className="w-8 h-8 text-slate-600 mx-auto" />
-                    <div>No authorized drivers registered yet.</div>
+                  <div className="py-12 text-center text-slate-500 text-xs space-y-3">
+                    <Users className="w-10 h-10 text-slate-300 mx-auto" />
+                    <div className="font-semibold text-slate-700">No authorized drivers registered yet.</div>
                     <div className="flex items-center justify-center gap-3">
                       <button
                         onClick={() => setIsAddDriverOpen(true)}
-                        className="inline-flex items-center gap-1 text-red-500 hover:text-red-400 font-bold"
+                        className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 font-bold cursor-pointer"
                       >
-                        <Plus className="w-3.5 h-3.5" />
+                        <Plus className="w-4 h-4" />
                         <span>Register your first driver</span>
                       </button>
-                      <span className="text-slate-600">•</span>
+                      <span className="text-slate-300">•</span>
                       <button
                         onClick={() => setIsAddVehicleOpen(true)}
-                        className="inline-flex items-center gap-1 text-slate-400 hover:text-white font-bold"
+                        className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 font-bold cursor-pointer"
                       >
-                        <Truck className="w-3.5 h-3.5 text-red-500" />
+                        <Truck className="w-4 h-4 text-red-600" />
                         <span>Add Vehicle</span>
                       </button>
                     </div>
@@ -701,43 +897,43 @@ export default function FleetDashboard() {
             </div>
           )}
 
-          {/* 4. REQUEST NEW SERVICE (Image 5) */}
+          {/* 4. REQUEST NEW SERVICE TAB */}
           {activeTab === 'request' && (
             <div className="max-w-2xl space-y-4">
-              <div>
-                <h2 className="text-xl font-bold text-white">Book an Appointment</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Fill in the details below to request a new service.</p>
-              </div>
+              <PageHeader
+                title="Request Roadside Service"
+                subtitle="Book standard or emergency roadside assistance directly with corporate dispatch"
+              />
 
-              <form onSubmit={handleBookService} className="bg-[#18191e] border border-[#272832] rounded-xl p-6 space-y-4 text-xs">
+              <form onSubmit={handleBookService} className="card-surface p-6 space-y-4 text-xs">
                 {/* APPOINTMENT DATE & TIME */}
                 <div>
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Appointment Date & Time *
                     </label>
-                    <span className="text-[10px] text-slate-500">24/7 Hours</span>
+                    <span className="text-[11px] text-slate-400 font-medium">24/7 Hours</span>
                   </div>
                   <input
                     type="datetime-local"
                     value={bookingForm.appointmentDate}
                     onChange={(e) => setBookingForm({ ...bookingForm, appointmentDate: e.target.value })}
-                    className="w-full mt-1.5 px-3 py-2.5 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs focus:outline-none focus:border-red-500 transition"
+                    className="input-base mt-1.5 py-2.5 text-xs text-slate-800"
                     required
                   />
                 </div>
 
                 {/* VEHICLE */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
-                    Vehicle
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Select Fleet Vehicle
                   </label>
                   <select
                     value={bookingForm.vehicleId}
                     onChange={(e) => handleVehicleSelect(e.target.value)}
-                    className="w-full mt-1.5 px-3 py-2.5 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs focus:outline-none focus:border-red-500 transition"
+                    className="select-base mt-1.5 py-2.5 text-xs text-slate-800"
                   >
-                    <option value="">Select a vehicle...</option>
+                    <option value="">Select a registered vehicle...</option>
                     {vehicles.map((v: any) => (
                       <option key={v.id} value={v.id}>
                         {v.licensePlate ? `[${v.licensePlate}] ` : ''}{v.year} {v.make} {v.model} ({v.tireSize || '11R22.5'})
@@ -749,13 +945,13 @@ export default function FleetDashboard() {
                 {/* SELECT SERVICE & SERVICE TYPE */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Select Service *
                     </label>
                     <select
                       value={bookingForm.serviceName}
                       onChange={(e) => setBookingForm({ ...bookingForm, serviceName: e.target.value })}
-                      className="w-full mt-1.5 px-3 py-2.5 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs focus:outline-none focus:border-red-500 transition"
+                      className="select-base mt-1.5 py-2.5 text-xs text-slate-800"
                       required
                     >
                       <option value="New Tire Replacement">New Tire Replacement</option>
@@ -769,16 +965,16 @@ export default function FleetDashboard() {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
-                      Service Type
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Service Urgency
                     </label>
                     <select
                       value={bookingForm.serviceType}
                       onChange={(e) => setBookingForm({ ...bookingForm, serviceType: e.target.value as any })}
-                      className="w-full mt-1.5 px-3 py-2.5 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs focus:outline-none focus:border-red-500 transition"
+                      className="select-base mt-1.5 py-2.5 text-xs text-slate-800"
                     >
-                      <option value="STANDARD">Standard Service</option>
-                      <option value="EMERGENCY">Roadside Emergency (Priority)</option>
+                      <option value="STANDARD">Standard Scheduled Service</option>
+                      <option value="EMERGENCY">Roadside Emergency (Priority Dispatch)</option>
                     </select>
                   </div>
                 </div>
@@ -786,85 +982,85 @@ export default function FleetDashboard() {
                 {/* PHONE NUMBER & TIRE SIZE */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
-                      Phone Number
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Contact Phone
                     </label>
                     <input
                       type="text"
                       value={bookingForm.contactPhone}
                       onChange={(e) => setBookingForm({ ...bookingForm, contactPhone: e.target.value })}
                       placeholder={fleet?.contactPhone || '1-866-686-9660'}
-                      className="w-full mt-1.5 px-3 py-2.5 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs focus:outline-none focus:border-red-500 transition"
+                      className="input-base mt-1.5 py-2.5 text-xs text-slate-800 font-mono"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Tire Size
                     </label>
                     <input
                       type="text"
                       value={bookingForm.tireSize}
                       onChange={(e) => setBookingForm({ ...bookingForm, tireSize: e.target.value })}
-                      placeholder="e.g. 235/65R17 or 11R22.5"
-                      className="w-full mt-1.5 px-3 py-2.5 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs font-mono focus:outline-none focus:border-red-500 transition"
+                      placeholder="e.g. 11R22.5 or 235/65R17"
+                      className="input-base mt-1.5 py-2.5 text-xs font-mono text-slate-800"
                     />
                   </div>
                 </div>
 
                 {/* ADDRESS */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
-                    Address
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Breakdown / Service Address *
                   </label>
                   <input
                     type="text"
                     value={bookingForm.address}
                     onChange={(e) => setBookingForm({ ...bookingForm, address: e.target.value })}
-                    placeholder="Enter service address or breakdown location"
-                    className="w-full mt-1.5 px-3 py-2.5 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs focus:outline-none focus:border-red-500 transition"
+                    placeholder="Enter street address, highway exit, or depot location"
+                    className="input-base mt-1.5 py-2.5 text-xs text-slate-800"
                     required
                   />
                 </div>
 
                 {/* NOTES */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
-                    Wheel Position / Breakdown Notes
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Wheel Position / Breakdown Instructions
                   </label>
                   <textarea
                     value={bookingForm.notes}
                     onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
-                    placeholder="e.g. Driver side trailer front axle flat tire"
+                    placeholder="e.g. Trailer right-rear outer tire blowout, driver waiting on shoulder"
                     rows={2}
-                    className="w-full mt-1.5 px-3 py-2.5 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs focus:outline-none focus:border-red-500 transition resize-none"
+                    className="textarea-base mt-1.5 py-2 text-xs text-slate-800 resize-none"
                   />
                 </div>
 
-                {/* SUBMIT BUTTON (Full-width bright red) */}
+                {/* SUBMIT BUTTON */}
                 <button
                   type="submit"
                   disabled={bookServiceMutation.isPending}
-                  className="w-full py-3 bg-[#e5252a] hover:bg-[#c91e23] disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition shadow-lg shadow-red-950/50 cursor-pointer mt-2"
+                  className="w-full btn-primary py-3 text-xs font-bold uppercase tracking-wider shadow-md shadow-red-600/20 cursor-pointer mt-2"
                 >
-                  {bookServiceMutation.isPending ? 'Submitting Request...' : 'SUBMIT REQUEST'}
+                  {bookServiceMutation.isPending ? 'Dispatching Request...' : 'Submit Service Request'}
                 </button>
               </form>
             </div>
           )}
 
-          {/* 5. SERVICE STATUS (Image 4) */}
+          {/* 5. SERVICE STATUS TAB */}
           {activeTab === 'status' && (
             <div className="space-y-4">
-              <div>
-                <h2 className="text-xl font-bold text-white">Service Status</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Track the status of your submitted service requests.</p>
-              </div>
+              <PageHeader
+                title="Service Status"
+                subtitle="Live tracking and real-time updates for all submitted fleet jobs"
+              />
 
-              <div className="bg-[#18191e] border border-[#272832] rounded-xl overflow-x-auto">
+              <div className="card-surface overflow-x-auto shadow-xs">
                 <table className="w-full text-left text-xs whitespace-nowrap">
                   <thead>
-                    <tr className="border-b border-[#252733] text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                       <th className="py-3 px-4">APPT #</th>
                       <th className="py-3 px-4">SERVICE</th>
                       <th className="py-3 px-4">TYPE</th>
@@ -876,7 +1072,7 @@ export default function FleetDashboard() {
                       <th className="py-3 px-4">STATUS</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#252733]">
+                  <tbody className="divide-y divide-slate-100">
                     {jobs.map((j: any, index: number) => {
                       const serviceTitle = j.serviceItems?.[0]?.serviceName || 'Tire Service';
                       const vehicleDesc = j.vehicle
@@ -895,46 +1091,46 @@ export default function FleetDashboard() {
                         : 'Immediate';
 
                       return (
-                        <tr key={j.id} className="hover:bg-[#1f2029] transition">
-                          <td className="py-3.5 px-4 font-bold text-red-500 font-mono">
+                        <tr key={j.id} className="hover:bg-slate-50/80 transition">
+                          <td className="py-3.5 px-4 font-bold text-red-600 font-mono">
                             {apptNum}
                           </td>
-                          <td className="py-3.5 px-4 font-semibold text-white">
+                          <td className="py-3.5 px-4 font-semibold text-slate-900">
                             {serviceTitle}
                           </td>
                           <td className="py-3.5 px-4">
-                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                            <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold border ${
                               j.urgency === 'URGENT'
-                                ? 'bg-red-950/40 text-red-400 border-red-500/30'
-                                : 'bg-emerald-950/40 text-emerald-400 border-emerald-500/30'
+                                ? 'bg-red-50 text-red-700 border-red-200'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'
                             }`}>
                               {j.urgency === 'URGENT' ? 'Emergency' : 'Standard'}
                             </span>
                           </td>
-                          <td className="py-3.5 px-4 text-slate-300">
+                          <td className="py-3.5 px-4 text-slate-700 font-medium">
                             {vehicleDesc}
                           </td>
-                          <td className="py-3.5 px-4 font-mono text-slate-300">
+                          <td className="py-3.5 px-4 font-mono text-slate-700">
                             {tireSize}
                           </td>
-                          <td className="py-3.5 px-4 text-slate-400 max-w-[180px] truncate" title={j.serviceAddress}>
+                          <td className="py-3.5 px-4 text-slate-500 max-w-[180px] truncate" title={j.serviceAddress}>
                             {j.serviceAddress || '—'}
                           </td>
-                          <td className="py-3.5 px-4 font-mono text-slate-300">
+                          <td className="py-3.5 px-4 font-mono text-slate-700">
                             {j.recipientPhone || fleet?.contactPhone || '—'}
                           </td>
-                          <td className="py-3.5 px-4 text-slate-300 font-mono text-[11px]">
+                          <td className="py-3.5 px-4 text-slate-600 font-mono text-xs">
                             {formattedDate}
                           </td>
                           <td className="py-3.5 px-4">
-                            <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                            <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold ${
                               j.status === 'COMPLETED'
-                                ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/40'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                 : j.status === 'IN_PROGRESS' || j.status === 'ARRIVED'
-                                ? 'bg-blue-950 text-blue-300 border border-blue-500/40'
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
                                 : j.status === 'ASSIGNED' || j.status === 'EN_ROUTE'
-                                ? 'bg-indigo-950 text-indigo-300 border border-indigo-500/40'
-                                : 'bg-amber-950 text-amber-300 border border-amber-500/40'
+                                ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                : 'bg-amber-50 text-amber-700 border border-amber-200'
                             }`}>
                               {j.status === 'IN_PROGRESS' ? 'Job Start' : j.status}
                             </span>
@@ -945,7 +1141,7 @@ export default function FleetDashboard() {
 
                     {jobs.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="py-12 text-center text-slate-500 text-xs">
+                        <td colSpan={9} className="py-12 text-center text-slate-400 text-xs">
                           No service requests submitted yet.
                         </td>
                       </tr>
@@ -956,37 +1152,32 @@ export default function FleetDashboard() {
             </div>
           )}
 
-          {/* 6. PENDING INVOICES (Image 3) */}
+          {/* 6. PENDING INVOICES TAB */}
           {activeTab === 'pending-invoices' && (
             <div className="space-y-4">
-              <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-red-500" />
-                  <span>Pending Invoices</span>
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Invoices sent to you by XtremeMobileTire that require payment.
-                </p>
-              </div>
+              <PageHeader
+                title="Pending Fleet Invoices"
+                subtitle="Invoices generated by Xtreme Mobile Tire that require payment settlement"
+              />
 
-              {/* Search Bar (Image 3) */}
+              {/* Search Bar */}
               <div className="relative">
                 <input
                   type="text"
                   value={pendingSearch}
                   onChange={(e) => setPendingSearch(e.target.value)}
                   placeholder="Search invoice #, company..."
-                  className="w-full px-4 py-2.5 bg-[#18191e] border border-[#272832] rounded-xl text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-red-500 transition"
+                  className="input-base py-2.5 text-xs text-slate-800"
                 />
               </div>
 
               {filteredPendingInvoices.length > 0 ? (
-                <div className="bg-[#18191e] border border-[#272832] rounded-xl divide-y divide-[#252733] overflow-hidden">
+                <div className="card-surface divide-y divide-slate-100 overflow-hidden shadow-xs">
                   {filteredPendingInvoices.map((inv: any) => (
-                    <div key={inv.id} className="p-4 flex items-center justify-between text-xs hover:bg-[#1f2029] transition">
+                    <div key={inv.id} className="p-4 sm:p-5 flex items-center justify-between text-xs hover:bg-slate-50/80 transition">
                       <div className="space-y-1">
-                        <div className="font-mono font-bold text-white text-sm">{inv.invoiceNumber}</div>
-                        <div className="text-slate-400 text-[11px]">
+                        <div className="font-mono font-bold text-slate-900 text-sm">{inv.invoiceNumber}</div>
+                        <div className="text-slate-500 text-xs">
                           Issued: {new Date(inv.createdAt).toLocaleDateString()} | Due: {new Date(inv.dueDate).toLocaleDateString()}
                         </div>
                       </div>
@@ -994,17 +1185,17 @@ export default function FleetDashboard() {
                       <div className="flex items-center gap-4">
                         <button
                           onClick={() => setSelectedInvoiceId(inv.id)}
-                          className="px-3 py-1.5 bg-[#252733] hover:bg-[#323444] text-white rounded-lg border border-[#343644] text-xs font-semibold flex items-center gap-1.5 transition"
+                          className="btn-secondary py-1.5 px-3 text-xs inline-flex items-center gap-1.5 cursor-pointer"
                         >
-                          <FileText className="w-3.5 h-3.5 text-red-500" />
+                          <FileText className="w-3.5 h-3.5 text-red-600" />
                           <span>View PDF</span>
                         </button>
 
                         <div className="text-right">
-                          <div className="font-mono font-bold text-red-500 text-sm">
+                          <div className="font-mono font-bold text-red-600 text-base">
                             {formatCurrency(centsToDollars(inv.totalCents), currencySymbol)}
                           </div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded">
                             {inv.status}
                           </span>
                         </div>
@@ -1013,12 +1204,11 @@ export default function FleetDashboard() {
                   ))}
                 </div>
               ) : (
-                /* Empty state matching Image 3 */
-                <div className="py-20 flex flex-col items-center justify-center text-center space-y-3">
-                  <div className="text-slate-600">
+                <div className="py-20 flex flex-col items-center justify-center text-center space-y-3 card-surface">
+                  <div className="text-slate-300">
                     <FileText className="w-12 h-12 stroke-[1.2]" />
                   </div>
-                  <div className="text-xs text-slate-400 font-medium">
+                  <div className="text-xs text-slate-500 font-medium">
                     No pending invoices at this time.
                   </div>
                 </div>
@@ -1026,37 +1216,32 @@ export default function FleetDashboard() {
             </div>
           )}
 
-          {/* 7. PAID INVOICES (Image 2) */}
+          {/* 7. PAID INVOICES TAB */}
           {activeTab === 'paid-invoices' && (
             <div className="space-y-4">
-              <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  <span>Paid Invoices</span>
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Invoices that have been marked as paid.
-                </p>
-              </div>
+              <PageHeader
+                title="Paid Fleet Invoices"
+                subtitle="Historical settled invoices and digital receipts"
+              />
 
-              {/* Search Bar (Image 2) */}
+              {/* Search Bar */}
               <div className="relative">
                 <input
                   type="text"
                   value={paidSearch}
                   onChange={(e) => setPaidSearch(e.target.value)}
                   placeholder="Search invoice #, company..."
-                  className="w-full px-4 py-2.5 bg-[#18191e] border border-[#272832] rounded-xl text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-red-500 transition"
+                  className="input-base py-2.5 text-xs text-slate-800"
                 />
               </div>
 
               {filteredPaidInvoices.length > 0 ? (
-                <div className="bg-[#18191e] border border-[#272832] rounded-xl divide-y divide-[#252733] overflow-hidden">
+                <div className="card-surface divide-y divide-slate-100 overflow-hidden shadow-xs">
                   {filteredPaidInvoices.map((inv: any) => (
-                    <div key={inv.id} className="p-4 flex items-center justify-between text-xs hover:bg-[#1f2029] transition">
+                    <div key={inv.id} className="p-4 sm:p-5 flex items-center justify-between text-xs hover:bg-slate-50/80 transition">
                       <div className="space-y-1">
-                        <div className="font-mono font-bold text-white text-sm">{inv.invoiceNumber}</div>
-                        <div className="text-slate-400 text-[11px]">
+                        <div className="font-mono font-bold text-slate-900 text-sm">{inv.invoiceNumber}</div>
+                        <div className="text-slate-500 text-xs">
                           Paid on {new Date(inv.updatedAt).toLocaleDateString()}
                         </div>
                       </div>
@@ -1064,17 +1249,17 @@ export default function FleetDashboard() {
                       <div className="flex items-center gap-4">
                         <button
                           onClick={() => setSelectedInvoiceId(inv.id)}
-                          className="px-3 py-1.5 bg-[#252733] hover:bg-[#323444] text-white rounded-lg border border-[#343644] text-xs font-semibold flex items-center gap-1.5 transition"
+                          className="btn-secondary py-1.5 px-3 text-xs inline-flex items-center gap-1.5 cursor-pointer"
                         >
-                          <FileText className="w-3.5 h-3.5 text-red-500" />
+                          <FileText className="w-3.5 h-3.5 text-red-600" />
                           <span>View PDF</span>
                         </button>
 
                         <div className="text-right">
-                          <div className="font-mono font-bold text-emerald-400 text-sm">
+                          <div className="font-mono font-bold text-emerald-600 text-base">
                             {formatCurrency(centsToDollars(inv.totalCents), currencySymbol)}
                           </div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded">
                             PAID
                           </span>
                         </div>
@@ -1083,12 +1268,11 @@ export default function FleetDashboard() {
                   ))}
                 </div>
               ) : (
-                /* Empty state matching Image 2 */
-                <div className="py-20 flex flex-col items-center justify-center text-center space-y-3">
-                  <div className="text-slate-600 flex items-center justify-center">
+                <div className="py-20 flex flex-col items-center justify-center text-center space-y-3 card-surface">
+                  <div className="text-slate-300 flex items-center justify-center">
                     <CheckCircle2 className="w-12 h-12 stroke-[1.2]" />
                   </div>
-                  <div className="text-xs text-slate-400 font-medium">
+                  <div className="text-xs text-slate-500 font-medium">
                     No paid invoices yet.
                   </div>
                 </div>
@@ -1100,16 +1284,16 @@ export default function FleetDashboard() {
 
       {/* ADD VEHICLE MODAL */}
       {isAddVehicleOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-[#18191e] border border-[#272832] rounded-2xl w-full max-w-md p-6 space-y-4 text-xs">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Truck className="w-4 h-4 text-red-500" />
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 space-y-4 text-xs shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Truck className="w-4 h-4 text-red-600" />
                 <span>Register Fleet Vehicle</span>
               </h3>
               <button 
                 onClick={() => setIsAddVehicleOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1124,86 +1308,86 @@ export default function FleetDashboard() {
             >
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Make *</label>
+                  <label className="text-xs font-semibold text-slate-700">Make *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Freightliner"
                     value={newVehicle.make}
                     onChange={(e) => setNewVehicle({ ...newVehicle, make: e.target.value })}
-                    className="w-full mt-1 px-3 py-2 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs"
+                    className="input-base mt-1 py-2 text-xs"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Model *</label>
+                  <label className="text-xs font-semibold text-slate-700">Model *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Cascadia"
                     value={newVehicle.model}
                     onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
-                    className="w-full mt-1 px-3 py-2 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs"
+                    className="input-base mt-1 py-2 text-xs"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Year</label>
+                  <label className="text-xs font-semibold text-slate-700">Year</label>
                   <input
                     type="number"
                     value={newVehicle.year}
                     onChange={(e) => setNewVehicle({ ...newVehicle, year: Number(e.target.value) })}
-                    className="w-full mt-1 px-3 py-2 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs"
+                    className="input-base mt-1 py-2 text-xs"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">License Plate</label>
+                  <label className="text-xs font-semibold text-slate-700">License Plate</label>
                   <input
                     type="text"
                     placeholder="e.g. KT-20"
                     value={newVehicle.licensePlate}
                     onChange={(e) => setNewVehicle({ ...newVehicle, licensePlate: e.target.value })}
-                    className="w-full mt-1 px-3 py-2 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs font-mono uppercase"
+                    className="input-base mt-1 py-2 text-xs font-mono uppercase"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Tire Size *</label>
+                <label className="text-xs font-semibold text-slate-700">Tire Size *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. 11R22.5 or 235/65R17"
                   value={newVehicle.tireSize}
                   onChange={(e) => setNewVehicle({ ...newVehicle, tireSize: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs font-mono"
+                  className="input-base mt-1 py-2 text-xs font-mono"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">VIN (Optional)</label>
+                <label className="text-xs font-semibold text-slate-700">VIN (Optional)</label>
                 <input
                   type="text"
                   placeholder="Vehicle Identification Number"
                   value={newVehicle.vin}
                   onChange={(e) => setNewVehicle({ ...newVehicle, vin: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs font-mono uppercase"
+                  className="input-base mt-1 py-2 text-xs font-mono uppercase"
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsAddVehicleOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-[#252733] hover:bg-[#323444] text-slate-300 text-xs font-semibold"
+                  className="btn-secondary py-2 px-4 text-xs font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={addVehicleMutation.isPending}
-                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md shadow-red-900/30"
+                  className="btn-primary py-2 px-4 text-xs font-bold shadow-sm shadow-red-600/20 cursor-pointer"
                 >
                   {addVehicleMutation.isPending ? 'Registering...' : 'Register Vehicle'}
                 </button>
@@ -1215,16 +1399,16 @@ export default function FleetDashboard() {
 
       {/* ADD DRIVER MODAL */}
       {isAddDriverOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-[#18191e] border border-[#272832] rounded-2xl w-full max-w-md p-6 space-y-4 text-xs">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Users className="w-4 h-4 text-red-500" />
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 space-y-4 text-xs shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Users className="w-4 h-4 text-red-600" />
                 <span>Register Fleet Driver</span>
               </h3>
               <button 
                 onClick={() => setIsAddDriverOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1238,36 +1422,36 @@ export default function FleetDashboard() {
               className="space-y-3"
             >
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Driver Full Name *</label>
+                <label className="text-xs font-semibold text-slate-700">Driver Full Name *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. John Doe"
                   value={newDriver.fullName}
                   onChange={(e) => setNewDriver({ ...newDriver, fullName: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs"
+                  className="input-base mt-1 py-2 text-xs"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Phone Number (For Roadside Verification) *</label>
+                <label className="text-xs font-semibold text-slate-700">Phone Number (For Roadside Verification) *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. +17035550199"
                   value={newDriver.phone}
                   onChange={(e) => setNewDriver({ ...newDriver, phone: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs font-mono"
+                  className="input-base mt-1 py-2 text-xs font-mono"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Assigned Vehicle (Optional)</label>
+                  <label className="text-xs font-semibold text-slate-700">Assigned Vehicle (Optional)</label>
                   <button
                     type="button"
                     onClick={() => setIsAddVehicleOpen(true)}
-                    className="text-[10px] font-bold text-red-500 hover:text-red-400 inline-flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-bold text-red-600 hover:text-red-700 inline-flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3 h-3" />
                     <span>+ Add New Vehicle</span>
@@ -1276,7 +1460,7 @@ export default function FleetDashboard() {
                 <select
                   value={newDriver.licensePlate}
                   onChange={(e) => setNewDriver({ ...newDriver, licensePlate: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs font-mono uppercase"
+                  className="select-base py-2 text-xs font-mono uppercase"
                 >
                   <option value="">-- No vehicle assigned --</option>
                   {vehicles.map((v: any) => (
@@ -1287,18 +1471,18 @@ export default function FleetDashboard() {
                 </select>
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsAddDriverOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-[#252733] hover:bg-[#323444] text-slate-300 text-xs font-semibold"
+                  className="btn-secondary py-2 px-4 text-xs font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={addDriverMutation.isPending}
-                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md shadow-red-900/30"
+                  className="btn-primary py-2 px-4 text-xs font-bold shadow-sm shadow-red-600/20 cursor-pointer"
                 >
                   {addDriverMutation.isPending ? 'Registering...' : 'Register Driver'}
                 </button>
@@ -1310,11 +1494,11 @@ export default function FleetDashboard() {
 
       {/* ASSIGN / ADD VEHICLE TO DRIVER MODAL */}
       {isAssignVehicleOpen && assigningDriver && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-[#18191e] border border-[#272832] rounded-2xl w-full max-w-md p-6 space-y-4 text-xs">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Truck className="w-4 h-4 text-red-500" />
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 space-y-4 text-xs shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Truck className="w-4 h-4 text-red-600" />
                 <span>Assign Vehicle to {assigningDriver.fullName}</span>
               </h3>
               <button 
@@ -1322,7 +1506,7 @@ export default function FleetDashboard() {
                   setIsAssignVehicleOpen(false);
                   setAssigningDriver(null);
                 }}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1340,11 +1524,11 @@ export default function FleetDashboard() {
             >
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Select Registered Fleet Vehicle</label>
+                  <label className="text-xs font-semibold text-slate-700">Select Registered Fleet Vehicle</label>
                   <button
                     type="button"
                     onClick={() => setIsAddVehicleOpen(true)}
-                    className="text-[10px] font-bold text-red-500 hover:text-red-400 inline-flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-bold text-red-600 hover:text-red-700 inline-flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3 h-3" />
                     <span>+ Add New Vehicle</span>
@@ -1353,7 +1537,7 @@ export default function FleetDashboard() {
                 <select
                   value={assignPlate}
                   onChange={(e) => setAssignPlate(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs font-mono uppercase"
+                  className="select-base py-2 text-xs font-mono uppercase"
                 >
                   <option value="">-- No vehicle assigned / Unassign --</option>
                   {vehicles.map((v: any) => (
@@ -1365,31 +1549,31 @@ export default function FleetDashboard() {
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Or Enter Custom License Plate</label>
+                <label className="text-xs font-semibold text-slate-700">Or Enter Custom License Plate</label>
                 <input
                   type="text"
                   placeholder="e.g. KT-15"
                   value={assignPlate}
                   onChange={(e) => setAssignPlate(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 bg-[#101115] border border-[#2c2d3a] rounded-lg text-white text-xs font-mono uppercase"
+                  className="input-base mt-1 py-2 text-xs font-mono uppercase"
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     setIsAssignVehicleOpen(false);
                     setAssigningDriver(null);
                   }}
-                  className="px-4 py-2 rounded-lg bg-[#252733] hover:bg-[#323444] text-slate-300 text-xs font-semibold cursor-pointer"
+                  className="btn-secondary py-2 px-4 text-xs font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={updateDriverMutation.isPending}
-                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md shadow-red-900/30 cursor-pointer"
+                  className="btn-primary py-2 px-4 text-xs font-bold shadow-sm shadow-red-600/20 cursor-pointer"
                 >
                   {updateDriverMutation.isPending ? 'Saving...' : 'Save Vehicle Assignment'}
                 </button>
