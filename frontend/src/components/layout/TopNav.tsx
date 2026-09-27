@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Menu, PanelLeftClose, PanelLeft, Phone, PhoneCall, Globe, Bell, LogOut } from 'lucide-react';
+import { Menu, PanelLeftClose, PanelLeft, Globe, Bell, LogOut } from 'lucide-react';
 import { useTenant } from '../../context/TenantContext';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
@@ -20,10 +20,13 @@ export default function TopNav({
   isCollapsed,
 }: TopNavProps) {
   const { user, logout } = useAuth();
-  const { country, setCountry, agentMode, setAgentMode } = useTenant();
-  const { socket, isConnected, openSoftphone, activeCall, unreadCount } = useSocket();
+  const { country, setCountry, setAgentMode, isAgentActive, setIsAgentActive } = useTenant();
+  const { socket, isConnected, unreadCount } = useSocket();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  const isAgentOrAdmin = user?.role === 'CALL_AGENT' || user?.role === 'ADMIN';
+  const canSwitchCountry = user?.role === 'ADMIN' || user?.role === 'DISPATCHER' || user?.role === 'ACCOUNTANT';
 
   return (
     <>
@@ -54,7 +57,7 @@ export default function TopNav({
           </div>
         </div>
 
-        {/* Right side controls: Softphone trigger, Notifications, Country Silo, Agent Presence, Profile */}
+        {/* Right side controls: Notifications, Country Silo, Agent Presence, Profile */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Operations Notification Bell */}
           <button
@@ -71,109 +74,65 @@ export default function TopNav({
             )}
           </button>
 
-          {/* Softphone Dialer Quick Button */}
-          <button
-            type="button"
-            onClick={openSoftphone}
-            className={`relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs ${
-              activeCall 
-                ? 'bg-emerald-600 text-white animate-bounce' 
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-            title="Open Telnyx WebRTC Softphone"
-          >
-          {activeCall ? <PhoneCall className="w-3.5 h-3.5" /> : <Phone className="w-3.5 h-3.5" />}
-          <span className="hidden md:inline">{activeCall ? 'Call in Progress' : 'Dialer'}</span>
-          {activeCall && (
-            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-            </span>
+          {/* Multi-Tenant Country Silo Selector (Interactive for Admin/Staff, Static Badge for External/Drivers) */}
+          {canSwitchCountry ? (
+            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg p-1">
+              <Globe className="w-3.5 h-3.5 text-slate-400 ml-1 hidden sm:block" />
+              <select
+                value={country}
+                onChange={(e) => setCountry(e.target.value as CountryCode)}
+                className="bg-transparent text-xs font-bold text-slate-800 pr-1 pl-1 outline-none cursor-pointer"
+                aria-label="Select Country Tenant"
+              >
+                {Object.entries(COUNTRY_REGIONS).map(([code, region]) => (
+                  <option key={code} value={code}>
+                    {code} ({region.currency})
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-700">
+              <Globe className="w-3.5 h-3.5 text-slate-400" />
+              <span>{country} ({COUNTRY_REGIONS[country]?.currency || 'CAD'})</span>
+            </div>
           )}
-        </button>
 
-        {/* Multi-Tenant Country Silo Selector */}
-        <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg p-1">
-          <Globe className="w-3.5 h-3.5 text-slate-400 ml-1 hidden sm:block" />
-          <select
-            value={country}
-            onChange={(e) => setCountry(e.target.value as CountryCode)}
-            className="bg-transparent text-xs font-bold text-slate-800 pr-1 pl-1 outline-none cursor-pointer"
-            aria-label="Select Country Tenant"
-          >
-            {Object.entries(COUNTRY_REGIONS).map(([code, region]) => (
-              <option key={code} value={code}>
-                {code} ({region.currency})
-              </option>
-            ))}
-          </select>
-        </div>
+          {/* Agent Presence Switch (Active / On Break) - Mode is auto-determined by current page */}
+          {isAgentOrAdmin && (
+            <button
+              type="button"
+              onClick={async () => {
+                const nextActive = !isAgentActive;
+                setIsAgentActive(nextActive);
+                const isOutboundPath = window.location.pathname.includes('/outbound') || window.location.pathname.includes('/leads');
+                const nextMode = nextActive ? (isOutboundPath ? 'OUTBOUND' : 'INBOUND') : 'INACTIVE';
+                setAgentMode(nextMode);
 
-        {/* Agent Presence Tri-State Toggle (PRD FR-1.1: INACTIVE / INBOUND / OUTBOUND) */}
-        <div className="flex items-center p-0.5 bg-slate-100 rounded-lg border border-slate-200">
-          <button
-            type="button"
-            onClick={async () => {
-              setAgentMode('INACTIVE');
-              if (socket && user) {
-                socket.emit('agent:presence', { userId: user.id, mode: 'INACTIVE', countryCode: country });
-              }
-              try { await userService.toggleMyPresence(false); } catch {}
-              toast.info('Presence set to Inactive (Break)');
-            }}
-            className={`px-2 py-1 rounded-md text-[11px] font-bold transition flex items-center gap-1 cursor-pointer ${
-              agentMode === 'INACTIVE'
-                ? 'bg-white text-slate-800 shadow-2xs'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-            title="Inactive / On Break (Zero call routing)"
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${agentMode === 'INACTIVE' ? 'bg-slate-400' : 'bg-transparent'}`} />
-            <span>Inactive</span>
-          </button>
+                if (socket && user) {
+                  socket.emit('agent:presence', { userId: user.id, mode: nextMode, countryCode: country });
+                }
+                try {
+                  await userService.toggleMyPresence(nextActive);
+                } catch {}
 
-          <button
-            type="button"
-            onClick={async () => {
-              setAgentMode('INBOUND');
-              if (socket && user) {
-                socket.emit('agent:presence', { userId: user.id, mode: 'INBOUND', countryCode: country });
-              }
-              try { await userService.toggleMyPresence(true); } catch {}
-              toast.success('Inbound Mode Active — Listening for hotline calls');
-            }}
-            className={`px-2 py-1 rounded-md text-[11px] font-bold transition flex items-center gap-1 cursor-pointer ${
-              agentMode === 'INBOUND'
-                ? 'bg-emerald-600 text-white shadow-2xs'
-                : 'text-slate-600 hover:text-emerald-700'
-            }`}
-            title="Inbound Mode (Receive live incoming motorist calls)"
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${agentMode === 'INBOUND' ? 'bg-emerald-200 animate-pulse' : 'bg-transparent'}`} />
-            <span>Inbound</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={async () => {
-              setAgentMode('OUTBOUND');
-              if (socket && user) {
-                socket.emit('agent:presence', { userId: user.id, mode: 'OUTBOUND', countryCode: country });
-              }
-              try { await userService.toggleMyPresence(true); } catch {}
-              toast.info('Outbound Mode Active — Isolated for VA lead calling');
-            }}
-            className={`px-2 py-1 rounded-md text-[11px] font-bold transition flex items-center gap-1 cursor-pointer ${
-              agentMode === 'OUTBOUND'
-                ? 'bg-blue-600 text-white shadow-2xs'
-                : 'text-slate-600 hover:text-blue-700'
-            }`}
-            title="Outbound Mode (Calling VA leads, invisible to inbound)"
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${agentMode === 'OUTBOUND' ? 'bg-blue-200 animate-pulse' : 'bg-transparent'}`} />
-            <span>Outbound</span>
-          </button>
-        </div>
+                if (nextActive) {
+                  toast.success(`You are Active (${isOutboundPath ? 'Outbound' : 'Inbound'} Hotline)`);
+                } else {
+                  toast.info('Status set to On Break (Inactive)');
+                }
+              }}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                isAgentActive
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+              }`}
+              title={isAgentActive ? 'Click to take a break' : 'Click to go on duty'}
+            >
+              <span className={`w-2 h-2 rounded-full ${isAgentActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+              <span>{isAgentActive ? 'Active' : 'On Break'}</span>
+            </button>
+          )}
 
         {/* User Mini Profile & Dropdown */}
         <div className="relative flex items-center gap-1.5 sm:gap-2 pl-1 sm:pl-2 border-l border-slate-200">

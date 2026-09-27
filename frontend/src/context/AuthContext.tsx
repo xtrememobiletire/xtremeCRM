@@ -11,6 +11,7 @@ export interface User {
   countryCode: 'CA' | 'US' | 'UK';
   phone?: string | null;
   isAgentActive?: boolean;
+  canApprovePayouts?: boolean;
 }
 
 interface AuthContextType {

@@ -96,6 +96,17 @@ router.patch(
 );
 
 /**
+ * @route   PATCH /api/accounting/jobs/:id/verify-payment
+ * @desc    Senior Accountant verifies job cash payment (marks VERIFIED_PAID)
+ * @access  Private (ADMIN, ACCOUNTANT)
+ */
+router.patch(
+  '/jobs/:id/verify-payment',
+  validateRequest({ params: idParamSchema }),
+  accountingController.verifyJobPayment
+);
+
+/**
  * @route   POST /api/accounting/receipt/:id
  * @desc    Upload customer payment receipt
  * @access  Private (ADMIN, ACCOUNTANT)
@@ -117,6 +128,17 @@ router.post(
   validateRequest({ params: idParamSchema }),
   upload.single('materialReceipt'),
   accountingController.uploadMaterialReceipt
+);
+
+/**
+ * @route   GET /api/accounting/developer-profit
+ * @desc    Get total IT/developer profits across regions
+ * @access  Private (ADMIN strictly)
+ */
+router.get(
+  '/developer-profit',
+  authorize(['ADMIN']),
+  accountingController.getDeveloperProfit
 );
 
 export default router;

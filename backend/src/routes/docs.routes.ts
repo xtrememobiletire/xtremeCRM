@@ -7,7 +7,7 @@ const router = Router();
  * @route   GET /api/docs/openapi.json
  * @desc    Raw OpenAPI 3.0 specification JSON
  */
-router.get('/openapi.json', (_req: Request, res: Response) => {
+router.get(['/openapi.json', '/json'], (_req: Request, res: Response) => {
   res.setHeader('Content-Type', 'application/json');
   res.status(200).json(openApiSpec);
 });

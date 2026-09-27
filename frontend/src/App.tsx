@@ -26,6 +26,7 @@ const History = lazy(() => import('./pages/History'));
 const Leads = lazy(() => import('./pages/Leads'));
 const Inbound = lazy(() => import('./pages/Inbound'));
 const VaUpload = lazy(() => import('./pages/VaUpload'));
+const DeveloperProfit = lazy(() => import('./pages/DeveloperProfit'));
 
 function getRoleHome(role?: string) {
   switch (role) {
@@ -105,7 +106,11 @@ function AppRoutes() {
           element={
             user ? (
               <ProtectedRoute>
-                <MainLayout />
+                {user.role === 'FLEET_MANAGER' ? (
+                  <Navigate to="/fleet-dashboard" replace />
+                ) : (
+                  <MainLayout />
+                )}
               </ProtectedRoute>
             ) : (
               <Suspense fallback={<PageLoader />}>
@@ -116,6 +121,18 @@ function AppRoutes() {
         >
           {user && <Route index element={<Navigate to={getRoleHome(user.role)} replace />} />}
         </Route>
+
+        {/* Dedicated Standalone Fleet Manager Portal */}
+        <Route
+          path="/fleet-dashboard"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<PageLoader />}>
+                <FleetDashboard />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
 
         {/* Protected App Routes */}
         <Route
@@ -132,13 +149,13 @@ function AppRoutes() {
           <Route path="/fleets" element={<Fleets />} />
           <Route path="/vehicles" element={<Vehicles />} />
           <Route path="/accounting" element={<Accounting />} />
-          <Route path="/fleet-dashboard" element={<FleetDashboard />} />
           <Route path="/member-dashboard" element={<MemberDashboard />} />
           <Route path="/technician" element={<TechnicianPortal />} />
           <Route path="/history" element={<History />} />
           <Route path="/inbound" element={<Inbound />} />
           <Route path="/outbound" element={<Leads />} />
           <Route path="/va-upload" element={<VaUpload />} />
+          <Route path="/developer-profit" element={<DeveloperProfit />} />
           <Route path="/leads" element={<Navigate to="/outbound" replace />} />
         </Route>
 

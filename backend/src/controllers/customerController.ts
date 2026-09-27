@@ -222,9 +222,31 @@ export const customerController = {
   async updateCustomer(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
+      const {
+        fullName,
+        name,
+        phone,
+        altPhone,
+        email,
+        countryCode,
+        customerType,
+        membershipTier,
+        membershipExpiresAt,
+      } = req.body;
+
+      const data: any = {};
+      if (fullName || name) data.fullName = (fullName || name).trim();
+      if (phone) data.phone = phone.trim();
+      if (altPhone !== undefined) data.altPhone = altPhone?.trim() || null;
+      if (email !== undefined) data.email = email?.trim() || null;
+      if (countryCode) data.countryCode = countryCode;
+      if (customerType) data.customerType = customerType;
+      if (membershipTier !== undefined) data.membershipTier = membershipTier;
+      if (membershipExpiresAt !== undefined) data.membershipExpiresAt = membershipExpiresAt;
+
       const updated = await prisma.customer.update({
         where: { id },
-        data: req.body,
+        data,
         include: {
           vehicles: true,
         },

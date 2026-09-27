@@ -748,6 +748,7 @@ export const leadController = {
         unassignedPoolCount,
       });
     } catch (err: any) {
+      console.error('[getAgentQueue] ERROR:', err.message, err.code ?? '');
       return sendError(res, err.message);
     }
   },

@@ -1,8 +1,10 @@
-import { TrendingUp, TrendingDown, Edit3, PlusCircle, CheckCircle2, Clock } from 'lucide-react';
+import { TrendingUp, TrendingDown, Edit3, PlusCircle, CheckCircle2, Clock, Check, ShieldAlert } from 'lucide-react';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
-import { useTenant } from '../../context/TenantContext';
 import type { JobReconciliationRecord } from '../../services/accountingService';
+import { useAuth } from '../../context/AuthContext';
+import { useVerifyJobPayment } from '../../hooks/useAccounting';
+import { toast } from 'sonner';
 
 interface ReconciliationTableProps {
   records: JobReconciliationRecord[];
@@ -15,14 +17,28 @@ export default function ReconciliationTable({
   onSelectJob,
   isLoading = false,
 }: ReconciliationTableProps) {
-  const { currencySymbol, country } = useTenant();
+  const { user } = useAuth();
+  const verifyJobPaymentMutation = useVerifyJobPayment();
+  const isSeniorAccountant = user?.role === 'ADMIN' || Boolean(user?.canApprovePayouts);
 
+  const handleVerify = async (jobId: string) => {
+    if (!isSeniorAccountant) {
+      toast.error('Senior Accountant approval required to verify cash payouts.');
+      return;
+    }
+    try {
+      await verifyJobPaymentMutation.mutateAsync(jobId);
+      toast.success('Cash payment verified by Senior Accountant');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to verify payment');
+    }
+  };
   if (isLoading) {
     return (
       <div className="table-container p-8 text-center bg-white rounded-xl border border-slate-200">
         <div className="inline-flex items-center gap-2 text-slate-500 font-medium text-xs">
-          <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-          <span>Loading real-time financial ledger...</span>
+          <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+          <span>Loading financial ledger...</span>
         </div>
       </div>
     );
@@ -33,7 +49,7 @@ export default function ReconciliationTable({
       <div className="table-container p-8 text-center bg-white rounded-xl border border-slate-200">
         <p className="text-sm font-semibold text-slate-700">No completed jobs found for this period</p>
         <p className="text-xs text-slate-400 mt-1">
-          Adjust the date filter or search query to view historical completed jobs.
+          Adjust the date or region filter to view historical completed jobs.
         </p>
       </div>
     );
@@ -44,11 +60,10 @@ export default function ReconciliationTable({
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-            <th className="table-th">Job # / Date</th>
+            <th className="table-th">Job # / Region</th>
             <th className="table-th">Customer / Vehicle</th>
             <th className="table-th text-right">Job Revenue</th>
             <th className="table-th text-right">Direct Costs (COGS)</th>
-            <th className="table-th text-right">IT Royalty</th>
             <th className="table-th text-right">Net Profit</th>
             <th className="table-th text-right">Gross Margin %</th>
             <th className="table-th text-center">Action</th>
@@ -58,8 +73,8 @@ export default function ReconciliationTable({
           {records.map((r) => {
             const isProfitable = r.profitCents >= 0;
             const hasRecordedExpenses = r.costCents > 0;
-            const defaultItFee = country === 'CA' ? 150 : 100;
-            const itFeeCents = r.itPlatformFeeCents || defaultItFee;
+            const itemSymbol = r.currencySymbol || (r.countryCode === 'UK' ? '£' : r.countryCode === 'CA' ? 'CA$' : '$');
+            const flag = r.countryCode === 'UK' ? '🇬🇧' : r.countryCode === 'US' ? '🇺🇸' : '🇨🇦';
 
             return (
               <tr
@@ -68,10 +83,16 @@ export default function ReconciliationTable({
                 className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
               >
                 <td className="table-td font-mono">
-                  <div className="font-bold text-red-600 text-xs group-hover:text-red-700 flex items-center gap-1.5">
-                    <span>{r.jobNumber}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm" title={r.countryCode}>{flag}</span>
+                    <span className="font-bold text-slate-900 text-xs group-hover:text-emerald-600 transition">
+                      {r.jobNumber}
+                    </span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                      {r.countryCode || 'CA'}
+                    </span>
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">{formatDate(r.date)}</div>
+                  <div className="text-[10px] text-slate-400 mt-1">{formatDate(r.date)}</div>
                 </td>
 
                 <td className="table-td">
@@ -86,43 +107,77 @@ export default function ReconciliationTable({
                   ) : (
                     <div className="text-[10px] text-slate-400 mt-0.5">Mobile roadside service</div>
                   )}
-                  <div className="mt-1">
+                  <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                     <span
-                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
                         r.paymentStatus === 'VERIFIED_PAID' || r.paymentStatus === 'PAID'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-amber-50 text-amber-700'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border-amber-200'
                       }`}
                     >
                       {r.paymentStatus === 'VERIFIED_PAID' || r.paymentStatus === 'PAID' ? (
-                        <CheckCircle2 size={10} />
+                        <>
+                          <CheckCircle2 size={10} />
+                          <span>Verified Paid</span>
+                        </>
                       ) : (
-                        <Clock size={10} />
+                        <>
+                          <Clock size={10} />
+                          <span>Pending Verification</span>
+                        </>
                       )}
-                      <span>{r.paymentStatus || 'UNPAID'}</span>
                     </span>
+
+                    {/* 1-Click Verification for Senior Accountant / Barrier for Junior */}
+                    {r.paymentStatus !== 'VERIFIED_PAID' && r.paymentStatus !== 'PAID' && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleVerify(r.id);
+                        }}
+                        disabled={verifyJobPaymentMutation.isPending}
+                        title={
+                          isSeniorAccountant
+                            ? 'Senior Accountant: Click to verify cash payment'
+                            : 'Senior Accountant credentials required to verify cash payment'
+                        }
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                          isSeniorAccountant
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-500 border border-slate-200 cursor-not-allowed'
+                        }`}
+                      >
+                        {verifyJobPaymentMutation.isPending ? (
+                          <div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
+                        ) : isSeniorAccountant ? (
+                          <>
+                            <Check size={10} />
+                            <span>Verify Cash</span>
+                          </>
+                        ) : (
+                          <>
+                            <ShieldAlert size={10} />
+                            <span>Awaiting Senior</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </td>
 
                 <td className="table-td text-right font-mono font-bold text-slate-900 text-xs sm:text-sm">
-                  {formatCurrency(centsToDollars(r.revenueCents), currencySymbol)}
+                  {formatCurrency(centsToDollars(r.revenueCents), itemSymbol)}
                 </td>
 
                 <td className="table-td text-right font-mono text-xs">
                   <div className="font-bold text-slate-800">
-                    {formatCurrency(centsToDollars(r.costCents), currencySymbol)}
+                    {formatCurrency(centsToDollars(r.costCents), itemSymbol)}
                   </div>
                   <div className="text-[10px] text-slate-400 mt-0.5">
-                    TC: {formatCurrency(centsToDollars(r.materialCostCents), currencySymbol)} • DC:{' '}
-                    {formatCurrency(centsToDollars(r.repairerFeeCents), currencySymbol)}
+                    TC: {formatCurrency(centsToDollars(r.materialCostCents), itemSymbol)} • DC:{' '}
+                    {formatCurrency(centsToDollars(r.repairerFeeCents), itemSymbol)}
                   </div>
-                </td>
-
-                <td className="table-td text-right font-mono text-xs text-slate-500">
-                  <div className="font-medium text-slate-700">
-                    {formatCurrency(centsToDollars(itFeeCents), currencySymbol)}
-                  </div>
-                  <div className="text-[9px] text-slate-400">IT_B Platform</div>
                 </td>
 
                 <td
@@ -130,10 +185,7 @@ export default function ReconciliationTable({
                     isProfitable ? 'text-emerald-600' : 'text-rose-600'
                   }`}
                 >
-                  <div>{formatCurrency(centsToDollars(r.profitCents), currencySymbol)}</div>
-                  <div className="text-[10px] font-normal text-slate-400 mt-0.5">
-                    Net: {formatCurrency(centsToDollars(r.netAfterItRoyaltyCents), currencySymbol)}
-                  </div>
+                  <div>{formatCurrency(centsToDollars(r.profitCents), itemSymbol)}</div>
                 </td>
 
                 <td className="table-td text-right">
@@ -154,10 +206,10 @@ export default function ReconciliationTable({
                       e.stopPropagation();
                       onSelectJob?.(r);
                     }}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                       hasRecordedExpenses
                         ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
                     }`}
                   >
                     {hasRecordedExpenses ? (

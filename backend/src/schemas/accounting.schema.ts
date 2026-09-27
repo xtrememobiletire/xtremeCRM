@@ -24,14 +24,14 @@ export const cashLedgerQuerySchema = z.object({
 });
 
 export const accountingSummaryQuerySchema = z.object({
-  countryCode: z.enum(['CA', 'US', 'UK']).default('CA'),
+  countryCode: z.enum(['CA', 'US', 'UK', 'ALL']).optional().default('ALL'),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   timeframe: z.string().optional(),
 });
 
 export const reconciliationQuerySchema = z.object({
-  countryCode: z.enum(['CA', 'US', 'UK']).default('CA'),
+  countryCode: z.enum(['CA', 'US', 'UK', 'ALL']).optional().default('ALL'),
   timeframe: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),

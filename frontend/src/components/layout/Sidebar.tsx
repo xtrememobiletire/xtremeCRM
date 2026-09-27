@@ -11,11 +11,11 @@ import {
   DollarSign, 
   X, 
   LogOut,
-  CheckCircle,
   History,
   PhoneIncoming,
   PhoneOutgoing,
-  UploadCloud
+  UploadCloud,
+  Shield
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,13 +26,13 @@ interface SidebarProps {
 
 const baseNavItems = [
   { icon: BarChart3, label: 'Dashboard', path: '/' },
-  { icon: PhoneOutgoing, label: 'Outbound Leads', path: '/outbound' },
-  { icon: Wrench, label: 'Jobs & Orders', path: '/jobs' },
-  { icon: Navigation, label: 'Live Dispatch', path: '/dispatch' },
+  { icon: PhoneOutgoing, label: 'Outbound', path: '/outbound' },
+  { icon: Wrench, label: 'Jobs', path: '/jobs' },
+  { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
   { icon: Users, label: 'Customers', path: '/customers' },
-  { icon: Truck, label: 'Fleet Accounts', path: '/fleets' },
+  { icon: Truck, label: 'Fleets', path: '/fleets' },
   { icon: Car, label: 'Vehicles', path: '/vehicles' },
-  { icon: DollarSign, label: 'Job Costing & Ledger', path: '/accounting' },
+  { icon: DollarSign, label: 'Accounting', path: '/accounting' },
 ];
 
 export default function Sidebar({ isOpen, onClose, isCollapsed = false }: SidebarProps) {
@@ -53,22 +53,19 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     ? [{ icon: Car, label: 'Member Portal', path: '/member-dashboard' }]
     : isDriver
     ? [
-        { icon: BarChart3, label: 'Dashboard', path: '/technician' },
-        { icon: CheckCircle, label: 'Orders', path: '/jobs' },
-        { icon: History, label: 'History', path: '/history' },
+        { icon: Wrench, label: 'Active Orders', path: '/technician' },
+        { icon: History, label: 'Earnings & History', path: '/history' },
       ]
     : isAccountant
     ? [
-        { icon: DollarSign, label: 'Job Costing & Ledger', path: '/accounting' },
-        { icon: Wrench, label: 'Completed Orders', path: '/jobs' },
-        { icon: BarChart3, label: 'Regional Dashboard', path: '/' },
+        { icon: DollarSign, label: 'Accounting', path: '/accounting' },
       ]
     : isDispatcher
     ? [
-        { icon: Navigation, label: 'Live Dispatch', path: '/dispatch' },
-        { icon: PhoneOutgoing, label: 'Outbound Leads', path: '/outbound' },
-        { icon: Wrench, label: 'Jobs & Orders', path: '/jobs' },
-        { icon: Truck, label: 'Fleet Accounts', path: '/fleets' },
+        { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
+        { icon: PhoneOutgoing, label: 'Outbound', path: '/outbound' },
+        { icon: Wrench, label: 'Jobs', path: '/jobs' },
+        { icon: Truck, label: 'Fleets', path: '/fleets' },
         { icon: Users, label: 'Customers', path: '/customers' },
         { icon: BarChart3, label: 'Dashboard', path: '/' },
       ]
@@ -85,11 +82,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         ...baseNavItems,
         ...(isAdmin
           ? [
-              { icon: PhoneIncoming, label: 'Inbound Hotline Preview', path: '/inbound' },
-              { icon: BarChart3, label: 'Technician Dashboard Preview', path: '/technician' },
-              { icon: History, label: 'Driver History Preview', path: '/history' },
-              { icon: Truck, label: 'Fleet Portal Preview', path: '/fleet-dashboard' },
-              { icon: Car, label: 'Member Portal Preview', path: '/member-dashboard' },
+              { icon: PhoneIncoming, label: 'Inbound Preview', path: '/inbound' },
+              { icon: BarChart3, label: 'Technician Preview', path: '/technician' },
+              { icon: History, label: 'History Preview', path: '/history' },
+              { icon: Truck, label: 'Fleet Preview', path: '/fleet-dashboard' },
+              { icon: Car, label: 'Member Preview', path: '/member-dashboard' },
+              { icon: Shield, label: 'Developer Profit', path: '/developer-profit' },
             ]
           : []),
       ];

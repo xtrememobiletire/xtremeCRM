@@ -28,6 +28,9 @@ export default function Accounting() {
   // Navigation tab
   const [accountingTab, setAccountingTab] = useState<'reconciliation' | 'invoices'>('reconciliation');
 
+  // Country filter for accountants (All, CA, UK, US)
+  const [selectedCountry, setSelectedCountry] = useState<'ALL' | 'CA' | 'UK' | 'US'>('ALL');
+
   // Filters
   const [timeframe, setTimeframe] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
@@ -43,6 +46,7 @@ export default function Accounting() {
     isLoading: isSummaryLoading,
     refetch: refetchSummary,
   } = useAccountingSummary({
+    countryCode: selectedCountry,
     timeframe: timeframe === 'all' ? undefined : timeframe,
   });
 
@@ -51,8 +55,8 @@ export default function Accounting() {
     isLoading: isInvoicesLoading,
     refetch: refetchInvoices,
   } = useQuery({
-    queryKey: ['accounting-invoices', country],
-    queryFn: () => accountingService.getInvoices({ countryCode: country }),
+    queryKey: ['accounting-invoices', selectedCountry],
+    queryFn: () => accountingService.getInvoices({ countryCode: selectedCountry === 'ALL' ? undefined : selectedCountry }),
   });
 
   const {
@@ -60,6 +64,7 @@ export default function Accounting() {
     isLoading: isJobsLoading,
     refetch: refetchJobs,
   } = useReconciliationJobs({
+    countryCode: selectedCountry,
     timeframe: timeframe === 'all' ? undefined : timeframe,
     search: search.trim() || undefined,
   });
@@ -70,7 +75,6 @@ export default function Accounting() {
   const grossRevenue = metrics?.grossRevenueCents ?? 0;
   const directCosts = metrics?.totalDirectCostsCents ?? 0;
   const netProfit = metrics?.netProfitCents ?? 0;
-  const netAfterIt = metrics?.netAfterItRoyaltyCents ?? 0;
   const averageMargin = metrics?.averageMarginPercent ?? (grossRevenue > 0 ? (netProfit / grossRevenue) * 100 : 0);
 
   const handleRowSelect = (job: JobReconciliationRecord) => {
@@ -116,8 +120,8 @@ export default function Accounting() {
     <div className="space-y-6">
       {/* Top Header */}
       <PageHeader
-        title={accountingTab === 'reconciliation' ? 'Job Costing & Financial Reconciliation' : 'Commercial Invoices & Accounts'}
-        subtitle={`Real-time margin analysis, COGS ledger, and billing for ${regionName} (${currencySymbol})`}
+        title={accountingTab === 'reconciliation' ? 'Reconciliation Ledger' : 'Invoices'}
+        subtitle={selectedCountry === 'ALL' ? 'Global Multi-Region (CAD / USD / GBP)' : `${regionName} (${currencySymbol})`}
         actions={
           <div className="flex items-center gap-2">
             <button
@@ -126,7 +130,7 @@ export default function Accounting() {
                 handleRefresh();
                 refetchInvoices();
               }}
-              className="btn-secondary px-2.5 py-2"
+              className="btn-secondary px-2.5 py-2 cursor-pointer"
               title="Refresh ledger data"
             >
               <RefreshCw size={14} className={isSummaryLoading || isJobsLoading || isInvoicesLoading ? 'animate-spin' : ''} />
@@ -136,42 +140,72 @@ export default function Accounting() {
               <button
                 type="button"
                 onClick={handleOpenNewExpense}
-                className="btn-primary inline-flex items-center gap-1.5"
+                className="btn-primary inline-flex items-center gap-1.5 cursor-pointer"
               >
                 <Plus size={14} />
-                <span>Record Job Expense / Part</span>
+                <span>Add Expense</span>
               </button>
             )}
           </div>
         }
       />
 
+      {/* Country Region Tabs - Mobile Scroll-X (Never Wraps) */}
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar whitespace-nowrap py-1">
+        {[
+          { code: 'ALL', label: 'All Regions', flag: '🌐' },
+          { code: 'CA', label: 'Canada', flag: '🇨🇦' },
+          { code: 'UK', label: 'United Kingdom', flag: '🇬🇧' },
+          { code: 'US', label: 'United States', flag: '🇺🇸' },
+        ].map((tab) => {
+          const isActive = selectedCountry === tab.code;
+          return (
+            <button
+              key={tab.code}
+              type="button"
+              onClick={() => setSelectedCountry(tab.code as any)}
+              className={`py-2 px-4 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
+                isActive
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <span>{tab.flag}</span>
+              <span>{tab.label}</span>
+              {isActive && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Navigation Tabs */}
       <div className="flex border-b border-slate-200">
         <button
           type="button"
           onClick={() => setAccountingTab('reconciliation')}
-          className={`py-2.5 px-4 font-bold text-xs border-b-2 flex items-center gap-2 transition ${
+          className={`py-2.5 px-4 font-bold text-xs border-b-2 flex items-center gap-2 transition cursor-pointer ${
             accountingTab === 'reconciliation'
-              ? 'border-red-600 text-red-600'
+              ? 'border-emerald-600 text-emerald-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <TrendingUp className="w-4 h-4" />
-          <span>Job Costing & Reconciliation</span>
+          <span>Reconciliation</span>
         </button>
 
         <button
           type="button"
           onClick={() => setAccountingTab('invoices')}
-          className={`py-2.5 px-4 font-bold text-xs border-b-2 flex items-center gap-2 transition ${
+          className={`py-2.5 px-4 font-bold text-xs border-b-2 flex items-center gap-2 transition cursor-pointer ${
             accountingTab === 'invoices'
-              ? 'border-red-600 text-red-600'
+              ? 'border-emerald-600 text-emerald-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <FileText className="w-4 h-4" />
-          <span>Invoices & Commercial Accounts</span>
+          <span>Invoices</span>
           {invoices.length > 0 && (
             <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-700">
               {invoices.length}
@@ -186,7 +220,7 @@ export default function Accounting() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               title="Period Gross Revenue"
-              value={formatCurrency(centsToDollars(grossRevenue), currencySymbol)}
+              value={formatCurrency(centsToDollars(grossRevenue), selectedCountry === 'ALL' ? '$' : currencySymbol)}
               subtitle={`${metrics?.completedJobs ?? records.length} completed & billed jobs`}
               subtitleColor="text-slate-500"
               icon={DollarSign}
@@ -196,7 +230,7 @@ export default function Accounting() {
             />
             <StatCard
               title="Direct Operating Costs"
-              value={formatCurrency(centsToDollars(directCosts), currencySymbol)}
+              value={formatCurrency(centsToDollars(directCosts), selectedCountry === 'ALL' ? '$' : currencySymbol)}
               subtitle="Tires, patches, technician labor fees"
               subtitleColor="text-rose-500"
               icon={Receipt}
@@ -206,8 +240,8 @@ export default function Accounting() {
             />
             <StatCard
               title="Net Gross Profit"
-              value={formatCurrency(centsToDollars(netProfit), currencySymbol)}
-              subtitle={`After IT Royalty: ${formatCurrency(centsToDollars(netAfterIt), currencySymbol)}`}
+              value={formatCurrency(centsToDollars(netProfit), selectedCountry === 'ALL' ? '$' : currencySymbol)}
+              subtitle="Revenue minus direct COGS"
               subtitleColor="text-emerald-600"
               icon={TrendingUp}
               iconBg="bg-emerald-50"
@@ -263,10 +297,10 @@ export default function Accounting() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-sm text-slate-900">
-                  Job Cost Breakdown & Reconciliation
+                  Completed Jobs — Expense Audit
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Click any row to audit wholesale materials (TC), technician fee (DC), and incidental notes.
+                  Click a row to audit expenses and approve technician payouts.
                 </p>
               </div>
               <span className="text-xs font-semibold text-slate-500">

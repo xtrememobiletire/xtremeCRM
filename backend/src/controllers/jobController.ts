@@ -42,7 +42,7 @@ export const jobController = {
       const search = req.query.search as string;
 
       const where: any = {};
-      if (countryCode) where.countryCode = countryCode;
+      if (countryCode && countryCode !== 'ALL') where.countryCode = countryCode;
       if (status) where.status = status;
       if (urgency) where.urgency = urgency;
       if (driverId) where.driverId = driverId;
@@ -52,6 +52,7 @@ export const jobController = {
       const userId = (req.user as any)?.id;
       if (userRole === 'DRIVER') {
         where.driverId = userId;
+        delete where.countryCode;
       } else if (userRole === 'FLEET_MANAGER') {
         const fleet = await prisma.fleet.findFirst({ where: { managerUserId: userId } });
         if (fleet) where.fleetId = fleet.id;
@@ -372,10 +373,17 @@ export const jobController = {
       if (urgency) updateData.urgency = urgency;
       if (status === 'ARRIVED') updateData.arrivedAt = new Date();
       if (status === 'COMPLETED') {
+        if (effectiveCashCents <= 0 && (!job.totalCents || job.totalCents <= 0)) {
+          return sendError(res, 'Payment amount or cash collected on scene is required to complete this job', 400);
+        }
         updateData.completedAt = new Date();
         if (effectiveCashCents > 0) {
           updateData.paymentMethod = 'CASH';
           updateData.paymentStatus = 'PAID_PENDING_VERIFICATION';
+          if (!job.totalCents || job.totalCents === 0) {
+            updateData.totalCents = effectiveCashCents;
+            updateData.subtotalCents = effectiveCashCents;
+          }
         }
       }
 
@@ -688,14 +696,17 @@ export const jobController = {
 
       // Store as a job record with disposition vehicle for analytics
       const jobCode = `DSP-${countryCode || 'CA'}-${Math.floor(10000 + Math.random() * 90000)}`;
+      const validDispositions = ['BOOKED', 'RELEVANT_NOT_CONVERTED', 'WRONG_NUMBER', 'IRRELEVANT_SERVICE', 'CANCELLED_BY_CUSTOMER'];
+      const resolvedDisp = validDispositions.includes(disposition) ? disposition : 'RELEVANT_NOT_CONVERTED';
+
       const job = await prisma.job.create({
         data: {
           jobCode,
           countryCode: countryCode || 'CA',
           currency: countryCode === 'US' ? 'USD' : countryCode === 'UK' ? 'GBP' : 'CAD',
-          recipientPhone: callerPhone,
+          recipientPhone: callerPhone || undefined,
           serviceAddress: 'N/A — Disposition Only',
-          disposition: disposition || 'RNC',
+          disposition: resolvedDisp,
           problemNotes: reason || undefined,
           source: 'DIRECT_CALL',
           urgency: 'STANDARD',

@@ -57,6 +57,9 @@ export interface JobReconciliationRecord {
     id: string;
     fullName: string;
   } | null;
+  countryCode?: 'CA' | 'US' | 'UK';
+  currency?: string;
+  currencySymbol?: string;
   expenseStatedAt?: string;
 }
 
@@ -74,6 +77,7 @@ export interface ReconciliationResponse {
 export const accountingService = {
   async getReconciliationJobs(params?: {
     countryCode?: string;
+    status?: string;
     timeframe?: string;
     search?: string;
     startDate?: string;
@@ -121,6 +125,11 @@ export const accountingService = {
     return res.data.data;
   },
 
+  async verifyJobPayment(jobId: string) {
+    const res = await api.patch(`/accounting/jobs/${jobId}/verify-payment`);
+    return res.data.data;
+  },
+
   async getInvoicePdfData(id: string) {
     const res = await api.get(`/invoices/${id}/pdf`);
     return res.data.data;
@@ -146,6 +155,11 @@ export const accountingService = {
     const res = await api.post(`/accounting/material-receipt/${jobId}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+    return res.data.data;
+  },
+
+  async getDeveloperProfit() {
+    const res = await api.get('/accounting/developer-profit');
     return res.data.data;
   },
 };

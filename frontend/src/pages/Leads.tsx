@@ -40,8 +40,8 @@ export default function Leads() {
   const [callbackDay, setCallbackDay] = useState('');
   const [callbackTime, setCallbackTime] = useState('');
 
-  // Auto-Dialer Toggle State (PRD FR-9.3)
-  const [autoDialEnabled, setAutoDialEnabled] = useState(true);
+  // Auto-Dialer Toggle State (Defaults to false to prevent unexpected auto-dial on page mount)
+  const [autoDialEnabled, setAutoDialEnabled] = useState(false);
   const hasAutoDialedRef = useRef(false);
 
   const [search, setSearch] = useState('');

@@ -1,14 +1,15 @@
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopNav from './TopNav';
 import { RouteErrorBoundary } from '../common/RouteErrorBoundary';
-import SoftphoneModal from '../telephony/SoftphoneModal';
+import ActiveCallBar from '../telephony/ActiveCallBar';
 import IncomingCallPop from '../telephony/IncomingCallPop';
 import WarmTransferModal from '../telephony/WarmTransferModal';
 import JobChatModal from '../dispatch/JobChatModal';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
+import { useTenant } from '../../context/TenantContext';
 
 function PageLoader() {
   return (
@@ -22,11 +23,39 @@ export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { activeChatJob, closeChatJob } = useSocket();
+  const { activeChatJob, closeChatJob, socket } = useSocket();
+  const { isAgentActive, setAgentMode, country } = useTenant();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return typeof window !== 'undefined' ? localStorage.getItem('xtreme_sidebar_collapsed') === 'true' : false;
   });
+
+  // Automatic Presence & Mode Synchronization:
+  // When active: navigating to /outbound automatically sets OUTBOUND; navigating to /inbound automatically sets INBOUND.
+  // When inactive: stays INACTIVE.
+  useEffect(() => {
+    if (user?.role === 'CALL_AGENT' || user?.role === 'ADMIN') {
+      if (!isAgentActive) {
+        setAgentMode('INACTIVE');
+        if (socket && user?.id) {
+          socket.emit('agent:presence', { userId: user.id, mode: 'INACTIVE', countryCode: country });
+        }
+        return;
+      }
+
+      if (location.pathname.startsWith('/outbound') || location.pathname.startsWith('/leads')) {
+        setAgentMode('OUTBOUND');
+        if (socket && user?.id) {
+          socket.emit('agent:presence', { userId: user.id, mode: 'OUTBOUND', countryCode: country });
+        }
+      } else if (location.pathname.startsWith('/inbound')) {
+        setAgentMode('INBOUND');
+        if (socket && user?.id) {
+          socket.emit('agent:presence', { userId: user.id, mode: 'INBOUND', countryCode: country });
+        }
+      }
+    }
+  }, [location.pathname, isAgentActive, user?.id, user?.role, country, socket, setAgentMode]);
 
   // Strict role containment: CALL_AGENT only allowed on /inbound and /outbound
   if (user?.role === 'CALL_AGENT') {
@@ -86,8 +115,8 @@ export default function MainLayout() {
         </main>
       </div>
 
-      {/* Global Softphone Modal, Screen Pop & Warm Transfer Pop */}
-      <SoftphoneModal />
+      {/* Global Active Call Bar Dock, Screen Pop & Warm Transfer Pop */}
+      <ActiveCallBar />
       <IncomingCallPop onIntakeJob={handleIntakeJob} />
       <WarmTransferModal />
 
