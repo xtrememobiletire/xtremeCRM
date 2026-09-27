@@ -105,6 +105,14 @@ async function main() {
       canApprovePayouts: true,
     },
     {
+      email: 'fleet.manager@xtremecrm.com',
+      fullName: 'Fleet Manager (KT Group)',
+      role: 'FLEET_MANAGER' as const,
+      countryCode: 'US' as const,
+      phone: '+17035550144',
+      isAgentActive: false,
+    },
+    {
       email: 'va@xtremecrm.com',
       fullName: 'Victor Assistant',
       role: 'VIRTUAL_ASSISTANT' as const,
@@ -145,7 +153,10 @@ async function main() {
   // 2. Seed B2B Fleet Account (KT Group)
   const fleet = await prisma.fleet.upsert({
     where: { fleetCode: 'XMT-5132' },
-    update: {},
+    update: {
+      managerUserId: createdUsers['FLEET_MANAGER']?.id,
+      website: 'https://www.ktgroupcanada.ca/',
+    },
     create: {
       fleetCode: 'XMT-5132',
       name: 'KT Group',
@@ -153,10 +164,11 @@ async function main() {
       phone: '+17035550144',
       email: 'piratheep@xtrememobiletire.com',
       address: '10100 Richmond Hwy, Lorton, VA 22079',
-      website: 'https://ktgroup.com',
+      website: 'https://www.ktgroupcanada.ca/',
       countryCode: 'US',
       status: 'APPROVED',
       contractSignedAt: new Date(),
+      managerUserId: createdUsers['FLEET_MANAGER']?.id,
       virtualAssistantId: createdUsers['VIRTUAL_ASSISTANT']?.id,
     },
   });
@@ -200,7 +212,25 @@ async function main() {
       tireSize: '11R22.5',
     },
   });
-  console.log(`✅ Seeded Fleet Vehicles: KT-15, KT-18`);
+  const intlVeh = await prisma.vehicle.upsert({
+    where: {
+      countryCode_licensePlate: {
+        countryCode: 'US',
+        licensePlate: 'KT-99',
+      },
+    },
+    update: {},
+    create: {
+      fleetId: fleet.id,
+      countryCode: 'US',
+      year: 2020,
+      make: 'INTL',
+      model: '40 S 2000 (White)',
+      licensePlate: 'KT-99',
+      tireSize: '11R22.5',
+    },
+  });
+  console.log(`✅ Seeded Fleet Vehicles: KT-15, KT-18, KT-99 (INTL 40 S 2000)`);
 
   // Seed Fleet Driver for 24/7 Roadside Verification
   await prisma.fleetDriver.upsert({
@@ -220,6 +250,39 @@ async function main() {
     },
   });
   console.log(`✅ Seeded Fleet Driver: John Driver (+17035550199)`);
+
+  // Seed sample Service Request Job for KT Group (matching Screenshot 4)
+  await prisma.job.upsert({
+    where: { jobCode: 'JOB-US-10009' },
+    update: {},
+    create: {
+      jobCode: 'JOB-US-10009',
+      fleetId: fleet.id,
+      vehicleId: intlVeh.id,
+      createdById: createdUsers['FLEET_MANAGER'].id,
+      countryCode: 'US',
+      source: 'FLEET_PORTAL',
+      status: 'IN_PROGRESS',
+      urgency: 'STANDARD',
+      serviceAddress: '10100 Richmond Hwy, Lorton, VA 22079',
+      recipientName: 'Piratheep',
+      recipientPhone: '1-866-686-9660',
+      appointmentDate: new Date('2026-09-15T05:30:00Z'),
+      problemNotes: '[Fleet Self-Request] Tire Spec: 11R22.5. Steer axle new tire replacement',
+      totalCents: 12000,
+      serviceItems: {
+        create: [
+          {
+            serviceName: 'New Tire Replacement',
+            category: 'TIRE_SERVICE',
+            unitPriceCents: 12000,
+            quantity: 1,
+            notes: 'Standard Service 11R22.5',
+          },
+        ],
+      },
+    },
+  });
 
   // 3. Seed B2C Customer Profile
   const customer = await prisma.customer.upsert({

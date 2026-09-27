@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useTenant } from '../../../context/TenantContext';
 import { COUNTRY_REGIONS, type CountryCode, type RegionConfig } from '../../../constants/regions';
@@ -11,7 +11,7 @@ export default function LoginForm() {
   const { login } = useAuth();
   const { country, setCountry } = useTenant();
 
-  const [email, setEmail] = useState('admin@xtremecrm.com');
+  const [email, setEmail] = useState('fleet.manager@xtremecrm.com');
   const [password, setPassword] = useState('AdminPassword123!');
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +20,7 @@ export default function LoginForm() {
     setLoading(true);
     try {
       await login(email, password);
-      toast.success('Logged into XtremeCRM Dispatch Portal');
+      toast.success('Logged in successfully');
       navigate('/');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Authentication failed');
@@ -30,14 +30,14 @@ export default function LoginForm() {
   };
 
   const handleQuickFill = (role: string) => {
-    if (role === 'admin') {
+    if (role === 'fleet') {
+      setEmail('fleet.manager@xtremecrm.com');
+    } else if (role === 'admin') {
       setEmail('admin@xtremecrm.com');
     } else if (role === 'agent') {
       setEmail('agent@xtremecrm.com');
     } else if (role === 'dispatcher') {
       setEmail('dispatcher@xtremecrm.com');
-    } else if (role === 'accountant') {
-      setEmail('accountant@xtremecrm.com');
     } else if (role === 'va') {
       setEmail('va@xtremecrm.com');
     } else {
@@ -46,8 +46,34 @@ export default function LoginForm() {
     setPassword('AdminPassword123!');
   };
 
+  const handleQuickLogin = async (emailVal: string) => {
+    const pw = 'AdminPassword123!';
+    setEmail(emailVal);
+    setPassword(pw);
+    setLoading(true);
+    try {
+      await login(emailVal, pw);
+      toast.success('Logged in successfully');
+      navigate('/');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="bg-white py-8 px-6 shadow-xl rounded-2xl border border-slate-200/80 sm:px-10 space-y-6">
+    <div className="bg-white py-8 px-6 shadow-xl rounded-2xl border border-slate-200/80 sm:px-10 space-y-5">
+      {/* Heading requested by user */}
+      <div className="text-center pb-3 border-b border-slate-100">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 text-[11px] font-bold mb-2">
+          <ShieldCheck className="w-3.5 h-3.5" />
+          <span>Fleet & Dispatch Portal</span>
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 tracking-tight">Fleet Manager Account</h2>
+        <p className="text-xs text-slate-500 mt-1">Sign in to manage vehicles, drivers, service requests & invoices</p>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Regional Silo Selection */}
         <div>
@@ -83,6 +109,7 @@ export default function LoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="input-base pl-9 py-2 text-xs"
+              placeholder="fleet.manager@xtremecrm.com"
             />
           </div>
         </div>
@@ -97,6 +124,7 @@ export default function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input-base pl-9 py-2 text-xs"
+              placeholder="••••••••••••"
             />
           </div>
         </div>
@@ -106,7 +134,7 @@ export default function LoginForm() {
           disabled={loading}
           className="w-full btn-primary py-2.5 text-xs font-bold shadow-md shadow-red-600/20"
         >
-          <span>{loading ? 'Authenticating...' : 'Sign In to Dispatch'}</span>
+          <span>{loading ? 'Authenticating...' : 'Sign In to Account'}</span>
           <ArrowRight size={14} />
         </button>
       </form>
@@ -116,7 +144,14 @@ export default function LoginForm() {
         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center mb-2">
           Fast Demo Accounts
         </p>
-        <div className="grid grid-cols-5 gap-1.5">
+        <div className="grid grid-cols-3 gap-1.5 mb-1.5">
+          <button
+            type="button"
+            onClick={() => handleQuickFill('fleet')}
+            className="py-1.5 px-2 rounded-lg border border-red-300 bg-red-50 hover:bg-red-100 text-[11px] font-bold text-red-700 transition text-center cursor-pointer shadow-xs"
+          >
+            Fleet Manager
+          </button>
           <button
             type="button"
             onClick={() => handleQuickFill('admin')}
@@ -126,24 +161,19 @@ export default function LoginForm() {
           </button>
           <button
             type="button"
-            onClick={() => handleQuickFill('agent')}
-            className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center cursor-pointer"
-          >
-            Agent
-          </button>
-          <button
-            type="button"
             onClick={() => handleQuickFill('dispatcher')}
             className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center cursor-pointer"
           >
             Dispatcher
           </button>
+        </div>
+        <div className="grid grid-cols-3 gap-1.5">
           <button
             type="button"
-            onClick={() => handleQuickFill('accountant')}
+            onClick={() => handleQuickFill('agent')}
             className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center cursor-pointer"
           >
-            Accountant
+            Agent
           </button>
           <button
             type="button"
@@ -160,9 +190,26 @@ export default function LoginForm() {
             Technician
           </button>
         </div>
-        <p className="text-[10px] text-slate-400 text-center mt-2">
-          Default password: <code className="font-mono text-slate-600 font-bold">AdminPassword123!</code>
-        </p>
+
+        {/* Accountant quick-logins */}
+        <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => handleQuickLogin('senior.accountant@xtremecrm.com')}
+            className="py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-[11px] font-semibold text-emerald-700 transition text-center cursor-pointer disabled:opacity-50"
+          >
+            Senior Accountant
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => handleQuickLogin('junior.accountant@xtremecrm.com')}
+            className="py-1.5 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 text-[11px] font-semibold text-amber-700 transition text-center cursor-pointer disabled:opacity-50"
+          >
+            Junior Accountant
+          </button>
+        </div>
       </div>
     </div>
   );
