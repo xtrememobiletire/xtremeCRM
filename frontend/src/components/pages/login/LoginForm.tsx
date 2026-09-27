@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ShieldCheck, Truck } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useTenant } from '../../../context/TenantContext';
 import { COUNTRY_REGIONS, type CountryCode, type RegionConfig } from '../../../constants/regions';
@@ -53,7 +53,7 @@ export default function LoginForm() {
     setLoading(true);
     try {
       await login(emailVal, pw);
-      toast.success('Logged in successfully');
+      toast.success('Logged into Fleet Manager Portal');
       navigate('/');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Authentication failed');
@@ -73,6 +73,18 @@ export default function LoginForm() {
         <h2 className="text-xl font-bold text-slate-900 tracking-tight">Fleet Manager Account</h2>
         <p className="text-xs text-slate-500 mt-1">Sign in to manage vehicles, drivers, service requests & invoices</p>
       </div>
+
+      {/* Prominent One-Click Fleet Manager Login Button */}
+      <button
+        type="button"
+        disabled={loading}
+        onClick={() => handleQuickLogin('fleet.manager@xtremecrm.com')}
+        className="w-full py-2.5 px-3 rounded-xl border-2 border-red-500 bg-red-50 hover:bg-red-100 text-xs font-bold text-red-700 transition flex items-center justify-center gap-2 cursor-pointer shadow-xs group"
+      >
+        <Truck className="w-4 h-4 text-red-600 group-hover:scale-110 transition-transform" />
+        <span>Sign In as Fleet Manager (KT Group)</span>
+        <ArrowRight className="w-3.5 h-3.5 ml-auto text-red-500" />
+      </button>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Regional Silo Selection */}
