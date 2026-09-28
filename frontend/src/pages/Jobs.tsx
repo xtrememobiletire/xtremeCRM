@@ -11,11 +11,13 @@ import AssignDriverModal from '../components/pages/jobs/AssignDriverModal';
 import EmptyState from '../components/ui/EmptyState';
 import { useJobs } from '../hooks/useJobs';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import { api } from '../utils/api';
 import { toast } from 'sonner';
 
 export default function Jobs() {
   const { user } = useAuth();
+  const { incomingJobsCount, clearIncomingJobsCount } = useSocket();
   const isDriver = user?.role === 'DRIVER';
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -84,11 +86,20 @@ export default function Jobs() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => refetch()}
-              className="btn-secondary px-2.5 py-2 cursor-pointer"
+              onClick={() => {
+                clearIncomingJobsCount();
+                refetch();
+              }}
+              className="btn-secondary px-2.5 py-2 cursor-pointer relative"
               title="Refresh order list"
             >
-              <RefreshCw size={14} />
+              <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+              {incomingJobsCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+                </span>
+              )}
             </button>
             {!isDriver && (
               <button

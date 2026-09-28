@@ -345,6 +345,7 @@ export const jobController = {
       try {
         const io = getIO();
         io.to(`dispatch:${country}`).emit('job:created', job);
+        io.emit('job:created', job);
       } catch {}
 
       return sendSuccess(res, job, 'Job created successfully', 201);
@@ -452,6 +453,7 @@ export const jobController = {
 
         // Notify dispatchers and admins
         io.to(`dispatch:${updated.countryCode}`).emit('job:status_updated', statusPayload);
+        io.emit('job:status_updated', statusPayload);
 
         // Notify driver
         if (updated.driverId) {
@@ -536,6 +538,12 @@ export const jobController = {
           job: stripped,
         });
         io.to(`dispatch:${updated.countryCode}`).emit('job:driver_assigned', {
+          jobId: updated.id,
+          jobCode: updated.jobCode,
+          driverId,
+          driverName: driver.fullName,
+        });
+        io.emit('job:driver_assigned', {
           jobId: updated.id,
           jobCode: updated.jobCode,
           driverId,
@@ -658,6 +666,7 @@ export const jobController = {
       try {
         const io = getIO();
         io.to(`dispatch:${country}`).emit('job:triage_new', job);
+        io.emit('job:triage_new', job);
       } catch {}
 
       return sendSuccess(res, { id: job.id, jobCode: job.jobCode, status: job.status }, 'Booking received — our team will contact you shortly', 201);

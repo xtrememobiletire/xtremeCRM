@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useTenant } from './TenantContext';
 import { useAuth } from './AuthContext';
@@ -56,6 +56,9 @@ interface SocketContextType {
   isSoftphoneOpen: boolean;
   notifications: AppNotification[];
   unreadCount: number;
+  incomingJobsCount: number;
+  clearIncomingJobsCount: () => void;
+  recordIncomingJob: (data: any) => void;
   activeChatJob: ActiveChatJob | null;
   openSoftphone: () => void;
   closeSoftphone: () => void;
@@ -75,6 +78,7 @@ interface SocketContextType {
   dialOutbound: (phoneNumber: string, contactName?: string, leadId?: string) => void;
   simulateIncomingCall: (from?: string, fromName?: string) => void;
   markNotificationsAsRead: () => void;
+  markNotificationAsRead: (id: string) => void;
   openChatJob: (job: ActiveChatJob) => void;
   closeChatJob: () => void;
 }
@@ -92,6 +96,12 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [isSoftphoneOpen, setIsSoftphoneOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [activeChatJob, setActiveChatJob] = useState<ActiveChatJob | null>(null);
+  const [incomingJobsCount, setIncomingJobsCount] = useState(0);
+  const recordedJobIds = useRef(new Set<string>());
+
+  const clearIncomingJobsCount = () => {
+    setIncomingJobsCount(0);
+  };
 
   const playChime = () => {
     try {
@@ -125,6 +135,26 @@ export function SocketProvider({ children }: { children: ReactNode }) {
           }
         : undefined,
     });
+  };
+
+  const recordIncomingJob = (data: any) => {
+    const id = data?.id || data?.jobCode || data?.jobNumber;
+    if (id && recordedJobIds.current.has(id)) return;
+    if (id) recordedJobIds.current.add(id);
+
+    setIncomingJobsCount((prev) => prev + 1);
+    addNotification({
+      type: 'JOB_ASSIGNED',
+      title: `New Dispatch: #${data?.jobCode || data?.jobNumber || 'Incoming Order'}`,
+      message: `${data?.serviceAddress || 'New roadside order received'} — ${data?.urgency || 'STANDARD'}`,
+      timestamp: data?.createdAt || new Date().toISOString(),
+      jobId: data?.id,
+      jobCode: data?.jobCode || data?.jobNumber,
+    });
+    queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    queryClient.invalidateQueries({ queryKey: ['urgent-dispatch-jobs'] });
+    queryClient.invalidateQueries({ queryKey: ['standard-dispatch-jobs'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
   };
 
   useEffect(() => {
@@ -217,6 +247,29 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ['driver-assigned-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['technician-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    });
+
+    // Real-Time Job Created & Self-Book Notice
+    s.on('job:created', recordIncomingJob);
+    s.on('job:triage_new', recordIncomingJob);
+
+    // Real-Time Driver Assigned Notice for Dispatchers
+    s.on('job:driver_assigned', (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['driver-assigned-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['technician-jobs'] });
+
+      if (data?.jobCode) {
+        addNotification({
+          type: 'JOB_ASSIGNED',
+          title: `Driver Assigned: #${data.jobCode}`,
+          message: `${data.driverName || 'Driver'} assigned to Job #${data.jobCode}`,
+          timestamp: new Date().toISOString(),
+          jobId: data.jobId,
+          jobCode: data.jobCode,
+          driverName: data.driverName,
+        });
+      }
     });
 
     // Real-Time Job Status Updates
@@ -319,6 +372,12 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
+  const markNotificationAsRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+  };
+
   const openChatJob = (job: ActiveChatJob) => {
     setActiveChatJob(job);
   };
@@ -412,6 +471,9 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         isSoftphoneOpen,
         notifications,
         unreadCount,
+        incomingJobsCount,
+        clearIncomingJobsCount,
+        recordIncomingJob,
         activeChatJob,
         openSoftphone,
         closeSoftphone,
@@ -423,6 +485,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         dialOutbound,
         simulateIncomingCall,
         markNotificationsAsRead,
+        markNotificationAsRead,
         openChatJob,
         closeChatJob,
       }}

@@ -1,6 +1,8 @@
-import { NavLink } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
+import { useSocket } from '../../context/SocketContext';
 import { 
   BarChart3, 
   Wrench, 
@@ -26,11 +28,11 @@ interface SidebarProps {
 
 const baseNavItems = [
   { icon: BarChart3, label: 'Dashboard', path: '/' },
-  { icon: PhoneOutgoing, label: 'Outbound Leads', path: '/outbound' },
-  { icon: Wrench, label: 'Jobs & Orders', path: '/jobs' },
-  { icon: Navigation, label: 'Live Dispatch', path: '/dispatch' },
+  { icon: PhoneOutgoing, label: 'Outbound', path: '/outbound' },
+  { icon: Wrench, label: 'Jobs', path: '/jobs' },
+  { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
   { icon: Users, label: 'Customers', path: '/customers' },
-  { icon: Truck, label: 'Fleet Accounts', path: '/fleets' },
+  { icon: Truck, label: 'Fleets', path: '/fleets' },
   { icon: Car, label: 'Vehicles', path: '/vehicles' },
   { icon: DollarSign, label: 'Job Costing & Ledger', path: '/accounting' },
 ];
@@ -38,6 +40,18 @@ const baseNavItems = [
 export default function Sidebar({ isOpen, onClose, isCollapsed = false }: SidebarProps) {
   const { user, logout } = useAuth();
   const { country, currencySymbol } = useTenant();
+  const { incomingJobsCount, clearIncomingJobsCount } = useSocket();
+  const location = useLocation();
+  const prevPathRef = useRef(location.pathname);
+
+  useEffect(() => {
+    // Only auto-clear when navigating TO /jobs from a different page
+    if (location.pathname === '/jobs' && prevPathRef.current !== '/jobs') {
+      clearIncomingJobsCount();
+    }
+    prevPathRef.current = location.pathname;
+  }, [location.pathname, clearIncomingJobsCount]);
+
   const isFleetManager = user?.role === 'FLEET_MANAGER';
   const isMember = user?.role === 'CUSTOMER_MEMBER';
   const isDriver = user?.role === 'DRIVER';
@@ -65,10 +79,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       ]
     : isDispatcher
     ? [
-        { icon: Navigation, label: 'Live Dispatch', path: '/dispatch' },
-        { icon: PhoneOutgoing, label: 'Outbound Leads', path: '/outbound' },
-        { icon: Wrench, label: 'Jobs & Orders', path: '/jobs' },
-        { icon: Truck, label: 'Fleet Accounts', path: '/fleets' },
+        { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
+        { icon: PhoneOutgoing, label: 'Outbound', path: '/outbound' },
+        { icon: Wrench, label: 'Jobs', path: '/jobs' },
+        { icon: Truck, label: 'Fleets', path: '/fleets' },
         { icon: Users, label: 'Customers', path: '/customers' },
         { icon: BarChart3, label: 'Dashboard', path: '/' },
       ]
@@ -140,14 +154,20 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-3 px-3 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
+            const isJobsTab = item.path === '/jobs';
+            const showJobsBadge = isJobsTab && incomingJobsCount > 0;
+
             return (
               <NavLink
                 key={item.path}
                 to={item.path}
-                onClick={() => { if (isOpen) onClose(); }}
+                onClick={() => {
+                  if (isJobsTab) clearIncomingJobsCount();
+                  if (isOpen) onClose();
+                }}
                 title={isCollapsed ? item.label : undefined}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-xl text-xs sm:text-sm transition-all duration-150 ${
+                  `relative flex items-center gap-3 rounded-xl text-xs sm:text-sm transition-all duration-150 ${
                     isCollapsed 
                       ? 'md:justify-center md:px-0 md:py-2.5 px-3.5 py-2.5' 
                       : 'px-3.5 py-2.5'
@@ -158,9 +178,23 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                   }`
                 }
               >
-                <Icon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                <div className="relative shrink-0">
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  {showJobsBadge && isCollapsed && (
+                    <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-black animate-pulse shadow-xs font-mono">
+                      {incomingJobsCount > 9 ? '9+' : incomingJobsCount}
+                    </span>
+                  )}
+                </div>
                 {(!isCollapsed || isOpen) && (
-                  <span className="truncate tracking-tight">{item.label}</span>
+                  <>
+                    <span className="truncate tracking-tight flex-1">{item.label}</span>
+                    {showJobsBadge && (
+                      <span className="ml-auto px-1.5 py-0.5 text-[10px] font-black rounded-full bg-red-600 text-white min-w-5 h-5 flex items-center justify-center animate-pulse shadow-xs font-mono">
+                        {incomingJobsCount > 99 ? '99+' : incomingJobsCount}
+                      </span>
+                    )}
+                  </>
                 )}
               </NavLink>
             );

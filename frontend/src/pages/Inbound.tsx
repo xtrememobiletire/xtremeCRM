@@ -18,7 +18,8 @@ export default function Inbound() {
     answerCall, 
     endCall, 
     transferCallToDm, 
-    simulateIncomingCall 
+    simulateIncomingCall,
+    recordIncomingJob
   } = useSocket();
 
   // Intake Form State
@@ -134,7 +135,7 @@ export default function Inbound() {
     }
 
     try {
-      await jobService.createJob({
+      const createdJob = await jobService.createJob({
         customerName: callerName || 'Roadside Motorist',
         customerPhone: callerPhone,
         serviceAddress,
@@ -152,6 +153,10 @@ export default function Inbound() {
           tireSize,
         },
       });
+
+      if (recordIncomingJob && createdJob) {
+        recordIncomingJob(createdJob);
+      }
 
       setCallLogs((prev) => [
         {

@@ -65,8 +65,8 @@ export default function TopNav({
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-black animate-pulse">
-                {unreadCount > 9 ? '9+' : unreadCount}
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-black animate-pulse font-mono shadow-xs">
+                {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
           </button>

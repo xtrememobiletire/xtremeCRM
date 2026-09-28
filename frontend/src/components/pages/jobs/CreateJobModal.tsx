@@ -4,6 +4,7 @@ import Modal from '../../ui/Modal';
 import { SERVICES_CATALOG, type ServiceCatalogItem } from '../../../constants/services';
 import { useCreateJob } from '../../../hooks/useJobs';
 import { useTenant } from '../../../context/TenantContext';
+import { useSocket } from '../../../context/SocketContext';
 import { formatCurrency, centsToDollars } from '../../../utils/currency';
 import { toast } from 'sonner';
 import JobDispositionModal from './JobDispositionModal';
@@ -44,6 +45,7 @@ const detectRegionFromPhone = (phone: string, currentCountry: string) => {
 
 export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: CreateJobModalProps) {
   const { country, currencySymbol, taxRate } = useTenant();
+  const { recordIncomingJob } = useSocket();
   const createJobMutation = useCreateJob();
 
   // Form State
@@ -274,7 +276,10 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
     };
 
     try {
-      await createJobMutation.mutateAsync(payload);
+      const created = await createJobMutation.mutateAsync(payload);
+      if (created && recordIncomingJob) {
+        recordIncomingJob(created);
+      }
       toast.success('Job ticket created & dispatched successfully');
       resetForm();
       onClose();

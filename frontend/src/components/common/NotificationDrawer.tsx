@@ -7,7 +7,7 @@ interface NotificationDrawerProps {
 }
 
 export default function NotificationDrawer({ isOpen, onClose }: NotificationDrawerProps) {
-  const { notifications, unreadCount, markNotificationsAsRead, openChatJob } = useSocket();
+  const { notifications, unreadCount, markNotificationsAsRead, markNotificationAsRead, openChatJob } = useSocket();
 
   if (!isOpen) return null;
 
@@ -27,6 +27,7 @@ export default function NotificationDrawer({ isOpen, onClose }: NotificationDraw
   };
 
   const handleClickItem = (item: AppNotification) => {
+    markNotificationAsRead(item.id);
     if (item.jobId) {
       openChatJob({
         id: item.jobId,
