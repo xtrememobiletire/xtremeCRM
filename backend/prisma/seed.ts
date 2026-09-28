@@ -29,6 +29,76 @@ async function main() {
       isAgentActive: true,
       canApprovePayouts: true,
     },
+    // Dispatcher - Jerry Wilson
+    {
+      email: 'jerrywilson@xtremecrm.com',
+      fullName: 'Jerry Wilson',
+      role: 'DISPATCHER' as const,
+      countryCode: 'CA' as const,
+      phone: '+14165550102',
+      isAgentActive: false,
+    },
+    // Virtual Assistants - Jerry, Liya, Harry
+    {
+      email: 'jerry.va@xtremecrm.com',
+      fullName: 'Jerry (VA)',
+      role: 'VIRTUAL_ASSISTANT' as const,
+      countryCode: 'US' as const,
+      phone: '+17035550201',
+      isAgentActive: false,
+    },
+    {
+      email: 'liya@xtremecrm.com',
+      fullName: 'Liya Carter',
+      role: 'VIRTUAL_ASSISTANT' as const,
+      countryCode: 'US' as const,
+      phone: '+17035550202',
+      isAgentActive: false,
+    },
+    {
+      email: 'harry@xtremecrm.com',
+      fullName: 'Harry (VA)',
+      role: 'VIRTUAL_ASSISTANT' as const,
+      countryCode: 'US' as const,
+      phone: '+17035550203',
+      isAgentActive: false,
+    },
+    // General Manager - Harry King
+    {
+      email: 'harry.king@xtremecrm.com',
+      fullName: 'Harry King',
+      role: 'ADMIN' as const,
+      countryCode: 'CA' as const,
+      phone: '+14165550301',
+      isAgentActive: false,
+      canApprovePayouts: true,
+    },
+    // Call Agents (3 dummy agents)
+    {
+      email: 'agent1@xtremecrm.com',
+      fullName: 'Michael Rodriguez',
+      role: 'CALL_AGENT' as const,
+      countryCode: 'CA' as const,
+      phone: '+14165550401',
+      isAgentActive: true,
+    },
+    {
+      email: 'agent2@xtremecrm.com',
+      fullName: 'Emily Thompson',
+      role: 'CALL_AGENT' as const,
+      countryCode: 'CA' as const,
+      phone: '+14165550402',
+      isAgentActive: true,
+    },
+    {
+      email: 'agent3@xtremecrm.com',
+      fullName: 'David Chen',
+      role: 'CALL_AGENT' as const,
+      countryCode: 'CA' as const,
+      phone: '+14165550403',
+      isAgentActive: true,
+    },
+    // Original seeded users (keeping for backward compatibility)
     {
       email: 'agent@xtremecrm.com',
       fullName: 'Sarah Agent',
@@ -42,7 +112,7 @@ async function main() {
       fullName: 'Dave Dispatcher',
       role: 'DISPATCHER' as const,
       countryCode: 'CA' as const,
-      phone: '+14165550102',
+      phone: '+14165550103',
       isAgentActive: false,
     },
     {
@@ -50,7 +120,7 @@ async function main() {
       fullName: 'Dan Driver',
       role: 'DRIVER' as const,
       countryCode: 'CA' as const,
-      phone: '+14165550103',
+      phone: '+14165550104',
       isAgentActive: false,
     },
     {
@@ -58,7 +128,7 @@ async function main() {
       fullName: 'Alice Accountant',
       role: 'ACCOUNTANT' as const,
       countryCode: 'CA' as const,
-      phone: '+14165550104',
+      phone: '+14165550105',
       isAgentActive: false,
       canApprovePayouts: true,
     },
