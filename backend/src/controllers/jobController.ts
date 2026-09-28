@@ -108,8 +108,20 @@ export const jobController = {
         prisma.job.count({ where }),
       ]);
 
+      // Sort jobs: Non-completed jobs first, completed/cancelled last
+      const sortedJobs = rawJobs.sort((a, b) => {
+        const aCompleted = a.status === 'COMPLETED' || a.status === 'CANCELLED';
+        const bCompleted = b.status === 'COMPLETED' || b.status === 'CANCELLED';
+        
+        if (aCompleted && !bCompleted) return 1;  // a goes after b
+        if (!aCompleted && bCompleted) return -1; // a goes before b
+        
+        // If both have same completion status, sort by creation date (newest first)
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+
       const isDriver = (req.user as any)?.role === 'DRIVER';
-      const jobs = rawJobs.map((j) => {
+      const jobs = sortedJobs.map((j) => {
         if (isDriver) {
           // PRD NFR-4: Driver financial isolation
           return stripDriverFinancials(j);
