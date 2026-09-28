@@ -87,6 +87,9 @@ export const CreateJobSchema = z.object({
     (val) => (val === 'CREDIT_CARD' ? 'MOTO' : val),
     z.enum(['E_TRANSFER', 'POS', 'CASH', 'MOTO', 'STRIPE', 'INVOICE_NET30']).optional()
   ),
+  paymentStatus: z.enum(['UNPAID', 'PARTIAL', 'PAID_PENDING_VERIFICATION', 'VERIFIED_PAID', 'REFUNDED']).optional(),
+  upfrontAmountCents: z.coerce.number().int().nonnegative().optional(),
+  upfrontReceiptUrl: z.string().optional(),
   countryCode: z.enum(['CA', 'US', 'UK']).default('CA'),
   country: z.enum(['CA', 'US', 'UK']).optional(),
   disposition: z.string().optional(),

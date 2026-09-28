@@ -14,6 +14,15 @@ export interface JobItem {
   taxCents?: number;
   currency?: 'CAD' | 'USD' | 'GBP';
   paymentMethod?: string;
+  paymentStatus?: 'UNPAID' | 'PARTIAL' | 'PAID_PENDING_VERIFICATION' | 'VERIFIED_PAID' | 'REFUNDED';
+  upfrontAmountCents?: number;
+  upfrontReceiptUrl?: string;
+  externalDriverToken?: string;
+  externalDriverName?: string;
+  externalDriverPhone?: string;
+  externalDriverCompany?: string;
+  externalDriverValueCents?: number;
+  externalDriverAcceptedAt?: string;
   createdAt: string;
   scheduledFor?: string;
   appointmentDate?: string;

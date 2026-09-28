@@ -38,6 +38,10 @@ export default function Inbound() {
   const [isEtaWindowActive, setIsEtaWindowActive] = useState(false);
   const [notes, setNotes] = useState('');
   const [isProvisionAccount, setIsProvisionAccount] = useState(true);
+  // Upfront / advance payment
+  const [hasUpfront, setHasUpfront] = useState(false);
+  const [upfrontAmount, setUpfrontAmount] = useState('');
+  const [upfrontReceiptFile, setUpfrontReceiptFile] = useState<File | null>(null);
 
   // Telephony & Call State
   const [callDuration, setCallDuration] = useState(0);
@@ -153,6 +157,8 @@ export default function Inbound() {
           makeModel: vehicleMakeModel,
           tireSize,
         },
+        upfrontAmountCents: hasUpfront && upfrontAmount ? Math.round(parseFloat(upfrontAmount) * 100) : undefined,
+        paymentStatus: hasUpfront && upfrontAmount && parseFloat(upfrontAmount) > 0 ? 'PARTIAL' : 'UNPAID',
       });
 
       if (recordIncomingJob && createdJob) {
@@ -292,6 +298,13 @@ export default function Inbound() {
             setIsProvisionAccount={setIsProvisionAccount}
             isBooking={isBooking}
             onSubmitBooking={handleDirectBookJob}
+            hasUpfront={hasUpfront}
+            setHasUpfront={setHasUpfront}
+            upfrontAmount={upfrontAmount}
+            setUpfrontAmount={setUpfrontAmount}
+            upfrontReceiptFile={upfrontReceiptFile}
+            setUpfrontReceiptFile={setUpfrontReceiptFile}
+            countryCode={country}
           />
         </div>
 

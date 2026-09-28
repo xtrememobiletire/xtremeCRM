@@ -26,6 +26,7 @@ const History = lazy(() => import('./pages/History'));
 const Leads = lazy(() => import('./pages/Leads'));
 const Inbound = lazy(() => import('./pages/Inbound'));
 const VaUpload = lazy(() => import('./pages/VaUpload'));
+const ExternalDriverAccept = lazy(() => import('./pages/ExternalDriverAccept'));
 
 function getRoleHome(role?: string) {
   switch (role) {
@@ -42,7 +43,7 @@ function getRoleHome(role?: string) {
     case 'ACCOUNTANT':
       return '/accounting';
     case 'DISPATCHER':
-      return '/dispatch';
+      return '/jobs';
     default:
       return '/dashboard';
   }
@@ -96,6 +97,16 @@ function AppRoutes() {
                 <Login />
               </Suspense>
             </PublicRoute>
+          }
+        />
+
+        {/* Public external driver job acceptance route */}
+        <Route
+          path="/ext/:token"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <ExternalDriverAccept />
+            </Suspense>
           }
         />
 

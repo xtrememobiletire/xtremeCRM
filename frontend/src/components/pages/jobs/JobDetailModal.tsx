@@ -117,9 +117,7 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
         locationAddress: editedLocation.trim(),
       });
       
-      // Update the job object
-      job.locationAddress = editedLocation.trim();
-      
+      // Location updated via API
       playSuccess();
       toast.success('Service location updated successfully');
       setIsEditingLocation(false);
@@ -198,10 +196,10 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="p-3.5 bg-slate-50/70 rounded-xl border border-slate-200 space-y-1.5">
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Customer</h4>
-            <div className="text-sm font-bold text-slate-900">{job.customer?.name || 'Walk-in'}</div>
+            <div className="text-sm font-bold text-slate-900">{job.customer?.fullName || job.customer?.name || job.recipientName || 'Walk-In'}</div>
             <div className="text-xs font-mono text-slate-600 flex items-center gap-1.5">
               <Phone className="w-3 h-3 text-slate-400" />
-              <span>{job.customer?.phone}</span>
+              <span>{job.customer?.phone || job.recipientPhone || 'N/A'}</span>
             </div>
             {job.customer?.email && (
               <div className="text-xs text-slate-500 truncate">{job.customer?.email}</div>
@@ -306,6 +304,25 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
               {formatCurrency(centsToDollars(job.totalAmount), currencySymbol)}
             </span>
           </div>
+          {job.upfrontAmountCents !== undefined && job.upfrontAmountCents > 0 && (
+            <div className="bg-amber-50/60 px-3.5 py-2 border-t border-amber-200/60 flex flex-col gap-1 text-xs">
+              <div className="flex justify-between items-center text-amber-900 font-medium">
+                <span>Upfront Advance Collected:</span>
+                <span className="font-mono font-bold text-emerald-700">
+                  -{formatCurrency(centsToDollars(job.upfrontAmountCents), currencySymbol)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center font-bold text-slate-900 border-t border-amber-200/40 pt-1">
+                <span>Remaining Balance Due:</span>
+                <span className="font-mono text-red-600">
+                  {formatCurrency(
+                    centsToDollars(Math.max(0, (job.totalAmount ?? job.totalCents ?? 0) - job.upfrontAmountCents)),
+                    currencySymbol
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* FR-5.4 & FR-5.6: Zero-Inventory Commercial Invoicing & PDF */}

@@ -1,4 +1,4 @@
-import { Eye, UserCheck, AlertCircle, MessageSquare } from 'lucide-react';
+import { Eye, UserCheck, AlertCircle, MessageSquare, Pencil } from 'lucide-react';
 import StatusBadge from '../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
@@ -10,9 +10,10 @@ interface JobTableProps {
   jobs: any[];
   onViewJob: (job: any) => void;
   onAssignDriver: (job: any) => void;
+  onEditJob?: (job: any) => void;
 }
 
-export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTableProps) {
+export default function JobTable({ jobs, onViewJob, onAssignDriver, onEditJob }: JobTableProps) {
   const { user } = useAuth();
   const isDriver = user?.role === 'DRIVER';
   const { currencySymbol } = useTenant();
@@ -46,9 +47,9 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
               </td>
               <td className="table-td">
                 <div className="font-semibold text-slate-900 text-xs sm:text-sm">
-                  {job.customer?.name || 'Walk-in'}
+                  {job.customer?.fullName || job.customer?.name || job.recipientName || 'Walk-In'}
                 </div>
-                <div className="text-[11px] font-mono text-slate-500">{job.customer?.phone}</div>
+                <div className="text-[11px] font-mono text-slate-500">{job.customer?.phone || job.recipientPhone}</div>
               </td>
               <td className="table-td">
                 <div className="text-xs font-semibold text-slate-800">
@@ -72,6 +73,23 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                          'Assigned Technician'}
                       </span>
                     </div>
+                  ) : job.externalDriverAcceptedAt ? (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-800 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      <span title={job.externalDriverCompany}>
+                        {job.externalDriverName || 'External Driver'} ({job.externalDriverCompany || 'Partner'})
+                      </span>
+                    </div>
+                  ) : job.externalDriverToken ? (
+                    <button
+                      type="button"
+                      onClick={() => onAssignDriver(job)}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
+                      title="Link sent — waiting for external driver acceptance"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
+                      <span>Invited</span>
+                    </button>
                   ) : (
                     <button
                       type="button"
@@ -103,6 +121,16 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                   >
                     <Eye className="w-4 h-4" />
                   </button>
+                  {!isDriver && onEditJob && (
+                    <button
+                      type="button"
+                      onClick={() => onEditJob(job)}
+                      className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                      title="Edit Job"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
                   {!isDriver && (
                     <button
                       type="button"
