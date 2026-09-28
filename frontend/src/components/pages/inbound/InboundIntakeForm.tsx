@@ -11,10 +11,15 @@ import {
   CheckCircle2, 
   Share2,
   Calendar,
-  Check
+  Check,
+  DollarSign,
+  Receipt,
+  Upload,
 } from 'lucide-react';
 import ServiceSelectDropdown from './ServiceSelectDropdown';
 import { useKeyboardShortcuts } from '../../../hooks/useKeyboardShortcuts';
+import { SERVICE_CATALOG } from '../../../constants/services';
+import { getTaxRate, getTaxName, type RegionCode } from '../../../constants/regions';
 
 interface InboundIntakeFormProps {
   callerPhone: string;
@@ -49,6 +54,15 @@ interface InboundIntakeFormProps {
   setIsProvisionAccount: (val: boolean) => void;
   isBooking: boolean;
   onSubmitBooking: () => void;
+  // Upfront / advance payment
+  hasUpfront?: boolean;
+  setHasUpfront?: (val: boolean) => void;
+  upfrontAmount?: string;
+  setUpfrontAmount?: (val: string) => void;
+  upfrontReceiptFile?: File | null;
+  setUpfrontReceiptFile?: (val: File | null) => void;
+  // Region for tax calculation
+  countryCode?: RegionCode;
 }
 
 const COMMON_TIRE_SIZES = ['275/65R18', '225/65R17', '265/70R17', '11R22.5', '295/75R22.5'];
@@ -94,11 +108,35 @@ export default function InboundIntakeForm({
   setIsProvisionAccount,
   isBooking,
   onSubmitBooking,
+  hasUpfront: propHasUpfront,
+  setHasUpfront: propSetHasUpfront,
+  upfrontAmount: propUpfrontAmount,
+  setUpfrontAmount: propSetUpfrontAmount,
+  setUpfrontReceiptFile,
+  countryCode = 'CA',
 }: InboundIntakeFormProps) {
   // Input references for sequential keyboard navigation
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Fallback local state if props are not supplied
+  // Fallback local state if upfront props not supplied by parent
+  const [localHasUpfront, setLocalHasUpfront] = useState(false);
+  const [localUpfrontAmount, setLocalUpfrontAmount] = useState('');
+
+  const hasUpfront = propHasUpfront ?? localHasUpfront;
+  const setHasUpfront = propSetHasUpfront ?? setLocalHasUpfront;
+  const upfrontAmount = propUpfrontAmount ?? localUpfrontAmount;
+  const setUpfrontAmount = propSetUpfrontAmount ?? setLocalUpfrontAmount;
+
+  // Price calculation — single source of truth from SERVICE_CATALOG
+  const taxRate = getTaxRate(countryCode);
+  const taxName = getTaxName(countryCode);
+  const serviceEntry = SERVICE_CATALOG.find((s) => s.id === selectedService || s.name === selectedService);
+  const subtotalCents = serviceEntry?.basePriceCents ?? 0;
+  const taxCents = Math.round(subtotalCents * taxRate);
+  const totalCents = subtotalCents + taxCents;
+  const fmt = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+
   const [localEtaDate, setLocalEtaDate] = useState(() => new Date().toLocaleDateString('en-CA'));
   const [localEtaStartTime, setLocalEtaStartTime] = useState('12:00 AM');
   const [localEtaEndTime, setLocalEtaEndTime] = useState('12:00 AM');
@@ -498,6 +536,79 @@ export default function InboundIntakeForm({
           <label htmlFor="provisionAcc" className="text-xs text-slate-700 cursor-pointer select-none">
             <span className="font-bold">Auto-create profile:</span> Send customer SMS with live technician tracking link.
           </label>
+        </div>
+
+        {/* Price Summary */}
+        {subtotalCents > 0 && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200 bg-white">
+              <DollarSign className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-xs font-bold text-slate-700">Job Price Estimate</span>
+            </div>
+            <div className="px-4 py-3 space-y-1.5 text-xs">
+              <div className="flex justify-between text-slate-600">
+                <span>Subtotal (before tax)</span>
+                <span className="font-mono font-semibold">{fmt(subtotalCents)}</span>
+              </div>
+              <div className="flex justify-between text-slate-500">
+                <span>{taxName}</span>
+                <span className="font-mono">+{fmt(taxCents)}</span>
+              </div>
+              <div className="flex justify-between text-slate-900 font-bold border-t border-slate-200 pt-1.5 mt-1.5">
+                <span>Total</span>
+                <span className="font-mono text-emerald-700">{fmt(totalCents)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Upfront Payment */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-100">
+            <input
+              type="checkbox"
+              id="hasUpfront"
+              checked={hasUpfront}
+              onChange={(e) => setHasUpfront(e.target.checked)}
+              className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+            />
+            <label htmlFor="hasUpfront" className="text-xs text-amber-800 cursor-pointer select-none flex items-center gap-1.5">
+              <Receipt className="w-3.5 h-3.5 text-amber-600" />
+              <span><span className="font-bold">Any Upfront Payment?</span> Customer paid an advance / deposit.</span>
+            </label>
+          </div>
+
+          {hasUpfront && (
+            <div className="pl-3 space-y-2.5 border-l-2 border-amber-200 ml-1">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Upfront Amount Collected</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-mono">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={upfrontAmount}
+                    onChange={(e) => setUpfrontAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full pl-7 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                  <Upload className="w-3.5 h-3.5 text-slate-400" />
+                  Receipt Image <span className="font-normal text-slate-400">(optional — dispatcher verifies later)</span>
+                </label>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(e) => setUpfrontReceiptFile?.(e.target.files?.[0] ?? null)}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 cursor-pointer"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Submission Bar */}

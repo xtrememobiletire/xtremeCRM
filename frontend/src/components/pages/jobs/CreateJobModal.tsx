@@ -8,6 +8,7 @@ import { useSocket } from '../../../context/SocketContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useNotificationSound } from '../../../hooks/useNotificationSound';
 import { formatCurrency, centsToDollars } from '../../../utils/currency';
+import { api } from '../../../utils/api';
 import { toast } from 'sonner';
 import JobDispositionModal from './JobDispositionModal';
 import { customerService } from '../../../services/customerService';
@@ -27,6 +28,7 @@ interface CreateJobModalProps {
   isOpen: boolean;
   onClose: () => void;
   prefillPhone?: string;
+  editJob?: any; // When provided, form runs in edit/patch mode
 }
 
 const detectRegionFromPhone = (phone: string, currentCountry: string) => {
@@ -54,7 +56,7 @@ const detectRegionFromPhone = (phone: string, currentCountry: string) => {
   return null;
 };
 
-export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: CreateJobModalProps) {
+export default function CreateJobModal({ isOpen, onClose, prefillPhone = '', editJob }: CreateJobModalProps) {
   const { country, currencySymbol, taxRate } = useTenant();
   const { recordIncomingJob } = useSocket();
   const { playSuccess } = useNotificationSound();
@@ -183,11 +185,28 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
   useEffect(() => {
     if (isOpen) {
       resetForm();
-      if (prefillPhone) {
+      if (editJob) {
+        // Prefill from existing job
+        setCustomerName(editJob.customer?.fullName || editJob.customer?.name || editJob.recipientName || '');
+        setCustomerPhone(editJob.customer?.phone || editJob.recipientPhone || '');
+        setCustomerEmail(editJob.customer?.email || '');
+        setVehicleMake(editJob.vehicle?.make || '');
+        setVehicleModel(editJob.vehicle?.model || '');
+        setVehicleYear(editJob.vehicle?.year?.toString() || '');
+        setTireSize(editJob.vehicle?.tireSize || '');
+        setLicensePlate(editJob.vehicle?.licensePlate || '');
+        setLocationAddress(editJob.serviceAddress || editJob.locationAddress || '');
+        setUrgency(editJob.urgency === 'FUTURE' ? 'LOW' : editJob.urgency === 'STANDARD' ? 'NORMAL' : editJob.urgency || 'STANDARD');
+        setPaymentMethod(editJob.paymentMethod || 'POS');
+        setNotes(editJob.problemNotes || '');
+        if (editJob.serviceItems?.length > 0) {
+          setSelectedServices(editJob.serviceItems.map((s: any) => s.serviceId || s.id || s.serviceName));
+        }
+      } else if (prefillPhone) {
         setCustomerPhone(prefillPhone);
       }
     }
-  }, [isOpen, prefillPhone]);
+  }, [isOpen, prefillPhone, editJob]);
 
   useEffect(() => {
     const clean = customerPhone.replace(/[^0-9]/g, '');
@@ -246,7 +265,7 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
   };
 
   const handleAttemptClose = () => {
-    if (customerPhone || prefillPhone) {
+    if (!editJob && (customerPhone || prefillPhone)) {
       setIsDispositionPromptOpen(true);
     } else {
       resetForm();
@@ -351,17 +370,24 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
     };
 
     try {
-      const created = await createJobMutation.mutateAsync(payload);
-      if (created && recordIncomingJob) {
-        recordIncomingJob(created);
+      if (editJob) {
+        // Edit mode — PATCH existing job
+        await api.patch(`/jobs/${editJob.id}`, payload);
+        toast.success(`Job #${editJob.jobCode || editJob.jobNumber} updated`);
+        resetForm();
+        onClose();
+      } else {
+        // Create mode — POST new job
+        const created = await createJobMutation.mutateAsync(payload);
+        if (created && recordIncomingJob) recordIncomingJob(created);
+        playSuccess();
+        toast.success('Job ticket created & dispatched successfully');
+        resetForm();
+        onClose();
       }
-      playSuccess(); // Play success sound
-      toast.success('Job ticket created & dispatched successfully');
-      resetForm();
-      onClose();
     } catch (err: any) {
       const fieldErrors = err.response?.data?.errors;
-      let errorMsg = err.response?.data?.message || err.response?.data?.error || 'Failed to create job ticket';
+      let errorMsg = err.response?.data?.message || err.response?.data?.error || (editJob ? 'Failed to update job' : 'Failed to create job ticket');
       if (fieldErrors && typeof fieldErrors === 'object') {
         const details = Object.values(fieldErrors).flat().join(', ');
         if (details) errorMsg = details;
@@ -375,7 +401,7 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
       <Modal
         isOpen={isOpen}
         onClose={handleAttemptClose}
-        title="Intake & Dispatch New Job"
+        title={editJob ? `Edit Job #${editJob.jobCode || editJob.jobNumber}` : 'Intake & Dispatch New Job'}
         maxWidth="max-w-2xl"
       >
         <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off" data-lpignore="true" data-form-type="other">

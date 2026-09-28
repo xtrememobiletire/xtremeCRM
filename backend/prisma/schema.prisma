@@ -423,6 +423,19 @@ model Job {
   arrivedAt          DateTime? @db.Timestamptz @map("arrived_at")
   completedAt        DateTime? @db.Timestamptz @map("completed_at")
 
+  // Upfront / Advance Payment (collected by agent at booking)
+  upfrontAmountCents  Int?      @default(0) @map("upfront_amount_cents") // Advance collected before job
+  upfrontReceiptUrl   String?   @map("upfront_receipt_url")              // Receipt image (set by agent or dispatcher)
+  upfrontVerifiedAt   DateTime? @db.Timestamptz @map("upfront_verified_at") // Dispatcher confirms
+
+  // External / Third-Party Driver Assignment
+  externalDriverToken     String?   @unique @map("external_driver_token")     // UUID token for shareable accept link
+  externalDriverName      String?   @map("external_driver_name")
+  externalDriverPhone     String?   @map("external_driver_phone")
+  externalDriverCompany   String?   @map("external_driver_company")
+  externalDriverValueCents Int?     @map("external_driver_value_cents")        // Agreed payout to external driver
+  externalDriverAcceptedAt DateTime? @db.Timestamptz @map("external_driver_accepted_at")
+
   // Call Center Outcome
   disposition      JobDisposition @default(BOOKED)
   dispositionNotes String?        @map("disposition_notes")
@@ -637,6 +650,14 @@ model Lead {
   whatsappFollowUp   Boolean          @default(false) @map("whatsapp_follow_up")
   whatsappNotes      String?          @map("whatsapp_notes")
   convertedFleetId   String?          @map("converted_fleet_id")
+
+  // Additional fields present in database
+  ceoOwnerName       String?          @map("ceo_owner_name")
+  fleetManager       String?          @map("fleet_manager")
+  poaEmail           String?          @map("poa_email")
+  callbackDate       String?          @map("callback_date")
+  callbackDay        String?          @map("callback_day")
+  callbackTime       String?          @map("callback_time")
 
   createdAt          DateTime         @default(now()) @db.Timestamptz @map("created_at")
   updatedAt          DateTime         @updatedAt @db.Timestamptz @map("updated_at")

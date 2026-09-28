@@ -79,9 +79,9 @@ export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps
                ) :
                'Unpaid'}
             </span>
-            {job.depositAmountCents > 0 && (
+            {(job.depositAmountCents > 0 || job.upfrontAmountCents > 0) && (
               <div className="text-[9px] text-emerald-600 font-mono font-semibold mt-0.5">
-                {formatCurrency(centsToDollars(job.depositAmountCents), currencySymbol)} deposit
+                {formatCurrency(centsToDollars(job.depositAmountCents || job.upfrontAmountCents || 0), currencySymbol)} deposit
               </div>
             )}
           </div>

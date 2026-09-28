@@ -31,6 +31,7 @@ export default function Jobs() {
   const [isCreateOpen, setIsCreateOpen] = useState(Boolean(intakePhoneParam));
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [assignJob, setAssignJob] = useState<any>(null);
+  const [editJob, setEditJob] = useState<any>(null);
 
   const { data: jobsResponse, isLoading, refetch } = useJobs({
     page: isDriver ? 1 : page,
@@ -157,6 +158,7 @@ export default function Jobs() {
             onPageChange={setPage}
             onViewJob={setSelectedJob}
             onAssignDriver={setAssignJob}
+            onEditJob={setEditJob}
             onCreateJobClick={() => setIsCreateOpen(true)}
           />
         </>
@@ -166,6 +168,11 @@ export default function Jobs() {
         isOpen={isCreateOpen}
         onClose={handleCloseCreate}
         prefillPhone={intakePhoneParam}
+      />
+      <CreateJobModal
+        isOpen={!!editJob}
+        onClose={() => { setEditJob(null); refetch(); }}
+        editJob={editJob}
       />
       <JobDetailModal
         isOpen={!!selectedJob}

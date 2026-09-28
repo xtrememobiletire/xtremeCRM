@@ -12,6 +12,7 @@ interface JobListContainerProps {
   onPageChange: (page: number) => void;
   onViewJob: (job: any) => void;
   onAssignDriver: (job: any) => void;
+  onEditJob?: (job: any) => void;
   onCreateJobClick: () => void;
 }
 
@@ -22,6 +23,7 @@ export default function JobListContainer({
   onPageChange,
   onViewJob,
   onAssignDriver,
+  onEditJob,
   onCreateJobClick,
 }: JobListContainerProps) {
   if (isLoading) {
@@ -47,7 +49,7 @@ export default function JobListContainer({
   return (
     <div className="space-y-4">
       <div className="hidden md:block">
-        <JobTable jobs={jobs} onViewJob={onViewJob} onAssignDriver={onAssignDriver} />
+        <JobTable jobs={jobs} onViewJob={onViewJob} onAssignDriver={onAssignDriver} onEditJob={onEditJob} />
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:hidden">

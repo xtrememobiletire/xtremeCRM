@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { prisma } from '../config/database.js';
 import {
   sendSuccess,
@@ -183,7 +184,7 @@ export const jobController = {
 
       // 1. Auto-resolve or create Customer if nested details provided
       let customerId = data.customerId;
-      const phone = data.customer?.phone || data.recipientPhone;
+      const phone = data.customer?.phone || data.recipientPhone || data.customerPhone;
       if (!customerId && phone) {
         const cleanPhone = phone.trim();
         let cust = await prisma.customer.findFirst({
@@ -192,9 +193,10 @@ export const jobController = {
         if (!cust) {
           cust = await prisma.customer.create({
             data: {
-              fullName: data.customer?.name || data.recipientName || 'Valued Customer',
+              // Accept name from any of the possible field names the frontend may send
+              fullName: data.customer?.name || data.customerName || data.callerName || data.recipientName || 'Valued Customer',
               phone: cleanPhone,
-              email: data.customer?.email,
+              email: data.customer?.email || data.customerEmail,
               countryCode: country,
             },
           });
@@ -327,7 +329,9 @@ export const jobController = {
           totalCents,
           itPlatformFeeCents,
           paymentMethod: data.paymentMethod,
-          paymentStatus: 'UNPAID',
+          paymentStatus: data.upfrontAmountCents && Number(data.upfrontAmountCents) > 0 ? 'PARTIAL' : (data.paymentStatus || 'UNPAID'),
+          upfrontAmountCents: data.upfrontAmountCents ? Number(data.upfrontAmountCents) : undefined,
+          upfrontReceiptUrl: data.upfrontReceiptUrl || undefined,
           status: data.source === 'LANDING_PAGE_SELF_BOOK' ? 'UNVERIFIED_PUBLIC' : 'PENDING',
           serviceItems: {
             create: serviceItemsCreate,
@@ -720,6 +724,200 @@ export const jobController = {
       });
 
       return sendSuccess(res, { id: job.id, disposition }, 'Disposition recorded', 201);
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  async updateJob(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const data = req.body;
+      const existing = await prisma.job.findUnique({ where: { id } });
+      if (!existing) return sendError(res, 'Job not found', 404);
+
+      const updateData: any = {};
+      if (data.serviceAddress) updateData.serviceAddress = data.serviceAddress;
+      if (data.problemNotes !== undefined) updateData.problemNotes = data.problemNotes;
+      if (data.urgency) updateData.urgency = data.urgency;
+      if (data.paymentMethod) updateData.paymentMethod = data.paymentMethod;
+      if (data.status) updateData.status = data.status;
+      if (data.upfrontAmountCents !== undefined) {
+        updateData.upfrontAmountCents = Number(data.upfrontAmountCents);
+        if (Number(data.upfrontAmountCents) > 0 && existing.paymentStatus === 'UNPAID') {
+          updateData.paymentStatus = 'PARTIAL';
+        }
+      }
+      if (data.upfrontReceiptUrl !== undefined) updateData.upfrontReceiptUrl = data.upfrontReceiptUrl;
+      if (data.subtotalCents !== undefined) updateData.subtotalCents = Number(data.subtotalCents);
+      if (data.taxCents !== undefined || data.taxAmountCents !== undefined) {
+        updateData.taxAmountCents = Number(data.taxCents ?? data.taxAmountCents);
+      }
+      if (data.totalCents !== undefined) updateData.totalCents = Number(data.totalCents);
+
+      if (data.customer && existing.customerId) {
+        await prisma.customer.update({
+          where: { id: existing.customerId },
+          data: {
+            fullName: data.customer.name || data.customer.fullName,
+            phone: data.customer.phone,
+            email: data.customer.email,
+          },
+        }).catch(() => {});
+      }
+
+      if (data.vehicle && existing.vehicleId) {
+        await prisma.vehicle.update({
+          where: { id: existing.vehicleId },
+          data: {
+            make: data.vehicle.make,
+            model: data.vehicle.model,
+            year: data.vehicle.year ? Number(data.vehicle.year) : undefined,
+            tireSize: data.vehicle.tireSize,
+            licensePlate: data.vehicle.licensePlate,
+          },
+        }).catch(() => {});
+      }
+
+      const updated = await prisma.job.update({
+        where: { id },
+        data: updateData,
+        include: {
+          customer: true,
+          vehicle: true,
+          fleet: true,
+          driver: true,
+          serviceItems: true,
+        },
+      });
+
+      return sendSuccess(res, updated, 'Job updated successfully');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  async generateExternalDriverLink(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const { externalDriverValueCents } = req.body;
+      const job = await prisma.job.findUnique({ where: { id } });
+      if (!job) return sendError(res, 'Job not found', 404);
+
+      const token = crypto.randomUUID();
+      const updated = await prisma.job.update({
+        where: { id },
+        data: {
+          externalDriverToken: token,
+          externalDriverValueCents: externalDriverValueCents !== undefined ? Number(externalDriverValueCents) : job.totalCents,
+        },
+      });
+
+      return sendSuccess(res, {
+        token: updated.externalDriverToken,
+        externalDriverValueCents: updated.externalDriverValueCents,
+      }, 'External driver dispatch link generated');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  async getPublicExternalJob(req: Request, res: Response) {
+    try {
+      const token = String(req.params.token);
+      const job = await prisma.job.findUnique({
+        where: { externalDriverToken: token },
+        include: {
+          vehicle: true,
+          serviceItems: true,
+        },
+      });
+
+      if (!job) return sendError(res, 'Invalid or expired dispatch invitation link', 404);
+
+      return sendSuccess(res, {
+        id: job.id,
+        jobCode: job.jobCode,
+        status: job.status,
+        serviceAddress: job.serviceAddress,
+        problemNotes: job.problemNotes,
+        urgency: job.urgency,
+        countryCode: job.countryCode,
+        currency: job.currency,
+        externalDriverValueCents: job.externalDriverValueCents,
+        externalDriverAcceptedAt: job.externalDriverAcceptedAt,
+        externalDriverName: job.externalDriverName,
+        externalDriverCompany: job.externalDriverCompany,
+        vehicle: job.vehicle ? {
+          make: job.vehicle.make,
+          model: job.vehicle.model,
+          year: job.vehicle.year,
+          tireSize: job.vehicle.tireSize,
+          licensePlate: job.vehicle.licensePlate,
+        } : null,
+        serviceItems: job.serviceItems.map((item) => ({
+          serviceName: item.serviceName,
+          quantity: item.quantity,
+        })),
+      }, 'External job details retrieved');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  async acceptPublicExternalJob(req: Request, res: Response) {
+    try {
+      const token = String(req.params.token);
+      const { name, phone, companyName } = req.body;
+
+      if (!name || !phone || !companyName) {
+        return sendError(res, 'Name, phone number, and company name are required', 400);
+      }
+
+      const job = await prisma.job.findUnique({ where: { externalDriverToken: token } });
+      if (!job) return sendError(res, 'Invalid or expired dispatch invitation link', 404);
+      if (job.externalDriverAcceptedAt) {
+        return sendError(res, 'This job has already been accepted', 400);
+      }
+
+      const updated = await prisma.job.update({
+        where: { id: job.id },
+        data: {
+          externalDriverName: name,
+          externalDriverPhone: phone,
+          externalDriverCompany: companyName,
+          externalDriverAcceptedAt: new Date(),
+          driverId: null,
+          status: 'ASSIGNED',
+          assignedAt: new Date(),
+        },
+        include: {
+          vehicle: true,
+          serviceItems: true,
+        },
+      });
+
+      try {
+        const io = getIO();
+        io.to(`dispatch:${updated.countryCode}`).emit('job:external_driver_assigned', {
+          jobId: updated.id,
+          jobCode: updated.jobCode,
+          externalDriverName: name,
+          externalDriverCompany: companyName,
+        });
+        io.emit('job:external_driver_assigned', {
+          jobId: updated.id,
+          jobCode: updated.jobCode,
+          externalDriverName: name,
+          externalDriverCompany: companyName,
+        });
+      } catch {}
+
+      return sendSuccess(res, {
+        jobCode: updated.jobCode,
+        status: updated.status,
+        acceptedAt: updated.externalDriverAcceptedAt,
+      }, 'Job successfully accepted');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }

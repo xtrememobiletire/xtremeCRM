@@ -117,9 +117,7 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
         locationAddress: editedLocation.trim(),
       });
       
-      // Update the job object
-      job.locationAddress = editedLocation.trim();
-      
+      // Location updated via API
       playSuccess();
       toast.success('Service location updated successfully');
       setIsEditingLocation(false);
@@ -198,10 +196,10 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="p-3.5 bg-slate-50/70 rounded-xl border border-slate-200 space-y-1.5">
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Customer</h4>
-            <div className="text-sm font-bold text-slate-900">{job.customer?.name || 'Walk-in'}</div>
+            <div className="text-sm font-bold text-slate-900">{job.customer?.fullName || job.customer?.name || job.recipientName || 'Walk-In'}</div>
             <div className="text-xs font-mono text-slate-600 flex items-center gap-1.5">
               <Phone className="w-3 h-3 text-slate-400" />
-              <span>{job.customer?.phone}</span>
+              <span>{job.customer?.phone || job.recipientPhone || 'N/A'}</span>
             </div>
             {job.customer?.email && (
               <div className="text-xs text-slate-500 truncate">{job.customer?.email}</div>
@@ -307,8 +305,8 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
             </span>
           </div>
 
-          {/* Deposit Payment Status */}
-          {(job.depositAmountCents > 0 || job.paymentStatus === 'PARTIAL') && (
+          {/* Deposit Payment Status - supports both depositAmountCents and upfrontAmountCents */}
+          {((job.depositAmountCents > 0 || job.upfrontAmountCents > 0) || job.paymentStatus === 'PARTIAL') && (
             <div className="bg-gradient-to-br from-emerald-50 to-teal-50 px-3.5 py-3 border-t-2 border-emerald-300">
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
@@ -317,14 +315,14 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
                     Deposit Paid (50% Upfront)
                   </span>
                   <span className="text-sm font-mono font-black text-emerald-700">
-                    {formatCurrency(centsToDollars(job.depositAmountCents || 0), currencySymbol)}
+                    {formatCurrency(centsToDollars(job.depositAmountCents || job.upfrontAmountCents || 0), currencySymbol)}
                   </span>
                 </div>
                 
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-semibold text-slate-600">Remaining Balance</span>
                   <span className="text-sm font-mono font-bold text-rose-600">
-                    {formatCurrency(centsToDollars((job.totalAmount || 0) - (job.depositAmountCents || 0)), currencySymbol)}
+                    {formatCurrency(centsToDollars((job.totalAmount || 0) - (job.depositAmountCents || job.upfrontAmountCents || 0)), currencySymbol)}
                   </span>
                 </div>
 
@@ -359,7 +357,7 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
           )}
 
           {/* Payment Status Badge (when no deposit) */}
-          {!(job.depositAmountCents > 0 || job.paymentStatus === 'PARTIAL') && (
+          {!((job.depositAmountCents > 0 || job.upfrontAmountCents > 0) || job.paymentStatus === 'PARTIAL') && (
             <div className={`px-3.5 py-2.5 border-t-2 flex justify-between items-center ${
               job.paymentStatus === 'VERIFIED_PAID' || job.paymentStatus === 'PAID_PENDING_VERIFICATION'
                 ? 'bg-green-50 border-green-300'

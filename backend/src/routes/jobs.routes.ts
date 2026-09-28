@@ -20,6 +20,20 @@ const router = Router();
  */
 router.post('/public-booking', validateRequest({ body: CreateJobSchema }), jobController.createPublicBooking);
 
+/**
+ * @route   GET /api/jobs/external/:token
+ * @desc    Public view for invited external driver
+ * @access  Public
+ */
+router.get('/external/:token', jobController.getPublicExternalJob);
+
+/**
+ * @route   POST /api/jobs/external/:token/accept
+ * @desc    Public accept for invited external driver
+ * @access  Public
+ */
+router.post('/external/:token/accept', jobController.acceptPublicExternalJob);
+
 router.use(authenticate);
 router.use(tenantScope);
 
@@ -61,6 +75,28 @@ router.post(
   '/',
   validateRequest({ body: CreateJobSchema }),
   jobController.createJob
+);
+
+/**
+ * @route   PATCH /api/jobs/:id
+ * @desc    Update existing job details (edit mode)
+ * @access  Private
+ */
+router.patch(
+  '/:id',
+  validateRequest({ params: idParamSchema }),
+  jobController.updateJob
+);
+
+/**
+ * @route   POST /api/jobs/:id/external-driver-link
+ * @desc    Generate a shareable invitation link for an external driver
+ * @access  Private
+ */
+router.post(
+  '/:id/external-driver-link',
+  validateRequest({ params: idParamSchema }),
+  jobController.generateExternalDriverLink
 );
 
 /**
