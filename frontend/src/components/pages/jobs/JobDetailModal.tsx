@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Phone, Car, MapPin, Calculator, FileText, Printer, MessageSquare, DollarSign } from 'lucide-react';
+import { Phone, Car, MapPin, Calculator, FileText, Printer, MessageSquare, DollarSign, Edit2, Check, X } from 'lucide-react';
 import Modal from '../../ui/Modal';
 import StatusBadge from '../../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../../utils/currency';
@@ -8,8 +8,10 @@ import { useTenant } from '../../../context/TenantContext';
 import { useSocket } from '../../../context/SocketContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useUpdateJobStatus } from '../../../hooks/useJobs';
+import { useNotificationSound } from '../../../hooks/useNotificationSound';
 import { JOB_STATUSES } from '../../../constants/statuses';
 import { accountingService } from '../../../services/accountingService';
+import { api } from '../../../utils/api';
 import InvoicePdfModal from '../../invoices/InvoicePdfModal';
 import { toast } from 'sonner';
 
@@ -25,10 +27,16 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
   const isAdminOrAccountant = user?.role === 'ADMIN' || user?.role === 'ACCOUNTANT';
   const { country, currencySymbol } = useTenant();
   const { openChatJob } = useSocket();
+  const { playSuccess } = useNotificationSound();
   const updateStatusMutation = useUpdateJobStatus();
   const [updating, setUpdating] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(job?.invoice?.id || null);
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+
+  // Location editing state
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [editedLocation, setEditedLocation] = useState(job?.locationAddress || '');
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
 
   // Accountant expense stating local state
   const itPlatformFeeCents = country === 'CA' ? 150 : 100;
@@ -95,6 +103,36 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
     } finally {
       setIsGeneratingInvoice(false);
     }
+  };
+
+  const handleSaveLocation = async () => {
+    if (!editedLocation.trim()) {
+      toast.error('Location address cannot be empty');
+      return;
+    }
+
+    try {
+      setIsSavingLocation(true);
+      await api.patch(`/jobs/${job.id}`, {
+        locationAddress: editedLocation.trim(),
+      });
+      
+      // Update the job object
+      job.locationAddress = editedLocation.trim();
+      
+      playSuccess();
+      toast.success('Service location updated successfully');
+      setIsEditingLocation(false);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update location');
+    } finally {
+      setIsSavingLocation(false);
+    }
+  };
+
+  const handleCancelEditLocation = () => {
+    setEditedLocation(job?.locationAddress || '');
+    setIsEditingLocation(false);
   };
 
   return (
@@ -171,7 +209,20 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
           </div>
 
           <div className="p-3.5 bg-slate-50/70 rounded-xl border border-slate-200 space-y-1.5">
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Vehicle & Location</h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Vehicle & Location</h4>
+              {!isDriver && !isEditingLocation && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingLocation(true)}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+                  title="Edit service location"
+                >
+                  <Edit2 className="w-3 h-3" />
+                  <span>Edit Location</span>
+                </button>
+              )}
+            </div>
             <div className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
               <Car className="w-3.5 h-3.5 text-slate-400" />
               <span>{job.vehicle ? `${job.vehicle.year || ''} ${job.vehicle.make} ${job.vehicle.model}`.trim() : 'N/A'}</span>
@@ -181,11 +232,51 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
                 Tire Size: <strong className="text-red-700">{job.vehicle.tireSize}</strong>
               </div>
             )}
-            {job.locationAddress && (
-              <div className="text-xs text-slate-500 flex items-start gap-1 pt-1">
-                <MapPin className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />
-                <span className="truncate">{job.locationAddress}</span>
+            
+            {/* Editable Location Field */}
+            {isEditingLocation ? (
+              <div className="pt-2 space-y-2">
+                <div className="flex items-start gap-1">
+                  <MapPin className="w-3 h-3 text-red-500 shrink-0 mt-2.5" />
+                  <div className="flex-1">
+                    <textarea
+                      value={editedLocation}
+                      onChange={(e) => setEditedLocation(e.target.value)}
+                      placeholder="Enter service location address..."
+                      rows={2}
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 justify-end">
+                  <button
+                    type="button"
+                    onClick={handleCancelEditLocation}
+                    disabled={isSavingLocation}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition disabled:opacity-50"
+                  >
+                    <X className="w-3 h-3" />
+                    <span>Cancel</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveLocation}
+                    disabled={isSavingLocation || !editedLocation.trim()}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Check className="w-3 h-3" />
+                    <span>{isSavingLocation ? 'Saving...' : 'Save Location'}</span>
+                  </button>
+                </div>
               </div>
+            ) : (
+              job.locationAddress && (
+                <div className="text-xs text-slate-500 flex items-start gap-1 pt-1">
+                  <MapPin className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />
+                  <span>{job.locationAddress}</span>
+                </div>
+              )
             )}
           </div>
         </div>
