@@ -16,6 +16,7 @@ export interface JobItem {
   paymentMethod?: string;
   createdAt: string;
   scheduledFor?: string;
+  appointmentDate?: string;
   materialCostCents?: number;
   repairerFeeCents?: number;
   otherExpenseCents?: number;
@@ -122,8 +123,8 @@ export const jobService = {
     return res.data.data;
   },
 
-  async updateJobStatus(id: string, status: string): Promise<JobItem> {
-    const res = await api.patch(`/jobs/${id}/status`, { status });
+  async updateJobStatus(id: string, status: string, cashAmountCents?: number): Promise<JobItem> {
+    const res = await api.patch(`/jobs/${id}/status`, { status, ...(cashAmountCents !== undefined && { cashAmountCents }) });
     return res.data.data;
   },
 

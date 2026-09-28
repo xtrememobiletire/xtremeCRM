@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Radio, PhoneCall, Clock, CalendarClock, ShieldAlert, ArrowUpRight, Ban, UserCheck, MessageSquare } from 'lucide-react';
-import { useQuery, useQueryClient } from '@tantml:function_calls';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../components/ui/PageHeader';
 import DriverList from '../components/pages/dispatch/DriverList';
 import ProximityDistanceTool from '../components/pages/dispatch/ProximityDistanceTool';
@@ -13,8 +13,8 @@ import JobChatModal from '../components/dispatch/JobChatModal';
 import { useSocket } from '../context/SocketContext';
 import { useTenant } from '../context/TenantContext';
 import { useNotificationSound } from '../hooks/useNotificationSound';
-import { jobService } from '../services/jobService';
-import { userService } from '../services/userService';
+import { jobService, type JobItem } from '../services/jobService';
+import { userService, type UserItem } from '../services/userService';
 import { api } from '../utils/api';
 import { toast } from 'sonner';
 
@@ -92,7 +92,7 @@ function QueueSection({ title, icon: Icon, color, jobs, badge, onViewJob, onAssi
 
 export default function Dispatch() {
   const { country } = useTenant();
-  const { playUrgent, playInfo } = useNotificationSound();
+  const { playUrgent } = useNotificationSound();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { simulateIncomingCall } = useSocket();
@@ -130,15 +130,15 @@ export default function Dispatch() {
     refetchInterval: 60000,
   });
 
-  const { data: apiDrivers = [] } = useQuery({
+  const { data: apiDrivers = [] as UserItem[] } = useQuery({
     queryKey: ['dispatch-drivers'],
     queryFn: () => userService.getDrivers(),
   });
 
-  const triageJobs = (triageData?.data || []).filter(j => j.status === 'UNVERIFIED_PUBLIC');
-  const urgentJobs = (urgentJobsData?.data || []).filter(j => j.status !== 'COMPLETED' && j.status !== 'CANCELLED');
-  const standardJobs = (standardJobsData?.data || []).filter(j => j.status !== 'COMPLETED' && j.status !== 'CANCELLED');
-  const futureJobs = (futureJobsData?.data || []).filter(j => j.status !== 'COMPLETED' && j.status !== 'CANCELLED');
+  const triageJobs = (triageData?.data || [] as JobItem[]).filter((j: JobItem) => j.status === 'UNVERIFIED_PUBLIC');
+  const urgentJobs = (urgentJobsData?.data || [] as JobItem[]).filter((j: JobItem) => j.status !== 'COMPLETED' && j.status !== 'CANCELLED');
+  const standardJobs = (standardJobsData?.data || [] as JobItem[]).filter((j: JobItem) => j.status !== 'COMPLETED' && j.status !== 'CANCELLED');
+  const futureJobs = (futureJobsData?.data || [] as JobItem[]).filter((j: JobItem) => j.status !== 'COMPLETED' && j.status !== 'CANCELLED');
 
   const handlePromoteTriage = async (job: any) => {
     try {

@@ -40,8 +40,8 @@ export function useCreateJob() {
 export function useUpdateJobStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      jobService.updateJobStatus(id, status),
+    mutationFn: ({ id, status, cashAmountCents }: { id: string; status: string; cashAmountCents?: number }) =>
+      jobService.updateJobStatus(id, status, cashAmountCents),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
     },

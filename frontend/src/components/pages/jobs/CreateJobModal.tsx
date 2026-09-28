@@ -274,7 +274,8 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
       // Helper to convert "4:30 PM" to 24-hour format "16:30"
       const convertTo24Hour = (timeStr: string): string => {
         const [time, period] = timeStr.split(' ');
-        let [hours, minutes] = time.split(':').map(Number);
+        let [hours] = time.split(':').map(Number);
+        const [, minutes] = time.split(':').map(Number);
         
         if (period === 'PM' && hours !== 12) {
           hours += 12;
