@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Wrench, Car, User, MapPin, Search, ShieldCheck, CheckCircle2, PhoneOff, Compass, Clock, Calendar, Check } from 'lucide-react';
+import { Wrench, Car, User, MapPin, Search, ShieldCheck, CheckCircle2, PhoneOff, Compass, Clock, Calendar, Check, DollarSign } from 'lucide-react';
 import Modal from '../../ui/Modal';
 import { SERVICES_CATALOG, type ServiceCatalogItem } from '../../../constants/services';
 import { useCreateJob } from '../../../hooks/useJobs';
 import { useTenant } from '../../../context/TenantContext';
 import { useSocket } from '../../../context/SocketContext';
+import { useAuth } from '../../../context/AuthContext';
 import { useNotificationSound } from '../../../hooks/useNotificationSound';
 import { formatCurrency, centsToDollars } from '../../../utils/currency';
 import { toast } from 'sonner';
@@ -57,6 +58,7 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
   const { country, currencySymbol, taxRate } = useTenant();
   const { recordIncomingJob } = useSocket();
   const { playSuccess } = useNotificationSound();
+  const { user } = useAuth();
   const createJobMutation = useCreateJob();
 
   // Form State
@@ -101,6 +103,11 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
   const [etaStartTime, setEtaStartTime] = useState('12:00 AM');
   const [etaEndTime, setEtaEndTime] = useState('12:30 AM');
 
+  // Deposit Payment (50% upfront requirement)
+  const [requiresDeposit, setRequiresDeposit] = useState(false);
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositReceived, setDepositReceived] = useState(false);
+
   // Mandatory Call Outcome Disposition (Rule 6.2)
   const [isDispositionPromptOpen, setIsDispositionPromptOpen] = useState(false);
 
@@ -128,6 +135,9 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
     setEtaDate(today.toISOString().split('T')[0]);
     setEtaStartTime('12:00 AM');
     setEtaEndTime('12:30 AM');
+    setRequiresDeposit(false);
+    setDepositAmount('');
+    setDepositReceived(false);
   };
 
   const handleFleetLookup = async (q?: string) => {
@@ -222,6 +232,10 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
 
   const taxCents = Math.round(subtotalCents * taxRate);
   const totalCents = subtotalCents + taxCents;
+
+  // Calculate half payment (50% deposit requirement)
+  const halfPaymentCents = Math.round(totalCents / 2);
+  const depositAmountCents = depositAmount ? Math.round(parseFloat(depositAmount) * 100) : 0;
 
   const toggleService = (serviceId: string) => {
     setSelectedServices((prev) =>
@@ -330,6 +344,10 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
       etaMinutes: etaMinutes ? parseInt(etaMinutes, 10) : undefined,
       driverArrivalWindowStart,
       driverArrivalWindowEnd,
+      // Deposit payment fields
+      depositAmountCents: requiresDeposit && depositReceived ? depositAmountCents : undefined,
+      depositPaidAt: requiresDeposit && depositReceived ? new Date().toISOString() : undefined,
+      paymentStatus: requiresDeposit && depositReceived ? 'PARTIAL' : 'UNPAID',
     };
 
     try {
@@ -855,6 +873,84 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                 placeholder="Front-right passenger tire punctured..."
                 className="input-base mt-1 text-xs"
               />
+            </div>
+          </div>
+
+          {/* Deposit Payment Section (50% Upfront Requirement) */}
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-3.5 rounded-xl border-2 border-emerald-200">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-0.5">
+                <DollarSign className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div className="flex-grow space-y-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="requiresDeposit"
+                    checked={requiresDeposit}
+                    onChange={(e) => {
+                      setRequiresDeposit(e.target.checked);
+                      if (!e.target.checked) {
+                        setDepositAmount('');
+                        setDepositReceived(false);
+                      } else {
+                        // Auto-fill with half payment
+                        setDepositAmount((totalCents / 200).toFixed(2));
+                      }
+                    }}
+                    className="w-4 h-4 text-emerald-600 border-emerald-300 rounded focus:ring-emerald-500"
+                  />
+                  <label htmlFor="requiresDeposit" className="text-sm font-bold text-emerald-900 cursor-pointer">
+                    Require Upfront Deposit Payment
+                  </label>
+                </div>
+
+                {requiresDeposit && (
+                  <div className="space-y-2.5 pl-7">
+                    <div className="text-xs text-emerald-700 bg-white/50 p-2 rounded-lg border border-emerald-200">
+                      <span className="font-semibold">Recommended 50% Deposit:</span>{' '}
+                      <span className="font-mono font-black text-emerald-800">
+                        {formatCurrency(centsToDollars(halfPaymentCents), currencySymbol)}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-emerald-800 block mb-1">
+                        Deposit Amount Received (float allowed)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={centsToDollars(totalCents)}
+                        value={depositAmount}
+                        onChange={(e) => setDepositAmount(e.target.value)}
+                        placeholder="0.00"
+                        className="input-base w-full text-sm font-mono"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="depositReceived"
+                        checked={depositReceived}
+                        onChange={(e) => setDepositReceived(e.target.checked)}
+                        className="w-4 h-4 text-emerald-600 border-emerald-300 rounded focus:ring-emerald-500"
+                      />
+                      <label htmlFor="depositReceived" className="text-xs font-semibold text-emerald-800 cursor-pointer">
+                        ✓ Dispatcher verified deposit received
+                      </label>
+                    </div>
+
+                    {user && (
+                      <div className="text-[10px] text-emerald-600 bg-white/40 p-1.5 rounded border border-emerald-200">
+                        <span className="font-semibold">Booked by:</span> {user.name || user.email} ({user.role})
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

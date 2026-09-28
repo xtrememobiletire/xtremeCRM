@@ -33,6 +33,7 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
             {!isDriver && <th className="table-th">Driver Assigned</th>}
             <th className="table-th">Status</th>
             <th className="table-th">Urgency</th>
+            <th className="table-th">Payment</th>
             <th className="table-th text-right">Total</th>
             <th className="table-th text-center">Action</th>
           </tr>
@@ -89,6 +90,30 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
               </td>
               <td className="table-td whitespace-nowrap">
                 <StatusBadge status={job.urgency} />
+              </td>
+              <td className="table-td whitespace-nowrap">
+                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
+                  job.paymentStatus === 'VERIFIED_PAID' || job.paymentStatus === 'PAID_PENDING_VERIFICATION'
+                    ? 'bg-green-100 text-green-800 border border-green-200'
+                    : job.paymentStatus === 'PARTIAL'
+                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                    : 'bg-rose-100 text-rose-800 border border-rose-200'
+                }`}>
+                  {job.paymentStatus === 'VERIFIED_PAID' ? '✓ Paid' :
+                   job.paymentStatus === 'PAID_PENDING_VERIFICATION' ? 'Paid*' :
+                   job.paymentStatus === 'PARTIAL' ? (
+                     <>
+                       <span className="text-amber-600">●</span>
+                       <span>Partial</span>
+                     </>
+                   ) :
+                   'Unpaid'}
+                </span>
+                {job.depositAmountCents > 0 && (
+                  <div className="text-[9px] text-emerald-600 font-mono font-semibold mt-0.5">
+                    {formatCurrency(centsToDollars(job.depositAmountCents), currencySymbol)} deposit
+                  </div>
+                )}
               </td>
               <td className="table-td text-right font-mono font-bold text-slate-900 whitespace-nowrap">
                 {formatCurrency(centsToDollars(job.totalAmount), currencySymbol)}

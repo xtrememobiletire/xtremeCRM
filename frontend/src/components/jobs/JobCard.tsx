@@ -54,10 +54,36 @@ export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps
       </div>
 
       <div className="flex items-center justify-between pt-1">
-        <div>
-          <span className="text-[10px] text-slate-400 uppercase font-semibold">Total Price</span>
-          <div className="text-base font-mono font-bold text-slate-900">
-            {formatCurrency(centsToDollars(job.totalAmount), currencySymbol)}
+        <div className="space-y-1">
+          <div>
+            <span className="text-[10px] text-slate-400 uppercase font-semibold">Total Price</span>
+            <div className="text-base font-mono font-bold text-slate-900">
+              {formatCurrency(centsToDollars(job.totalAmount), currencySymbol)}
+            </div>
+          </div>
+          <div>
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+              job.paymentStatus === 'VERIFIED_PAID' || job.paymentStatus === 'PAID_PENDING_VERIFICATION'
+                ? 'bg-green-100 text-green-800 border border-green-200'
+                : job.paymentStatus === 'PARTIAL'
+                ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                : 'bg-rose-100 text-rose-800 border border-rose-200'
+            }`}>
+              {job.paymentStatus === 'VERIFIED_PAID' ? '✓ Paid' :
+               job.paymentStatus === 'PAID_PENDING_VERIFICATION' ? 'Paid*' :
+               job.paymentStatus === 'PARTIAL' ? (
+                 <>
+                   <span className="text-amber-600">●</span>
+                   <span>Partial</span>
+                 </>
+               ) :
+               'Unpaid'}
+            </span>
+            {job.depositAmountCents > 0 && (
+              <div className="text-[9px] text-emerald-600 font-mono font-semibold mt-0.5">
+                {formatCurrency(centsToDollars(job.depositAmountCents), currencySymbol)} deposit
+              </div>
+            )}
           </div>
         </div>
 

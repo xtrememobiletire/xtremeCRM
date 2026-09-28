@@ -306,6 +306,77 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
               {formatCurrency(centsToDollars(job.totalAmount), currencySymbol)}
             </span>
           </div>
+
+          {/* Deposit Payment Status */}
+          {(job.depositAmountCents > 0 || job.paymentStatus === 'PARTIAL') && (
+            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 px-3.5 py-3 border-t-2 border-emerald-300">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-emerald-900 uppercase flex items-center gap-1.5">
+                    <DollarSign className="w-3.5 h-3.5" />
+                    Deposit Paid (50% Upfront)
+                  </span>
+                  <span className="text-sm font-mono font-black text-emerald-700">
+                    {formatCurrency(centsToDollars(job.depositAmountCents || 0), currencySymbol)}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-semibold text-slate-600">Remaining Balance</span>
+                  <span className="text-sm font-mono font-bold text-rose-600">
+                    {formatCurrency(centsToDollars((job.totalAmount || 0) - (job.depositAmountCents || 0)), currencySymbol)}
+                  </span>
+                </div>
+
+                {job.depositPaidAt && (
+                  <div className="text-[10px] text-emerald-700 bg-white/60 p-1.5 rounded border border-emerald-200">
+                    <span className="font-semibold">Deposit received:</span> {formatDate(job.depositPaidAt)}
+                    {job.depositVerifiedBy && (
+                      <span className="ml-2">
+                        • <span className="font-semibold">Verified by:</span> {job.depositVerifiedBy.name || job.depositVerifiedBy.email}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-1 border-t border-emerald-200">
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase">Payment Status</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                    job.paymentStatus === 'VERIFIED_PAID' || job.paymentStatus === 'PAID_PENDING_VERIFICATION' 
+                      ? 'bg-green-100 text-green-800' 
+                      : job.paymentStatus === 'PARTIAL'
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-rose-100 text-rose-800'
+                  }`}>
+                    {job.paymentStatus === 'VERIFIED_PAID' ? 'PAID ✓' :
+                     job.paymentStatus === 'PAID_PENDING_VERIFICATION' ? 'PAID (Pending Verification)' :
+                     job.paymentStatus === 'PARTIAL' ? 'PARTIAL PAYMENT' : 
+                     'UNPAID'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Payment Status Badge (when no deposit) */}
+          {!(job.depositAmountCents > 0 || job.paymentStatus === 'PARTIAL') && (
+            <div className={`px-3.5 py-2.5 border-t-2 flex justify-between items-center ${
+              job.paymentStatus === 'VERIFIED_PAID' || job.paymentStatus === 'PAID_PENDING_VERIFICATION'
+                ? 'bg-green-50 border-green-300'
+                : 'bg-rose-50 border-rose-300'
+            }`}>
+              <span className="text-xs font-bold text-slate-700 uppercase">Payment Status</span>
+              <span className={`text-xs font-bold px-2 py-1 rounded ${
+                job.paymentStatus === 'VERIFIED_PAID' || job.paymentStatus === 'PAID_PENDING_VERIFICATION'
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-rose-100 text-rose-800'
+              }`}>
+                {job.paymentStatus === 'VERIFIED_PAID' ? 'PAID ✓' :
+                 job.paymentStatus === 'PAID_PENDING_VERIFICATION' ? 'PAID (Pending Verification)' :
+                 'UNPAID'}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* FR-5.4 & FR-5.6: Zero-Inventory Commercial Invoicing & PDF */}

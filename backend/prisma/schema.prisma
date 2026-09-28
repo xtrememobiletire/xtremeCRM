@@ -123,6 +123,7 @@ enum PaymentMethod {
 
 enum PaymentStatus {
   UNPAID
+  PARTIAL                       // Deposit/partial payment received, balance pending
   PAID_PENDING_VERIFICATION
   VERIFIED_PAID
   REFUNDED
@@ -452,6 +453,12 @@ model Job {
   paymentVerifiedById String?   @map("payment_verified_by_id")
   paymentVerifiedBy   User?     @relation("JobPaymentsVerifiedBy", fields: [paymentVerifiedById], references: [id])
   paymentVerifiedAt   DateTime? @db.Timestamptz @map("payment_verified_at")
+
+  // Upfront Deposit / Partial Payment (50% requirement for job acceptance)
+  depositAmountCents Int       @default(0) @map("deposit_amount_cents") // Actual deposit paid (float allowed, stored in cents)
+  depositPaidAt      DateTime? @db.Timestamptz @map("deposit_paid_at")  // When deposit was received
+  depositVerifiedById String?  @map("deposit_verified_by_id")           // Dispatcher who verified deposit
+  depositVerifiedBy   User?    @relation("JobDepositVerifiedBy", fields: [depositVerifiedById], references: [id])
 
   // Platform Royalty: Set per region (CA: 150 cents [$1.50 CAD], US: 100 cents [$1.00 USD], UK: 100 pence [£1.00 GBP])
   itPlatformFeeCents Int @default(0) @map("it_platform_fee_cents")
