@@ -4,6 +4,7 @@ import Modal from '../ui/Modal';
 import { useQuery } from '@tanstack/react-query';
 import { userService, type UserItem } from '../../services/userService';
 import { useAssignDriver } from '../../hooks/useJobs';
+import { useNotificationSound } from '../../hooks/useNotificationSound';
 import { toast } from 'sonner';
 
 interface AssignDriverModalProps {
@@ -14,6 +15,7 @@ interface AssignDriverModalProps {
 
 export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriverModalProps) {
   const assignDriverMutation = useAssignDriver();
+  const { playSuccess } = useNotificationSound();
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
 
   const { data: drivers = [], isLoading } = useQuery<UserItem[]>({
@@ -35,6 +37,7 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
         jobId: job.id,
         driverId: selectedDriverId,
       });
+      playSuccess(); // Play success sound for driver assignment
       toast.success('Technician dispatched successfully');
       onClose();
     } catch (err: any) {

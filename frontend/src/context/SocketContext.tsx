@@ -106,11 +106,16 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     setRecentJobCodes([]);
   };
 
-  const playChime = () => {
+  const playChime = (volume: number = 0.8) => {
     try {
       const audio = new Audio('/chime.mp3');
-      audio.play().catch(() => {});
-    } catch {}
+      audio.volume = Math.min(Math.max(volume, 0), 1); // Ensure volume is between 0 and 1
+      audio.play().catch(() => {
+        console.warn('Audio play failed - user may need to interact with page first');
+      });
+    } catch (error) {
+      console.warn('Audio playback not supported:', error);
+    }
   };
 
   const addNotification = (item: Omit<AppNotification, 'id' | 'read'>) => {
@@ -204,6 +209,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     // Inbound phone screen pop (PRD FR-1.1: Only active when agentMode === 'INBOUND')
     s.on('call:incoming', (data: any) => {
       if (agentMode === 'INBOUND' && isAgentActive) {
+        playChime(1.0); // Full volume for incoming calls
         setIncomingCall({
           callId: data.callId || `call-${Date.now()}`,
           from: data.callerNumber || data.from || '+1 (416) 555-0192',

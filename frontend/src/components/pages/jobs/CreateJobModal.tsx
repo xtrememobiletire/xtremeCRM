@@ -5,6 +5,7 @@ import { SERVICES_CATALOG, type ServiceCatalogItem } from '../../../constants/se
 import { useCreateJob } from '../../../hooks/useJobs';
 import { useTenant } from '../../../context/TenantContext';
 import { useSocket } from '../../../context/SocketContext';
+import { useNotificationSound } from '../../../hooks/useNotificationSound';
 import { formatCurrency, centsToDollars } from '../../../utils/currency';
 import { toast } from 'sonner';
 import JobDispositionModal from './JobDispositionModal';
@@ -55,6 +56,7 @@ const detectRegionFromPhone = (phone: string, currentCountry: string) => {
 export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: CreateJobModalProps) {
   const { country, currencySymbol, taxRate } = useTenant();
   const { recordIncomingJob } = useSocket();
+  const { playSuccess } = useNotificationSound();
   const createJobMutation = useCreateJob();
 
   // Form State
@@ -334,6 +336,7 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
       if (created && recordIncomingJob) {
         recordIncomingJob(created);
       }
+      playSuccess(); // Play success sound
       toast.success('Job ticket created & dispatched successfully');
       resetForm();
       onClose();

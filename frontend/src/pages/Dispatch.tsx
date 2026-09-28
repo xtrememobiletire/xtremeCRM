@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Radio, PhoneCall, Clock, CalendarClock, ShieldAlert, ArrowUpRight, Ban, UserCheck, MessageSquare } from 'lucide-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tantml:function_calls';
 import PageHeader from '../components/ui/PageHeader';
 import DriverList from '../components/pages/dispatch/DriverList';
 import ProximityDistanceTool from '../components/pages/dispatch/ProximityDistanceTool';
@@ -12,6 +12,7 @@ import AssignDriverModal from '../components/jobs/AssignDriverModal';
 import JobChatModal from '../components/dispatch/JobChatModal';
 import { useSocket } from '../context/SocketContext';
 import { useTenant } from '../context/TenantContext';
+import { useNotificationSound } from '../hooks/useNotificationSound';
 import { jobService } from '../services/jobService';
 import { userService } from '../services/userService';
 import { api } from '../utils/api';
@@ -91,6 +92,7 @@ function QueueSection({ title, icon: Icon, color, jobs, badge, onViewJob, onAssi
 
 export default function Dispatch() {
   const { country } = useTenant();
+  const { playUrgent, playInfo } = useNotificationSound();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { simulateIncomingCall } = useSocket();
@@ -141,6 +143,7 @@ export default function Dispatch() {
   const handlePromoteTriage = async (job: any) => {
     try {
       await api.patch(`/jobs/${job.id}/status`, { status: 'PENDING', urgency: 'EMERGENCY' });
+      playUrgent(); // Play urgent sound for escalation
       toast.success(`Job #${job.jobCode || job.jobNumber} promoted to Urgent Roadside Queue`);
       queryClient.invalidateQueries({ queryKey: ['triage-queue', country] });
       queryClient.invalidateQueries({ queryKey: ['urgent-dispatch-jobs', country] });
