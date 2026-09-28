@@ -57,6 +57,7 @@ interface SocketContextType {
   notifications: AppNotification[];
   unreadCount: number;
   incomingJobsCount: number;
+  recentJobCodes: string[];
   clearIncomingJobsCount: () => void;
   recordIncomingJob: (data: any) => void;
   activeChatJob: ActiveChatJob | null;
@@ -97,10 +98,12 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [activeChatJob, setActiveChatJob] = useState<ActiveChatJob | null>(null);
   const [incomingJobsCount, setIncomingJobsCount] = useState(0);
+  const [recentJobCodes, setRecentJobCodes] = useState<string[]>([]);
   const recordedJobIds = useRef(new Set<string>());
 
   const clearIncomingJobsCount = () => {
     setIncomingJobsCount(0);
+    setRecentJobCodes([]);
   };
 
   const playChime = () => {
@@ -143,13 +146,22 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     if (id) recordedJobIds.current.add(id);
 
     setIncomingJobsCount((prev) => prev + 1);
+    
+    const jobCode = data?.jobCode || data?.jobNumber || 'New Job';
+    const customerName = data?.customer?.fullName || data?.customerName || 'Customer';
+    const serviceAddress = data?.serviceAddress || 'Service location';
+    const urgency = data?.urgency || 'STANDARD';
+    
+    // Track recent job codes (keep last 5)
+    setRecentJobCodes((prev) => [jobCode, ...prev.slice(0, 4)]);
+    
     addNotification({
       type: 'JOB_ASSIGNED',
-      title: `New Dispatch: #${data?.jobCode || data?.jobNumber || 'Incoming Order'}`,
-      message: `${data?.serviceAddress || 'New roadside order received'} — ${data?.urgency || 'STANDARD'}`,
+      title: `🚨 New Job: ${jobCode}`,
+      message: `${customerName} • ${serviceAddress} • ${urgency} urgency`,
       timestamp: data?.createdAt || new Date().toISOString(),
       jobId: data?.id,
-      jobCode: data?.jobCode || data?.jobNumber,
+      jobCode: jobCode,
     });
     queryClient.invalidateQueries({ queryKey: ['jobs'] });
     queryClient.invalidateQueries({ queryKey: ['urgent-dispatch-jobs'] });
@@ -472,6 +484,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         notifications,
         unreadCount,
         incomingJobsCount,
+        recentJobCodes,
         clearIncomingJobsCount,
         recordIncomingJob,
         activeChatJob,

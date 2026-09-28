@@ -40,7 +40,7 @@ const baseNavItems = [
 export default function Sidebar({ isOpen, onClose, isCollapsed = false }: SidebarProps) {
   const { user, logout } = useAuth();
   const { country, currencySymbol } = useTenant();
-  const { incomingJobsCount, clearIncomingJobsCount } = useSocket();
+  const { incomingJobsCount, recentJobCodes, clearIncomingJobsCount } = useSocket();
   const location = useLocation();
   const prevPathRef = useRef(location.pathname);
 
@@ -156,6 +156,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
             const Icon = item.icon;
             const isJobsTab = item.path === '/jobs';
             const showJobsBadge = isJobsTab && incomingJobsCount > 0;
+            const jobsTooltip = showJobsBadge && recentJobCodes.length > 0
+              ? `New Jobs:\n${recentJobCodes.map(code => `• ${code}`).join('\n')}`
+              : isCollapsed ? item.label : undefined;
 
             return (
               <NavLink
@@ -165,7 +168,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                   if (isJobsTab) clearIncomingJobsCount();
                   if (isOpen) onClose();
                 }}
-                title={isCollapsed ? item.label : undefined}
+                title={jobsTooltip}
                 className={({ isActive }) =>
                   `relative flex items-center gap-3 rounded-xl text-xs sm:text-sm transition-all duration-150 ${
                     isCollapsed 
@@ -190,9 +193,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                   <>
                     <span className="truncate tracking-tight flex-1">{item.label}</span>
                     {showJobsBadge && (
-                      <span className="ml-auto px-1.5 py-0.5 text-[10px] font-black rounded-full bg-red-600 text-white min-w-5 h-5 flex items-center justify-center animate-pulse shadow-xs font-mono">
-                        {incomingJobsCount > 99 ? '99+' : incomingJobsCount}
-                      </span>
+                      <div className="ml-auto flex items-center gap-1.5">
+                        <span className="px-1.5 py-0.5 text-[10px] font-black rounded-full bg-red-600 text-white min-w-5 h-5 flex items-center justify-center animate-pulse shadow-xs font-mono">
+                          {incomingJobsCount > 99 ? '99+' : incomingJobsCount}
+                        </span>
+                      </div>
                     )}
                   </>
                 )}
