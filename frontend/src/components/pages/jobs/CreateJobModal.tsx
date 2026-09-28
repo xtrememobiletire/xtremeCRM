@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wrench, Car, User, MapPin, Search, ShieldCheck, CheckCircle2, PhoneOff, Compass } from 'lucide-react';
+import { Wrench, Car, User, MapPin, Search, ShieldCheck, CheckCircle2, PhoneOff, Compass, Clock, Calendar, Check } from 'lucide-react';
 import Modal from '../../ui/Modal';
 import { SERVICES_CATALOG, type ServiceCatalogItem } from '../../../constants/services';
 import { useCreateJob } from '../../../hooks/useJobs';
@@ -11,6 +11,15 @@ import JobDispositionModal from './JobDispositionModal';
 import { customerService } from '../../../services/customerService';
 import { jobService } from '../../../services/jobService';
 import { fleetService } from '../../../services/fleetService';
+
+// Generate 30-minute time slots for 24 hours (12:00 AM to 11:30 PM)
+const TIME_SLOT_OPTIONS = Array.from({ length: 48 }, (_, i) => {
+  const h = Math.floor(i / 2);
+  const m = i % 2 === 0 ? '00' : '30';
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const displayH = h % 12 === 0 ? 12 : h % 12;
+  return `${displayH}:${m} ${ampm}`;
+});
 
 interface CreateJobModalProps {
   isOpen: boolean;
@@ -80,6 +89,16 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('POS');
 
+  // Driver Arrival Time Window
+  const [etaMinutes, setEtaMinutes] = useState('30');
+  const [isEtaWindowActive, setIsEtaWindowActive] = useState(false);
+  const [etaDate, setEtaDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  const [etaStartTime, setEtaStartTime] = useState('12:00 AM');
+  const [etaEndTime, setEtaEndTime] = useState('12:30 AM');
+
   // Mandatory Call Outcome Disposition (Rule 6.2)
   const [isDispositionPromptOpen, setIsDispositionPromptOpen] = useState(false);
 
@@ -101,6 +120,12 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
     setPaymentMethod('POS');
     setFleetSearchQuery('');
     setVerifiedFleetMatch(null);
+    setEtaMinutes('30');
+    setIsEtaWindowActive(false);
+    const today = new Date();
+    setEtaDate(today.toISOString().split('T')[0]);
+    setEtaStartTime('12:00 AM');
+    setEtaEndTime('12:30 AM');
   };
 
   const handleFleetLookup = async (q?: string) => {
@@ -239,6 +264,32 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
     const mappedUrgency = urgency === 'NORMAL' ? 'STANDARD' : urgency === 'LOW' ? 'FUTURE' : 'URGENT';
     const mappedCurrency = country === 'US' ? 'USD' : country === 'UK' ? 'GBP' : 'CAD';
 
+    // Convert time window to ISO format if active
+    let driverArrivalWindowStart: string | undefined;
+    let driverArrivalWindowEnd: string | undefined;
+
+    if (isEtaWindowActive) {
+      // Helper to convert "4:30 PM" to 24-hour format "16:30"
+      const convertTo24Hour = (timeStr: string): string => {
+        const [time, period] = timeStr.split(' ');
+        let [hours, minutes] = time.split(':').map(Number);
+        
+        if (period === 'PM' && hours !== 12) {
+          hours += 12;
+        } else if (period === 'AM' && hours === 12) {
+          hours = 0;
+        }
+        
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      };
+
+      const startTime24 = convertTo24Hour(etaStartTime);
+      const endTime24 = convertTo24Hour(etaEndTime);
+      
+      driverArrivalWindowStart = `${etaDate}T${startTime24}:00`;
+      driverArrivalWindowEnd = `${etaDate}T${endTime24}:00`;
+    }
+
     const payload = {
       fleetId: verifiedFleetMatch?.fleet?.id || undefined,
       customer: {
@@ -273,6 +324,9 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
       totalCents,
       disposition: 'BOOKED',
       makeUserAccount,
+      etaMinutes: etaMinutes ? parseInt(etaMinutes, 10) : undefined,
+      driverArrivalWindowStart,
+      driverArrivalWindowEnd,
     };
 
     try {
@@ -588,6 +642,148 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '' }: C
                   <option value="LOW">Low (Scheduled)</option>
                 </select>
               </div>
+            </div>
+          </div>
+
+          {/* Driver Arrival Time Window */}
+          <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 space-y-3">
+            <div className="flex items-center gap-2 font-bold text-xs text-slate-800 uppercase tracking-wider">
+              <Clock className="w-3.5 h-3.5 text-red-600" />
+              <span>Agreed Motorist ETA & Driver Arrival Window</span>
+            </div>
+
+            {/* Quick ETA Minutes */}
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={etaMinutes}
+                onChange={(e) => setEtaMinutes(e.target.value)}
+                placeholder="30"
+                className="w-28 px-4 py-2 text-sm rounded-xl border border-slate-200 font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
+              />
+              <div className="flex items-center gap-1.5">
+                {['15', '30', '45', '60'].map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => setEtaMinutes(mins)}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition cursor-pointer ${
+                      etaMinutes === mins
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    {mins}m
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Driver Time Window Specification */}
+            <div className={`p-3.5 rounded-xl border transition-all ${
+              isEtaWindowActive 
+                ? 'border-emerald-300 bg-emerald-50/40 shadow-2xs' 
+                : 'border-slate-200 bg-slate-50/70'
+            }`}>
+              <div className="flex items-center justify-between gap-2 mb-2.5">
+                <label 
+                  htmlFor="etaWindowCheckbox" 
+                  className="text-xs font-bold text-slate-700 flex items-center gap-2 cursor-pointer select-none"
+                >
+                  <input
+                    type="checkbox"
+                    id="etaWindowCheckbox"
+                    checked={isEtaWindowActive}
+                    onChange={(e) => setIsEtaWindowActive(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                  />
+                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Specify Driver Arrival Window</span>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => setIsEtaWindowActive(!isEtaWindowActive)}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition cursor-pointer flex items-center gap-1.5 ${
+                    isEtaWindowActive
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                  }`}
+                  title="Tick button to confirm arrival window"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{isEtaWindowActive ? 'Applied ✓' : 'Tick to Apply'}</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {/* Date: Default to current date */}
+                <div>
+                  <span className="block text-[10px] font-semibold text-slate-500 mb-1">
+                    Date (Current Date)
+                  </span>
+                  <input
+                    type="date"
+                    value={etaDate}
+                    onChange={(e) => {
+                      setEtaDate(e.target.value);
+                      setIsEtaWindowActive(true);
+                    }}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs"
+                  />
+                </div>
+
+                {/* Initial Time Dropdown (Start Time) */}
+                <div>
+                  <span className="block text-[10px] font-semibold text-slate-500 mb-1">
+                    Start Time (From)
+                  </span>
+                  <select
+                    value={etaStartTime}
+                    onChange={(e) => {
+                      setEtaStartTime(e.target.value);
+                      setIsEtaWindowActive(true);
+                    }}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs cursor-pointer"
+                  >
+                    {TIME_SLOT_OPTIONS.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* End Time Dropdown */}
+                <div>
+                  <span className="block text-[10px] font-semibold text-slate-500 mb-1">
+                    End Time (To)
+                  </span>
+                  <select
+                    value={etaEndTime}
+                    onChange={(e) => {
+                      setEtaEndTime(e.target.value);
+                      setIsEtaWindowActive(true);
+                    }}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs cursor-pointer"
+                  >
+                    {TIME_SLOT_OPTIONS.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {isEtaWindowActive && (
+                <div className="mt-2 text-[11px] font-medium text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>
+                    Driver scheduled arrival: <strong>{etaStartTime}</strong> to <strong>{etaEndTime}</strong> on <strong>{etaDate}</strong>.
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
