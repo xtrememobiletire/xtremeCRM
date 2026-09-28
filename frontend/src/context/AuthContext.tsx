@@ -7,6 +7,7 @@ export interface User {
   fullName: string;
   firstName?: string;
   lastName?: string;
+  name?: string;
   role: string;
   countryCode: 'CA' | 'US' | 'UK';
   phone?: string | null;

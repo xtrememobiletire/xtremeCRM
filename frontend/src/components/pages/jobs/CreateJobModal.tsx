@@ -971,7 +971,7 @@ export default function CreateJobModal({ isOpen, onClose, prefillPhone = '', edi
 
                     {user && (
                       <div className="text-[10px] text-emerald-600 bg-white/40 p-1.5 rounded border border-emerald-200">
-                        <span className="font-semibold">Booked by:</span> {user.name || user.email} ({user.role})
+                        <span className="font-semibold">Booked by:</span> {user.fullName || user.name || user.email} ({user.role})
                       </div>
                     )}
                   </div>
