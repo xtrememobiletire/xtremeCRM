@@ -12,9 +12,9 @@ The software bridges the gap between high-pressure call-center intake, real-time
 ### 2.1. Internal Company Staff (Operate inside `/admin`)
 | Persona | Role in System | Key Needs |
 | :--- | :--- | :--- |
-| **Global Admin** | "Admin sees everything" — Full God-Mode oversight. | Unrestricted cross-country visibility across Canada, USA, and UK; full control to dispatch, edit invoices, state expenses, and view profit margins without bureaucratic internal blocks. |
-| **Call Center Agent** | Handles inbound phone calls and website bookings; qualifies outbound B2B fleet leads (Phase 2). | Tri-state mode toggle (`INACTIVE` / `INBOUND` / `OUTBOUND` — one active at a time), Telnyx inbound screen pop with pre-filled caller number, instant customer/vehicle auto-lookup, Google address geocoding, 16-service picker, tax toggle, customer user account provisioning, call disposition logging, Telnyx warm transfer to Dispatch Manager / Admin for fleet contract close. |
-| **Dispatch Manager** | Assigns roadside jobs to drivers based on proximity and urgency; manages fleet accounts. | Urgent vs Standard queue with expandable accordion, arbitrary address distance measurement tool, single-click driver assignment, live status monitoring, driver messaging, driver cash-in-hand tracking, Fleets directory. |
+| **Global Admin** | "Admin sees everything" — Full God-Mode oversight. | Unrestricted cross-country visibility across Canada, USA, and UK; full control to dispatch, edit invoices, state expenses, and view profit margins without bureaucratic internal blocks; audit outbound prospect call audio recordings. |
+| **Call Center Agent** | Handles inbound phone calls and website bookings; qualifies outbound B2B fleet leads (Phase 2). | Tri-state mode toggle (`INACTIVE` / `INBOUND` / `OUTBOUND` — one active at a time), Telnyx inbound screen pop with pre-filled caller number, instant customer/vehicle auto-lookup, Google address geocoding, 16-service picker, tax toggle, customer user account provisioning, call disposition logging, Telnyx warm transfer to Dispatch Manager / Admin for fleet contract close, Telnyx Outbound Power Dialer execution (target 100–299 calls/day, sequential Hit 1/Hit 2 cadence with minimal `[Call Next]` and `[Pause Queue]` controls). |
+| **Dispatch Manager** | Assigns roadside jobs to drivers based on proximity and urgency; manages fleet accounts. | Urgent vs Standard queue with expandable accordion, arbitrary address distance measurement tool, single-click driver assignment across unified Internal and External Driver directory (`Driver` model), live status monitoring, driver messaging, driver cash-in-hand tracking, Fleets directory, audit access to recorded prospect call audio. |
 | **Accountant** | Audits completed tickets, states job expenses, verifies payments, and manages regional P&L. | States expenses per completed job (wholesale material costs, technician repairer fees, other incidentals), verifies customer payment, audits receipts via Multer, approves repairer payouts, and monitors regional P&L ledgers (CAD, USD, GBP strictly separated). |
 | **Virtual Assistant (VA)** | B2B fleet lead acquisition & cold-call data sourcing. | Imports fleet prospect data via CSV/Excel upload into CRM (auto-tagged to VA via JWT), system round-robin assigns leads to call agents, warm transfer of interested prospects to Dispatch Manager / Admin via Telnyx attended transfer, automatic tracking of **$2–$3 commission per completed job** for acquired fleet accounts via `FleetCommissionLedger`. |
 
@@ -39,6 +39,7 @@ The software bridges the gap between high-pressure call-center intake, real-time
   - **Dual-Trigger Screen Pop:** Incoming calls trigger an immediate modal popup simultaneously via the browser WebRTC `ringing` event and the backend Telnyx webhook (`POST /api/telephony/webhook` over Socket.io) ensuring zero lag even under high network latency.
   - **Click-to-Call Outbound:** Agents and dispatchers can click any phone number in tickets, customer profiles, or driver cards to initiate immediate outbound calling through the browser headset.
   - **Attended (Warm) Transfer:** Agent can place the current call on hold, internally call a Dispatch Manager or Admin to brief them, then bridge the prospect into the conversation or drop off. Used for fleet contract qualification handoffs (Phase 2 outbound) and inbound escalations. Implemented via Telnyx Call Control API (`/v2/calls/{call_leg_id}/actions/transfer`).
+  - **Automated Call Recording & Playback Infrastructure:** All outbound calls (and roadside calls where required) trigger automated dual-channel recording via Telnyx Call Control API (`POST /v2/calls/{call_control_id}/actions/record_start` with `format: mp3`, `channels: dual`). Completed recordings trigger webhook `call.recording.saved`, attaching the signed audio URL to the call record for in-CRM playback by Admin and Dispatch Managers.
 - **FR-1.3: Data Division: Auto-Populated vs. Agent-Entered Intake Details:**
   To maximize operational speed while ensuring accurate roadside dispatching, the intake form explicitly partitions data between automated system ingestion and live agent conversation entry:
   
@@ -121,9 +122,14 @@ The software bridges the gap between high-pressure call-center intake, real-time
 - **FR-4.1: Appointments Board & Queue Partitioning:** Dispatch dashboard organizes jobs into distinct views: Urgent, Standard, and Future Bookings.
 - **FR-4.2: Urgent Queue Accordion:** Urgent count badge with expandable row accordion allowing the dispatcher to immediately view customer notes, tire size, vehicle, and exact roadside GPS pin.
 - **FR-4.3: Interactive Proximity & Distance Tool:** Utility box allowing typing any custom address to instantly measure driving distance and ETA from all active mobile technicians.
-- **FR-4.4: Single-Click Driver Assignment:** Dropdown to assign the nearest eligible mobile technician with real-time Socket.io push.
+- **FR-4.4: Unified Single-Click Driver Assignment:** Dropdown to assign technicians from a unified driver directory (`Driver` model), seamlessly supporting both internal company technicians and external third-party partner contractors. Dispatches trigger real-time Socket.io push to internal apps, or generate secure shareable token dispatch links for external subcontractors.
 - **FR-4.5: Driver Messaging:** Dedicated two-way chat channel between dispatcher and assigned driver per job ticket.
 - **FR-4.6: Driver Cash Tracking Section:** Dedicated ledger section tracking physical cash collected by drivers in the field (`cashInHandCents`).
+- **FR-4.7: Unified Driver Architecture (Eliminating Flat Ad-Hoc Columns):**
+  - Consolidates all roadside technicians into a first-class `Driver` model (`type: INTERNAL | EXTERNAL`):
+    - **Internal Drivers (`type: INTERNAL`):** Linked to a `User` record (`role: DRIVER`) for mobile driver console login, physical cash ledger tracking, and automated route optimization.
+    - **External Drivers (`type: EXTERNAL`):** Represent third-party roadside/towing contractor partners, storing `companyName` (e.g. "Metro Towing LLC"), `fullName`, `phone`, and `countryCode`. Reusable across multiple jobs without manual re-entry.
+    - **Self-Service Token Dispatch Links:** When dispatching an external driver, the system generates a secure link (`/external-dispatch/:token`). The external contractor opens the link on their mobile phone to view job GPS location, tire specifications, problem notes, and agreed payout (`driverValueCents`), and clicks `[ Accept Job ]` without requiring full CRM credentials.
 
 ### 3.5. Invoicing & Commercial Financial Engine
 - **FR-5.1: Separation of Invoices from Jobs:**
@@ -200,50 +206,87 @@ The software bridges the gap between high-pressure call-center intake, real-time
   - System auto-tags every imported lead row with the uploading VA's identity (`uploadedByVaId`) from JWT authentication — no manual "uploaded by" column required in the CSV.
   - **Duplicate Detection on Import:** On upload, system checks each row's `contactNumber` and `companyName` against existing leads. Matching records are imported but flagged as `POSSIBLE_DUPLICATE` with a reference to the original VA who uploaded the matching record. No silent drops, no hard blocks — VA or manager decides to merge, skip, or keep both.
 
-- **FR-9.2: Round-Robin Lead Assignment:**
-  - Upon CSV import, leads are distributed evenly across available call agents using round-robin assignment.
-  - Each lead record stores `assignedAgentId` set at import time.
-  - Agents in `OUTBOUND` mode see only their personally assigned leads.
-  - Managers can manually reassign leads between agents if needed.
+- **FR-9.2: Round-Robin Lead Assignment & Dynamic Queue Sizing:**
+  - Upon CSV import, leads are distributed into the regional pool and assigned to call agents via round-robin assignment.
+  - **Dynamic 10-Cap Queue:** Each call agent maintains an active queue of up to 10 leads at a time. As leads are converted or disqualified, the system automatically pulls unassigned leads FIFO from the pool, preventing individual agents from hoarding leads.
+  - Managers retain full authority to reassign leads between agents dynamically.
 
-- **FR-9.3: Agent Outbound Mode & Click-to-Call Workflow:**
-  - Agents toggle to `OUTBOUND` mode via the tri-state mode toggle (FR-1.1). While in `OUTBOUND`, the agent is invisible to inbound call routing (hard lock).
-  - Outbound mode displays the agent's assigned lead queue sorted by: **scheduled callbacks first** (by datetime), then newest unworked leads.
-  - Agent clicks **[ Call ]** on a lead → Telnyx WebRTC dials the contact number through the browser headset (same softphone as inbound, same `@telnyx/webrtc` client).
-  - After each call, agent **must** set a disposition and optional notes before moving to the next lead.
+- **FR-9.3: Telnyx Outbound Power Dialer Engine (Vicidial Replacement — 100–299 Calls/Day Target):**
+  - **Vicidial Excluded:** Vicidial or external Asterisk PBX solutions are **strictly not used**. Outbound dialing is executed natively inside the CRM softphone via the Telnyx Voice API and `@telnyx/webrtc`.
+  - **Target Throughput:** Designed for targeted B2B fleet prospecting volume of **100–299 total calls per operational day** across the calling team.
+  - **Agent Power Dialer Workflow:**
+    - Agent toggles into `OUTBOUND` mode via the top nav (automatically disabling inbound queue routing).
+    - The CRM presents the next prioritized lead card: Company Name, NOU (Fleet Size), Contact Person, previous conversation notes, and the current Hit count.
+    - **Minimal Agent Controls:**
+      - **`[ Call Next ]`**: Dials the lead's contact number through the agent's browser headset via Telnyx WebRTC.
+      - **`[ Pause Queue ]`**: Suspends automatic queue progression when the agent needs research time or a break.
+      - *No intrusive countdown timers or forced voicemail drops* — the agent maintains full operational control while achieving high call velocity.
+    - **Mandatory Disposition Lock:** When a call terminates (hangup), the agent interface locks until a call outcome disposition and optional notes are submitted. Once logged, `[ Call Next ]` unlocks to advance to the next prospect.
 
-- **FR-9.4: Outbound Call Dispositions:**
+- **FR-9.4: Multi-Touch "Hit" Cadence & Call Log Tracking (`Hit 1`, `Hit 2`, ...):**
+  - **The Multi-Touch "Hit" Framework:** High-value B2B fleet contracts are rarely closed on initial contact. Every outbound call attempt on a phone number is registered as a discrete sequential touchpoint: **`Hit 1`**, **`Hit 2`**, **`Hit 3`**... on the same business until the fleet signs (`CONVERTED`), requests a callback, or is disqualified.
+  - **Immutable Call History (`LeadCall` Model):** Every call attempt stores a permanent hit log entry in PostgreSQL:
+    - `hitNumber` (1, 2, 3... auto-incremented per lead)
+    - `telnyxCallId` (unique Telnyx Call Control ID)
+    - `agentId` (user ID of the calling agent)
+    - `startedAt`, `endedAt`, `durationSeconds`
+    - `disposition` (`NO_ANSWER`, `VOICEMAIL`, `CALLBACK`, `RNC`, `NOT_INTERESTED`, `CONVERTED`, `WRONG_NUMBER`)
+    - `notes` (summary of agent conversation during this hit)
+    - `recordingUrl` (link to call audio recording)
+  - **Cadence Rules & Follow-Up Automation:**
+    - **Default 24-Hour Cooldown:** If a hit ends in `NO_ANSWER`, `VOICEMAIL`, or `RNC`, the lead enters a mandatory 24-hour cooldown before resurfacing in the queue for the next hit (`Hit 2`, `Hit 3`).
+    - **Scheduled Callback Override:** If the fleet contact requests a callback (e.g. "Call back Thursday at 2:00 PM"), the agent logs `CALLBACK` with date/time. This bypasses the cooldown and pins the lead to the top of the agent's queue at that specific timestamp.
+    - **Configurable Max Hit Ceiling (5–7 Hits):** To avoid harassment and wasted agent time, leads have a configurable maximum hit cap (default: 5–7 hits). If a lead reaches the cap without conversion or an active scheduled callback, the system automatically transitions the lead to `DEAD` ("Exhausted Hits").
+
+- **FR-9.5: Automated Call Recording & Management Audit Playback:**
+  - **Automatic Dual-Channel Recording:** Every outbound call initiated by the Power Dialer triggers automated recording via the Telnyx Call Control API (`POST /v2/calls/{call_control_id}/actions/record_start` with `format: mp3`, `channels: dual`).
+  - **Webhook Audio Ingestion:** Upon call completion, Telnyx dispatches the `call.recording.saved` webhook containing the recording duration and download URL. The backend captures this and attaches `recordingUrl` to the corresponding `LeadCall` hit record.
+  - **Embedded CRM Audio Player:** The CRM Lead timeline displays an embedded audio player for every logged hit:
+    - **Global Admin / Owner:** Can listen to all call recordings to evaluate agent pitch performance, verify fleet contract agreements, and audit compliance.
+    - **Dispatch Manager:** Can review call audio prior to executing fleet contract onboarding.
+    - **Tamper-Proof:** Call center agents cannot delete, edit, or tamper with audio recordings.
+
+- **FR-9.6: Anti-Spam Reputation & Carrier Block Protection (Telnyx Safety Guardrails):**
+  - **Risk Addressed:** Making 100–300 outbound calls a day from a single phone number risks carrier "Spam Likely" labeling (AT&T, Verizon, T-Mobile, Bell, Rogers) and potential Telnyx account fraud suspensions.
+  - **Architectural Safeguards:**
+    1. **Regional Outbound DID Pool Rotation:** The system maintains a pool of 3–5 dedicated, verified Telnyx DIDs per country (CA, US, UK). Outbound calls rotate across this pool round-robin, guaranteeing that no single DID exceeds safe velocity thresholds ($< 60$ calls/day/DID).
+    2. **Dial Pacing Guardrails:** The Power Dialer enforces a 2–3 second spacing between call initiations, preventing burst traffic and guaranteeing compliance with Telnyx rate limits (default 30 dials/second).
+    3. **STIR/SHAKEN Level A & Free Caller Registry (FCR):** All company outbound DIDs are provisioned with Full (Level A) cryptographic attestation on Telnyx and registered with CNAM and the Free Caller Registry to ensure caller ID trust.
+    4. **Automated Error & Decline Monitoring:** Backend webhook parser monitors Telnyx error events, specifically HTTP 429 (rate limits) and SIP 603/608 (carrier declines). If decline spikes occur on any DID, the system alerts admins and temporarily rotates traffic away from that number.
+
+- **FR-9.7: Outbound Call Dispositions:**
   - `CALLBACK` — Prospect requested callback (agent sets callback date, day, and time).
-  - `CONVERTED` — Prospect interested; warm-transferred to Dispatch Manager / Admin for contract close.
-  - `NOT_INTERESTED` — Prospect declined.
-  - `WRONG_NUMBER` — Invalid or disconnected number.
-  - `NO_ANSWER` — No pickup after ring timeout.
-  - `VOICEMAIL` — Left voicemail message.
-  - `RNC` — Relevant, not converted (warm lead, follow up later).
+  - `CONVERTED` — Prospect agreed to sign fleet contract; warm-transferred or queued for Dispatch Manager / Admin.
+  - `NOT_INTERESTED` — Prospect explicitly declined service (lead marked `DEAD`).
+  - `WRONG_NUMBER` — Invalid or disconnected number (lead marked `DEAD`).
+  - `NO_ANSWER` — No pickup after ring timeout (advances Hit counter, enters 24h cooldown).
+  - `VOICEMAIL` — Reached voicemail box (advances Hit counter, enters 24h cooldown).
+  - `RNC` — Relevant, not converted (warm conversation; advances Hit counter, enters 24h cooldown).
 
-- **FR-9.5: Callback Scheduling:**
+- **FR-9.8: Callback Scheduling & Context Retention:**
   - When disposition is `CALLBACK`, agent enters callback date, day, and time.
-  - At the scheduled time, the lead resurfaces at the **top of the same agent's** outbound queue (agent retains conversation context from the first call).
-  - Lead card displays a prominent badge: **"Callback scheduled — Thu 2:00 PM"**.
-  - If the original agent is unavailable on the callback date, a manager can reassign the lead to another agent.
+  - At the scheduled time, the lead resurfaces at the **top of the same agent's** outbound queue, retaining full context and past hit history (`Hit 1`, `Hit 2` audio and notes).
+  - Lead card displays a prominent badge: **"Callback scheduled — Thu 2:00 PM (Hit 3)"**.
+  - If the original agent is absent on the callback date, managers can reassign the lead to another active agent.
 
-- **FR-9.6: Warm Transfer to Dispatch Manager / Admin (Fleet Contract Close):**
+- **FR-9.9: Warm Transfer to Dispatch Manager / Admin (Fleet Contract Close):**
   - Call agents are **qualifiers**, not closers. When a prospect expresses interest in a fleet contract, the agent initiates a **Telnyx attended (warm) transfer** (FR-1.2):
     1. Agent puts prospect on hold via Telnyx Call Control.
     2. Agent internally calls Dispatch Manager or Admin.
-    3. Agent verbally briefs them with lead context (company name, NOU, call notes).
-    4. Dispatch Manager / Admin accepts → prospect is bridged into the conversation → agent drops off.
-  - Dispatch Manager / Admin receives a **screen pop** showing the full lead card (company name, NOU, contact details, decision maker email, agent call notes).
-  - Upon contract signing, Dispatch Manager / Admin clicks **[ Convert to Fleet Account ]** — a pre-filled Fleet creation form populated from the lead record, with `acquiredByVaId` automatically linked for VA commission tracking via `FleetCommissionLedger`.
+    3. Agent verbally briefs them with lead context (company name, NOU, past hit notes).
+    4. Dispatch Manager / Admin accepts $\rightarrow$ prospect is bridged into the conversation $\rightarrow$ agent drops off.
+  - Dispatch Manager / Admin receives a **screen pop** showing the full lead card with complete Hit timeline and recordings.
+  - Upon contract signing, Dispatch Manager / Admin clicks **[ Convert to Fleet Account ]** — auto-generating the Fleet record with `acquiredByVaId` automatically linked for VA commission tracking via `FleetCommissionLedger`.
 
-- **FR-9.7: Lead Lifecycle States:**
-  - `NEW` → `CALLED` → `CALLBACK` → `CONVERTED` | `DEAD`
+- **FR-9.10: Lead Lifecycle States:**
+  - `NEW` $\rightarrow$ `CALLED` $\rightarrow$ `CALLBACK` $\rightarrow$ `CONVERTED` | `DEAD`
   - **`CONVERTED`** leads are linked to their resulting Fleet record via `acquiredByVaId` on the Fleet, enabling ongoing VA commission tracking (\$2–\$3 per completed job) through `FleetCommissionLedger`.
-  - **`DEAD`** marks permanently closed leads (`NOT_INTERESTED`, `WRONG_NUMBER` after retries).
+  - **`DEAD`** marks permanently closed leads (`NOT_INTERESTED`, `WRONG_NUMBER`, or `EXHAUSTED_HITS` upon reaching the max hit ceiling).
 
-- **FR-9.8: Lead Data Schema (Postgres — No Redis Required):**
-  - Lead records stored in PostgreSQL with `SELECT ... FOR UPDATE SKIP LOCKED` for concurrent agent queue access.
-  - Key fields: `companyName`, `companyAddress`, `website`, `fleetManagerName`, `ceoOwnerName`, `contactNumber`, `altContactNumber`, `officialEmail`, `decisionMakerEmail`, `numberOfUnits` (NOU), `uploadedByVaId`, `assignedAgentId`, `disposition`, `callbackAt`, `callbackAssignedToId`, `notes`, `status`, `isDuplicate`.
+- **FR-9.11: Outbound Leads & Call Hits Data Schema (Postgres / Prisma Architecture):**
+  - Lead records and call hit history are stored in PostgreSQL with `SELECT ... FOR UPDATE SKIP LOCKED` for concurrent queue access.
+  - **Lead Model Fields:** `id`, `companyName`, `companyAddress`, `website`, `fleetManagerName`, `ceoOwnerName`, `contactNumber`, `altContactNumber`, `officialEmail`, `decisionMakerEmail`, `numberOfUnits` (NOU), `countryCode`, `status`, `disposition`, `hitCount` (cached total hits), `lastHitAt`, `nextHitEligibleAt` (cooldown expiration), `callbackAt`, `uploadedByVaId`, `assignedAgentId`, `convertedFleetId`.
+  - **LeadCall Model Fields:** `id`, `leadId`, `hitNumber`, `telnyxCallId`, `agentId`, `startedAt`, `endedAt`, `durationSeconds`, `disposition`, `notes`, `recordingUrl`.
 
 ---
 
@@ -255,4 +298,8 @@ The software bridges the gap between high-pressure call-center intake, real-time
   - External clients (`FLEET_MANAGER`, `CUSTOMER_MEMBER`) are strictly sandboxed to their own vehicles, drivers, and invoices.
   - Mobile drivers (`DRIVER` role) are strictly isolated: driver consoles render ONLY driver personal earnings ($DC$), completed job counts, and physical cash collected in hand (`cashInHandCents`).
   - Wholesale material cost ($TC$), IT platform royalties ($IT\_B$), and company net profit margins are 100% hidden and omitted from driver payloads and mobile views.
+- **NFR-5: Telephony Reliability, Call Recording Integrity & Anti-Spam Compliance:**
+  - **Recording Availability:** Outbound call recordings must be ingested via webhook and available for playback within 15 seconds of call completion.
+  - **Webhook Idempotency:** All Telnyx webhook ingestion endpoints must validate signatures and deduplicate events using `call_control_id`.
+  - **Reputation Health:** Outbound DID pool rotation must maintain carrier reputation trust scores ($> 85\%$) across US, Canadian, and UK telecommunications carriers by capping velocity per number and enforcing Level A STIR/SHAKEN attestation.
 
