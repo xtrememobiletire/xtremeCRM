@@ -123,6 +123,7 @@ enum PaymentMethod {
 
 enum PaymentStatus {
   UNPAID
+  PARTIAL             // Upfront/advance payment received, balance pending
   PAID_PENDING_VERIFICATION
   VERIFIED_PAID
   REFUNDED
@@ -424,6 +425,19 @@ model Job {
   assignedAt         DateTime? @db.Timestamptz @map("assigned_at")
   arrivedAt          DateTime? @db.Timestamptz @map("arrived_at")
   completedAt        DateTime? @db.Timestamptz @map("completed_at")
+
+  // Upfront / Advance Payment (collected by agent at booking)
+  upfrontAmountCents  Int?      @default(0) @map("upfront_amount_cents") // Advance collected before job
+  upfrontReceiptUrl   String?   @map("upfront_receipt_url")              // Receipt image (set by agent or dispatcher)
+  upfrontVerifiedAt   DateTime? @db.Timestamptz @map("upfront_verified_at") // Dispatcher confirms
+
+  // External / Third-Party Driver Assignment
+  externalDriverToken     String?   @unique @map("external_driver_token")     // UUID token for shareable accept link
+  externalDriverName      String?   @map("external_driver_name")
+  externalDriverPhone     String?   @map("external_driver_phone")
+  externalDriverCompany   String?   @map("external_driver_company")
+  externalDriverValueCents Int?     @map("external_driver_value_cents")        // Agreed payout to external driver
+  externalDriverAcceptedAt DateTime? @db.Timestamptz @map("external_driver_accepted_at")
 
   // Call Center Outcome
   disposition      JobDisposition @default(BOOKED)
