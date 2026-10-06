@@ -175,6 +175,13 @@ export const fleetController = {
         country,
         status,
         virtualAssistantId,
+        officeTimings,
+        businessType,
+        assignedDid,
+        managerPhone,
+        ceoOwnerName,
+        fleetManager,
+        managerUserId,
       } = req.body;
 
       const resolvedName = (companyName || name || '').trim();
@@ -182,7 +189,7 @@ export const fleetController = {
         return sendError(res, 'Company name is required', 400);
       }
 
-      const resolvedContact = (contactPerson || contactName || 'Fleet Manager').trim();
+      const resolvedContact = (contactPerson || contactName || fleetManager || 'Fleet Manager').trim();
       const resolvedPhone = (phone || '').trim() || '+14165550100';
       const effectiveCountry = countryCode || country || (req as any).countryCode || 'CA';
 
@@ -206,6 +213,13 @@ export const fleetController = {
           status: status || 'APPROVED',
           contractSignedAt: new Date(),
           virtualAssistantId: virtualAssistantId || null,
+          officeTimings: officeTimings?.trim() || null,
+          businessType: businessType?.trim() || null,
+          assignedDid: assignedDid?.trim() || null,
+          managerPhone: managerPhone?.trim() || null,
+          ceoOwnerName: ceoOwnerName?.trim() || null,
+          fleetManager: fleetManager?.trim() || null,
+          managerUserId: managerUserId || null,
         },
       });
 
@@ -228,6 +242,7 @@ export const fleetController = {
         email,
         poaEmail,
         fleetManager,
+        managerPhone,
         ceoOwnerName,
         address,
         website,
@@ -235,6 +250,10 @@ export const fleetController = {
         status,
         contractSignedAt,
         virtualAssistantId,
+        officeTimings,
+        businessType,
+        assignedDid,
+        managerUserId,
       } = req.body;
 
       const data: any = {};
@@ -245,6 +264,7 @@ export const fleetController = {
       if (email !== undefined) data.email = email?.trim() || null;
       if (poaEmail !== undefined) data.poaEmail = poaEmail?.trim() || null;
       if (fleetManager !== undefined) data.fleetManager = fleetManager?.trim() || null;
+      if (managerPhone !== undefined) data.managerPhone = managerPhone?.trim() || null;
       if (ceoOwnerName !== undefined) data.ceoOwnerName = ceoOwnerName?.trim() || null;
       if (address !== undefined) data.address = address?.trim() || null;
       if (website !== undefined) data.website = website?.trim() || null;
@@ -252,6 +272,10 @@ export const fleetController = {
       if (status !== undefined) data.status = status;
       if (contractSignedAt !== undefined) data.contractSignedAt = contractSignedAt;
       if (virtualAssistantId !== undefined) data.virtualAssistantId = virtualAssistantId || null;
+      if (officeTimings !== undefined) data.officeTimings = officeTimings?.trim() || null;
+      if (businessType !== undefined) data.businessType = businessType?.trim() || null;
+      if (assignedDid !== undefined) data.assignedDid = assignedDid?.trim() || null;
+      if (managerUserId !== undefined) data.managerUserId = managerUserId || null;
 
       const updated = await prisma.fleet.update({
         where: { id },

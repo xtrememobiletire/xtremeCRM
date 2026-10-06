@@ -17,6 +17,7 @@ async function main() {
   console.log('🌱 Seeding XtremeCRM database...');
 
   const passwordHash = await bcrypt.hash('AdminPassword123!', 10);
+  const ktPasswordHash = await bcrypt.hash('Xtreme@ktgroup', 10);
 
   // 1. Seed Internal Staff Users across all 6 roles
   const users = [
@@ -105,11 +106,11 @@ async function main() {
       canApprovePayouts: true,
     },
     {
-      email: 'fleet.manager@xtremecrm.com',
-      fullName: 'Fleet Manager (KT Group)',
+      email: 'Administration@ktgroupcanada.ca',
+      fullName: 'S Pratheep',
       role: 'FLEET_MANAGER' as const,
-      countryCode: 'US' as const,
-      phone: '+17035550144',
+      countryCode: 'CA' as const,
+      phone: '+14378828406',
       isAgentActive: false,
     },
     {
@@ -137,7 +138,7 @@ async function main() {
       },
       create: {
         email: u.email,
-        passwordHash,
+        passwordHash: u.email === 'Administration@ktgroupcanada.ca' ? ktPasswordHash : passwordHash,
         fullName: u.fullName,
         role: u.role,
         countryCode: u.countryCode,
@@ -150,22 +151,32 @@ async function main() {
     console.log(`✅ Seeded ${u.role}: ${user.email} (${user.id})`);
   }
 
-  // 2. Seed B2B Fleet Account (KT Group)
+  // 2. Seed B2B Fleet Account (KT Group Of Companies LTD - XFC-526)
   const fleet = await prisma.fleet.upsert({
-    where: { fleetCode: 'XMT-5132' },
+    where: { fleetCode: 'XFC-526' },
     update: {
       managerUserId: createdUsers['FLEET_MANAGER']?.id,
-      website: 'https://www.ktgroupcanada.ca/',
+      website: 'https://ktgroupcanada.ca',
+      officeTimings: '8AM To 5PM',
+      businessType: 'Facilities Management / Business Services',
+      assignedDid: '(437)-3755674',
+      managerPhone: '+14378828406',
     },
     create: {
-      fleetCode: 'XMT-5132',
-      name: 'KT Group',
-      contactPerson: 'Piratheep',
-      phone: '+17035550144',
-      email: 'piratheep@xtrememobiletire.com',
-      address: '10100 Richmond Hwy, Lorton, VA 22079',
-      website: 'https://www.ktgroupcanada.ca/',
-      countryCode: 'US',
+      fleetCode: 'XFC-526',
+      name: 'KT Group Of Companies LTD',
+      contactPerson: 'S Pratheep',
+      phone: '+18666869660',
+      email: 'Administration@ktgroupcanada.ca',
+      fleetManager: 'S Pratheep',
+      managerPhone: '+14378828406',
+      ceoOwnerName: 'Kana Selva',
+      address: 'Unit 16, 2283 Argentina Rd, Mississauga, ON L5N 5Z2 Canada',
+      website: 'https://ktgroupcanada.ca',
+      officeTimings: '8AM To 5PM',
+      businessType: 'Facilities Management / Business Services',
+      assignedDid: '(437)-3755674',
+      countryCode: 'CA',
       status: 'APPROVED',
       contractSignedAt: new Date(),
       managerUserId: createdUsers['FLEET_MANAGER']?.id,

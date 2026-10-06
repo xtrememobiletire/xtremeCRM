@@ -79,7 +79,20 @@ export const vehicleController = {
 
   async createVehicle(req: Request, res: Response) {
     try {
-      const { customerId, fleetId, countryCode, year, make, model, licensePlate, vin, tireSize } = req.body;
+      const {
+        customerId,
+        fleetId,
+        countryCode,
+        year,
+        make,
+        model,
+        color,
+        unitNumber,
+        unitType,
+        licensePlate,
+        vin,
+        tireSize,
+      } = req.body;
 
       // Check licensePlate uniqueness within country if provided
       if (licensePlate) {
@@ -98,15 +111,18 @@ export const vehicleController = {
 
       const vehicle = await prisma.vehicle.create({
         data: {
-          customerId,
-          fleetId,
+          customerId: customerId || null,
+          fleetId: fleetId || null,
           countryCode: countryCode || 'CA',
           year: Number(year),
           make,
           model,
-          licensePlate,
-          vin,
-          tireSize,
+          color: color?.trim() || null,
+          unitNumber: unitNumber?.trim() || null,
+          unitType: unitType?.trim() || null,
+          licensePlate: licensePlate?.trim() || null,
+          vin: vin?.trim() || null,
+          tireSize: tireSize?.trim() || 'TBD',
         },
         include: {
           customer: true,

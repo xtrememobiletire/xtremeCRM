@@ -168,7 +168,7 @@ export default function FleetDashboard() {
       }));
     },
     onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Failed to submit service request');
+      toast.error(err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to submit service request');
     },
   });
 
@@ -276,7 +276,11 @@ export default function FleetDashboard() {
       toast.error('Please choose an appointment date and time');
       return;
     }
-    bookServiceMutation.mutate(bookingForm);
+    bookServiceMutation.mutate({
+      ...bookingForm,
+      serviceAddress: bookingForm.address,
+      fleetId: fleet?.id,
+    });
   };
 
   // Filtered pending invoices
