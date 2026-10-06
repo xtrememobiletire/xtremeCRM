@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth.js';
 import { authorize } from '../middleware/authorize.js';
 import { prisma } from '../config/database.js';
 import { sendSuccess, sendError } from '../utils/index.js';
+import { getIO } from '../config/socket.js';
 
 const router = Router();
 
@@ -13,7 +14,7 @@ async function getScopedFleet(req: Request) {
   const userId = (req.user as any)?.id;
   const userEmail = (req.user as any)?.email;
   const role = (req.user as any)?.role;
-  const requestedFleetId = req.query.fleetId as string;
+  const requestedFleetId = (req.query.fleetId as string) || (req.body?.fleetId as string);
 
   if (requestedFleetId && (role === 'ADMIN' || role === 'FLEET_MANAGER')) {
     const matched = await prisma.fleet.findUnique({
@@ -40,7 +41,7 @@ async function getScopedFleet(req: Request) {
     });
   }
 
-  if (!fleet && role === 'ADMIN') {
+  if (!fleet) {
     fleet = await prisma.fleet.findFirst({
       include: { _count: { select: { vehicles: true, drivers: true, jobs: true, invoices: true } } },
       orderBy: { createdAt: 'desc' },
@@ -345,12 +346,15 @@ router.post('/request-service', async (req: Request, res: Response) => {
       vehicleId,
       serviceName = 'Tire Repair (plug)',
       serviceType = 'STANDARD',
-      serviceAddress,
+      serviceAddress: explicitAddress,
+      address,
       appointmentDate,
       contactPhone,
       tireSize,
       notes,
     } = req.body;
+
+    const serviceAddress = (explicitAddress || address || fleet.address || '').trim();
 
     if (!vehicleId && !tireSize) {
       return sendError(res, 'Please select a vehicle or provide a tire size', 400);
@@ -391,7 +395,7 @@ router.post('/request-service', async (req: Request, res: Response) => {
         source: 'FLEET_PORTAL',
         status: 'PENDING',
         urgency,
-        serviceAddress: serviceAddress.trim(),
+        serviceAddress,
         recipientName: fleet.contactPerson || fleet.name,
         recipientPhone: contactPhone?.trim() || fleet.phone,
         appointmentDate: scheduledDate,
@@ -414,6 +418,15 @@ router.post('/request-service', async (req: Request, res: Response) => {
         driver: { select: { id: true, fullName: true, phone: true } },
       },
     });
+
+    try {
+      const io = getIO();
+      io.to(`dispatch:${country}`).emit('job:created', createdJob);
+      io.to(`dispatch:${country}`).emit('job:triage_new', createdJob);
+      io.to(`fleet:${fleet.id}`).emit('job:created', createdJob);
+    } catch {
+      // socket not ready or offline
+    }
 
     return sendSuccess(res, createdJob, 'Service request booked successfully', 201);
   } catch (err: any) {

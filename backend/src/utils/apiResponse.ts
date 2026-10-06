@@ -24,6 +24,7 @@ export const sendError = (
   const payload: ApiResponse = {
     success: false,
     error,
+    message: error,
     timestamp: new Date().toISOString(),
   };
   return res.status(statusCode).json(payload);

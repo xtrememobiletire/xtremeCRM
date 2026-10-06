@@ -37,6 +37,8 @@ api.interceptors.response.use(
           // Replace vague "Validation failed" with human-readable specifics
           data.message = errorList;
         }
+      } else if (!data.message && data.error) {
+        data.message = data.error;
       }
     }
     return Promise.reject(error);
