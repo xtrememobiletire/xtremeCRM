@@ -7,9 +7,12 @@ export const createVehicleSchema = z.object({
   year: z.coerce.number().int().min(1900).max(2100),
   make: z.string().min(1, 'Make is required'),
   model: z.string().min(1, 'Model is required'),
+  color: z.string().optional().or(z.literal('')),
+  unitNumber: z.string().optional().or(z.literal('')),
+  unitType: z.string().optional().or(z.literal('')),
   licensePlate: z.string().optional().or(z.literal('')),
   vin: z.string().optional().or(z.literal('')),
-  tireSize: z.string().min(1, 'Tire size is required'),
+  tireSize: z.string().optional().default('TBD'),
 });
 
 export const updateVehicleSchema = createVehicleSchema.partial();

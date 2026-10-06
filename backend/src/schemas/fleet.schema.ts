@@ -17,6 +17,13 @@ export const createFleetSchema = z
     virtualAssistantId: z.string().uuid().optional().or(z.literal('')),
     paymentTerms: z.string().optional(),
     creditLimitCents: z.coerce.number().optional(),
+    officeTimings: z.string().optional().or(z.literal('')),
+    businessType: z.string().optional().or(z.literal('')),
+    assignedDid: z.string().optional().or(z.literal('')),
+    managerPhone: z.string().optional().or(z.literal('')),
+    ceoOwnerName: z.string().optional().or(z.literal('')),
+    fleetManager: z.string().optional().or(z.literal('')),
+    managerUserId: z.string().uuid().optional().or(z.literal('')),
   })
   .refine((data) => Boolean((data.name && data.name.trim()) || (data.companyName && data.companyName.trim())), {
     message: 'Company name is required',
@@ -40,6 +47,13 @@ export const updateFleetSchema = z
     virtualAssistantId: z.string().uuid().optional().or(z.literal('')),
     paymentTerms: z.string().optional(),
     creditLimitCents: z.coerce.number().optional(),
+    officeTimings: z.string().optional().or(z.literal('')),
+    businessType: z.string().optional().or(z.literal('')),
+    assignedDid: z.string().optional().or(z.literal('')),
+    managerPhone: z.string().optional().or(z.literal('')),
+    ceoOwnerName: z.string().optional().or(z.literal('')),
+    fleetManager: z.string().optional().or(z.literal('')),
+    managerUserId: z.string().uuid().optional().or(z.literal('')),
   });
 
 export const fleetQuerySchema = z.object({

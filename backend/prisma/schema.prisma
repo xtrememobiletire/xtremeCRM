@@ -235,18 +235,22 @@ model Customer {
 
 model Fleet {
   id            String      @id @default(uuid())
-  fleetCode     String      @unique @map("fleet_code") // e.g. "XMT-5132"
+  fleetCode     String      @unique @map("fleet_code") // e.g. "XMT-5132", "XFC-526"
   name          String      // Company legal name (e.g. "KT Group")
   contactPerson String      @map("contact_person")
   phone         String      // E.164 formatted primary management phone (e.g. +17035550144)
   email         String?     // Billing/contact email
   poaEmail      String?     @map("poa_email") // POA : Email
   fleetManager  String?     @map("fleet_manager")
+  managerPhone  String?     @map("manager_phone") // Direct manager contact phone (e.g. +14378828406)
   ceoOwnerName  String?     @map("ceo_owner_name")
   address       String?     // e.g. "10100 Richmond Hwy, Lorton, VA 22079"
   website       String?     // Fleet company website (PRD: Fleet Dashboard KPI card)
+  officeTimings String?     @map("office_timings") // e.g. "8AM To 5PM"
+  businessType  String?     @map("business_type")  // e.g. "Facilities Management / Business Services"
+  assignedDid   String?     @map("assigned_did")   // e.g. "(437)-3755674"
   // ponytail: fleetSize derived dynamically: fleet.vehicles.count
-  countryCode   CountryCode @default(US) @map("country_code") // Strict regional silo: CA, US, UK
+  countryCode   CountryCode @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
   status        FleetStatus @default(PENDING) // Must be verified before active dispatching
 
   // Fleet Manager Login Credentials (role: FLEET_MANAGER)
@@ -304,12 +308,15 @@ model Vehicle {
   fleetId      String?     @map("fleet_id")
   fleet        Fleet?      @relation(fields: [fleetId], references: [id], onDelete: Cascade)
   countryCode  CountryCode @map("country_code") // Set from parent (Customer/Fleet) at creation
+  unitNumber   String?     @map("unit_number")   // e.g. "S2", "S3", etc.
   year         Int
   make         String
   model        String
+  color        String?     // e.g. "BLACK", "White", "Grey", "Blue"
+  unitType     String?     @map("unit_type")     // "COMMERCIAL_VAN" | "COMMERCIAL_TRUCK" | "VEHICLE"
   licensePlate String?     @map("license_plate") // e.g. "KT-15", "KT-18"
   vin          String?
-  tireSize     String      @map("tire_size")     // Single source of truth (e.g. "11R22.5", "235/65R17")
+  tireSize     String      @default("TBD") @map("tire_size") // Single source of truth (e.g. "11R22.5", "235/65R17")
   createdAt    DateTime    @default(now()) @db.Timestamptz @map("created_at")
   updatedAt    DateTime    @updatedAt @db.Timestamptz @map("updated_at")
 
