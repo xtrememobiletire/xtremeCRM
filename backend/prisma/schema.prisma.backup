@@ -1,0 +1,643 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// --------------------------------------------------------
+// ENUMS (Strict Typed Isolation)
+// --------------------------------------------------------
+
+enum CountryCode {
+  CA
+  US
+  UK
+}
+
+enum CurrencyCode {
+  CAD
+  USD
+  GBP
+}
+
+enum UserRole {
+  // Internal Staff Roles (Operate in /admin)
+  ADMIN
+  CALL_AGENT
+  DISPATCHER
+  DRIVER
+  ACCOUNTANT // ponytail: JR and SR accountant split deferred to single role with audit permissions
+  VIRTUAL_ASSISTANT
+
+  // External Portal Client Roles (Operate in client dashboards)
+  FLEET_MANAGER
+  CUSTOMER_MEMBER
+}
+
+enum CustomerType {
+  RETAIL
+  MEMBERSHIP
+}
+
+enum MembershipTier {
+  STANDARD
+  GOLD
+  PLATINUM
+}
+
+enum FleetStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum JobStatus {
+  PENDING
+  UNVERIFIED_PUBLIC // Web booking ingress triage on /bookings
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum DriverType {
+  INTERNAL
+  EXTERNAL
+}
+
+enum ExternalDispatchStatus {
+  PENDING
+  ACCEPTED
+  DENIED
+}
+
+enum JobUrgency {
+  URGENT
+  STANDARD
+  FUTURE
+}
+
+enum JobSource {
+  DIRECT_CALL
+  WHATSAPP
+  WEBSITE
+  LANDING_PAGE_SELF_BOOK
+  FLEET_PORTAL
+  MEMBER_PORTAL
+}
+
+enum JobDisposition {
+  BOOKED
+  RELEVANT_NOT_CONVERTED
+  WRONG_NUMBER
+  IRRELEVANT_SERVICE
+  CANCELLED_BY_CUSTOMER
+}
+
+enum LeadStatus {
+  NEW
+  CALLED
+  CALLBACK
+  CONVERTED
+  DEAD
+}
+
+enum LeadDisposition {
+  CALLBACK
+  CONVERTED
+  NOT_INTERESTED
+  WRONG_NUMBER
+  NO_ANSWER
+  VOICEMAIL
+  RNC
+}
+
+enum AssignmentMethod {
+  MANUAL
+  ROUND_ROBIN
+  AUTO_ASSIGN
+}
+
+enum PaymentMethod {
+  E_TRANSFER
+  POS
+  CASH
+  MOTO
+  STRIPE
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL             // Upfront/advance payment received, balance pending
+  PAID_PENDING_VERIFICATION
+  VERIFIED_PAID
+  REFUNDED
+}
+
+enum ServiceCategory {
+  TIRE_SERVICE
+  ROADSIDE_ASSISTANCE
+  MAINTENANCE
+}
+
+// --------------------------------------------------------
+// CORE USERS & AUTHENTICATION
+// --------------------------------------------------------
+
+model User {
+  id           String      @id @default(uuid())
+  email        String      @unique
+  passwordHash String      @map("password_hash")
+  fullName     String      @map("full_name")
+  role         UserRole    @default(CALL_AGENT)
+  countryCode  CountryCode @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
+  phone        String?     // E.164 formatted, e.g. +14165550192
+
+  // ponytail: isOnline moved to Redis/Socket.io — ephemeral heartbeat, not DB state
+  isAgentActive Boolean @default(false) @map("is_agent_active") // Human toggle: "I accept calls" (PRD: Active/Inactive presence toggle)
+  canApprovePayouts Boolean @default(false) @map("can_approve_payouts") // PRD FR-6.6: Senior vs Junior accountant permission
+
+  // Soft Deletion (prevents orphan records while respecting onDelete: Restrict on financial ledgers)
+  deletedAt DateTime? @db.Timestamptz @map("deleted_at")
+
+  // Operational Driver Profile Metadata (DOA)
+  address         String?
+  assignedVehicle String? @map("assigned_vehicle") // e.g. "Nissan NV 3500"
+  workingDays     String? @map("working_days")     // e.g. "7 Days a Week"
+  workingHours    String? @map("working_hours")    // e.g. "9:00 AM – 8:00 PM"
+  approvedByName  String? @map("approved_by_name") // e.g. "Harry King"
+
+  createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt DateTime @updatedAt @db.Timestamptz @map("updated_at")
+
+  // Internal Staff Relations
+  createdJobs       Job[]     @relation("AgentJobs")
+  assignedJobs      Job[]     @relation("DriverJobs")
+  statedJobExpenses Job[]     @relation("JobExpensesStatedBy")
+  verifiedPayments  Job[]     @relation("JobPaymentsVerifiedBy")
+  auditedJobs       Job[]     @relation("JobAuditedBy")
+  sourcedFleets     Fleet[]   @relation("VirtualAssistantFleets")
+  createdInvoices   Invoice[] @relation("InvoicesCreated")
+
+  // Financial & Operational Ledger Relations (Restrict: financial records must NEVER cascade-delete)
+  vaCommissions       FleetCommissionLedger[] @relation("VACommissions")
+  uploadedBatches     Batch[]                 @relation("UploadedBatches")
+  uploadedLeads       Lead[]                  @relation("UploadedLeads")
+  assignedLeads       Lead[]                  @relation("AgentAssignedLeads")
+  staffAssignedLeads  Lead[]                  @relation("StaffAssignedLeads")
+  vaCalledLeads       Lead[]                  @relation("VaCalledLeads")
+
+  // External Portal Client Relations
+  customerAccount Customer? @relation("UserCustomer")
+  managedFleet    Fleet?    @relation("FleetManagerUser")
+
+  @@index([countryCode, role])
+  @@index([phone])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+// --------------------------------------------------------
+// CUSTOMERS & MEMBERSHIPS (B2C)
+// --------------------------------------------------------
+
+model Customer {
+  id           String       @id @default(uuid())
+  fullName     String       @map("full_name")
+  phone        String       // E.164 formatted primary lookup index (e.g. +14165550192)
+  altPhone     String?      @map("alt_phone")
+  email        String?
+  countryCode  CountryCode  @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
+  customerType CustomerType @default(RETAIL) @map("customer_type")
+
+  // Membership Benefits (B2C)
+  // ponytail: isMembershipActive derived dynamically: membershipExpiresAt != null && membershipExpiresAt > now()
+  membershipTier      MembershipTier? @map("membership_tier")
+  membershipExpiresAt DateTime?       @db.Timestamptz @map("membership_expires_at")
+
+  // Member Portal Credentials (ponytail: isUserAccountCreated derived: userId != null)
+  userId String? @unique @map("user_id")
+  user   User?   @relation("UserCustomer", fields: [userId], references: [id])
+
+  createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt DateTime @updatedAt @db.Timestamptz @map("updated_at")
+
+  vehicles       Vehicle[]
+  jobs           Job[]
+  invoices       Invoice[]
+
+  @@unique([countryCode, phone])
+  @@index([customerType])
+  @@index([phone])
+  @@map("customers")
+}
+
+// --------------------------------------------------------
+// FLEETS & B2B ACCOUNTS
+// --------------------------------------------------------
+
+model Fleet {
+  id            String      @id @default(uuid())
+  fleetCode     String      @unique @map("fleet_code") // e.g. "XMT-5132", "XFC-526"
+  name          String      // Company legal name (e.g. "KT Group")
+  contactPerson String      @map("contact_person")
+  phone         String      // E.164 formatted primary management phone (e.g. +17035550144)
+  email               String?     // Billing/contact email
+  poaEmail            String?     @map("poa_email") // Power of Attorney (Signing / Billing Authority)
+  fleetManager        String?     @map("fleet_manager")
+  address             String?     // e.g. "10100 Richmond Hwy, Lorton, VA 22079"
+  countryCode         CountryCode @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
+  status              FleetStatus @default(PENDING) // Must be verified before active dispatching
+  discountPercent     Float       @default(0.0) @map("discount_percent") // Negotiated fleet discount percentage
+
+  // Fleet Manager Login Credentials (role: FLEET_MANAGER)
+  managerUserId       String?     @unique @map("manager_user_id")
+  managerUser         User?       @relation("FleetManagerUser", fields: [managerUserId], references: [id])
+
+  // B2B Contract Verification (ponytail: isVerified derived: status == APPROVED || contractSignedAt != null)
+  contractSignedAt    DateTime?   @db.Timestamptz @map("contract_signed_at")
+
+  // Link back to converted Lead (1-to-1)
+  convertedFromLeadId String?     @unique @map("converted_from_lead_id")
+  convertedFromLead   Lead?       @relation("LeadConvertedToFleet", fields: [convertedFromLeadId], references: [id])
+
+  // Lead attribution for Virtual Assistant
+  virtualAssistantId  String?     @map("virtual_assistant_id")
+  virtualAssistant    User?       @relation("VirtualAssistantFleets", fields: [virtualAssistantId], references: [id])
+
+  createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt DateTime @updatedAt @db.Timestamptz @map("updated_at")
+
+  vehicles       Vehicle[]
+  drivers        FleetDriver[]
+  jobs           Job[]
+  invoices       Invoice[]
+  commissions    FleetCommissionLedger[]
+
+  @@index([countryCode, status])
+  @@index([phone])
+  @@map("fleets")
+}
+
+model FleetDriver {
+  id           String   @id @default(uuid())
+  fleetId      String   @map("fleet_id")
+  fleet        Fleet    @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+  fullName     String   @map("full_name")
+  phone        String   // E.164 formatted driver phone for 24/7 roadside caller verification
+  licensePlate String?  @map("license_plate") // Fast plate search for roadside breakdown
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt    DateTime @updatedAt @db.Timestamptz @map("updated_at")
+
+  @@unique([fleetId, phone])
+  @@index([fleetId])
+  @@index([phone])
+  @@index([licensePlate])
+  @@map("fleet_drivers")
+}
+
+// --------------------------------------------------------
+// VEHICLES (Both Fleet & Retail)
+// --------------------------------------------------------
+
+model Vehicle {
+  id           String      @id @default(uuid())
+  customerId   String?     @map("customer_id")
+  customer     Customer?   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  fleetId      String?     @map("fleet_id")
+  fleet        Fleet?      @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+  countryCode  CountryCode @map("country_code") // Set from parent (Customer/Fleet) at creation
+  unitNumber   String?     @map("unit_number")   // e.g. "S2", "S3", etc.
+  year         Int
+  make         String
+  model        String
+  color        String?     // e.g. "BLACK", "White", "Grey", "Blue"
+  unitType     String?     @map("unit_type")     // "COMMERCIAL_VAN" | "COMMERCIAL_TRUCK" | "VEHICLE"
+  licensePlate String?     @map("license_plate") // e.g. "KT-15", "KT-18"
+  vin          String?
+  tireSize     String      @default("TBD") @map("tire_size") // Single source of truth (e.g. "11R22.5", "235/65R17")
+  createdAt    DateTime    @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt    DateTime    @updatedAt @db.Timestamptz @map("updated_at")
+
+  jobs Job[]
+
+  @@unique([countryCode, licensePlate])
+  @@index([customerId])
+  @@index([fleetId])
+  @@index([countryCode])
+  @@index([licensePlate])
+  @@map("vehicles")
+}
+
+// --------------------------------------------------------
+// INVOICING & FINANCIAL INSTRUMENTS (Strict Country Silos)
+// --------------------------------------------------------
+
+model Invoice {
+  id            String        @id @default(uuid())
+  invoiceNumber String        @unique @map("invoice_number") // Format: [Initials]-[Country]-[digits], e.g. "MW-US-0002"
+  countryCode   CountryCode   @default(US) @map("country_code") // Strict regional silo: CA, US, UK
+  currency      CurrencyCode  @default(USD) // Strict currency lock: CAD for CA, USD for US, GBP for UK
+
+  fleetId    String?   @map("fleet_id")
+  fleet      Fleet?    @relation(fields: [fleetId], references: [id])
+  customerId String?   @map("customer_id")
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  issueDate DateTime      @db.Timestamptz @map("issue_date")
+  dueDate   DateTime      @db.Timestamptz @map("due_date")
+  status    InvoiceStatus @default(PENDING)
+
+  subtotalCents  Int @map("subtotal_cents")
+  taxAmountCents Int @map("tax_amount_cents")
+  totalCents     Int @map("total_cents") // Currency units in cents/pence (never mixed across countries)
+
+  createdById String @map("created_by_id")
+  createdBy   User   @relation("InvoicesCreated", fields: [createdById], references: [id])
+
+  paidAt        DateTime?      @db.Timestamptz @map("paid_at")
+  paymentMethod PaymentMethod? @map("payment_method")
+  notes         String?
+
+  items InvoiceItem[]
+  jobs  Job[]
+
+  createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt DateTime @updatedAt @db.Timestamptz @map("updated_at")
+
+  @@index([fleetId, status])
+  @@index([customerId, status])
+  @@index([countryCode, status])
+  @@index([dueDate])
+  @@index([issueDate])
+  @@index([createdById])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id             String   @id @default(uuid())
+  invoiceId      String   @map("invoice_id")
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  itemDetails    String   @map("item_details") // e.g. "Emergency Steer Tire Replacement (11R22.5)"
+  unitPriceCents Int      @map("unit_price_cents") // e.g. 42000 ($420.00)
+  quantity       Int      @default(1)
+  // ponytail: totalCents derived: unitPriceCents * quantity
+  updatedAt      DateTime @updatedAt @db.Timestamptz @map("updated_at")
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+// --------------------------------------------------------
+// JOBS & DISPATCH (Operational Work Orders)
+// --------------------------------------------------------
+
+model Job {
+  id          String      @id @default(uuid())
+  jobCode     String      @unique @map("job_code") // e.g. "JOB-US-10492"
+  customerId  String?     @map("customer_id")
+  customer    Customer?   @relation(fields: [customerId], references: [id])
+  vehicleId   String      @map("vehicle_id")
+  vehicle     Vehicle     @relation(fields: [vehicleId], references: [id])
+  fleetId     String?     @map("fleet_id")
+  fleet       Fleet?      @relation(fields: [fleetId], references: [id])
+  invoiceId   String?     @map("invoice_id")
+  invoice     Invoice?    @relation(fields: [invoiceId], references: [id])
+  driverId    String?     @map("driver_id")
+  driver      User?       @relation("DriverJobs", fields: [driverId], references: [id])
+  createdById String      @map("created_by_id")
+  createdBy   User        @relation("AgentJobs", fields: [createdById], references: [id])
+
+  // Lifecycle & Priorities
+  status      JobStatus   @default(PENDING)
+  urgency     JobUrgency  @default(STANDARD)
+  source      JobSource   @default(DIRECT_CALL)
+  // ponytail: serviceType deleted — JobServiceItem[] is source of truth for service details
+  countryCode CountryCode @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
+  version     Int         @default(0) @map("version") // Optimistic concurrency control for dispatch assignment
+
+  // On-Scene Contact & Roadside Details (Intake Capture)
+  recipientName  String? @map("recipient_name")  // Name of driver on scene if caller is 3rd-party
+  recipientPhone String? @map("recipient_phone") // E.164 phone of on-scene driver
+  problemNotes   String? @db.Text @map("problem_notes") // Roadside notes ("flat on shoulder, wheel lock in glovebox")
+
+  // Service Location & Timing (Human Address - ponytail: serviceLat/Lng omitted, Distance Matrix takes address string directly)
+  serviceAddress     String    @map("service_address")
+  estimatedArrivalAt DateTime? @db.Timestamptz @map("estimated_arrival_at") // ponytail: replaces stale etaMinutes — UI computes live countdown
+  appointmentDate    DateTime? @db.Timestamptz @map("appointment_date") // Scheduled booking date/time
+  assignedAt         DateTime? @db.Timestamptz @map("assigned_at")
+  completedAt        DateTime? @db.Timestamptz @map("completed_at")
+
+  // Upfront / Advance Payment (collected by agent at booking)
+  upfrontAmountCents  Int?      @default(0) @map("upfront_amount_cents") // Advance collected before job
+  upfrontReceiptUrl   String?   @map("upfront_receipt_url")              // Receipt image (set by agent or dispatcher)
+  upfrontVerifiedAt   DateTime? @db.Timestamptz @map("upfront_verified_at") // Dispatcher confirms
+
+  // Driver Assignment & Dispatch (Internal vs External Outsource)
+  driverType             DriverType              @default(INTERNAL) @map("driver_type")
+  externalCompanyName    String?                 @default("Xtreme Mobile Tire") @map("external_company_name")
+  externalDriverPhone    String?                 @map("external_driver_phone")
+  externalDriverFeeCents Int?                    @map("external_driver_fee_cents")
+  externalDispatchStatus ExternalDispatchStatus? @map("external_dispatch_status")
+  externalDispatchToken  String?                 @unique @map("external_dispatch_token")
+  cashCollectedCents     Int?                    @default(0) @map("cash_collected_cents")
+
+  // Call Center Outcome
+  disposition      JobDisposition @default(BOOKED)
+  dispositionNotes String?        @map("disposition_notes")
+
+  // ------------------------------------------------------
+  // FINANCIALS & REVENUE (Inlined from JobFinancial)
+  // Strict Regional Currency: CAD for CA, USD for US, GBP for UK
+  // ------------------------------------------------------
+  currency       CurrencyCode   @default(CAD) // Matched to countryCode - never mix currencies
+  subtotalCents  Int            @default(0) @map("subtotal_cents")
+  taxRateBps     Int            @default(0) @map("tax_rate_bps") // Basis points (13% = 1300 bps) - ponytail: taxExempt if 0
+  taxAmountCents Int            @default(0) @map("tax_amount_cents")
+  totalCents     Int            @default(0) @map("total_cents") // Gross Customer Paid (CP)
+  paymentMethod  PaymentMethod? @map("payment_method")
+  paymentStatus  PaymentStatus  @default(UNPAID) @map("payment_status")
+
+  // Job Expense Stating (Accountant inputs actual ticket expenses in regional currency cents)
+  materialCostCents Int       @default(0) @map("material_cost_cents") // Wholesale tire & parts cost (TC)
+  repairerFeeCents  Int       @default(0) @map("repairer_fee_cents")  // Repairer/technician labor (DC)
+  otherExpenseCents Int       @default(0) @map("other_expense_cents") // Incidental expenses (tolls, disposal)
+  expenseNotes      String?   @map("expense_notes")                   // Explanation of job expenses
+  expenseStatedById String?   @map("expense_stated_by_id")
+  expenseStatedBy   User?     @relation("JobExpensesStatedBy", fields: [expenseStatedById], references: [id])
+  expenseStatedAt   DateTime? @db.Timestamptz @map("expense_stated_at")
+
+  // Payment Verification & Auditing
+  // ponytail: isPaymentVerified derived: paymentVerifiedById != null || paymentStatus == VERIFIED_PAID
+  paymentVerifiedById String?   @map("payment_verified_by_id")
+  paymentVerifiedBy   User?     @relation("JobPaymentsVerifiedBy", fields: [paymentVerifiedById], references: [id])
+  paymentVerifiedAt   DateTime? @db.Timestamptz @map("payment_verified_at")
+
+  // Platform Royalty: Set per region (CA: 150 cents [$1.50 CAD], US: 100 cents [$1.00 USD], UK: 100 pence [£1.00 GBP])
+  itPlatformFeeCents Int @default(0) @map("it_platform_fee_cents")
+
+  // Receipt Proofs (ponytail: isAudited derived: auditedById != null)
+  receiptUrl         String?   @map("receipt_url")          // Customer payment receipt
+  materialReceiptUrl String?   @map("material_receipt_url") // Supplier wholesale parts slip
+  auditedById        String?   @map("audited_by_id")
+  auditedBy          User?     @relation("JobAuditedBy", fields: [auditedById], references: [id])
+  auditedAt          DateTime? @db.Timestamptz @map("audited_at")
+
+  createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt DateTime @updatedAt @db.Timestamptz @map("updated_at")
+
+  // Operational & Audit Relations
+  serviceItems     JobServiceItem[]
+  fleetCommissions FleetCommissionLedger[]
+
+  @@index([countryCode, status])
+  @@index([countryCode, createdAt])
+  @@index([status, createdAt])
+  @@index([driverId, status])
+  @@index([customerId])
+  @@index([urgency])
+  @@index([fleetId, status])
+  @@index([invoiceId])
+  @@index([paymentStatus])
+  @@index([completedAt])
+  @@index([appointmentDate])
+  @@index([createdById])
+  @@index([countryCode, paymentStatus])
+  @@map("jobs")
+}
+
+// --------------------------------------------------------
+// JOB SERVICE ITEMS (16-Service Catalog Line Items)
+// --------------------------------------------------------
+
+model JobServiceItem {
+  id             String          @id @default(uuid())
+  jobId          String          @map("job_id")
+  job            Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  serviceName    String          @map("service_name") // Standardized service title from 16-service catalog
+  category       ServiceCategory @default(TIRE_SERVICE)
+  unitPriceCents Int             @map("unit_price_cents") // Required price in cents (no silent 0 default)
+  quantity       Int             @default(1)
+  notes          String?
+  createdAt      DateTime        @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt      DateTime        @updatedAt @db.Timestamptz @map("updated_at")
+
+  @@index([jobId])
+  @@map("job_service_items")
+}
+
+// --------------------------------------------------------
+// FLEET COMMISSION LEDGER (Virtual Assistant Attributions)
+// --------------------------------------------------------
+
+model FleetCommissionLedger {
+  id                 String    @id @default(uuid())
+  fleetId            String    @map("fleet_id")
+  fleet              Fleet     @relation(fields: [fleetId], references: [id], onDelete: Restrict)
+  virtualAssistantId String    @map("virtual_assistant_id")
+  // Restrict: Commission records must outlive staff records for accounts-payable integrity
+  virtualAssistant   User      @relation("VACommissions", fields: [virtualAssistantId], references: [id], onDelete: Restrict)
+  jobId              String?   @map("job_id")
+  job                Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  amountCents        Int       @map("amount_cents") // Stored in cents (e.g. 250 for $2.50) agreed per fleet
+  // ponytail: isPaid derived dynamically: paidAt != null
+  paidAt             DateTime? @db.Timestamptz @map("paid_at")
+  notes              String?
+  createdAt          DateTime  @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt          DateTime  @updatedAt @db.Timestamptz @map("updated_at")
+
+  @@index([virtualAssistantId, paidAt])
+  @@index([fleetId])
+  @@map("fleet_commission_ledgers")
+}
+
+// --------------------------------------------------------
+// BATCHES & LEAD INGESTION (Ahead-of-Time Scheduling)
+// --------------------------------------------------------
+
+model Batch {
+  id            String      @id @default(uuid())
+  batchName     String      @map("batch_name")
+  countryCode   CountryCode @default(CA) @map("country_code")
+  uploadedById  String      @map("uploaded_by_id")
+  uploadedBy    User        @relation("UploadedBatches", fields: [uploadedById], references: [id])
+  totalLeads    Int         @default(0) @map("total_leads")
+  scheduledDate DateTime?   @default(now()) @db.Timestamptz @map("scheduled_date")
+  leads         Lead[]
+  createdAt     DateTime    @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt     DateTime    @updatedAt @db.Timestamptz @map("updated_at")
+
+  @@index([countryCode, scheduledDate])
+  @@index([uploadedById])
+  @@map("batches")
+}
+
+// --------------------------------------------------------
+// OUTBOUND LEADS & B2B FLEET PROSPECTS (PRD FR-9)
+// --------------------------------------------------------
+
+model Lead {
+  id                 String            @id @default(uuid())
+  companyName        String            @map("company_name")
+  contactPerson      String            @map("contact_person")
+  phone              String            // Primary contact phone
+  email              String?           // Optional contact email
+  address            String?           // City / Address
+  countryCode        CountryCode       @default(CA) @map("country_code")
+  status             LeadStatus        @default(NEW)
+  disposition        LeadDisposition?
+  notes              String?           @db.Text
+
+  // Callback Scheduling
+  callbackDate       DateTime?         @db.Timestamptz @map("callback_date")
+  callbackDay        String?           @map("callback_day")
+  callbackTime       String?           @map("callback_time")
+
+  // Data Mining & Batch Ingestion
+  batchId            String?           @map("batch_id")
+  batch              Batch?            @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  uploadedById       String?           @map("uploaded_by_id")
+  uploadedBy         User?             @relation("UploadedLeads", fields: [uploadedById], references: [id])
+  isCompanySourced   Boolean           @default(false) @map("is_company_sourced") // true if GM/Owner, false if VA
+
+  // Assignment & 5-Cap Queue
+  assignedAgentId    String?           @map("assigned_agent_id")
+  assignedAgent      User?             @relation("AgentAssignedLeads", fields: [assignedAgentId], references: [id])
+  assignedById       String?           @map("assigned_by_id")
+  assignedBy         User?             @relation("StaffAssignedLeads", fields: [assignedById], references: [id])
+  assignmentMethod   AssignmentMethod? @map("assignment_method") // MANUAL | ROUND_ROBIN | AUTO_ASSIGN
+  assignedAt         DateTime?         @db.Timestamptz @map("assigned_at")
+
+  // Caller Performance & Call Commissions
+  lastCalledByVaId   String?           @map("last_called_by_va_id")
+  lastCalledByVa     User?             @relation("VaCalledLeads", fields: [lastCalledByVaId], references: [id])
+  lastCalledAt       DateTime?         @db.Timestamptz @map("last_called_at")
+  callAttemptsCount  Int               @default(0) @map("call_attempts_count")
+
+  // Link to converted Fleet (1-to-1)
+  resultingFleet     Fleet?            @relation("LeadConvertedToFleet")
+
+  createdAt          DateTime          @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt          DateTime          @updatedAt @db.Timestamptz @map("updated_at")
+
+  @@index([countryCode, status])
+  @@index([assignedAgentId, status])
+  @@index([callbackDate, status])
+  @@index([batchId])
+  @@index([uploadedById])
+  @@index([assignedById])
+  @@index([lastCalledByVaId])
+  @@index([phone])
+  @@map("leads")
+}
