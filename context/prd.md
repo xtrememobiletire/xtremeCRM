@@ -13,10 +13,10 @@ The software bridges the gap between high-pressure call-center intake, real-time
 | Persona | Role in System | Key Needs |
 | :--- | :--- | :--- |
 | **Global Admin** | "Admin sees everything" — Full God-Mode oversight. | Unrestricted cross-country visibility across Canada, USA, and UK; full control to dispatch, edit invoices, state expenses, and view profit margins without bureaucratic internal blocks. |
-| **Call Center Agent** | Handles inbound phone calls and website bookings; qualifies outbound B2B fleet leads (Phase 2). | Tri-state mode toggle (`INACTIVE` / `INBOUND` / `OUTBOUND` — one active at a time), Telnyx inbound screen pop with pre-filled caller number, instant customer/vehicle auto-lookup, Google address geocoding, 16-service picker, tax toggle, customer user account provisioning, call disposition logging, Telnyx warm transfer to Dispatch Manager / Admin for fleet contract close. |
-| **Dispatch Manager** | Assigns roadside jobs to drivers based on proximity and urgency; manages fleet accounts. | Urgent vs Standard queue with expandable accordion, arbitrary address distance measurement tool, single-click driver assignment, live status monitoring, driver messaging, driver cash-in-hand tracking, Fleets directory. |
+| **Call Center Agent** | Handles customer inquiries, creates roadside service orders, and executes intake workflows. | Rapid intake form completion, customer/vehicle auto-lookup, Mapbox address autocomplete, 16-service picker, tax toggle, customer account auto-provisioning, call outcome disposition logging. Voice communications are conducted via the external partner dialer platform. |
+| **Dispatch Manager** | Assigns roadside jobs to drivers based on proximity, traffic conditions, and urgency across retail and fleet queues. | Dedicated views for `/jobs`, `/fleet-jobs`, and `/bookings`; Mapbox single-view proximity and ETA estimation; driver assignment dropdown; driver cash-in-hand tracking. |
 | **Accountant** | Audits completed tickets, states job expenses, verifies payments, and manages regional P&L. | States expenses per completed job (wholesale material costs, technician repairer fees, other incidentals), verifies customer payment, audits receipts via Multer, approves repairer payouts, and monitors regional P&L ledgers (CAD, USD, GBP strictly separated). |
-| **Virtual Assistant (VA)** | B2B fleet lead acquisition & cold-call data sourcing. | Imports fleet prospect data via CSV/Excel upload into CRM (auto-tagged to VA via JWT), system round-robin assigns leads to call agents, warm transfer of interested prospects to Dispatch Manager / Admin via Telnyx attended transfer, automatic tracking of **$2–$3 commission per completed job** for acquired fleet accounts via `FleetCommissionLedger`. |
+| **Virtual Assistant (VA)** | B2B fleet lead acquisition and outbound callback execution. | Imports fleet prospect CSV files via `/va-upload`; manages callbacks and lead dispositions on the dedicated `/outbound` call queue; tracks $2–$3 commission per completed job for converted fleets via `FleetCommissionLedger`. Telephony is handled via external partner dialer delegation. |
 
 > [!NOTE]
 > **WhatsApp:** There is currently no WhatsApp Business API integration. `WHATSAPP` exists only as a manual lead source tag — the owner handles WhatsApp conversations outside the CRM, and agents select `WHATSAPP` as the source when creating jobs from those conversations. A full WhatsApp Business API integration (automated message ingestion, template messaging, 24-hour session management) may be added in a future phase.
@@ -31,52 +31,28 @@ The software bridges the gap between high-pressure call-center intake, real-time
 
 ## 3. Functional Requirements
 
-### 3.1. Inbound Call Intake & Telnyx WebRTC Softphone Module
-- **FR-1.1: Agent Presence & Mode State:** Every agent has a tri-state mode toggle in the CRM top navigation: `INACTIVE` / `INBOUND` / `OUTBOUND` (only one active at a time, hard lock). `INACTIVE` agents receive zero call routing and see no outbound queue. `INBOUND` agents automatically receive incoming calls and screen pops. `OUTBOUND` agents are invisible to inbound call routing and instead see their assigned outbound lead queue (Phase 2).
-- **FR-1.2: Embedded Telnyx WebRTC Softphone & Dual-Trigger Screen Pop:**
-  - **In-Browser Digital Phone:** Embedded `@telnyx/webrtc` client connected via short-lived JWTs minted by the backend (`GET /api/telephony/token`).
-  - **Single-Click Answering:** When a call arrives, the agent hears the ringtone directly through their headset and can answer with 1 click (`[ Answer Call ]` or Spacebar) inside the CRM tab.
-  - **Dual-Trigger Screen Pop:** Incoming calls trigger an immediate modal popup simultaneously via the browser WebRTC `ringing` event and the backend Telnyx webhook (`POST /api/telephony/webhook` over Socket.io) ensuring zero lag even under high network latency.
-  - **Click-to-Call Outbound:** Agents and dispatchers can click any phone number in tickets, customer profiles, or driver cards to initiate immediate outbound calling through the browser headset.
-  - **Attended (Warm) Transfer:** Agent can place the current call on hold, internally call a Dispatch Manager or Admin to brief them, then bridge the prospect into the conversation or drop off. Used for fleet contract qualification handoffs (Phase 2 outbound) and inbound escalations. Implemented via Telnyx Call Control API (`/v2/calls/{call_leg_id}/actions/transfer`).
+### 3.1. Inbound Intake & External Dialer Integration Module
+- **FR-1.1: Telephony Scope, Partner Dialer Delegation & Telnyx Code Preservation:**
+  - All active inbound voice routing, automated call distribution (ACD), call queues, softphone media streams, and outbound dialing engines currently operate through the external partner dialer platform.
+  - **Code Preservation Architecture:** The existing Telnyx WebRTC softphone implementation, SIP token minting services, and telephony controllers (`telnyxService.ts`, `telephonyController.ts`, `IncomingCallPop.tsx`, `ActiveCallBar.tsx`) are **fully preserved and retained** in the codebase under a modular feature flag (`ENABLE_TELNYX_SOFTPHONE=false`) for seamless future Telnyx re-integration.
+  - For current routine operations, active audio stream controls are bypassed so the CRM client prioritizes high-velocity CRUD operations for job lifecycles, account management, dispatch optimization, fleet operations, and VA outbound callback queues without runtime telephony overhead.
+- **FR-1.2: Rapid Call Intake & Screen Pop Integration:**
+  - When a call connects on the external dialer, the agent opens or switches to the CRM Intake Modal (`/jobs/new` or global hotkey `Ctrl+Space`).
+  - Where supported by dialer integration hooks (URL parameters or webhook ingress), the caller phone number (`phone`) is automatically populated in the intake form.
+  - **Caller Profile Detection:** Instant background search (`GET /api/customers/lookup?phone=...`):
+    - *Returning Customer / Fleet:* Displays `[✓ RETURNING CUSTOMER / FLEET]` card with pre-saved vehicles, tire sizes, and fleet billing terms for 1-click selection.
+    - *First-Time Motorist:* Displays `[✦ NEW CALLER / FIRST-TIME MOTORIST]` badge, detects region from area code, provides blank onboarding form with pre-checked `[x] Create Customer Account & Send SMS Tracking Link`.
 - **FR-1.3: Data Division: Auto-Populated vs. Agent-Entered Intake Details:**
-  To maximize operational speed while ensuring accurate roadside dispatching, the intake form explicitly partitions data between automated system ingestion and live agent conversation entry:
-  
-  **A. Auto-Populated by System (Zero Manual Typing on Ring):**
-  1. *Caller Phone Number (`phone`):* Automatically extracted from Telnyx caller ID (`caller_id_number`) and locked into the primary phone input.
-  2. *Default Lead Source (`source`):* Defaults automatically to `DIRECT_CALL`. Agent can manually override to `WHATSAPP` (owner handles WhatsApp conversations manually — no WhatsApp Business API), `WEBSITE`, `LANDING_PAGE_SELF_BOOK`, `FLEET_PORTAL`, or `MEMBER_PORTAL` based on how the customer reached the company.
-  3. *Call Timestamp & Unique Call ID:* System auto-generates call ticket ID and timestamps entry.
-  4. *Caller Profile Detection (Returning vs. Non-User / First-Time Caller):*
-     - The system executes an instant background lookup (`GET /api/customers/lookup?phone=...`):
-     - **If Returning Customer / Fleet Account:**
-       - Displays `[✓ RETURNING CUSTOMER / FLEET]` badge.
-       - Customer name, email, secondary phone, fleet affiliation (e.g. `KT Group / XMT-5132`), and saved vehicles are displayed in an active 1-click selection card.
-     - **If Non-User / First-Time Caller (No DB Record Found):**
-       - Displays prominent `[✦ NEW CALLER / FIRST-TIME MOTORIST]` badge.
-       - Displays detected regional location from area code (e.g. *"Area Code (416) — Ontario, CA"*).
-       - Opens a clean, blank **Rapid Onboarding & Roadside Booking Form** with caller phone pre-filled.
-       - Pre-checks `[x] "After all this make user account"` by default, automatically provisioning their customer profile, saving their vehicle & tire size, and sending an SMS tracking link upon booking confirmation.
-       - Provides 1-click **`[ Link to B2B Fleet ]`** search bar in case the caller is an unregistered driver driving for a contracted fleet account (e.g. KT Group truck `KT-15`).
-       - Provides 1-click **Quick Disposition Shortcuts** (`[ Wrong Number ]`, `[ Price Shopper / RNC ]`, `[ Irrelevant / Spam ]`) allowing the agent to dismiss non-booking calls in 1 keystroke without filling any form fields.
-  
-  **B. Agent-Entered Operational Details (Collected Live During Call):**
-  1. *Roadside Breakdown Address (`serviceAddress`):* The agent asks where the motorist is stranded and types into the Google Places Autocomplete input (capturing highway, cross streets, shoulder position, and geocoded GPS coordinates). *Roadside breakdown location is independent of any saved customer profile address.*
-  2. *Recipient Confirmation (`isRecipient`):* Agent confirms if caller is the driver or booking on behalf of another party (captures on-scene contact name and phone).
-  3. *Vehicle & Tire Specification:*
-     - If returning vehicle: Agent clicks to select the matching vehicle.
-     - If new vehicle: Agent selects Year, Make, Model, and records exact tire size (`tireSize`, e.g. `235/45R18` or commercial truck `11R22.5`).
-  4. *Service Selection (16-Service Catalog):* Agent selects required service(s) from the 16-service catalog (e.g. Tire Plug, New Tire, Valve Stem, Jump Start, Towing).
-  5. *Urgency Level & Agreed ETA:*
-     - Agent confirms priority: `URGENT` (immediate roadside dispatch), `STANDARD` (same-day), or `FUTURE` (scheduled appointment).
-     - Agent enters agreed verbal ETA (`etaMinutes`).
-  6. *Billing & Tax Controls:*
-     - Base price quote confirmation.
-     - Regional sales tax checkbox toggle (`+ tax` or `- tax(box)`).
-     - Payment method selector: `E-Transfer`, `POS` (mobile card machine), `Cash`, `MOTO` (phone credit card).
-  7. *Customer Account Provisioning Toggle:* Agent checks *"After all this make user account"* to auto-provision customer login credentials for live SMS approach tracking.
-  8. *Specific Roadside Problem Notes:* Freeform notes (e.g. *"Front right flat on highway shoulder, locking lug nut socket located in glovebox"*).
-  9. *Mandatory Call Outcome Disposition:* Every incoming call MUST be classified before closing:
-     `Booked - Appointment Booked`, `Relevant (Not converted) - RNC`, `Business (Wrong Number) - WN`, `Irrelevant (Another service) - IR`, `Appointment Cancelled By CX`.
+  - **A. Auto-Populated by System:** Caller phone number, lead source tag (`DIRECT_CALL`, `WEBSITE`, `FLEET_PORTAL`), call timestamp, and existing account/fleet records.
+  - **B. Agent-Entered Operational Details:**
+    1. *Roadside Breakdown Address (`serviceAddress`):* Entered via Mapbox Address Autocomplete (resolving street, city, state/province, postal code, and latitude/longitude coordinates).
+    2. *Recipient Confirmation (`isRecipient`):* On-scene driver name and mobile number if calling on behalf of third party.
+    3. *Vehicle & Tire Specification:* Make, Model, Year, and exact tire size (`tireSize`, e.g. `235/45R18` or commercial `11R22.5`).
+    4. *Service Selection:* Chosen from standard 16-service roadside catalog.
+    5. *Urgency Level & Agreed ETA:* `URGENT`, `STANDARD`, or `FUTURE` appointment with agreed verbal arrival window.
+    6. *Billing & Tax Controls:* Quoted subtotal, tax exemption toggle (`+ tax` / `- tax`), payment method (`E-Transfer`, `POS`, `Cash`, `MOTO`).
+    7. *Problem Notes:* Freeform roadside instructions (shoulder location, wheel lock key location).
+    8. *Mandatory Outcome Disposition:* `Booked - Appointment Booked`, `Relevant (Not converted) - RNC`, `Business (Wrong Number) - WN`, `Irrelevant (Another service) - IR`, `Appointment Cancelled By CX`.
 - **FR-1.4: Complete 16-Service Roadside Catalog:**
   1. Tire Repair (plug)
   2. Stem valve replacement
@@ -117,13 +93,29 @@ The software bridges the gap between high-pressure call-center intake, real-time
 - **FR-3.2: Internal Portal Inbox:**
   - Fleet clients receive notices, service status updates, and invoice links directly inside their dashboard via `PortalMessage` (eliminating external Gmail/Google Workspace dependency).
 
-### 3.4. Dispatch Manager Portal & Logistics
-- **FR-4.1: Appointments Board & Queue Partitioning:** Dispatch dashboard organizes jobs into distinct views: Urgent, Standard, and Future Bookings.
-- **FR-4.2: Urgent Queue Accordion:** Urgent count badge with expandable row accordion allowing the dispatcher to immediately view customer notes, tire size, vehicle, and exact roadside GPS pin.
-- **FR-4.3: Interactive Proximity & Distance Tool:** Utility box allowing typing any custom address to instantly measure driving distance and ETA from all active mobile technicians.
-- **FR-4.4: Single-Click Driver Assignment:** Dropdown to assign the nearest eligible mobile technician with real-time Socket.io push.
-- **FR-4.5: Driver Messaging:** Dedicated two-way chat channel between dispatcher and assigned driver per job ticket.
-- **FR-4.6: Driver Cash Tracking Section:** Dedicated ledger section tracking physical cash collected by drivers in the field (`cashInHandCents`).
+### 3.4. Job Classification, Route Segmentation & Mapbox Dispatch
+- **FR-4.1: Specialized UI Route Segmentation:**
+  To maximize operational velocity and eliminate clutter, dispatch views are strictly partitioned across three dedicated routes:
+  1. **Standard Jobs (`/jobs`):**
+     - Manages individual retail customers, walk-in motorists, and direct call-in requests.
+     - Enforces standard retail rate cards, manual driver assignment, and standard payment workflows.
+  2. **Fleet Jobs (`/fleet-jobs`):**
+     - Encapsulates contracted corporate fleet accounts and recurring commercial clients.
+     - Enforces contracted fleet pricing matrixes, corporate SLA countdown timers, and driver eligibility filters (clearances/certifications).
+  3. **Bookings Triage (`/bookings`):**
+     - Staging zone for unverified public web submissions, isolating them from active operational dispatch grids.
+- **FR-4.2: Mapbox Proximity Engine & Single-View Dispatch ETA:**
+  - **No Continuous GPS Drain:** The system does NOT run continuous background GPS tracking loops.
+  - **Single-View Evaluation:** When a dispatcher opens a job to assign a driver, the proximity engine performs an instantaneous snapshot calculation:
+    1. *Geocoded Job Location:* Latitude/longitude resolved via Mapbox Geocoding API.
+    2. *Driver Coordinates Snapshot:* Latest recorded GPS coordinates of active, clocked-in drivers (`User.lastLatitude`, `User.lastLongitude`).
+    3. *Matrix API Travel Calculation:* Computes driving distance and estimated transit time using the Mapbox Matrix API.
+    4. *Traffic Snapshot:* Queries Mapbox Directions API with live traffic congestion layers to establish realistic ETA.
+    5. *Operational Filters:* Evaluates driver readiness, current job status (e.g. idle vs. concluding current ticket), shift limits, and vehicle capability/tooling.
+  - **Dynamic Driver Ranking:** Drivers are dynamically sorted by travel duration. Dispatcher assigns with 1 click, pushing job assignment events across the real-time SSE event stream.
+- **FR-4.3: Driver Messaging & Cash Accountability:**
+  - Dedicated two-way chat channel between dispatcher and assigned driver per job ticket (`JobMessage`).
+  - Dedicated ledger section tracking physical cash collected by drivers in the field (`cashInHandCents`).
 
 ### 3.5. Invoicing & Commercial Financial Engine
 - **FR-5.1: Separation of Invoices from Jobs:**
@@ -184,71 +176,44 @@ The software bridges the gap between high-pressure call-center intake, real-time
 - **FR-7.1: US Regional Hub:** 11815 Medway Church Loop, Manassas, VA 20109 | (804) 326-5442 (Covers VA, MD, DC, KY, NC, TN in USD).
 - **FR-7.2: Canada Regional Hub:** 857 Winterton Way, Mississauga, ON L5V 1Z5 | (437) 375-5674 (Covers ON, GTA in CAD).
 
-### 3.8. Landing Page Self-Booking Outbound Lead Triage Queue
-- **FR-8.1: Public Web Intake Pipeline:**
-  - Self-service bookings submitted via landing page widget enter a dedicated triage queue in status `UNVERIFIED_PUBLIC`.
-  - Inbound submissions auto-poll every 5 seconds with auditory chime.
-  - Agents verify customer location, OEM tire size compatibility, and payment method via embedded Telnyx softphone click-to-call before clicking `[ PROMOTE TO URGENT DISPATCH ]`.
-  - Non-responsive or invalid submissions are dismissed with dispositions `UNREACHABLE` or `SPAM`.
+### 3.8. Web Booking Verification Pipeline (`/bookings`)
+- **FR-8.1: Three-Stage Triage Workflow:**
+  All self-service bookings submitted via public web forms or landing page widgets must navigate a mandatory 3-stage verification lifecycle before entering active dispatch:
+  1. **Stage 1: Ingress (`/bookings` Staging Table):**
+     - Web submissions enter via API (`POST /api/bookings`) and are persisted in status `UNVERIFIED_PUBLIC`.
+     - Staged bookings are assigned a triage timestamp and trigger an auditory chime and SSE notification on dispatcher consoles.
+     - Bookings in `/bookings` are strictly segregated and do NOT appear on `/jobs` or `/fleet-jobs` active grids.
+  2. **Stage 2: Dispatcher Verification Review:**
+     - Dispatcher reviews staged submission within the verification side-panel:
+       - Validates customer contact details and phone number.
+       - Validates breakdown address geocoding and physical accessibility via Mapbox.
+       - Validates requested services and tire sizing against company inventory/tooling capacity.
+       - Confirms account classification (Retail Standard vs. Contracted Fleet).
+     - Dispatcher can initiate callback to customer to confirm details.
+     - If fraudulent or non-viable, dispatcher rejects the booking with disposition `SPAM`, `DUPLICATE`, or `UNREACHABLE`.
+  3. **Stage 3: Transition to Active Dispatch:**
+     - Upon successful verification, dispatcher clicks **[ Approve & Convert ]**.
+     - System updates status to `PENDING` and routes the job to its appropriate operational surface:
+       - Retails $\rightarrow$ Elevated to `/jobs` active dispatch grid.
+       - Corporate Fleet $\rightarrow$ Elevated to `/fleet-jobs` with SLA timers active.
+     - Record is instantly broadcast over the SSE stream to active dispatchers for driver assignment.
 
-### 3.9. Outbound Lead Management & B2B Fleet Acquisition Module (Phase 2)
-> **Build Priority:** Inbound operations (Sections 3.1–3.8) are built first. This section documents the outbound workflow to reserve architectural space — schema, enums, and API surface — without blocking Phase 1 delivery.
-
-- **FR-9.1: Virtual Assistant CSV/Excel Lead Import:**
-  - VAs upload CSV/Excel files containing fleet prospect data via the admin portal (`POST /api/leads/import`).
-  - **Required CSV Columns:** Company Name, Company Address, Website, Fleet Manager Name, CEO/Owner Name, Contact Number, Alternative Contact Number, Official Email, Decision Maker Email, Number of Units (NOU — total fleet vehicle count).
-  - System auto-tags every imported lead row with the uploading VA's identity (`uploadedByVaId`) from JWT authentication — no manual "uploaded by" column required in the CSV.
-  - **Duplicate Detection on Import:** On upload, system checks each row's `contactNumber` and `companyName` against existing leads. Matching records are imported but flagged as `POSSIBLE_DUPLICATE` with a reference to the original VA who uploaded the matching record. No silent drops, no hard blocks — VA or manager decides to merge, skip, or keep both.
-
-- **FR-9.2: Admin-Controlled Campaign Batch Start & 5-Cap Auto-Replenishment:**
-  - Upon CSV/Excel import by VA, all leads sit in the **unassigned pool** (`assignedAgentId: null`, `status: NEW`). No leads are distributed at import time.
-  - An **Admin** initiates the outbound campaign by clicking **[ Start Batch ]** on the admin panel. This action:
-    1. Queries all agents currently in `OUTBOUND` mode (active agents only).
-    2. Assigns **5 leads** from the unassigned pool to each active agent (FIFO order — oldest uploaded first).
-    3. Each lead record stores `assignedAgentId` referencing the assigned agent.
-  - **Auto-Replenishment (5-Cap Rule):** After every completed call disposition, the system immediately checks: if the agent's active lead count is `< 5`, it pulls `5 - K` leads from the unassigned pool and assigns them to that agent — keeping the agent at exactly **5 active leads** at all times until the batch pool is exhausted.
-  - **Anti-Bottleneck Design:** Performing agents who complete dispositions quickly receive fresh leads immediately. Underperforming agents who take longer do not bottleneck faster agents — each agent's queue refills independently based on their own pace.
-  - Admins can manually reassign leads between agents at any time via the leads panel.
-
-- **FR-9.3: Agent Outbound Mode & Auto-Dial Workflow:**
-  - **Same agent pool** handles both inbound and outbound work — there are no separate inbound-only or outbound-only agents. The **existing tri-state mode toggle** (FR-1.1: `INACTIVE` / `INBOUND` / `OUTBOUND`) determines what an agent is doing at any given moment. Simultaneous inbound + outbound is not possible — agents switch modes via the toggle.
-  - When an agent switches to `OUTBOUND` mode, the system displays their assigned lead queue sorted by: **scheduled callbacks first** (by callback datetime), then oldest unworked leads.
-  - **Auto-Dialer:** The system **automatically dials** the lead's contact number via Telnyx WebRTC as soon as the agent enters `OUTBOUND` mode or after each disposition is saved. The agent does not need to click a call button — the next lead is dialed automatically.
-  - After each call, the agent **must** set a disposition and optional notes before the system auto-dials the next lead.
-
-- **FR-9.4: Outbound Call Dispositions:**
-  - `CALLBACK` — Prospect requested callback (agent sets callback date, day, and time).
-  - `CONVERTED` — Prospect interested; warm-transferred to Dispatch Manager / Admin for contract close.
-  - `NOT_INTERESTED` — Prospect declined.
-  - `WRONG_NUMBER` — Invalid or disconnected number.
-  - `NO_ANSWER` — No pickup after ring timeout.
-  - `VOICEMAIL` — Left voicemail message.
-  - `RNC` — Relevant, not converted (warm lead, follow up later).
-
-- **FR-9.5: Callback Scheduling & Available Agent Routing:**
-  - When disposition is `CALLBACK`, agent enters callback date, day, and time.
-  - At the scheduled callback datetime, the system routes the callback to any **available active agent** currently in `OUTBOUND` mode (prioritizing available capacity so callbacks are never missed or delayed if a specific agent is offline or occupied).
-  - The lead resurfaces at the **top of the available agent's** outbound queue with a prominent badge: **"Callback scheduled — Thu 2:00 PM"**.
-  - The system auto-dials the lead when it resurfaces (same auto-dial rule as FR-9.3).
-  - Callbacks are **never** automatically escalated to Admins — Admin involvement only happens via explicit warm transfer (FR-9.6).
-
-- **FR-9.6: Warm Transfer to Dispatch Manager / Admin (Fleet Contract Close):**
-  - Call agents are **qualifiers**, not closers. When a prospect expresses interest in a fleet contract, the agent initiates a **Telnyx attended (warm) transfer** (FR-1.2):
-    1. Agent puts prospect on hold via Telnyx Call Control.
-    2. Agent internally calls Dispatch Manager or Admin.
-    3. Agent verbally briefs them with lead context (company name, NOU, call notes).
-    4. Dispatch Manager / Admin accepts → prospect is bridged into the conversation → agent drops off.
-  - Dispatch Manager / Admin receives a **screen pop** showing the full lead card (company name, NOU, contact details, decision maker email, agent call notes).
-  - Upon contract signing, Dispatch Manager / Admin clicks **[ Convert to Fleet Account ]** — a pre-filled Fleet creation form populated from the lead record, with `acquiredByVaId` automatically linked for VA commission tracking via `FleetCommissionLedger`.
-
-- **FR-9.7: Lead Lifecycle States:**
-  - `NEW` → `CALLED` → `CALLBACK` → `CONVERTED` | `DEAD`
-  - **`CONVERTED`** leads are linked to their resulting Fleet record via `acquiredByVaId` on the Fleet, enabling ongoing VA commission tracking (\$2–\$3 per completed job) through `FleetCommissionLedger`.
-  - **`DEAD`** marks permanently closed leads (`NOT_INTERESTED`, `WRONG_NUMBER` after retries).
-
-- **FR-9.8: Lead Data Schema (Postgres — No Redis Required):**
-  - Lead records stored in PostgreSQL with `SELECT ... FOR UPDATE SKIP LOCKED` for concurrent agent queue access.
-  - Key fields: `companyName`, `companyAddress`, `website`, `fleetManagerName`, `ceoOwnerName`, `contactNumber`, `altContactNumber`, `officialEmail`, `decisionMakerEmail`, `numberOfUnits` (NOU), `uploadedByVaId`, `assignedAgentId`, `disposition`, `callbackAt`, `callbackAssignedToId`, `notes`, `status`, `isDuplicate`.
+### 3.9. Virtual Assistant Outbound Queue & Prospect Campaigns
+- **FR-9.1: Dedicated VA Workspace Pages:**
+  The Virtual Assistant workflow operates across two dedicated views:
+  1. **Upload Interface (`/va-upload`):** Processing and validation of bulk CSV fleet lead files. Auto-tags leads with the uploader's `uploadedByVaId` via JWT session.
+  2. **Outbound Call Queue (`/outbound`):** Designed similarly to the unassigned jobs dispatch board. Displays assigned prospect leads, scheduled callbacks, and lead history.
+- **FR-9.2: Outbound Workflow & External Dialer Execution:**
+  - VA agents work through their outbound queue during routine shifts.
+  - Phone calls are initiated via the external partner dialer interface.
+  - After engaging the prospect, the VA immediately records the call disposition in CRM: `CALLBACK`, `CONVERTED`, `NOT_INTERESTED`, `WRONG_NUMBER`, `NO_ANSWER`, `VOICEMAIL`, `RNC`.
+- **FR-9.3: Callback Management:**
+  - When set to `CALLBACK`, VA specifies callback datetime and notes.
+  - At the designated time, the callback surfaces with high priority at the top of the `/outbound` queue.
+- **FR-9.4: Fleet Conversion & Commission Tracking:**
+  - Interested prospects are flagged as `CONVERTED`.
+  - When an Admin/Manager approves and creates the corporate fleet account, `Fleet.virtualAssistantId` is linked.
+  - Every subsequent completed job for this fleet generates an immutable $2–$3 commission in `FleetCommissionLedger`.
 
 ---
 
@@ -260,4 +225,12 @@ The software bridges the gap between high-pressure call-center intake, real-time
   - External clients (`FLEET_MANAGER`, `CUSTOMER_MEMBER`) are strictly sandboxed to their own vehicles, drivers, and invoices.
   - Mobile drivers (`DRIVER` role) are strictly isolated: driver consoles render ONLY driver personal earnings ($DC$), completed job counts, and physical cash collected in hand (`cashInHandCents`).
   - Wholesale material cost ($TC$), IT platform royalties ($IT\_B$), and company net profit margins are 100% hidden and omitted from driver payloads and mobile views.
+- **NFR-5: Real-Time Communication via Server-Sent Events (SSE):**
+  - All real-time server-to-client notifications and state updates must be delivered via Server-Sent Events (`text/event-stream`).
+  - Backend must maintain a persistent, unidirectional event stream partitioned by regional `countryCode`.
+  - Frontend must connect via native `EventSource` with automated exponential backoff reconnection.
+- **NFR-6: Strict In-Memory Caching & Anti-Pattern Prohibition:**
+  - Storing server data or query cache in browser `sessionStorage` or `localStorage` is **strictly forbidden**.
+  - All server state must be held strictly in-memory by TanStack Query v5; all client UI state must be managed via Zustand.
+  - Cache invalidation and updates must occur via memory-based `queryClient.invalidateQueries` triggered by SSE payloads.
 

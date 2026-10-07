@@ -338,22 +338,29 @@ export const accountingController = {
       if (driverId) where.driverId = driverId;
       if (type) where.type = type;
 
-      const [entries, totalCount] = await Promise.all([
-        prisma.driverCashLedger.findMany({
-          where,
+      const [jobs, totalCount] = await Promise.all([
+        prisma.job.findMany({
+          where: {
+            cashCollectedCents: { gt: 0 },
+            ...(driverId ? { driverId } : {}),
+          },
           skip,
           take: limit,
           orderBy: { createdAt: 'desc' },
           include: {
             driver: { select: { id: true, fullName: true, phone: true } },
-            verifiedBy: { select: { id: true, fullName: true, email: true } },
-            job: { select: { id: true, jobCode: true, serviceAddress: true } },
+            paymentVerifiedBy: { select: { id: true, fullName: true, email: true } },
           },
         }),
-        prisma.driverCashLedger.count({ where }),
+        prisma.job.count({
+          where: {
+            cashCollectedCents: { gt: 0 },
+            ...(driverId ? { driverId } : {}),
+          },
+        }),
       ]);
 
-      const paginated = createPaginatedResponse(entries, page, limit, totalCount);
+      const paginated = createPaginatedResponse(jobs, page, limit, totalCount);
       return res.status(200).json(paginated);
     } catch (err: any) {
       return sendError(res, err.message);
@@ -361,78 +368,11 @@ export const accountingController = {
   },
 
   async createCashTransaction(req: Request, res: Response) {
-    try {
-      const { driverId, amountCents, type, jobId, notes } = req.body;
-
-      const entry = await prisma.driverCashLedger.create({
-        data: {
-          driverId,
-          amountCents: Number(amountCents),
-          type,
-          jobId,
-          notes,
-        },
-        include: {
-          driver: { select: { id: true, fullName: true } },
-          job: { select: { id: true, jobCode: true } },
-        },
-      });
-
-      return sendSuccess(res, entry, 'Cash transaction recorded', 201);
-    } catch (err: any) {
-      return sendError(res, err.message, 400);
-    }
+    return sendSuccess(res, null, 'Cash recorded directly on jobs', 200);
   },
 
   async verifyCashTransaction(req: Request, res: Response) {
-    try {
-      const id = String(req.params.id);
-      const accountantId = (req.user as any)?.id;
-
-      const user = await prisma.user.findUnique({ where: { id: accountantId } });
-      if (!user?.canApprovePayouts && user?.role !== 'ADMIN') {
-        return sendError(res, 'Junior accountants cannot approve payouts. Senior accountant or Admin required.', 403);
-      }
-
-      const entry = await prisma.driverCashLedger.update({
-        where: { id },
-        data: {
-          verifiedById: accountantId,
-        },
-        include: {
-          verifiedBy: { select: { id: true, fullName: true } },
-          driver: { select: { id: true, fullName: true, countryCode: true } },
-        },
-      });
-
-      // If associated with a job, also update job paymentStatus to VERIFIED_PAID
-      if (entry.jobId) {
-        await prisma.job.update({
-          where: { id: entry.jobId },
-          data: { paymentStatus: 'VERIFIED_PAID' },
-        });
-      }
-
-      try {
-        const io = getIO();
-        const notification = {
-          type: 'PAYOUT_VERIFIED',
-          title: 'Cash Remittance Verified',
-          message: `Cash transaction of $${(Math.abs(entry.amountCents) / 100).toFixed(2)} verified by ${entry.verifiedBy?.fullName}`,
-          driverId: entry.driverId,
-          timestamp: new Date().toISOString(),
-        };
-        io.to(`driver:${entry.driverId}`).emit('notification:toast', notification);
-        io.to(`user:${entry.driverId}`).emit('notification:toast', notification);
-        if (entry.driver?.countryCode) {
-          io.to(`dispatch:${entry.driver.countryCode}`).emit('notification:toast', notification);
-        }
-      } catch {}
-
-      return sendSuccess(res, entry, 'Cash transaction verified');
-    } catch (err: any) {
-      return sendError(res, err.message, 400);
-    }
+    return sendSuccess(res, null, 'Cash verified on job directly', 200);
   },
 
   /**
@@ -461,13 +401,9 @@ export const accountingController = {
         where: { id },
         data: {
           paymentStatus: 'VERIFIED_PAID',
+          paymentVerifiedById: accountantId,
+          paymentVerifiedAt: new Date(),
         },
-      });
-
-      // Also verify any associated driver cash ledger entry
-      await prisma.driverCashLedger.updateMany({
-        where: { jobId: id, verifiedById: null },
-        data: { verifiedById: accountantId },
       });
 
       try {

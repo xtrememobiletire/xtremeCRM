@@ -22,28 +22,38 @@
   - **Local Development:** Cloud **Neon DB** with PgBouncer connection pooler (`ep-*-pooler...`) for `DATABASE_URL` and unpooled direct host for `DIRECT_URL`.
   - **Production:** Self-hosted single PostgreSQL container managed via **Dokploy** on VPS.
   - Multi-tenancy scoped by indexed `countryCode` (`CA`, `US`, `UK`).
-- **Real-Time Communication:** **Socket.io** — Bidirectional updates for dispatch queue, live technician tracking, and chat.
-- **Telephony Integration:** **Telnyx WebRTC (`@telnyx/webrtc`) & Webhooks** — Embedded in-browser softphone with backend on-demand token service (`GET /api/telephony/token`), dual-trigger screen pop (WebRTC client + server webhook over Socket.io), and 1-click click-to-call.
+- **Real-Time Communication:** **Server-Sent Events (SSE)** — Unidirectional HTTP streaming (`GET /api/events/stream`) with regional channels (`CA`, `US`, `UK`), keepalive heartbeats (20s), and native browser `EventSource` consumer. Replaces WebSocket/Socket.io.
+- **Telephony Integration:** **External Partner Delegation with Telnyx Code Preservation** — Live inbound and outbound voice telephony is delegated to the external partner dialer platform. All native Telnyx softphone services, components, and token controllers are **fully preserved and retained** in the codebase under a modular feature flag for seamless future direct re-activation.
+- **Proximity & Routing Engine:** **Mapbox Platform Services** — Mapbox Geocoding for address autocomplete and coordinate resolution; Mapbox Matrix API for multi-driver travel duration; Mapbox Directions API with live traffic layers for single-view dispatch calculation. Replaces Google Distance Matrix without battery-draining continuous GPS tracking.
 - **Frontend SPA:** **React 19 + Vite** + **Tailwind CSS v4** (`@tailwindcss/vite`), Red & White theme (`#DC2626` & `#FFFFFF`).
-- **Client State:** **Zustand** for UI controls; **TanStack Query v5** for server cache; **Framer Motion** for polished interactions.
+- **Client State & Caching:** **TanStack Query v5 + Zustand** — **Strict In-Memory Storage Only:** Server cache is stored exclusively in RAM with SSE-driven invalidation. Storing query cache in `sessionStorage` or `localStorage` is **strictly forbidden**.
 
 ---
 
 ## 3. Core Business Logic & Architectural Pillars
-1. **Three Distinct Portals**:
+1. **Specialized UI Route Segmentation & Portals**:
    - `/admin` $\rightarrow$ **Internal Staff (Admin God-Mode)**: Full unrestricted control over call intake, dispatching, accounting reconciliation, driver tracking, and invoice management.
+   - `/jobs` $\rightarrow$ Standard walk-in and retail customers, general service pricing, manual dispatch.
+   - `/fleet-jobs` $\rightarrow$ Commercial fleet clients, corporate SLA timers, contracted pricing matrixes, certified driver assignment.
+   - `/bookings` $\rightarrow$ Isolated staging triage queue for unverified public web submissions.
    - `/fleet-dashboard` $\rightarrow$ **External Fleet Clients (B2B)**: Sandboxed portal with fleet code (`XMT-5132`), billing/contact email (`Fleet.email`), 18+ vehicle registry with license plates (`KT-15`, `KT-18`), driver directory, service bookings, internal portal inbox, and pending/paid invoices.
    - `/member-dashboard` $\rightarrow$ **External Personal Members (B2C)**: Personal vehicle profiles, priority roadside bookings, exclusive member pricing, and receipts.
-2. **24/7 Roadside Driver Lookup**:
+2. **Web Booking Verification Pipeline**:
+   - 3-stage promotion workflow: Ingress (`/bookings`) $\rightarrow$ Verification Review (contact, address geocoding, service validation) $\rightarrow$ Active Job Transition (`/jobs` or `/fleet-jobs`).
+3. **Mapbox Single-View Dispatch Calculation**:
+   - On-demand proximity and travel duration calculation at the moment of job assignment lookup. Combines driver coordinate snapshots, Mapbox Matrix travel times, live traffic conditions, driver capacity, and vehicle capability constraints. No continuous background GPS drain.
+4. **Virtual Assistant Workspace**:
+   - Dedicated CSV upload page (`/va-upload`) and outbound callback queue (`/outbound`).
+5. **24/7 Roadside Driver Lookup**:
    - On-the-road truck drivers call 24/7 dispatch directly quoting Company Name or License Plate.
    - Dispatcher instantly verifies active fleet agreement and pre-registered tire size (`11R22.5`, `235/65R17`), dispatching the technician without phone tag.
-3. **Invoicing & Financial Engine**:
+6. **Invoicing & Financial Engine**:
    - **Separate from Jobs**: Jobs are operational fulfillment; Invoices are commercial instruments (`INV-0002` layout).
    - **Custom Numbering**: `[Initials]-[Country]-[digits]` (e.g. `MW-US-0002` for Mike William, `AG-CA-0105` for Agent).
    - **Flexible Due Dates**: User-selectable due date (default Net-15/30 or custom).
    - **Multi-Job Fleet Invoicing**: 1-click invoice generation from completed jobs, bundling multiple weekly dispatches into one consolidated bill.
    - **Automated PDF Export**: Server/client PDF generator replicating the verified KT Group invoice template with company banking instructions (`Payments@xtrememobiletire.com`).
-4. **Active Job Costing (Zero Inventory)**:
+7. **Active Job Costing (Zero Inventory)**:
    - No warehouse inventory or stock counts.
    - Accountants directly input actual job expenses:
      - **Material Cost ($TC$)**: Wholesale tire/parts cost.
@@ -52,7 +62,7 @@
    - **Derived Net Profit on Read**:
      $$\text{Net Profit} = \text{Customer Paid (CP)} - TC - DC$$
      $$\text{Net After IT\_B} = \text{Net Profit} - IT\_B$$
-5. **Strict Regional Hubs & Absolute Country Isolation (Zero Blended Revenue)**:
+8. **Strict Regional Hubs & Absolute Country Isolation (Zero Blended Revenue)**:
    - **US Regional Hub**: 11815 Medway Church Loop, Manassas, VA 20109 (covering VA, MD, DC, KY, NC, TN in USD).
    - **Canada Regional Hub**: 857 Winterton Way, Mississauga, ON L5V 1Z5 (covering ON & GTA in CAD).
    - **UK Operations**: Independent hub covering UK operations in GBP (£).
@@ -61,18 +71,18 @@
    - **Platform IT Royalty (`IT_B`):** Fixed fee per job (150 cents [$1.50 CAD] / 100 cents [$1.00 USD] / 100 pence [£1.00 GBP]).
    - **Date Presets:** 4 exact filters: `Yesterday`, `Last 3 Days`, `One Week`, `Monthly Amount`.
    - **Accountant Role:** Single unified `ACCOUNTANT` role inputs job expenses, attaches receipts via Multer, verifies payment, audits tickets, and approves repairer payouts.
-6. **Admin Portal ("Admin sees every thing"):**
+9. **Admin Portal ("Admin sees every thing"):**
    - Omni-channel executive oversight across Canada, USA, and UK, viewing each country's metrics in separate, side-by-side regional cards without blending revenues.
-7. **Frontend Architecture, Naming & State Rules:**
+10. **Frontend Architecture, Naming & State Rules:**
    - Strict `camelCase` for directories and functions.
    - `PascalCase` ONLY for page orchestrators in `src/pages/` (strict ceiling of 150 lines).
    - Dynamic Folder Mirroring: `src/pages/[PageName].tsx` $\rightarrow$ `src/components/pages/[pageName]/`.
    - Shared primitives in `src/components/ui/`.
-   - **State Hierarchy:** Local first (`useState`/`useReducer`) $\rightarrow$ Lift up to closest common parent for siblings $\rightarrow$ Context / Zustand for deep nesting (4-5+ levels) to avoid prop drilling $\rightarrow$ Custom hooks for reusable logic (`useFetch`, `useJobDetails`).
-8. **Call Intake Data Division & Non-User Handling:**
+   - **State Hierarchy:** Local first (`useState`/`useReducer`) $\to$ Lift up to closest common parent for siblings $\to$ Context / Zustand for deep nesting (4-5+ levels) to avoid prop drilling $\to$ Custom hooks for reusable logic (`useFetch`, `useJobDetails`, `useSSE`).
+11. **Call Intake Data Division & Non-User Handling:**
    - **Auto-Populated on Ring:** Caller phone number (`phone`), default lead source (`DIRECT_CALL`), call ID, timestamp, area-code geographic detection, and returning customer/fleet match check.
    - **First-Time Callers / Non-Users:** Screen displays `[✦ NEW CALLER / NON-USER]` badge with pre-filled phone number, 1-click `[ Link to Fleet ]` option, clean blank intake form, and pre-checked `[x] Auto-Create Customer Account & Send SMS Live Tracking Link` (converting them into registered users upon booking confirmation).
-   - **Agent-Entered Live During Call:** Exact roadside breakdown location (geocoded via Google Places), on-scene recipient info, vehicle & tire size confirmation, 16-service selection, verbal agreed ETA, quote & sales tax toggle, problem notes, and mandatory call disposition (`Booked`, `RNC`, `WN`, `IR`, `Cancelled`).
+   - **Agent-Entered Live During Call:** Exact roadside breakdown location (geocoded via Mapbox Places), on-scene recipient info, vehicle & tire size confirmation, 16-service selection, verbal agreed ETA, quote & sales tax toggle, problem notes, and mandatory call disposition (`Booked`, `RNC`, `WN`, `IR`, `Cancelled`).
 
 
 ---
