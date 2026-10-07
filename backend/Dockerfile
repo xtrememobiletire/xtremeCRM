@@ -16,8 +16,8 @@ COPY prisma.config.ts ./
 # Install dependencies (with approved builds for bcrypt, prisma, esbuild)
 RUN pnpm install --frozen-lockfile
 
-# Generate Prisma Client
-RUN npx prisma generate
+# Generate Prisma Client via pnpm exec
+RUN pnpm exec prisma generate
 
 # Copy the rest of the application
 COPY . .
@@ -32,4 +32,4 @@ ENV PORT=5000
 ENV NODE_ENV=production
 
 # On container start, push database schema to postgres and start express
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node dist/server.js"]
+CMD ["sh", "-c", "pnpm exec prisma db push --accept-data-loss && node dist/server.js"]
