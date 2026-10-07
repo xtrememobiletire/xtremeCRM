@@ -8,12 +8,12 @@ WORKDIR /app
 # Enable pnpm
 RUN npm install -g pnpm@12
 
-# Copy dependency definitions and prisma schema first
-COPY package.json pnpm-lock.yaml ./
+# Copy dependency definitions, workspace config, npmrc, and prisma schema first
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* .npmrc* ./
 COPY prisma ./prisma/
 COPY prisma.config.ts ./
 
-# Install dependencies (including devDependencies required for Prisma and TypeScript build)
+# Install dependencies (with approved builds for bcrypt, prisma, esbuild)
 RUN pnpm install --frozen-lockfile
 
 # Generate Prisma Client
