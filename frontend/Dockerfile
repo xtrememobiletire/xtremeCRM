@@ -1,16 +1,16 @@
-# Stage 1: Build Vite React SPA
+# Build stage
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-RUN npm install -g pnpm@10
+RUN npm install -g pnpm@12
 
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-# Build-time environment variables for Vite
+# Build argument for API URL & WebSocket
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
@@ -19,7 +19,7 @@ ENV VITE_WS_URL=$VITE_WS_URL
 
 RUN pnpm run build
 
-# Stage 2: Serve with Nginx Alpine
+# Production serve stage with Nginx
 FROM nginx:alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
