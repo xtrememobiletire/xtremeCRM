@@ -2,7 +2,7 @@ import axios from 'axios';
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.PROD ? 'https://xtremecrm.onrender.com/api' : 'http://localhost:3000/api');
+  (import.meta.env.PROD ? 'https://api.xtrememobiletire.com/api' : 'http://localhost:3000/api');
 export const BACKEND_ROOT_URL = API_BASE_URL.replace(/\/api\/?$/, '');
 
 export const api = axios.create({

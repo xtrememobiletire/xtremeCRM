@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 import { queryClient } from '../lib/queryClient';
 import { toast } from 'sonner';
 import { telephonyService } from '../services/telephonyService';
+import { BACKEND_ROOT_URL } from '../utils/api';
 
 export interface CallEvent {
   callId: string;
@@ -137,9 +138,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const defaultApiUrl = import.meta.env.PROD ? 'https://xtremecrm.onrender.com/api' : 'http://localhost:3000/api';
-    const rawApiUrl = import.meta.env.VITE_API_BASE_URL || defaultApiUrl;
-    const socketUrl = import.meta.env.VITE_WS_URL || rawApiUrl.replace(/\/api\/?$/, '');
+    const socketUrl = import.meta.env.VITE_WS_URL || BACKEND_ROOT_URL;
 
     const s = io(socketUrl, {
       withCredentials: true,
