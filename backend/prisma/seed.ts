@@ -18,6 +18,7 @@ async function main() {
 
   const passwordHash = await bcrypt.hash('AdminPassword123!', 10);
   const ktPasswordHash = await bcrypt.hash('Xtreme@ktgroup', 10);
+  const babuPasswordHash = await bcrypt.hash('Xtreme@Jang', 10);
 
   // 1. Seed Internal Staff Users across all 6 roles
   const users = [
@@ -61,6 +62,19 @@ async function main() {
       countryCode: 'CA' as const,
       phone: '+14165550188',
       isAgentActive: true,
+    },
+    {
+      email: 'Paytojang@gmail.com',
+      fullName: 'Babu Singh',
+      role: 'DRIVER' as const,
+      countryCode: 'CA' as const,
+      phone: '+14377873377',
+      isAgentActive: true,
+      address: '1401 Springwater Crescent, Oshawa, ON L1K 2N4',
+      assignedVehicle: 'Nissan NV 3500',
+      workingDays: '7 Days a Week',
+      workingHours: '9:00 AM – 8:00 PM',
+      approvedByName: 'Harry King',
     },
     {
       email: 'driver.us@xtremecrm.com',
@@ -135,16 +149,26 @@ async function main() {
         phone: u.phone,
         isAgentActive: u.isAgentActive,
         canApprovePayouts: (u as any).canApprovePayouts,
+        address: (u as any).address,
+        assignedVehicle: (u as any).assignedVehicle,
+        workingDays: (u as any).workingDays,
+        workingHours: (u as any).workingHours,
+        approvedByName: (u as any).approvedByName,
       },
       create: {
         email: u.email,
-        passwordHash: u.email === 'Administration@ktgroupcanada.ca' ? ktPasswordHash : passwordHash,
+        passwordHash: u.email === 'Administration@ktgroupcanada.ca' ? ktPasswordHash : (u.email === 'Paytojang@gmail.com' ? babuPasswordHash : passwordHash),
         fullName: u.fullName,
         role: u.role,
         countryCode: u.countryCode,
         phone: u.phone,
         isAgentActive: u.isAgentActive,
         canApprovePayouts: (u as any).canApprovePayouts || false,
+        address: (u as any).address,
+        assignedVehicle: (u as any).assignedVehicle,
+        workingDays: (u as any).workingDays,
+        workingHours: (u as any).workingHours,
+        approvedByName: (u as any).approvedByName,
       },
     });
     createdUsers[u.role] = user;
@@ -156,11 +180,8 @@ async function main() {
     where: { fleetCode: 'XFC-526' },
     update: {
       managerUserId: createdUsers['FLEET_MANAGER']?.id,
-      website: 'https://ktgroupcanada.ca',
-      officeTimings: '8AM To 5PM',
-      businessType: 'Facilities Management / Business Services',
-      assignedDid: '(437)-3755674',
-      managerPhone: '+14378828406',
+      address: 'Unit 16, 2283 Argentina Rd, Mississauga, ON L5N 5Z2 Canada',
+      poaEmail: 'Administration@ktgroupcanada.ca',
     },
     create: {
       fleetCode: 'XFC-526',
@@ -168,16 +189,12 @@ async function main() {
       contactPerson: 'S Pratheep',
       phone: '+18666869660',
       email: 'Administration@ktgroupcanada.ca',
+      poaEmail: 'Administration@ktgroupcanada.ca',
       fleetManager: 'S Pratheep',
-      managerPhone: '+14378828406',
-      ceoOwnerName: 'Kana Selva',
       address: 'Unit 16, 2283 Argentina Rd, Mississauga, ON L5N 5Z2 Canada',
-      website: 'https://ktgroupcanada.ca',
-      officeTimings: '8AM To 5PM',
-      businessType: 'Facilities Management / Business Services',
-      assignedDid: '(437)-3755674',
       countryCode: 'CA',
       status: 'APPROVED',
+      discountPercent: 10.0,
       contractSignedAt: new Date(),
       managerUserId: createdUsers['FLEET_MANAGER']?.id,
       virtualAssistantId: createdUsers['VIRTUAL_ASSISTANT']?.id,

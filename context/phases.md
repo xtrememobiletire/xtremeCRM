@@ -21,47 +21,51 @@
   - Seed script with the complete 16-Service Catalog and initial seed users across all roles (`ADMIN`, `CALL_AGENT`, `DISPATCHER`, `DRIVER`, `ACCOUNTANT`, `VIRTUAL_ASSISTANT`).
   - React 18 (Vite) frontend with Tailwind CSS (Red & White design tokens), Zustand store, TanStack Query provider, and folder mirroring (`src/pages/` $\rightarrow$ `src/components/pages/`).
   - Role-based route protection for both REST API endpoints and frontend views.
+  - Real-time Server-Sent Events (SSE) infrastructure initialized on backend (`GET /api/events/stream`) with regional channel partitioning (`CA`, `US`, `UK`), keepalive heartbeat, and frontend `EventSource` consumer.
 
 ---
 
-## Phase 2: Inbound Call Agent Intake & Telnyx WebRTC Softphone Module
-- **Objective:** Embedded browser digital phone, instant screen pop, auto-prefilled caller matching, and rapid keyboard roadside intake.
+## Phase 2: Operational Triage, Web Booking Verification Pipeline & External Dialer Queue
+- **Objective:** High-velocity roadside intake CRUD, isolated web booking verification queue, external dialer workflow alignment, and VA outbound callback queue.
 - **Deliverables:**
-  - Agent Active/Inactive presence toggle in top navigation bar.
-  - **Embedded Telnyx WebRTC Softphone (`@telnyx/webrtc`):**
-    - Backend on-demand token endpoint (`GET /api/telephony/token`) minting short-lived WebRTC JWTs.
-    - React softphone component with 1-click answer (`Spacebar`), mute, hold, and hangup.
-    - 1-click outbound click-to-call on all customer and driver phone numbers.
-  - **Dual-Trigger Screen Pop Service:**
-    - Dual event handling: WebRTC browser event + server webhook (`POST /api/telephony/webhook`) over Socket.io.
-    - Auto-prefills caller phone number (`phone`), defaults `DIRECT_CALL`, and initiates immediate customer/fleet database match.
-  - **Structured Intake Form (Auto vs. Agent-Entered Separation):**
-    - *Auto-Populated:* Caller number, lead source, timestamp, matching returning customer profile, and saved fleet vehicles.
-    - *Agent-Entered Live:* Breakdown location (Google Places Autocomplete), on-scene recipient info, vehicle & tire size confirmation, 16-service picker, urgency & agreed ETA, base price & tax toggle, payment method, customer account auto-creation toggle, and problem notes.
-  - **Mandatory 5-Disposition Call Logging:**
-    - Modal cannot be dismissed without logging outcome: `Booked`, `RNC`, `WN`, `IR`, `Appointment Cancelled By CX`.
-  - **Public Landing Page Booking Widget (`/`):**
-    - Ingests self-bookings with `isVerified = false` validated via Zod.
-    - Injects outbound verification task into active agents' queue.
+  - **High-Velocity Intake Form (`/jobs/new`):**
+    - Instant background search for returning customers and contracted fleet accounts.
+    - Mapbox Address Autocomplete resolving coordinates and standardized addresses.
+    - 16-Service Roadside Catalog selector, urgency toggle, and price/tax calculation.
+    - Mandatory 5-disposition logging (`Booked`, `RNC`, `WN`, `IR`, `Cancelled`).
+  - **External Dialer Integration & Telnyx Code Preservation:**
+    - Live telephony delegated to external partner platform; intake form supports caller ID pre-filling via URL parameters or incoming webhooks.
+    - Telnyx softphone services and WebRTC components are fully preserved and retained under a modular feature flag for future direct re-activation.
+  - **Web Booking Verification Pipeline (`/bookings`):**
+    - Isolated `/bookings` triage table staging incoming public web submissions in `UNVERIFIED_PUBLIC` status.
+    - Verification side-panel enabling dispatchers to confirm customer phone, geocode address, validate service capacity, and approve or reject submissions.
+    - 1-click promotion elevating approved bookings to active jobs (`/jobs` or `/fleet-jobs`).
+  - **Virtual Assistant Outbound Campaign Workspace:**
+    - Bulk CSV Lead Upload interface (`/va-upload`) auto-tagging leads to the uploading VA.
+    - Dedicated Outbound Call Queue (`/outbound`) displaying assigned leads, callback schedules, and disposition controls.
 
 ---
 
-## Phase 3: Dispatch & Fleet Logistics Hub
-- **Objective:** Real-time dispatching board, proximity distance measurement, driver messaging, and B2B fleet onboarding.
+## Phase 3: Route Segmentation, Fleet Logistics & Mapbox Proximity Hub
+- **Objective:** Segmented dispatch boards, Mapbox single-view proximity calculation, fleet SLA management, and real-time SSE event synchronization.
 - **Deliverables:**
-  - Appointments Board with Urgent, Standard, and Future queues.
-  - Urgent Queue Accordion: Urgent count badge (`How much and click and open`) + expandable row accordion (`open the row`) revealing roadside coordinates and service spec.
-  - Proximity & Custom Address Distance Tool:
-    - Dedicated utility box allows typing any custom address to automatically measure driving distance and ETA from all active drivers using Google Distance Matrix API with Haversine fallback.
-  - Single-click Driver Assignment dropdown persisting `driverId` and `assignedAt`.
-  - Dedicated Driver Messaging Drawer: Two-way real-time chat between dispatcher and driver per job ticket (`chat:job:{jobId}`).
-  - Driver Cash in Hand Tracking section: Monitors physical cash held by drivers (`cashInHandCents`).
-  - B2B Fleets Sidebar Page (`Fleets`):
-    - `[ + Add Fleet ]` modal capturing corporate account details and vehicle fleet sizes.
-    - Electronic contract verification status upgrade to **Verified Partner**.
-    - Dedicated fleet service history.
-    - Automatic calculation of Virtual Assistant commissions ($2–$3 per completed job).
-  - Real-time Socket.io / SSE event distribution synchronizing dispatch board.
+  - **Segmented Dispatch Boards:**
+    - **Standard Jobs (`/jobs`):** Urgent and standard retail queues with expandable detail drawers.
+    - **Fleet Jobs (`/fleet-jobs`):** Dedicated commercial grid with corporate SLA timers, contracted rate cards, and certified driver filtering.
+  - **Mapbox Proximity Engine:**
+    - Single-view on-demand proximity calculation using Mapbox Matrix API (travel duration and distance to candidate drivers).
+    - Mapbox Directions API with live traffic congestion snapshot.
+    - Dynamic driver ranking with capability and shift constraint filtering.
+  - **Driver Assignment & Messaging:**
+    - Single-click driver assignment dropdown dispatching real-time SSE event to field drivers.
+    - Two-way dispatcher-driver job chat drawer (`JobMessage`).
+  - **Driver Cash Accountability:**
+    - Cash-in-hand tracking section monitoring physical cash collections (`DriverCashLedger`).
+  - **B2B Fleets Directory (`/fleets`):**
+    - Corporate fleet management, vehicle directory, driver directory, and contract verification.
+    - Automated Virtual Assistant commission ledgering ($2–$3 per completed job).
+  - **Full SSE Real-Time Synchronization:**
+    - SSE event broadcast updating `/jobs`, `/fleet-jobs`, and `/bookings` across all active dispatcher consoles without polling.
 
 ---
 

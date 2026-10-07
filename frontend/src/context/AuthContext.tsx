@@ -43,6 +43,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
           setUser(formattedUser);
           localStorage.setItem('xtreme_user', JSON.stringify(formattedUser));
+          const nonSwitching = ['DRIVER', 'CALL_AGENT', 'FLEET_MANAGER', 'CUSTOMER_MEMBER', 'VIRTUAL_ASSISTANT'];
+          if (u.countryCode && (nonSwitching.includes(u.role) || !localStorage.getItem('xtreme_country'))) {
+            localStorage.setItem('xtreme_country', u.countryCode);
+          }
         }
       } catch {
         // If unauthenticated or token expired, clear invalid storage
@@ -71,6 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       setUser(formattedUser);
       localStorage.setItem('xtreme_user', JSON.stringify(formattedUser));
+      if (u.countryCode) {
+        localStorage.setItem('xtreme_country', u.countryCode);
+      }
     }
   };
 
@@ -81,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     localStorage.removeItem('xtreme_user');
     localStorage.removeItem('xtreme_token');
+    localStorage.removeItem('xtreme_country');
   };
 
   const updateUser = (data: Partial<User>) => {

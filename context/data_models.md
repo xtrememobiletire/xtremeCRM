@@ -23,6 +23,12 @@
   $$\text{Tax Exemption} = \text{taxRateBps} = 0$$
   $$\text{Message Read} = \text{readAt} \ne \text{null}$$
   $$\text{Live ETA Countdown} = \max(0, \text{estimatedArrivalAt} - \text{now()})$$
+  $$\text{Is Booking Pending Triage} = \text{job.status} = \text{UNVERIFIED\_PUBLIC}$$
+  $$\text{Is Active Retail Job} = \text{job.status} \ne \text{UNVERIFIED\_PUBLIC} \land \text{job.fleetId} = \text{null}$$
+  $$\text{Is Active Fleet Job} = \text{job.status} \ne \text{UNVERIFIED\_PUBLIC} \land \text{job.fleetId} \ne \text{null}$$
+  $$\text{Travel Duration Seconds} = \text{MapboxMatrix}(\text{driverSnapshotLoc}, \text{jobServiceLoc}).\text{duration}$$
+  $$\text{Dynamic ETA Timestamp} = \text{now}() + \text{Travel Duration Seconds}$$
+  $$\text{SSE Channel} = \text{"sse:dispatch:"} + \text{countryCode}$$
 
 ---
 
@@ -31,8 +37,9 @@
 | Field / Concept | Where It Lives | Omitted From DB / Replaced | Reason / Rule |
 | :--- | :--- | :--- | :--- |
 | **Strict Regional Silos** | `CountryCode` & `CurrencyCode` enums | Blended cross-currency conversions | *Zero Mixing:* US, CA, UK operations have independent pricing, currencies, and reporting. |
-| **Socket Heartbeat (`isOnline`)** | Redis / Socket.io (`EX 300`) | PostgreSQL `users` table | High-frequency churn (reconnects/tunnels) = useless DB writes. Kept in-memory. |
-| **Call Center Availability** | `User.isAgentActive` (Postgres) | Socket heartbeat | Persistent human toggle ("I accept calls") for Telnyx routing. Survives server deploys. |
+| **Real-Time Connectivity** | In-Memory SSE Registry (`sseClients`) | WebSocket / Socket.io DB state | Lightweight HTTP SSE connection registry in memory. Zero DB writes. |
+| **Call Center Availability** | `User.isAgentActive` (Postgres) | Socket heartbeat | Persistent human toggle ("I accept calls") for queue assignment. Survives server deploys. |
+| **Driver Location Snapshot** | `User.lastLocation` (Snapshot lat/lng) | Continuous GPS track history | Single snapshot coordinates updated on status change. No continuous background tracking. |
 | **Live ETA** | `Job.estimatedArrivalAt` (Timestamptz) | `Job.etaMinutes` frozen int | Fixed timestamp lets UI calculate ticking live countdown without DB writes. |
 | **Service Catalog** | `JobServiceItem[]` line items | `Job.serviceType` string | Single source of truth. Freeform string contradicts itemized services. |
 | **Portal Navigation** | `relatedEntityType` + `relatedEntityId` | `PortalMessage.actionUrl` | Storing `/fleet-dashboard/invoices/...` breaks when routes rename. Frontend router resolves entity refs. |
@@ -41,7 +48,7 @@
 | **Fleet Commission State** | *Derived on Read* (`paidAt != null`) | `FleetCommissionLedger.isPaid` | Eliminates duplicate boolean alongside timestamp. |
 | **Driver Cash Balance** | *Derived on Read* (`SUM(DriverCashLedger.amountCents)`) | `User.cashInHandCents` mutable counter | Eliminates reconciliation drift. Immutable ledger is truth. |
 | **Physical Cash Audit** | `DriverCashLedger` (`onDelete: Restrict`) | Mutable counter on User | Audit records outlive user accounts. |
-| **Service Location** | `Job.serviceAddress` (Address string) | `serviceLat`, `serviceLng` | Distance Matrix API accepts strings directly. Eliminates Null Island (0.0, 0.0). |
+| **Service Location & Coordinates** | `Job.serviceAddress` + `serviceLat`/`serviceLng` | Arbitrary string Distance Matrix hacks | Address geocoded via Mapbox during intake/verification; Matrix API evaluates dynamic travel time. |
 | **Vehicle Regional Uniqueness** | `Vehicle.countryCode` | Implicit join lookup | Enforces `@@unique([countryCode, licensePlate])` per territory. |
 | **Customer Portal Account** | *Derived on Read* (`userId != null`) | `Customer.isUserAccountCreated` | Account exists iff `userId` populated. |
 | **B2C Membership Status** | *Derived on Read* (`membershipExpiresAt > now()`) | `Customer.isMembershipActive` | Eliminates drift between boolean and timestamp. |
@@ -51,3 +58,8 @@
 | **Line Item Total** | *Derived on Read* (`unitPriceCents * quantity`) | `InvoiceItem.totalCents` | Prevents calculation desync. |
 | **Warehouse Models** | Static Config (`server/config/hubs.ts`) | Relational database table | *Ponytail Deferral:* 2 fixed hubs (Manassas & Mississauga) are static code constants. |
 | **Accountant Roles** | Unified `UserRole.ACCOUNTANT` | Split `ACCOUNTANT_JR` & `ACCOUNTANT_SR` | Single role with permission guards. |
+| **Client Storage Cache** | In-Memory TanStack Query RAM | `sessionStorage` / `localStorage` | *Strict Anti-Pattern Rule:* Web storage causes multi-tab desync and PII leakage. Cache is 100% in-memory. |
+| **Driver Profile Metadata** | Inlined fields on `User` (`assignedVehicle`, `workingDays`, `workingHours`, `approvedByName`, `address`) | Separate `driver_profiles` table | *Ponytail Simplification:* Eliminates extra 1:1 join ceremony while providing full operational dispatch metadata. |
+| **Streamlined Lead Model** | Pure prospect scratchpad (`uploadedById`, `assignedAgentId`, `lastCalledByVaId`, `callAttemptsCount`) | Bloated mini-fleet columns (`altPhone`, `website`, `poaEmail`, `units`) | Pruned cold-prospect scratchpad. `poaEmail` and vehicle specs move to `Fleet` where signed contracts live. |
+| **Fleet B2B Contract Terms** | `Fleet.poaEmail` + `Fleet.discountPercent` + `convertedFromLeadId` | Unused bloat (`assignedDid`, `businessType`, `officeTimings`) | Centralizes Power of Attorney billing authority, negotiated fleet discount percentages, and 1-to-1 link back to lead. |
+

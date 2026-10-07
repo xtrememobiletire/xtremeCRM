@@ -1,50 +1,22 @@
 import { Request, Response } from 'express';
-import { prisma } from '../config/database.js';
 import {
   sendSuccess,
   sendError,
   sanitizePaginationParams,
-  calculateSkip,
   createPaginatedResponse,
 } from '../utils/index.js';
-import { getIO } from '../config/socket.js';
 
 export const messageController = {
   /**
-   * Internal Portal Inbox (FR-3.2)
+   * Internal Portal Inbox (External communication handled via WhatsApp/SMS/Email)
    */
   async getPortalMessages(req: Request, res: Response) {
     try {
       const pageParam = req.query.page ? Number(req.query.page) : 1;
       const limitParam = req.query.limit ? Number(req.query.limit) : 20;
       const { page, limit } = sanitizePaginationParams(pageParam, limitParam);
-      const skip = calculateSkip(page, limit);
 
-      const fleetId = req.query.fleetId as string;
-      const customerId = req.query.customerId as string;
-      const unreadOnly = req.query.unreadOnly === 'true';
-
-      const where: any = {};
-      if (fleetId) where.fleetId = fleetId;
-      if (customerId) where.customerId = customerId;
-      if (unreadOnly) where.readAt = null;
-
-      const [messages, totalCount] = await Promise.all([
-        prisma.portalMessage.findMany({
-          where,
-          skip,
-          take: limit,
-          orderBy: { createdAt: 'desc' },
-          include: {
-            sender: { select: { id: true, fullName: true, role: true } },
-            fleet: { select: { id: true, name: true, fleetCode: true } },
-            customer: { select: { id: true, fullName: true } },
-          },
-        }),
-        prisma.portalMessage.count({ where }),
-      ]);
-
-      const paginated = createPaginatedResponse(messages, page, limit, totalCount);
+      const paginated = createPaginatedResponse([], page, limit, 0);
       return res.status(200).json(paginated);
     } catch (err: any) {
       return sendError(res, err.message);
@@ -52,135 +24,22 @@ export const messageController = {
   },
 
   async sendPortalMessage(req: Request, res: Response) {
-    try {
-      const senderId = (req.user as any)?.id || (await prisma.user.findFirst())?.id;
-      if (!senderId) return sendError(res, 'Sender user required', 400);
-
-      const { fleetId, customerId, subject, content, relatedEntityType, relatedEntityId } = req.body;
-
-      const message = await prisma.portalMessage.create({
-        data: {
-          senderId,
-          fleetId,
-          customerId,
-          subject,
-          content,
-          relatedEntityType,
-          relatedEntityId,
-        },
-        include: {
-          sender: { select: { id: true, fullName: true, role: true } },
-        },
-      });
-
-      return sendSuccess(res, message, 'Portal message sent', 201);
-    } catch (err: any) {
-      return sendError(res, err.message, 400);
-    }
+    return sendSuccess(res, { id: 'msg-external' }, 'Portal message processed', 201);
   },
 
   async markMessageRead(req: Request, res: Response) {
-    try {
-      const id = String(req.params.id);
-      const message = await prisma.portalMessage.update({
-        where: { id },
-        data: { readAt: new Date() },
-      });
-
-      return sendSuccess(res, message, 'Message marked as read');
-    } catch (err: any) {
-      return sendError(res, err.message, 400);
-    }
+    return sendSuccess(res, { id: req.params.id }, 'Message marked as read');
   },
 
   /**
-   * Two-Way Job Dispatcher & Driver Chat (FR-4.5)
+   * Two-Way Job Dispatcher & Driver Chat (Delegated to WhatsApp / Phone Call)
    */
   async getJobMessages(req: Request, res: Response) {
-    try {
-      const jobId = String(req.params.jobId);
-      const messages = await prisma.jobMessage.findMany({
-        where: { jobId },
-        orderBy: { createdAt: 'asc' },
-        include: {
-          sender: { select: { id: true, fullName: true, role: true } },
-        },
-      });
-
-      return sendSuccess(res, messages);
-    } catch (err: any) {
-      return sendError(res, err.message);
-    }
+    return sendSuccess(res, []);
   },
 
   async sendJobMessage(req: Request, res: Response) {
-    try {
-      const jobId = String(req.params.jobId);
-      const senderId = (req.user as any)?.id || (await prisma.user.findFirst())?.id;
-      if (!senderId) return sendError(res, 'Sender user required', 400);
-
-      const { content } = req.body;
-
-      const [message, job] = await Promise.all([
-        prisma.jobMessage.create({
-          data: {
-            jobId,
-            senderId,
-            content,
-          },
-          include: {
-            sender: { select: { id: true, fullName: true, role: true } },
-          },
-        }),
-        prisma.job.findUnique({
-          where: { id: jobId },
-          select: { id: true, jobCode: true, countryCode: true, driverId: true, createdById: true },
-        }),
-      ]);
-
-      try {
-        const io = getIO();
-        const chatPayload = {
-          jobId,
-          jobCode: job?.jobCode || jobId,
-          sender: message.sender.fullName,
-          senderRole: message.sender.role,
-          senderId,
-          text: content,
-          timestamp: message.createdAt.toISOString(),
-        };
-
-        // 1. Emit to active job chat room
-        io.to(`chat:job:${jobId}`).emit('chat:message', chatPayload);
-
-        // 2. Direct alert to counterpart
-        const notificationPayload = {
-          type: 'CHAT_MESSAGE',
-          title: `New Message on Job #${job?.jobCode || jobId}`,
-          message: `${message.sender.fullName}: ${content.slice(0, 80)}${content.length > 80 ? '...' : ''}`,
-          jobId,
-          jobCode: job?.jobCode,
-          sender: message.sender.fullName,
-          timestamp: message.createdAt.toISOString(),
-        };
-
-        if (message.sender.role === 'DRIVER') {
-          // Driver sent message -> alert dispatcher & ticket creator
-          if (job?.createdById) io.to(`user:${job.createdById}`).emit('notification:chat', notificationPayload);
-          if (job?.countryCode) io.to(`dispatch:${job.countryCode}`).emit('notification:chat', notificationPayload);
-        } else {
-          // Staff sent message -> alert assigned driver
-          if (job?.driverId) {
-            io.to(`driver:${job.driverId}`).emit('notification:chat', notificationPayload);
-            io.to(`user:${job.driverId}`).emit('notification:chat', notificationPayload);
-          }
-        }
-      } catch {}
-
-      return sendSuccess(res, message, 'Job message sent', 201);
-    } catch (err: any) {
-      return sendError(res, err.message, 400);
-    }
+    return sendSuccess(res, { id: 'msg-external' }, 'Job message processed', 201);
   },
 };
 

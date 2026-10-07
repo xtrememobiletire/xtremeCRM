@@ -156,10 +156,6 @@ export const jobController = {
           },
           serviceItems: true,
           invoice: true,
-          messages: {
-            take: 20,
-            orderBy: { createdAt: 'desc' },
-          },
         },
       });
 
@@ -371,7 +367,6 @@ export const jobController = {
         updatedAt: new Date(),
       };
       if (urgency) updateData.urgency = urgency;
-      if (status === 'ARRIVED') updateData.arrivedAt = new Date();
       if (status === 'COMPLETED') {
         if (effectiveCashCents <= 0 && (!job.totalCents || job.totalCents <= 0)) {
           return sendError(res, 'Payment amount or cash collected on scene is required to complete this job', 400);
@@ -379,6 +374,7 @@ export const jobController = {
         updateData.completedAt = new Date();
         if (effectiveCashCents > 0) {
           updateData.paymentMethod = 'CASH';
+          updateData.cashCollectedCents = effectiveCashCents;
           updateData.paymentStatus = 'PAID_PENDING_VERIFICATION';
           if (!job.totalCents || job.totalCents === 0) {
             updateData.totalCents = effectiveCashCents;
@@ -397,26 +393,6 @@ export const jobController = {
           serviceItems: true,
         },
       });
-
-      // Record driver cash collection ledger if cash was collected on scene
-      if (status === 'COMPLETED' && effectiveCashCents > 0) {
-        try {
-          const driverId = updated.driverId || (req.user as any)?.id;
-          if (driverId) {
-            await prisma.driverCashLedger.create({
-              data: {
-                driverId,
-                amountCents: effectiveCashCents,
-                type: 'JOB_COLLECTION',
-                jobId: updated.id,
-                notes: `Cash collected on scene for Job #${updated.jobCode}`,
-              },
-            });
-          }
-        } catch (cashErr) {
-          console.warn('Driver cash ledger creation failed:', cashErr);
-        }
-      }
 
       // VA Commission attribution on completed fleet jobs (PRD FR-2.1 / Rule 6.3)
       if (status === 'COMPLETED' && updated.fleetId) {
