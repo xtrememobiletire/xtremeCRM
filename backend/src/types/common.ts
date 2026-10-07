@@ -15,8 +15,6 @@ export type JobStatus =
   | 'PENDING'
   | 'UNVERIFIED_PUBLIC'
   | 'ASSIGNED'
-  | 'EN_ROUTE'
-  | 'ARRIVED'
   | 'IN_PROGRESS'
   | 'COMPLETED'
   | 'CANCELLED';

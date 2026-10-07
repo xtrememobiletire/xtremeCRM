@@ -54,7 +54,7 @@ export const leadController = {
             { createdAt: 'desc' },
           ],
           include: {
-            uploadedByVa: {
+            uploadedBy: {
               select: { id: true, fullName: true, role: true },
             },
             assignedAgent: {
@@ -81,7 +81,7 @@ export const leadController = {
       const lead = await prisma.lead.findUnique({
         where: { id },
         include: {
-          uploadedByVa: {
+          uploadedBy: {
             select: { id: true, fullName: true, role: true },
           },
           assignedAgent: {
@@ -141,30 +141,29 @@ export const leadController = {
       const parsedCallbackDate = callbackDate ? new Date(callbackDate) : null;
       const status = parsedCallbackDate ? 'CALLBACK' : 'NEW';
 
+      const isCompanySourced = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
+
       const lead = await prisma.lead.create({
         data: {
           companyName: companyName.trim(),
           contactPerson: String(resolvedContact).trim(),
-          fleetManager: fleetManager?.trim() || null,
-          ceoOwnerName: ceoOwnerName?.trim() || null,
           phone: phone.trim(),
-          altPhone: altPhone?.trim() || null,
           email: email?.trim() || null,
-          poaEmail: poaEmail?.trim() || null,
           address: address?.trim() || null,
-          website: website?.trim() || null,
-          numberOfUnits: numberOfUnits ? Number(numberOfUnits) : null,
           countryCode: countryCode as any,
           notes: notes?.trim() || null,
-          uploadedByVaId,
+          uploadedById: user?.id || null,
+          isCompanySourced,
           assignedAgentId: assignedAgentId || null,
+          assignmentMethod: assignedAgentId ? 'MANUAL' : null,
+          assignedById: assignedAgentId ? user?.id : null,
           status,
           callbackDate: parsedCallbackDate,
           callbackDay: callbackDay || null,
           callbackTime: callbackTime || null,
         },
         include: {
-          uploadedByVa: {
+          uploadedBy: {
             select: { id: true, fullName: true, role: true },
           },
         },
@@ -212,7 +211,7 @@ export const leadController = {
         where: { id },
         data,
         include: {
-          uploadedByVa: {
+          uploadedBy: {
             select: { id: true, fullName: true, role: true },
           },
           assignedAgent: {
@@ -247,13 +246,11 @@ export const leadController = {
       const updated = await prisma.lead.update({
         where: { id },
         data: {
-          transferredToDm: true,
-          transferredToDmAt: new Date(),
           status: 'CALLED',
-          notes: transferNotes ? `${lead.notes ? lead.notes + '\n' : ''}[Transfer Note from ${agent?.fullName || 'Agent'}]: ${transferNotes}` : lead.notes,
+          notes: transferNotes ? `${lead.notes ? lead.notes + '\n' : ''}[Transfer to DM from ${agent?.fullName || 'Agent'}]: ${transferNotes}` : lead.notes,
         },
         include: {
-          uploadedByVa: {
+          uploadedBy: {
             select: { id: true, fullName: true, role: true },
           },
         },
@@ -269,7 +266,6 @@ export const leadController = {
           companyName: lead.companyName,
           contactPerson: lead.contactPerson,
           phone: lead.phone,
-          numberOfUnits: lead.numberOfUnits,
           notes: transferNotes || lead.notes,
           transferringAgent: agent?.fullName || 'Call Agent',
           countryCode: lead.countryCode,
@@ -300,23 +296,22 @@ export const leadController = {
 
       const fleetCode = customFleetCode || `XMT-${Math.floor(1000 + Math.random() * 9000)}`;
 
-      // Create new Fleet linked to VA for commission
+      // Create new Fleet linked to Lead and VA for commission
       const fleet = await prisma.fleet.create({
         data: {
           fleetCode,
           name: lead.companyName,
           contactPerson: lead.contactPerson,
-          fleetManager: lead.fleetManager || undefined,
-          ceoOwnerName: lead.ceoOwnerName || undefined,
           phone: lead.phone,
           email: lead.email,
-          poaEmail: lead.poaEmail || undefined,
+          poaEmail: req.body.poaEmail?.trim() || undefined,
           address: lead.address,
-          website: lead.website,
           countryCode: lead.countryCode,
           status: 'APPROVED',
+          discountPercent: req.body.discountPercent ? Number(req.body.discountPercent) : 0,
           contractSignedAt: new Date(),
-          virtualAssistantId: lead.uploadedByVaId || undefined,
+          convertedFromLeadId: lead.id,
+          virtualAssistantId: !lead.isCompanySourced && lead.uploadedById ? lead.uploadedById : undefined,
         },
       });
 
@@ -326,8 +321,6 @@ export const leadController = {
         data: {
           status: 'CONVERTED',
           disposition: 'CONVERTED',
-          convertedFleetId: fleet.id,
-          whatsappFollowUp: true,
         },
       });
 
@@ -510,23 +503,21 @@ export const leadController = {
 
         if (!phone && !comp) continue;
 
+        const uploaderRole = (req as any).user?.role;
+        const isCompanySourced = uploaderRole === 'ADMIN' || uploaderRole === 'DISPATCHER';
+
         leadsToCreate.push({
           companyName: comp || contactPerson || 'Prospect Company',
           contactPerson: String(contactPerson || 'Fleet Manager').trim(),
-          fleetManager: fleetManager ? String(fleetManager).trim() : null,
-          ceoOwnerName: ceoOwnerName ? String(ceoOwnerName).trim() : null,
           phone: phone || '+14165550100',
-          altPhone: altPhone ? String(altPhone).trim() : null,
           email: email ? String(email).trim() : null,
-          poaEmail: poaEmail ? String(poaEmail).trim() : null,
           address: address ? String(address).trim() : null,
-          website: website ? String(website).trim() : null,
-          numberOfUnits: parsedUnits,
           notes: notes ? String(notes).trim() : null,
           countryCode: targetCountry,
           status: 'NEW',
-          uploadedByVaId: vaUserId || null,
-          assignedAgentId: null, // Unassigned for campaign batch assignment
+          uploadedById: vaUserId || null,
+          isCompanySourced,
+          assignedAgentId: null, // Unassigned pool
         });
       }
 
@@ -673,7 +664,7 @@ export const leadController = {
         orderBy: [{ callbackDate: 'asc' }, { createdAt: 'asc' }],
         take: 5,
         include: {
-          uploadedByVa: {
+          uploadedBy: {
             select: { id: true, fullName: true, role: true },
           },
         },
@@ -690,7 +681,7 @@ export const leadController = {
         },
         orderBy: { createdAt: 'asc' },
         include: {
-          uploadedByVa: {
+          uploadedBy: {
             select: { id: true, fullName: true, role: true },
           },
         },
@@ -712,7 +703,7 @@ export const leadController = {
           take: slotsNeeded,
           orderBy: { createdAt: 'asc' },
           include: {
-            uploadedByVa: {
+            uploadedBy: {
               select: { id: true, fullName: true, role: true },
             },
           },
@@ -722,7 +713,11 @@ export const leadController = {
           const leadIds = unassignedLeads.map((l) => l.id);
           await prisma.lead.updateMany({
             where: { id: { in: leadIds } },
-            data: { assignedAgentId: agentId },
+            data: {
+              assignedAgentId: agentId,
+              assignmentMethod: 'AUTO_ASSIGN',
+              assignedAt: new Date(),
+            },
           });
 
           activeLeads.push(...unassignedLeads);
@@ -789,11 +784,17 @@ export const leadController = {
         updateData.assignedAgentId = null;
       }
 
+      if (agentId) {
+        updateData.lastCalledByVaId = agentId;
+        updateData.lastCalledAt = new Date();
+        updateData.callAttemptsCount = { increment: 1 };
+      }
+
       const updated = await prisma.lead.update({
         where: { id },
         data: updateData,
         include: {
-          uploadedByVa: {
+          uploadedBy: {
             select: { id: true, fullName: true },
           },
           assignedAgent: {
@@ -827,7 +828,11 @@ export const leadController = {
           if (freshLead) {
             nextLeadAssigned = await prisma.lead.update({
               where: { id: freshLead.id },
-              data: { assignedAgentId: agentId },
+              data: {
+                assignedAgentId: agentId,
+                assignmentMethod: 'AUTO_ASSIGN',
+                assignedAt: new Date(),
+              },
             });
           }
         }

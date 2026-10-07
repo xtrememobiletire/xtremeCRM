@@ -123,9 +123,23 @@ The Express application must register middleware in the following explicit order
 ### 4.2. State Management & Hook Guidelines
 1. **Keep State Local First:** Always define your `useState` or `useReducer` hooks in the lowest possible component that needs that data. Don't lift it up unless necessary.
 2. **Lift State Up for Siblings:** If Component A and Component B both need to share the same state, move the hook up into their closest common parent component, then pass the state down via props.
-3. **Use Context / Global Store for Deep Nesting:** If your data needs to be accessed by components nested 4 or 5 levels deep, calling hooks and passing props down becomes tedious (prop drilling). Instead, use the `useContext` hook or global Zustand store at the destination component to pull data directly without prop drilling.
-4. **Use Custom Hooks for Logic:** If you have multiple hooks (`useState` + `useEffect`) fetching data or handling form logic that you want to reuse in other components, extract them into a separate file as a custom hook (e.g. `useFetch.ts`, `useJobDetails.ts`, `useTimer.ts`).
+3. **Use Context / Global Store for Deep Nesting:** If your data needs to be accessed by components nested 4 or 5 levels deep, use global Zustand store or React Context to pull data directly without prop drilling.
+4. **Use Custom Hooks for Logic:** Extract reusable data fetching or lifecycle logic into custom hooks (`useJobs.ts`, `useBookings.ts`, `useSSE.ts`).
 
+### 4.3. Anti-Pattern Prohibition: Cache Storage in sessionStorage is Strictly Forbidden
+1. **Never Persist Query Cache to Web Storage:**
+   - Writing TanStack Query caches, job records, or customer profiles to `sessionStorage` or `localStorage` is **strictly prohibited**.
+   - `sessionStorage` is partitioned per tab; writing cache data to `sessionStorage` causes immediate multi-tab data desynchronization and stale reads across browser windows.
+   - Synchronous `JSON.stringify` and `JSON.parse` operations degrade performance on high-frequency dispatch grids.
+2. **Pure In-Memory State Discipline:**
+   - All server data must reside strictly in-memory within TanStack Query (`queryClient`).
+   - All transient UI states (active modal, open drawer, filters) must reside strictly in Zustand or local React state.
+   - Cache synchronization between clients is driven exclusively by Server-Sent Events (SSE) triggering `queryClient.invalidateQueries()`.
+
+### 4.4. Frontend Server-Sent Events (SSE) Consumer Rules
+1. **Connection Singleton:** Maintain a single active `EventSource` connection per authenticated user managed via `SSEProvider`.
+2. **Granular Query Invalidation:** SSE event listeners must only invalidate specific query keys matching the event payload (e.g., `job:status_updated` invalidates `['jobs']`, `['fleet-jobs']`, and `['job', id]`; never call `queryClient.invalidateQueries()` without key filters).
+3. **Resilience & Cleanup:** Clean up event listeners and close `EventSource` upon unmount or user logout (`eventSource.close()`).
 
 ---
 
@@ -144,18 +158,42 @@ The Express application must register middleware in the following explicit order
 
 ---
 
-## 6. Telephony, Fleet Management & Commissions
-1. **Telnyx Inbound WebRTC & Screen Pop Architecture:**
-   - **Zero Master Key Exposure:** The frontend client MUST never receive master Telnyx API keys. The Express backend issues short-lived, on-demand JWTs via `GET /api/telephony/token` scoped to the active agent's WebRTC SIP connection.
-   - **Dual-Trigger Fail-Safe:** Screen pops trigger simultaneously on the client WebRTC `ringing` event and the server webhook (`POST /api/telephony/webhook` over Socket.io) to ensure 0ms latency even on jittery network connections.
-   - **Presence Routing:** Calls only ring agents whose `User.isOnline` flag is `true`. Inactive agents are skipped by the Telnyx routing engine.
-2. **Intake Data Division & Integrity Rules:**
-   - **System Auto-Populated:** Caller phone number is automatically ingested from caller ID and locked into the primary phone input. System triggers an asynchronous search for matching returning customers or B2B fleet accounts.
-   - **Agent-Entered Operational Truth:** Breakdown location is stored as a human address string (`serviceAddress`). The driver distance measurement tool (Google Distance Matrix API) uses the destination address string directly, eliminating fragile numeric GPS conversions, geocoding dropouts, and Null Island errors.
-   - **Mandatory Outcome Disposition:** An intake modal CANNOT be closed or dismissed without selecting a valid disposition (`Booked`, `RNC`, `WN`, `IR`, `Cancelled`). This prevents lost leads and untracked calls.
-3. **B2B Fleet Workflow & Virtual Assistant Commission:**
-   - When a fleet job reaches `COMPLETED`, system checks if the fleet is linked to a `virtualAssistantId`.
-   - If linked, an entry is inserted into `FleetCommissionLedger` with the agreed commission amount ($2.00–$3.00, stored in integer cents).
-4. **Driver Visibility Restrictions:**
-   - Drivers can only see their own assigned jobs and their own Gross and Net earnings.
-   - Drivers have zero access to company net profit margins, wholesale material costs, or other drivers' payouts.
+## 6. Telephony Delegation, Route Segmentation & Mapbox Dispatch
+
+### 6.1. External Dialer Delegation & Telnyx Code Preservation
+1. **External Telephony Delegation:**
+   - Active voice routing, external softphones, call queues, and automated outbound dialing are handled via the external partner dialer platform during current operations.
+2. **Telnyx Dialer Code Preservation:**
+   - The native Telnyx softphone implementation, `@telnyx/webrtc` client integrations, and backend token/call-control controllers (`telnyxService.ts`, `telephonyController.ts`) MUST NOT be deleted.
+   - All Telnyx telephony code is **fully preserved and retained** under a dormant feature flag (`ENABLE_TELNYX_SOFTPHONE=false`) for seamless direct re-activation in future phases.
+3. **CRM Operational Focus:**
+   - The CRM focuses on high-performance CRUD operations for job lifecycles, account management, dispatch optimization, fleet operations, and VA outbound callback queues without runtime telephony audio overhead.
+   - Call outcome dispositions and notes are logged in CRM intake modals and lead cards for audit and reporting.
+
+### 6.2. Route & View Segmentation Standards
+1. **Standard Jobs Route (`/jobs`):** Manages walk-in and retail motorists. Standard retail price cards and standard dispatch workflows.
+2. **Fleet Jobs Route (`/fleet-jobs`):** Manages commercial accounts. Auto-enforces contracted tier pricing matrixes, SLA timers, and certified driver filtering.
+3. **Web Bookings Route (`/bookings`):** Isolated staging queue for unverified public web submissions. Must NEVER mix with active operational grids until verified.
+
+### 6.3. Web Booking Verification Pipeline Rules
+1. **Mandatory 3-Stage Lifecycle:** Ingress (`/bookings`) $\rightarrow$ Verification Review $\rightarrow$ Active Job Transition.
+2. **Validation Integrity:** Dispatchers must verify contact phone number, confirm address geocoding via Mapbox, and validate service compatibility before approving.
+3. **No Direct Creation:** Public web submissions cannot directly enter `/jobs` or `/fleet-jobs` without dispatcher verification approval.
+
+### 6.4. Mapbox Proximity Engine Standards
+1. **No Continuous GPS Tracking:** Continuous background GPS tracking of driver devices is strictly prohibited to preserve battery life and mobile bandwidth.
+2. **Single-View Snapshot Calculation:** Proximity and travel duration are evaluated as a single-view snapshot upon opening the job assignment panel using Mapbox Matrix API and Directions API with live traffic layers.
+3. **Address Resolution:** Customer addresses must be validated and geocoded into precise coordinates via Mapbox Geocoding Autocomplete during intake and verification.
+
+### 6.5. Server-Sent Events (SSE) Protocol Standards
+1. **Unidirectional HTTP Streaming:** Real-time push notifications and data change events are transmitted exclusively via SSE (`GET /api/events/stream`).
+2. **Regional Partitioning:** Events are routed by `countryCode` (`CA`, `US`, `UK`) to ensure absolute regional data isolation.
+3. **Heartbeat Requirement:** Server must emit a `:keepalive` comment every 20 seconds.
+
+### 6.6. Driver Financial Isolation
+1. **Strict Payload Isolation:** Drivers can only see their own assigned jobs and their own Gross and Net earnings.
+2. **Omission of Margins:** Drivers have zero access to company net profit margins, wholesale material costs, or other drivers' payouts.
+
+### 6.7. Virtual Assistant Commission Tracking
+1. **Fleet Commission Attribution:** When a fleet job reaches `COMPLETED`, system checks if the fleet is linked to a `virtualAssistantId`.
+2. **Immutable Ledger Entry:** If linked, an entry is inserted into `FleetCommissionLedger` with the agreed commission amount ($2.00–$3.00, stored in integer cents).

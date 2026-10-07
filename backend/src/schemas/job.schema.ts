@@ -4,7 +4,7 @@ export const PaginationQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(100).optional().default(20),
   search: z.string().optional(),
-  status: z.enum(['PENDING', 'UNVERIFIED_PUBLIC', 'ASSIGNED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
+  status: z.enum(['PENDING', 'UNVERIFIED_PUBLIC', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
   countryCode: z.enum(['CA', 'US', 'UK', 'ALL']).optional(),
   urgency: z.preprocess(
     (val) => (val === 'NORMAL' ? 'STANDARD' : val === 'EMERGENCY' ? 'URGENT' : val),
@@ -99,7 +99,7 @@ export const CreateJobSchema = z.object({
 export type CreateJobInput = z.infer<typeof CreateJobSchema>;
 
 export const UpdateJobStatusSchema = z.object({
-  status: z.enum(['PENDING', 'UNVERIFIED_PUBLIC', 'ASSIGNED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']),
+  status: z.enum(['PENDING', 'UNVERIFIED_PUBLIC', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']),
   urgency: z.enum(['EMERGENCY', 'URGENT', 'STANDARD', 'FUTURE']).optional(),
   cashAmountCents: z.coerce.number().int().nonnegative().optional(),
   cashCollected: z.coerce.number().nonnegative().optional(),

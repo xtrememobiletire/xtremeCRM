@@ -63,13 +63,22 @@ enum InvoiceStatus {
 
 enum JobStatus {
   PENDING
-  UNVERIFIED_PUBLIC // ponytail: isVerified boolean derived from status != UNVERIFIED_PUBLIC
+  UNVERIFIED_PUBLIC // Web booking ingress triage on /bookings
   ASSIGNED
-  EN_ROUTE
-  ARRIVED
   IN_PROGRESS
   COMPLETED
   CANCELLED
+}
+
+enum DriverType {
+  INTERNAL
+  EXTERNAL
+}
+
+enum ExternalDispatchStatus {
+  PENDING
+  ACCEPTED
+  DENIED
 }
 
 enum JobUrgency {
@@ -113,6 +122,12 @@ enum LeadDisposition {
   RNC
 }
 
+enum AssignmentMethod {
+  MANUAL
+  ROUND_ROBIN
+  AUTO_ASSIGN
+}
+
 enum PaymentMethod {
   E_TRANSFER
   POS
@@ -127,13 +142,6 @@ enum PaymentStatus {
   PAID_PENDING_VERIFICATION
   VERIFIED_PAID
   REFUNDED
-}
-
-enum CashTransactionType {
-  JOB_COLLECTION       // Positive: Driver collects physical cash from customer
-  DISPATCHER_DEPOSIT   // Negative: Driver deposits cash envelope to dispatcher
-  PAYOUT_DEDUCTION     // Negative: Cash kept as advance against driver commission
-  ADJUSTMENT           // Verified reconciliation correction
 }
 
 enum ServiceCategory {
@@ -162,6 +170,13 @@ model User {
   // Soft Deletion (prevents orphan records while respecting onDelete: Restrict on financial ledgers)
   deletedAt DateTime? @db.Timestamptz @map("deleted_at")
 
+  // Operational Driver Profile Metadata (DOA)
+  address         String?
+  assignedVehicle String? @map("assigned_vehicle") // e.g. "Nissan NV 3500"
+  workingDays     String? @map("working_days")     // e.g. "7 Days a Week"
+  workingHours    String? @map("working_hours")    // e.g. "9:00 AM – 8:00 PM"
+  approvedByName  String? @map("approved_by_name") // e.g. "Harry King"
+
   createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
   updatedAt DateTime @updatedAt @db.Timestamptz @map("updated_at")
 
@@ -175,13 +190,12 @@ model User {
   createdInvoices   Invoice[] @relation("InvoicesCreated")
 
   // Financial & Operational Ledger Relations (Restrict: financial records must NEVER cascade-delete)
-  driverCashLedgers   DriverCashLedger[]      @relation("DriverCashLedgers")
-  verifiedCashLedgers DriverCashLedger[]      @relation("VerifiedCashLedgers")
   vaCommissions       FleetCommissionLedger[] @relation("VACommissions")
-  sentPortalMessages  PortalMessage[]         @relation("SentPortalMessages")
-  sentJobMessages     JobMessage[]            @relation("SentJobMessages")
-  uploadedLeads       Lead[]                  @relation("VaUploadedLeads")
+  uploadedBatches     Batch[]                 @relation("UploadedBatches")
+  uploadedLeads       Lead[]                  @relation("UploadedLeads")
   assignedLeads       Lead[]                  @relation("AgentAssignedLeads")
+  staffAssignedLeads  Lead[]                  @relation("StaffAssignedLeads")
+  vaCalledLeads       Lead[]                  @relation("VaCalledLeads")
 
   // External Portal Client Relations
   customerAccount Customer? @relation("UserCustomer")
@@ -221,7 +235,6 @@ model Customer {
   vehicles       Vehicle[]
   jobs           Job[]
   invoices       Invoice[]
-  portalMessages PortalMessage[]
 
   @@unique([countryCode, phone])
   @@index([customerType])
@@ -239,30 +252,28 @@ model Fleet {
   name          String      // Company legal name (e.g. "KT Group")
   contactPerson String      @map("contact_person")
   phone         String      // E.164 formatted primary management phone (e.g. +17035550144)
-  email         String?     // Billing/contact email
-  poaEmail      String?     @map("poa_email") // POA : Email
-  fleetManager  String?     @map("fleet_manager")
-  managerPhone  String?     @map("manager_phone") // Direct manager contact phone (e.g. +14378828406)
-  ceoOwnerName  String?     @map("ceo_owner_name")
-  address       String?     // e.g. "10100 Richmond Hwy, Lorton, VA 22079"
-  website       String?     // Fleet company website (PRD: Fleet Dashboard KPI card)
-  officeTimings String?     @map("office_timings") // e.g. "8AM To 5PM"
-  businessType  String?     @map("business_type")  // e.g. "Facilities Management / Business Services"
-  assignedDid   String?     @map("assigned_did")   // e.g. "(437)-3755674"
-  // ponytail: fleetSize derived dynamically: fleet.vehicles.count
-  countryCode   CountryCode @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
-  status        FleetStatus @default(PENDING) // Must be verified before active dispatching
+  email               String?     // Billing/contact email
+  poaEmail            String?     @map("poa_email") // Power of Attorney (Signing / Billing Authority)
+  fleetManager        String?     @map("fleet_manager")
+  address             String?     // e.g. "10100 Richmond Hwy, Lorton, VA 22079"
+  countryCode         CountryCode @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
+  status              FleetStatus @default(PENDING) // Must be verified before active dispatching
+  discountPercent     Float       @default(0.0) @map("discount_percent") // Negotiated fleet discount percentage
 
   // Fleet Manager Login Credentials (role: FLEET_MANAGER)
-  managerUserId String? @unique @map("manager_user_id")
-  managerUser   User?   @relation("FleetManagerUser", fields: [managerUserId], references: [id])
+  managerUserId       String?     @unique @map("manager_user_id")
+  managerUser         User?       @relation("FleetManagerUser", fields: [managerUserId], references: [id])
 
   // B2B Contract Verification (ponytail: isVerified derived: status == APPROVED || contractSignedAt != null)
-  contractSignedAt DateTime? @db.Timestamptz @map("contract_signed_at")
+  contractSignedAt    DateTime?   @db.Timestamptz @map("contract_signed_at")
+
+  // Link back to converted Lead (1-to-1)
+  convertedFromLeadId String?     @unique @map("converted_from_lead_id")
+  convertedFromLead   Lead?       @relation("LeadConvertedToFleet", fields: [convertedFromLeadId], references: [id])
 
   // Lead attribution for Virtual Assistant
-  virtualAssistantId String? @map("virtual_assistant_id")
-  virtualAssistant   User?   @relation("VirtualAssistantFleets", fields: [virtualAssistantId], references: [id])
+  virtualAssistantId  String?     @map("virtual_assistant_id")
+  virtualAssistant    User?       @relation("VirtualAssistantFleets", fields: [virtualAssistantId], references: [id])
 
   createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
   updatedAt DateTime @updatedAt @db.Timestamptz @map("updated_at")
@@ -272,7 +283,6 @@ model Fleet {
   jobs           Job[]
   invoices       Invoice[]
   commissions    FleetCommissionLedger[]
-  portalMessages PortalMessage[]
 
   @@index([countryCode, status])
   @@index([phone])
@@ -417,9 +427,6 @@ model Job {
   countryCode CountryCode @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
   version     Int         @default(0) @map("version") // Optimistic concurrency control for dispatch assignment
 
-  // Telephony (Idempotent Webhook Ingestion)
-  telnyxCallId String? @unique @map("telnyx_call_id")
-
   // On-Scene Contact & Roadside Details (Intake Capture)
   recipientName  String? @map("recipient_name")  // Name of driver on scene if caller is 3rd-party
   recipientPhone String? @map("recipient_phone") // E.164 phone of on-scene driver
@@ -430,7 +437,6 @@ model Job {
   estimatedArrivalAt DateTime? @db.Timestamptz @map("estimated_arrival_at") // ponytail: replaces stale etaMinutes — UI computes live countdown
   appointmentDate    DateTime? @db.Timestamptz @map("appointment_date") // Scheduled booking date/time
   assignedAt         DateTime? @db.Timestamptz @map("assigned_at")
-  arrivedAt          DateTime? @db.Timestamptz @map("arrived_at")
   completedAt        DateTime? @db.Timestamptz @map("completed_at")
 
   // Upfront / Advance Payment (collected by agent at booking)
@@ -438,13 +444,14 @@ model Job {
   upfrontReceiptUrl   String?   @map("upfront_receipt_url")              // Receipt image (set by agent or dispatcher)
   upfrontVerifiedAt   DateTime? @db.Timestamptz @map("upfront_verified_at") // Dispatcher confirms
 
-  // External / Third-Party Driver Assignment
-  externalDriverToken     String?   @unique @map("external_driver_token")     // UUID token for shareable accept link
-  externalDriverName      String?   @map("external_driver_name")
-  externalDriverPhone     String?   @map("external_driver_phone")
-  externalDriverCompany   String?   @map("external_driver_company")
-  externalDriverValueCents Int?     @map("external_driver_value_cents")        // Agreed payout to external driver
-  externalDriverAcceptedAt DateTime? @db.Timestamptz @map("external_driver_accepted_at")
+  // Driver Assignment & Dispatch (Internal vs External Outsource)
+  driverType             DriverType              @default(INTERNAL) @map("driver_type")
+  externalCompanyName    String?                 @default("Xtreme Mobile Tire") @map("external_company_name")
+  externalDriverPhone    String?                 @map("external_driver_phone")
+  externalDriverFeeCents Int?                    @map("external_driver_fee_cents")
+  externalDispatchStatus ExternalDispatchStatus? @map("external_dispatch_status")
+  externalDispatchToken  String?                 @unique @map("external_dispatch_token")
+  cashCollectedCents     Int?                    @default(0) @map("cash_collected_cents")
 
   // Call Center Outcome
   disposition      JobDisposition @default(BOOKED)
@@ -492,8 +499,6 @@ model Job {
 
   // Operational & Audit Relations
   serviceItems     JobServiceItem[]
-  cashLedgers      DriverCashLedger[]
-  messages         JobMessage[]
   fleetCommissions FleetCommissionLedger[]
 
   @@index([countryCode, status])
@@ -533,29 +538,6 @@ model JobServiceItem {
 }
 
 // --------------------------------------------------------
-// DRIVER CASH AUDIT LEDGER (Immutable Cash Accountability)
-// --------------------------------------------------------
-
-model DriverCashLedger {
-  id           String              @id @default(uuid())
-  driverId     String              @map("driver_id")
-  // Restrict: Financial cash ledger records must NEVER evaporate when a driver user is deleted
-  driver       User                @relation("DriverCashLedgers", fields: [driverId], references: [id], onDelete: Restrict)
-  amountCents  Int                 @map("amount_cents") // Positive = cash collected, Negative = cash deposit to dispatch
-  type         CashTransactionType
-  jobId        String?             @map("job_id")
-  job          Job?                @relation(fields: [jobId], references: [id], onDelete: SetNull)
-  verifiedById String?             @map("verified_by_id")
-  verifiedBy   User?               @relation("VerifiedCashLedgers", fields: [verifiedById], references: [id])
-  notes        String?
-  createdAt    DateTime            @default(now()) @db.Timestamptz @map("created_at")
-
-  @@index([driverId, createdAt])
-  @@index([jobId])
-  @@map("driver_cash_ledgers")
-}
-
-// --------------------------------------------------------
 // FLEET COMMISSION LEDGER (Virtual Assistant Attributions)
 // --------------------------------------------------------
 
@@ -581,46 +563,24 @@ model FleetCommissionLedger {
 }
 
 // --------------------------------------------------------
-// PORTAL MESSAGES (Direct Inbox / No Third-Party Email)
+// BATCHES & LEAD INGESTION (Ahead-of-Time Scheduling)
 // --------------------------------------------------------
 
-model PortalMessage {
-  id         String    @id @default(uuid())
-  fleetId    String?   @map("fleet_id")
-  fleet      Fleet?    @relation(fields: [fleetId], references: [id], onDelete: Cascade)
-  customerId String?   @map("customer_id")
-  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  senderId   String    @map("sender_id")
-  sender     User      @relation("SentPortalMessages", fields: [senderId], references: [id])
-  subject    String
-  content    String    @db.Text
-  // ponytail: actionUrl replaced with typed entity references — frontend router map resolves paths
-  relatedEntityType String? @map("related_entity_type") // "INVOICE" | "JOB" | "FLEET"
-  relatedEntityId   String? @map("related_entity_id")   // "MW-US-0002" | "JOB-CA-10492"
-  readAt     DateTime? @db.Timestamptz @map("read_at") // ponytail: isRead derived: readAt != null
-  createdAt  DateTime  @default(now()) @db.Timestamptz @map("created_at")
-  updatedAt  DateTime  @updatedAt @db.Timestamptz @map("updated_at")
+model Batch {
+  id            String      @id @default(uuid())
+  batchName     String      @map("batch_name")
+  countryCode   CountryCode @default(CA) @map("country_code")
+  uploadedById  String      @map("uploaded_by_id")
+  uploadedBy    User        @relation("UploadedBatches", fields: [uploadedById], references: [id])
+  totalLeads    Int         @default(0) @map("total_leads")
+  scheduledDate DateTime?   @default(now()) @db.Timestamptz @map("scheduled_date")
+  leads         Lead[]
+  createdAt     DateTime    @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt     DateTime    @updatedAt @db.Timestamptz @map("updated_at")
 
-  @@index([fleetId, readAt])
-  @@index([customerId, readAt])
-  @@map("portal_messages")
-}
-
-// --------------------------------------------------------
-// JOB MESSAGES (Two-Way Driver & Dispatcher Chat)
-// --------------------------------------------------------
-
-model JobMessage {
-  id        String   @id @default(uuid())
-  jobId     String   @map("job_id")
-  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  senderId  String   @map("sender_id")
-  sender    User     @relation("SentJobMessages", fields: [senderId], references: [id])
-  content   String   @db.Text
-  createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
-
-  @@index([jobId, createdAt])
-  @@map("job_messages")
+  @@index([countryCode, scheduledDate])
+  @@index([uploadedById])
+  @@map("batches")
 }
 
 // --------------------------------------------------------
@@ -628,49 +588,56 @@ model JobMessage {
 // --------------------------------------------------------
 
 model Lead {
-  id                 String           @id @default(uuid())
-  companyName        String           @map("company_name")
-  contactPerson      String           @map("contact_person") // Fallback / combined contact
-  fleetManager       String?          @map("fleet_manager")  // Fleet Manager Name
-  ceoOwnerName       String?          @map("ceo_owner_name") // CEO / Owner Name
-  phone              String           // Primary contact phone
-  altPhone           String?          @map("alt_phone")
-  email              String?          // Official email
-  poaEmail           String?          @map("poa_email")      // POA : Email (Billing / Authority)
-  address            String?
-  website            String?
-  numberOfUnits      Int?             @map("number_of_units") // NOU: fleet size
-  countryCode        CountryCode      @default(CA) @map("country_code")
-  status             LeadStatus       @default(NEW)
+  id                 String            @id @default(uuid())
+  companyName        String            @map("company_name")
+  contactPerson      String            @map("contact_person")
+  phone              String            // Primary contact phone
+  email              String?           // Optional contact email
+  address            String?           // City / Address
+  countryCode        CountryCode       @default(CA) @map("country_code")
+  status             LeadStatus        @default(NEW)
   disposition        LeadDisposition?
-  notes              String?          @db.Text
+  notes              String?           @db.Text
 
-  // Callback Scheduling (Available Agent Routing)
-  callbackDate       DateTime?        @db.Timestamptz @map("callback_date")
-  callbackDay        String?          @map("callback_day")    // e.g. "Monday", "Tuesday"
-  callbackTime       String?          @map("callback_time")   // e.g. "10:30 AM"
+  // Callback Scheduling
+  callbackDate       DateTime?         @db.Timestamptz @map("callback_date")
+  callbackDay        String?           @map("callback_day")
+  callbackTime       String?           @map("callback_time")
 
-  // Campaign Batch & Attributions
-  batchId            String?          @map("batch_id")
-  uploadedByVaId     String?          @map("uploaded_by_va_id")
-  uploadedByVa       User?            @relation("VaUploadedLeads", fields: [uploadedByVaId], references: [id])
-  assignedAgentId    String?          @map("assigned_agent_id")
-  assignedAgent      User?            @relation("AgentAssignedLeads", fields: [assignedAgentId], references: [id])
+  // Data Mining & Batch Ingestion
+  batchId            String?           @map("batch_id")
+  batch              Batch?            @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  uploadedById       String?           @map("uploaded_by_id")
+  uploadedBy         User?             @relation("UploadedLeads", fields: [uploadedById], references: [id])
+  isCompanySourced   Boolean           @default(false) @map("is_company_sourced") // true if GM/Owner, false if VA
 
-  // Warm Transfer & WhatsApp Closing Flow
-  transferredToDm    Boolean          @default(false) @map("transferred_to_dm")
-  transferredToDmAt  DateTime?        @db.Timestamptz @map("transferred_to_dm_at")
-  whatsappFollowUp   Boolean          @default(false) @map("whatsapp_follow_up")
-  whatsappNotes      String?          @map("whatsapp_notes")
-  convertedFleetId   String?          @map("converted_fleet_id")
+  // Assignment & 5-Cap Queue
+  assignedAgentId    String?           @map("assigned_agent_id")
+  assignedAgent      User?             @relation("AgentAssignedLeads", fields: [assignedAgentId], references: [id])
+  assignedById       String?           @map("assigned_by_id")
+  assignedBy         User?             @relation("StaffAssignedLeads", fields: [assignedById], references: [id])
+  assignmentMethod   AssignmentMethod? @map("assignment_method") // MANUAL | ROUND_ROBIN | AUTO_ASSIGN
+  assignedAt         DateTime?         @db.Timestamptz @map("assigned_at")
 
-  createdAt          DateTime         @default(now()) @db.Timestamptz @map("created_at")
-  updatedAt          DateTime         @updatedAt @db.Timestamptz @map("updated_at")
+  // Caller Performance & Call Commissions
+  lastCalledByVaId   String?           @map("last_called_by_va_id")
+  lastCalledByVa     User?             @relation("VaCalledLeads", fields: [lastCalledByVaId], references: [id])
+  lastCalledAt       DateTime?         @db.Timestamptz @map("last_called_at")
+  callAttemptsCount  Int               @default(0) @map("call_attempts_count")
+
+  // Link to converted Fleet (1-to-1)
+  resultingFleet     Fleet?            @relation("LeadConvertedToFleet")
+
+  createdAt          DateTime          @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt          DateTime          @updatedAt @db.Timestamptz @map("updated_at")
 
   @@index([countryCode, status])
   @@index([assignedAgentId, status])
   @@index([callbackDate, status])
+  @@index([batchId])
+  @@index([uploadedById])
+  @@index([assignedById])
+  @@index([lastCalledByVaId])
   @@index([phone])
-  @@index([uploadedByVaId])
   @@map("leads")
 }

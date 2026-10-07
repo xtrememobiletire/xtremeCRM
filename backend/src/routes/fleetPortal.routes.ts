@@ -86,10 +86,9 @@ router.get('/dashboard', async (req: Request, res: Response) => {
         contactEmail: fleet.email,
         contactPhone: fleet.phone,
         address: fleet.address,
-        website: fleet.website || 'https://www.ktgroupcanada.ca/',
+        poaEmail: fleet.poaEmail,
         status: fleet.status || 'APPROVED',
         contactPerson: fleet.contactPerson,
-        ceoOwnerName: fleet.ceoOwnerName,
         countryCode: fleet.countryCode,
       },
       totalVehicles: fleet._count.vehicles,
@@ -471,11 +470,7 @@ router.get('/messages', async (req: Request, res: Response) => {
     const fleet = await getScopedFleet(req);
     if (!fleet) return sendSuccess(res, []);
 
-    const messages = await prisma.portalMessage.findMany({
-      where: { fleetId: fleet.id },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
+    const messages: any[] = [];
     return sendSuccess(res, messages);
   } catch (err: any) {
     return sendError(res, err.message);
