@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import path from "path";
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
 // Load environment (.env.development vs .env.production)
 const nodeEnv = process.env.NODE_ENV || "development";
@@ -11,6 +11,6 @@ dotenv.config();
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    url: env("DIRECT_URL") || env("DATABASE_URL"),
+    url: process.env.DIRECT_URL || process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/db",
   },
 });

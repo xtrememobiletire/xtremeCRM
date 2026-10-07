@@ -16,6 +16,10 @@ COPY prisma.config.ts ./
 # Install dependencies (with approved builds for bcrypt, prisma, esbuild)
 RUN pnpm install --frozen-lockfile
 
+# Provide build-time fallback URL for schema code generation (overridden at runtime by Dokploy)
+ENV DIRECT_URL="postgresql://postgres:postgres@localhost:5432/db"
+ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/db"
+
 # Generate Prisma Client via pnpm exec
 RUN pnpm exec prisma generate
 
