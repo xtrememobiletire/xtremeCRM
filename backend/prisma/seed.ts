@@ -120,6 +120,14 @@ async function main() {
       canApprovePayouts: true,
     },
     {
+      email: 'fleet.manager@xtremecrm.com',
+      fullName: 'KT Group Fleet Manager',
+      role: 'FLEET_MANAGER' as const,
+      countryCode: 'CA' as const,
+      phone: '+18666869660',
+      isAgentActive: false,
+    },
+    {
       email: 'Administration@ktgroupcanada.ca',
       fullName: 'S Pratheep',
       role: 'FLEET_MANAGER' as const,
@@ -140,9 +148,11 @@ async function main() {
   const createdUsers: Record<string, any> = {};
 
   for (const u of users) {
+    const pw = u.email === 'Administration@ktgroupcanada.ca' ? ktPasswordHash : (u.email === 'Paytojang@gmail.com' ? babuPasswordHash : passwordHash);
     const user = await prisma.user.upsert({
       where: { email: u.email },
       update: {
+        passwordHash: pw,
         fullName: u.fullName,
         role: u.role,
         countryCode: u.countryCode,
@@ -157,7 +167,7 @@ async function main() {
       },
       create: {
         email: u.email,
-        passwordHash: u.email === 'Administration@ktgroupcanada.ca' ? ktPasswordHash : (u.email === 'Paytojang@gmail.com' ? babuPasswordHash : passwordHash),
+        passwordHash: pw,
         fullName: u.fullName,
         role: u.role,
         countryCode: u.countryCode,
@@ -171,7 +181,10 @@ async function main() {
         approvedByName: (u as any).approvedByName,
       },
     });
-    createdUsers[u.role] = user;
+    createdUsers[u.email] = user;
+    if (!createdUsers[u.role] || u.email === 'fleet.manager@xtremecrm.com') {
+      createdUsers[u.role] = user;
+    }
     console.log(`✅ Seeded ${u.role}: ${user.email} (${user.id})`);
   }
 
@@ -649,30 +662,18 @@ async function main() {
       { 
         companyName: 'Apex Transport Logistics', 
         contactPerson: 'Marcus Vance', 
-        fleetManager: 'Marcus Vance',
-        ceoOwnerName: 'Robert Vance',
         phone: '+14165550111', 
-        altPhone: '+14165550190',
         email: 'marcus@apextransport.ca',
-        poaEmail: 'billing@apextransport.ca',
-        numberOfUnits: 24, 
         address: '100 King St W, Toronto, ON',
-        website: 'https://apextransport.ca',
-        notes: 'Fleet of 24 Sprinter vans, urgent roadside maintenance needed' 
+        notes: 'Fleet of 24 Sprinter vans, urgent roadside maintenance needed. Fleet Mgr: Marcus Vance, CEO: Robert Vance, Alt: +14165550190' 
       },
       { 
         companyName: 'Premium Fire Protection', 
         contactPerson: 'Mark Davis', 
-        fleetManager: 'Mark Davis',
-        ceoOwnerName: 'David Clark',
         phone: '+19054363473', 
-        altPhone: '+19055550188',
         email: 'sales@premiumfireprotection.ca',
-        poaEmail: 'accounts@premiumfireprotection.ca',
-        numberOfUnits: 12, 
         address: '2020 Wentworth St, Unit #9, Whitby, ON',
-        website: 'https://premiumfireprotection.ca',
-        notes: '3 service vehicles currently, looking for quotation on mobile tire swap',
+        notes: '3 service vehicles currently, looking for quotation on mobile tire swap. Fleet Mgr: Mark Davis, CEO: David Clark, Alt: +19055550188',
         status: 'CALLBACK' as const,
         callbackDate: tomorrow,
         callbackDay: 'Tomorrow',
@@ -681,29 +682,23 @@ async function main() {
       { 
         companyName: 'HC&C Contracting [PO# 7706]', 
         contactPerson: 'Muhammad Naqib', 
-        fleetManager: 'Muhammad Naqib',
-        ceoOwnerName: 'Harry Henderson',
         phone: '+16478281186', 
-        altPhone: '+16475550144',
         email: 'fleet@axo1corp.com',
-        poaEmail: 'invoices@hcccontracting.ca',
-        numberOfUnits: 100, 
         address: '11904 Woodbine Ave, Whitchurch-Stouffville, ON',
-        website: 'https://hcccontracting.ca',
-        notes: '100 big trucks, special negotiated contract pricing requested' 
+        notes: '100 big trucks, special negotiated contract pricing requested. Fleet Mgr: Muhammad Naqib, CEO: Harry Henderson, Alt: +16475550144' 
       },
-      { companyName: 'Titan Freight Co.', contactPerson: 'Walter White', fleetManager: 'Walter White', phone: '+14165550114', numberOfUnits: 45, notes: 'Heavy duty flatbed rigs requiring commercial roadside tire service' },
-      { companyName: 'Rapid Parcel Inc.', contactPerson: 'Jesse Pinkman', fleetManager: 'Jesse Pinkman', phone: '+14165550115', numberOfUnits: 15, notes: 'Local e-commerce delivery vehicles' },
-      { companyName: 'North Star Express', contactPerson: 'Hank Schrader', fleetManager: 'Hank Schrader', phone: '+14165550116', numberOfUnits: 30, notes: 'Cross-dock delivery fleet' },
-      { companyName: 'Skyline Shuttle Lines', contactPerson: 'Gustavo Fring', fleetManager: 'Gustavo Fring', phone: '+14165550117', numberOfUnits: 8, notes: 'Executive passenger van fleet' },
-      { companyName: 'Pinnacle Haulage', contactPerson: 'Mike Ehrmantraut', fleetManager: 'Mike Ehrmantraut', phone: '+14165550118', numberOfUnits: 22, notes: '24/7 highway cargo haulers' },
-      { companyName: 'Maple Leaf Transit', contactPerson: 'Saul Goodman', fleetManager: 'Saul Goodman', phone: '+14165550119', numberOfUnits: 16, notes: 'Charter bus & shuttle service' },
-      { companyName: 'Great Lakes Distribution', contactPerson: 'Kim Wexler', fleetManager: 'Kim Wexler', phone: '+14165550120', numberOfUnits: 28, notes: 'Refrigerated transit vans' },
-      { companyName: 'Silverline Cargo', contactPerson: 'Howard Hamlin', fleetManager: 'Howard Hamlin', phone: '+14165550121', numberOfUnits: 14, notes: 'Regional pharmaceutical transport' },
-      { companyName: 'Boreal Logistics Ltd.', contactPerson: 'Chuck McGill', fleetManager: 'Chuck McGill', phone: '+14165550122', numberOfUnits: 20, notes: 'Temperature-controlled food delivery' },
-      { companyName: 'Horizon Freightway', contactPerson: 'Nacho Varga', fleetManager: 'Nacho Varga', phone: '+14165550123', numberOfUnits: 35, notes: 'Long-haul dry van fleet' },
-      { companyName: 'Urban Route Express', contactPerson: 'Lalo Salamanca', fleetManager: 'Lalo Salamanca', phone: '+14165550124', numberOfUnits: 10, notes: 'Downtown parcel and food distributors' },
-      { companyName: 'Canuck Courier Systems', contactPerson: 'Tuco Salamanca', fleetManager: 'Tuco Salamanca', phone: '+14165550125', numberOfUnits: 19, notes: 'Express parcel vans' },
+      { companyName: 'Titan Freight Co.', contactPerson: 'Walter White', phone: '+14165550114', notes: '45 units | Fleet Mgr: Walter White | Heavy duty flatbed rigs requiring commercial roadside tire service' },
+      { companyName: 'Rapid Parcel Inc.', contactPerson: 'Jesse Pinkman', phone: '+14165550115', notes: '15 units | Fleet Mgr: Jesse Pinkman | Local e-commerce delivery vehicles' },
+      { companyName: 'North Star Express', contactPerson: 'Hank Schrader', phone: '+14165550116', notes: '30 units | Fleet Mgr: Hank Schrader | Cross-dock delivery fleet' },
+      { companyName: 'Skyline Shuttle Lines', contactPerson: 'Gustavo Fring', phone: '+14165550117', notes: '8 units | Fleet Mgr: Gustavo Fring | Executive passenger van fleet' },
+      { companyName: 'Pinnacle Haulage', contactPerson: 'Mike Ehrmantraut', phone: '+14165550118', notes: '22 units | Fleet Mgr: Mike Ehrmantraut | 24/7 highway cargo haulers' },
+      { companyName: 'Maple Leaf Transit', contactPerson: 'Saul Goodman', phone: '+14165550119', notes: '16 units | Fleet Mgr: Saul Goodman | Charter bus & shuttle service' },
+      { companyName: 'Great Lakes Distribution', contactPerson: 'Kim Wexler', phone: '+14165550120', notes: '28 units | Fleet Mgr: Kim Wexler | Refrigerated transit vans' },
+      { companyName: 'Silverline Cargo', contactPerson: 'Howard Hamlin', phone: '+14165550121', notes: '14 units | Fleet Mgr: Howard Hamlin | Regional pharmaceutical transport' },
+      { companyName: 'Boreal Logistics Ltd.', contactPerson: 'Chuck McGill', phone: '+14165550122', notes: '20 units | Fleet Mgr: Chuck McGill | Temperature-controlled food delivery' },
+      { companyName: 'Horizon Freightway', contactPerson: 'Nacho Varga', phone: '+14165550123', notes: '35 units | Fleet Mgr: Nacho Varga | Long-haul dry van fleet' },
+      { companyName: 'Urban Route Express', contactPerson: 'Lalo Salamanca', phone: '+14165550124', notes: '10 units | Fleet Mgr: Lalo Salamanca | Downtown parcel and food distributors' },
+      { companyName: 'Canuck Courier Systems', contactPerson: 'Tuco Salamanca', phone: '+14165550125', notes: '19 units | Fleet Mgr: Tuco Salamanca | Express parcel vans' },
     ];
 
     for (const ld of sampleLeads) {
@@ -713,22 +708,16 @@ async function main() {
           data: {
             companyName: ld.companyName,
             contactPerson: ld.contactPerson,
-            fleetManager: ld.fleetManager || null,
-            ceoOwnerName: (ld as any).ceoOwnerName || null,
             phone: ld.phone,
-            altPhone: (ld as any).altPhone || null,
             email: (ld as any).email || null,
-            poaEmail: (ld as any).poaEmail || null,
             address: (ld as any).address || null,
-            website: (ld as any).website || null,
-            numberOfUnits: ld.numberOfUnits,
-            notes: ld.notes,
+            notes: ld.notes || null,
             countryCode: 'CA',
             status: (ld as any).status || 'NEW',
             callbackDate: (ld as any).callbackDate || null,
             callbackDay: (ld as any).callbackDay || null,
             callbackTime: (ld as any).callbackTime || null,
-            uploadedByVaId: vaUser.id,
+            uploadedById: vaUser.id,
             assignedAgentId: null, // Unassigned pool
           },
         });
