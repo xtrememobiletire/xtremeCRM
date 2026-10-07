@@ -28,10 +28,10 @@ export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps
       </div>
 
       <div className="space-y-1">
-        <h4 className="font-bold text-slate-900 text-sm">{job.customer?.name || 'Customer'}</h4>
+        <h4 className="font-bold text-slate-900 text-sm">{job.customer?.fullName || job.customer?.name || job.recipientName || 'Customer'}</h4>
         <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
           <Phone className="w-3.5 h-3.5 text-slate-400" />
-          <span>{job.customer?.phone}</span>
+          <span>{job.customer?.phone || job.recipientPhone}</span>
         </div>
       </div>
 
@@ -45,10 +45,10 @@ export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps
             Tire Size: {job.vehicle.tireSize}
           </div>
         )}
-        {job.locationAddress && (
+        {(job.serviceAddress || job.locationAddress) && (
           <div className="flex items-start gap-1.5 text-slate-500 text-[11px] pt-1 border-t border-slate-200/60">
             <MapPin className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />
-            <span className="truncate">{job.locationAddress}</span>
+            <span className="truncate">{job.serviceAddress || job.locationAddress}</span>
           </div>
         )}
       </div>
