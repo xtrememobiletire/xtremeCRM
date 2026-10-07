@@ -24,7 +24,7 @@ import { useSocket } from '../context/SocketContext';
 
 export default function TechnicianPortal() {
   const { user } = useAuth();
-  const { country, currencySymbol } = useTenant();
+  const { currencySymbol } = useTenant();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [chatJob, setChatJob] = useState<JobItem | null>(null);
   const [cashAmountInput, setCashAmountInput] = useState('');
