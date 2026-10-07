@@ -24,7 +24,7 @@ import { useSocket } from '../context/SocketContext';
 
 export default function TechnicianPortal() {
   const { user } = useAuth();
-  const { country, currencySymbol } = useTenant();
+  const { currencySymbol } = useTenant();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [chatJob, setChatJob] = useState<JobItem | null>(null);
   const [cashAmountInput, setCashAmountInput] = useState('');
@@ -347,7 +347,7 @@ export default function TechnicianPortal() {
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Payout:</span>
                     <span className="font-bold text-emerald-600">
-                      {formatCurrency(centsToDollars(activeJob.repairerFeeCents || 4500), country)}
+                      {formatCurrency(centsToDollars(activeJob.repairerFeeCents || 4500), currencySymbol)}
                     </span>
                   </div>
                 </div>
@@ -391,7 +391,7 @@ export default function TechnicianPortal() {
 
                 <div className="flex items-center gap-3">
                   <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                    Earned: {formatCurrency(centsToDollars(job.repairerFeeCents || 0), country)}
+                    Earned: {formatCurrency(centsToDollars(job.repairerFeeCents || 4500), currencySymbol)}
                   </span>
                   <button
                     type="button"

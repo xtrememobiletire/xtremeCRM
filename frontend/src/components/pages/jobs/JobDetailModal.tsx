@@ -160,10 +160,10 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="p-3.5 bg-slate-50/70 rounded-xl border border-slate-200 space-y-1.5">
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Customer</h4>
-            <div className="text-sm font-bold text-slate-900">{job.customer?.name || 'Walk-in'}</div>
+            <div className="text-sm font-bold text-slate-900">{job.customer?.fullName || job.customer?.name || job.recipientName || 'Walk-in'}</div>
             <div className="text-xs font-mono text-slate-600 flex items-center gap-1.5">
               <Phone className="w-3 h-3 text-slate-400" />
-              <span>{job.customer?.phone}</span>
+              <span>{job.customer?.phone || job.recipientPhone || 'N/A'}</span>
             </div>
             {job.customer?.email && (
               <div className="text-xs text-slate-500 truncate">{job.customer?.email}</div>
@@ -181,10 +181,10 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
                 Tire Size: <strong className="text-red-700">{job.vehicle.tireSize}</strong>
               </div>
             )}
-            {job.locationAddress && (
+            {(job.serviceAddress || job.locationAddress) && (
               <div className="text-xs text-slate-500 flex items-start gap-1 pt-1">
                 <MapPin className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />
-                <span className="truncate">{job.locationAddress}</span>
+                <span className="truncate">{job.serviceAddress || job.locationAddress}</span>
               </div>
             )}
           </div>

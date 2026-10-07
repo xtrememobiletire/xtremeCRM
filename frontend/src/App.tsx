@@ -168,16 +168,16 @@ function AppRoutes() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TenantProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <TenantProvider>
           <SocketProvider>
             <BrowserRouter>
               <Toaster position="top-right" richColors />
               <AppRoutes />
             </BrowserRouter>
           </SocketProvider>
-        </AuthProvider>
-      </TenantProvider>
+        </TenantProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

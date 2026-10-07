@@ -46,9 +46,11 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
               </td>
               <td className="table-td">
                 <div className="font-semibold text-slate-900 text-xs sm:text-sm">
-                  {job.customer?.name || 'Walk-in'}
+                  {job.customer?.fullName || job.customer?.name || job.recipientName || 'Walk-in'}
                 </div>
-                <div className="text-[11px] font-mono text-slate-500">{job.customer?.phone}</div>
+                <div className="text-[11px] font-mono text-slate-500">
+                  {job.customer?.phone || job.recipientPhone || ''}
+                </div>
               </td>
               <td className="table-td">
                 <div className="text-xs font-semibold text-slate-800">

@@ -86,8 +86,8 @@ export default function DriverActiveOrderCard({ job, onCompleteOrder }: DriverAc
   const isUrgent = job.urgency === 'EMERGENCY' || job.urgency === 'URGENT';
   const leftLineColor = isUrgent ? 'border-l-rose-500' : 'border-l-blue-600';
 
-  const customerName = job.customer?.name || job.customer?.fullName || 'Walk-in Customer';
-  const customerPhone = job.customer?.phone || job.contactPhone || '';
+  const customerName = job.customer?.fullName || job.customer?.name || job.recipientName || 'Walk-in Customer';
+  const customerPhone = job.customer?.phone || job.recipientPhone || job.contactPhone || '';
   const serviceAddress = job.serviceAddress || job.locationAddress || '';
   const vehicleText = job.vehicle ? `${job.vehicle.year || ''} ${job.vehicle.make} ${job.vehicle.model}`.trim() : 'No Vehicle Specified';
   const tireSize = job.vehicle?.tireSize || '';

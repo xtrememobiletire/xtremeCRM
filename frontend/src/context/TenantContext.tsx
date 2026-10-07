@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { REGIONS, type RegionCode, type RegionConfig } from '../constants/regions';
 import { queryClient } from '../lib/queryClient';
+import { useAuth } from './AuthContext';
 
 export type AgentPresenceMode = 'INACTIVE' | 'INBOUND' | 'OUTBOUND';
 
@@ -19,10 +20,44 @@ interface TenantContextType {
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
+const NON_SWITCHING_ROLES = ['DRIVER', 'CALL_AGENT', 'FLEET_MANAGER', 'CUSTOMER_MEMBER', 'VIRTUAL_ASSISTANT'];
+
 export function TenantProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+
   const [country, setCountryState] = useState<RegionCode>(() => {
+    // 1. If stored user has a role-locked country, prioritize it
+    const savedUserStr = localStorage.getItem('xtreme_user');
+    if (savedUserStr) {
+      try {
+        const savedUser = JSON.parse(savedUserStr);
+        if (savedUser?.countryCode && NON_SWITCHING_ROLES.includes(savedUser.role)) {
+          return savedUser.countryCode as RegionCode;
+        }
+      } catch {}
+    }
     return (localStorage.getItem('xtreme_country') as RegionCode) || 'CA';
   });
+
+  // Automatically enforce regional silo when user logs in or loads
+  useEffect(() => {
+    if (!user) return;
+    if (user.countryCode) {
+      if (NON_SWITCHING_ROLES.includes(user.role)) {
+        if (country !== user.countryCode) {
+          setCountryState(user.countryCode as RegionCode);
+          localStorage.setItem('xtreme_country', user.countryCode);
+          queryClient.invalidateQueries();
+        }
+      } else {
+        const currentSaved = localStorage.getItem('xtreme_country');
+        if (!currentSaved) {
+          setCountryState(user.countryCode as RegionCode);
+          localStorage.setItem('xtreme_country', user.countryCode);
+        }
+      }
+    }
+  }, [user, country]);
 
   const [agentMode, setAgentModeState] = useState<AgentPresenceMode>(() => {
     const saved = localStorage.getItem('xtreme_agent_mode') as AgentPresenceMode;

@@ -180,18 +180,19 @@ export const jobController = {
 
       // 1. Auto-resolve or create Customer if nested details provided
       let customerId = data.customerId;
-      const phone = data.customer?.phone || data.recipientPhone;
+      const phone = data.customer?.phone || data.customerPhone || data.recipientPhone || data.phone;
+      const name = data.customer?.name || data.customer?.fullName || data.customerName || data.recipientName || data.name;
       if (!customerId && phone) {
-        const cleanPhone = phone.trim();
+        const cleanPhone = String(phone).trim();
         let cust = await prisma.customer.findFirst({
           where: { phone: cleanPhone, countryCode: country },
         });
         if (!cust) {
           cust = await prisma.customer.create({
             data: {
-              fullName: data.customer?.name || data.recipientName || 'Valued Customer',
+              fullName: name || 'Valued Customer',
               phone: cleanPhone,
-              email: data.customer?.email,
+              email: data.customer?.email || data.email,
               countryCode: country,
             },
           });
@@ -232,6 +233,25 @@ export const jobController = {
       // 3. Auto-resolve or create Vehicle
       let vehicleId = data.vehicleId;
       if (!vehicleId) {
+        const rawMakeModel = (data.vehicle?.makeModel || data.vehicleMakeModel || `${data.vehicle?.make || ''} ${data.vehicle?.model || ''}`).trim();
+        let year = Number(data.vehicle?.year);
+        let make = data.vehicle?.make;
+        let model = data.vehicle?.model;
+
+        if (rawMakeModel && (!make || !model)) {
+          const parts = rawMakeModel.split(/\s+/);
+          const parsedYear = parseInt(parts[0], 10);
+          if (!isNaN(parsedYear) && parsedYear >= 1970 && parsedYear <= 2035) {
+            year = parsedYear;
+            make = parts[1] || 'Standard';
+            model = parts.slice(2).join(' ') || 'Vehicle';
+          } else {
+            make = parts[0] || 'Standard';
+            model = parts.slice(1).join(' ') || 'Vehicle';
+          }
+        }
+
+        const tireSize = data.vehicle?.tireSize || data.tireSize || '225/65R17';
         const plate = data.vehicle?.licensePlate?.trim();
         let veh = plate
           ? await prisma.vehicle.findFirst({
@@ -244,11 +264,11 @@ export const jobController = {
               customerId: customerId || undefined,
               fleetId: data.fleetId || undefined,
               countryCode: country,
-              year: Number(data.vehicle?.year) || new Date().getFullYear(),
-              make: data.vehicle?.make || 'Standard',
-              model: data.vehicle?.model || 'Vehicle',
+              year: year || new Date().getFullYear(),
+              make: make || 'Standard',
+              model: model || 'Vehicle',
               licensePlate: plate || undefined,
-              tireSize: data.vehicle?.tireSize || '225/65R17',
+              tireSize: tireSize,
             },
           });
         }
@@ -300,6 +320,9 @@ export const jobController = {
       // IT platform royalty fee: CA: 150 cents ($1.50 CAD), US: 100 cents ($1.00 USD), UK: 100 pence (£1.00 GBP)
       const itPlatformFeeCents = country === 'CA' ? 150 : 100;
       const serviceAddress = data.serviceAddress || data.locationAddress || 'Roadside Breakdown Location';
+      const repairerFeeCents = data.repairerFeeCents !== undefined 
+        ? Math.round(Number(data.repairerFeeCents)) 
+        : 4500;
 
       const job = await prisma.job.create({
         data: {
@@ -311,8 +334,8 @@ export const jobController = {
           fleetId: data.fleetId,
           createdById: creatorId,
           serviceAddress,
-          recipientName: data.recipientName || data.customer?.name,
-          recipientPhone: data.recipientPhone || data.customer?.phone,
+          recipientName: data.recipientName || data.customer?.name || data.customer?.fullName || data.customerName || name,
+          recipientPhone: data.recipientPhone || data.customer?.phone || data.customerPhone || phone,
           problemNotes: data.problemNotes || data.notes,
           urgency: data.urgency || 'STANDARD',
           source: data.source || 'DIRECT_CALL',
@@ -323,6 +346,7 @@ export const jobController = {
           taxAmountCents,
           totalCents,
           itPlatformFeeCents,
+          repairerFeeCents,
           paymentMethod: data.paymentMethod,
           paymentStatus: 'UNPAID',
           status: data.source === 'LANDING_PAGE_SELF_BOOK' ? 'UNVERIFIED_PUBLIC' : 'PENDING',
@@ -372,6 +396,9 @@ export const jobController = {
           return sendError(res, 'Payment amount or cash collected on scene is required to complete this job', 400);
         }
         updateData.completedAt = new Date();
+        if (!job.repairerFeeCents || job.repairerFeeCents <= 0) {
+          updateData.repairerFeeCents = 4500;
+        }
         if (effectiveCashCents > 0) {
           updateData.paymentMethod = 'CASH';
           updateData.cashCollectedCents = effectiveCashCents;

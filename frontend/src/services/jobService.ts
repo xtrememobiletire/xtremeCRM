@@ -38,8 +38,10 @@ export interface JobItem {
   } | null;
   driver?: {
     id: string;
-    firstName: string;
-    lastName: string;
+    fullName?: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
   } | null;
   assignedDriver?: {
     id: string;

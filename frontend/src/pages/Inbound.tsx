@@ -114,6 +114,8 @@ export default function Inbound() {
       await jobService.createJob({
         customerName: callerName || 'Roadside Motorist',
         customerPhone: callerPhone,
+        recipientName: callerName || 'Roadside Motorist',
+        recipientPhone: callerPhone,
         serviceAddress,
         notes,
         urgency,
@@ -121,6 +123,8 @@ export default function Inbound() {
         source: leadSource,
         makeUserAccount: isProvisionAccount,
         services: [selectedService],
+        vehicleMakeModel,
+        tireSize,
         vehicle: {
           makeModel: vehicleMakeModel,
           tireSize,
