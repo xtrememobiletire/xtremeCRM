@@ -15,13 +15,18 @@ import {
   Wrench, 
   XCircle, 
   Share2, 
-  Layers
+  Layers,
+  UploadCloud
 } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Modal from '../components/ui/Modal';
+import LeadCommandCenter from '../components/leads/LeadCommandCenter';
+import UploadSpreadsheetModal from '../components/leads/UploadSpreadsheetModal';
+import ConvertFleetModal from '../components/leads/ConvertFleetModal';
+import DispositionModal from '../components/leads/DispositionModal';
+import TrialServiceModal from '../components/leads/TrialServiceModal';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../context/AuthContext';
-import { useSocket } from '../context/SocketContext';
 import { 
   leadService, 
   type Lead, 
@@ -35,7 +40,6 @@ type LeadPoolTab = 'va' | 'callbacks' | 'dispatcher' | 'admin' | 'disqualified';
 export default function Leads() {
   const { country } = useTenant();
   const { user } = useAuth();
-  const { dialOutbound } = useSocket();
   const queryClient = useQueryClient();
 
   const isVa = user?.role === 'VIRTUAL_ASSISTANT';
@@ -56,22 +60,9 @@ export default function Leads() {
 
   // Modals & form states
   const [selectedDispositionLead, setSelectedDispositionLead] = useState<Lead | null>(null);
-  const [selectedDisposition, setSelectedDisposition] = useState('');
-  const [dispositionReason, setDispositionReason] = useState<DisqualificationReason>('NOT_INTERESTED');
-  const [dispositionNotes, setDispositionNotes] = useState('');
-  const [callbackDate, setCallbackDate] = useState('');
-  const [callbackDay, setCallbackDay] = useState('');
-  const [callbackTime, setCallbackTime] = useState('');
 
   // Test service booking modal state
   const [testServiceLead, setTestServiceLead] = useState<Lead | null>(null);
-  const [testServiceForm, setTestServiceForm] = useState({
-    unitNumber: '',
-    tireSizes: '',
-    location: '',
-    description: '',
-    scheduledDate: '',
-  });
 
   // Disqualification modal state
   const [disqualifyingLead, setDisqualifyingLead] = useState<Lead | null>(null);
@@ -80,10 +71,6 @@ export default function Leads() {
 
   // Fleet conversion modal state
   const [convertingLead, setConvertingLead] = useState<Lead | null>(null);
-  const [convertForm, setConvertForm] = useState({
-    customFleetCode: '',
-    discountPercent: 0,
-  });
 
   // Auto-dialer toggle
   const [autoDialEnabled, setAutoDialEnabled] = useState(false);
@@ -92,6 +79,7 @@ export default function Leads() {
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState<string>('');
   const [isPushModalOpen, setIsPushModalOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   // Manual push form
   const [formData, setFormData] = useState({
@@ -188,11 +176,6 @@ export default function Leads() {
     onSuccess: async () => {
       toast.success('Call outcome recorded! 5-cap slot auto-replenished via pg-boss.');
       setSelectedDispositionLead(null);
-      setSelectedDisposition('');
-      setDispositionNotes('');
-      setCallbackDate('');
-      setCallbackDay('');
-      setCallbackTime('');
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
 
@@ -247,7 +230,6 @@ export default function Leads() {
     onSuccess: () => {
       toast.success('Trial service work order created! Dispatched for feasibility verification.');
       setTestServiceLead(null);
-      setTestServiceForm({ unitNumber: '', tireSizes: '', location: '', description: '', scheduledDate: '' });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
     },
@@ -311,7 +293,13 @@ export default function Leads() {
   });
 
   const handleCallLead = (lead: Lead) => {
-    dialOutbound(lead.phone, `${lead.companyName} (${lead.contactPerson})`, lead.id);
+    const cleanPhone = lead.phone?.replace(/[^0-9+]/g, '') || lead.phone;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(cleanPhone);
+      toast.success(`Copied ${cleanPhone} to clipboard`);
+    }
+    window.open(`tel:${cleanPhone}`, '_self');
+    setSelectedDispositionLead(lead);
   };
 
   const handleWhatsAppChat = (lead: Lead) => {
@@ -391,6 +379,16 @@ export default function Leads() {
 
             <button
               type="button"
+              onClick={() => setIsUploadModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+              title="Upload leads spreadsheet (.xlsx, .xls, .csv)"
+            >
+              <UploadCloud size={14} className="text-slate-600" />
+              <span>Upload Spreadsheet</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setIsPushModalOpen(true)}
               className="btn-primary cursor-pointer flex items-center gap-1.5 text-xs py-1.5"
             >
@@ -399,6 +397,15 @@ export default function Leads() {
             </button>
           </div>
         }
+      />
+
+      {/* Real-time Command Center for Admin / GM */}
+      <LeadCommandCenter
+        country={country}
+        isAdminOrGm={isAdminOrGm}
+        onSelectTab={setActiveTab}
+        onStartDistribution={() => distributeMutation.mutate()}
+        onOpenUpload={() => setIsUploadModalOpen(true)}
       />
 
       {/* Role-Based Lead Pool Navigation Tabs */}
@@ -691,34 +698,21 @@ export default function Leads() {
                           {/* Log Outcome / Disposition */}
                           <button
                             type="button"
-                            onClick={() => {
-                              setSelectedDispositionLead(lead);
-                              setSelectedDisposition(lead.disposition || '');
-                              setDispositionNotes(lead.notes || '');
-                            }}
+                            onClick={() => setSelectedDispositionLead(lead)}
                             className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
                             title="Log Call Outcome (Triggers Replenishment)"
                           >
                             <ClipboardCheck size={13} />
                           </button>
 
-                          {/* Dispatcher Actions */}
-                          {(activeTab === 'dispatcher' || isDispatcher || isAdminOrGm) && !isConverted && !isDisqualified && (
+                          {/* Admin / GM Feasibility Trial Action */}
+                          {isAdminOrGm && !isConverted && !isDisqualified && (
                             <>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setTestServiceLead(lead);
-                                  setTestServiceForm({
-                                    unitNumber: '',
-                                    tireSizes: lead.commonTireSizes || '',
-                                    location: lead.address || '',
-                                    description: '',
-                                    scheduledDate: '',
-                                  });
-                                }}
+                                onClick={() => setTestServiceLead(lead)}
                                 className="px-2 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] transition cursor-pointer flex items-center gap-1"
-                                title="Book Trial Service Work Order"
+                                title="Book Feasibility Trial Service (Admin / GM Only)"
                               >
                                 <Wrench size={11} />
                                 <span>Trial Job</span>
@@ -739,13 +733,7 @@ export default function Leads() {
                           {isAdminOrGm && !isConverted && !isDisqualified && (
                             <button
                               type="button"
-                              onClick={() => {
-                                setConvertingLead(lead);
-                                setConvertForm({
-                                  customFleetCode: `XMT-${Math.floor(1000 + Math.random() * 9000)}`,
-                                  discountPercent: 0,
-                                });
-                              }}
+                              onClick={() => setConvertingLead(lead)}
                               className="px-2 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[10px] transition cursor-pointer"
                               title="Convert to Active Contracted Fleet Account"
                             >
@@ -803,98 +791,19 @@ export default function Leads() {
         )}
       </div>
 
-      {/* Trial Service Booking Modal */}
-      {testServiceLead && (
-        <Modal
-          isOpen={!!testServiceLead}
-          onClose={() => setTestServiceLead(null)}
-          title={`Book Feasibility Trial Service — ${testServiceLead.companyName}`}
-          maxWidth="max-w-md"
-        >
-          <div className="space-y-3.5 text-xs">
-            <p className="text-slate-600">
-              Create an operational roadside work order to verify response time and service compatibility before formal B2B contract execution.
-            </p>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Unit / Fleet Vehicle #</label>
-              <input
-                type="text"
-                placeholder="e.g. Unit #104 (Freightliner Cascadia)"
-                value={testServiceForm.unitNumber}
-                onChange={(e) => setTestServiceForm({ ...testServiceForm, unitNumber: e.target.value })}
-                className="input-field"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Tire Size Specification</label>
-              <input
-                type="text"
-                placeholder="e.g. 11R22.5 or 295/75R22.5"
-                value={testServiceForm.tireSizes}
-                onChange={(e) => setTestServiceForm({ ...testServiceForm, tireSizes: e.target.value })}
-                className="input-field"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Depot / Breakdown Location</label>
-              <input
-                type="text"
-                placeholder="e.g. 401 & Dixie Rd or Fleet Depot"
-                value={testServiceForm.location}
-                onChange={(e) => setTestServiceForm({ ...testServiceForm, location: e.target.value })}
-                className="input-field"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Appointment / Trial Date</label>
-              <input
-                type="datetime-local"
-                value={testServiceForm.scheduledDate}
-                onChange={(e) => setTestServiceForm({ ...testServiceForm, scheduledDate: e.target.value })}
-                className="input-field"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Dispatcher Work Order Notes</label>
-              <textarea
-                rows={2}
-                placeholder="Service trial instructions for technician..."
-                value={testServiceForm.description}
-                onChange={(e) => setTestServiceForm({ ...testServiceForm, description: e.target.value })}
-                className="input-field resize-none"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setTestServiceLead(null)}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={createTestServiceMutation.isPending}
-                onClick={() => {
-                  createTestServiceMutation.mutate({
-                    id: testServiceLead.id,
-                    data: testServiceForm,
-                  });
-                }}
-                className="btn-primary"
-              >
-                {createTestServiceMutation.isPending ? 'Booking...' : 'Confirm Trial Dispatch'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* Trial Service Booking Modal (Admin & GM Exclusive) */}
+      <TrialServiceModal
+        lead={testServiceLead}
+        isOpen={!!testServiceLead}
+        onClose={() => setTestServiceLead(null)}
+        onSubmit={(payload) => {
+          createTestServiceMutation.mutate({
+            id: payload.id,
+            data: payload.data,
+          });
+        }}
+        isPending={createTestServiceMutation.isPending}
+      />
 
       {/* Disqualification Modal */}
       {disqualifyingLead && (
@@ -962,130 +871,21 @@ export default function Leads() {
       )}
 
       {/* Fleet Account Conversion Modal */}
-      {convertingLead && (
-        <Modal
-          isOpen={!!convertingLead}
-          onClose={() => setConvertingLead(null)}
-          title={`Convert Lead to Active Fleet — ${convertingLead.companyName}`}
-          maxWidth="max-w-2xl"
-        >
-          <div className="space-y-4 text-xs">
-            <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-emerald-950 text-sm">{convertingLead.companyName}</span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-200/60 text-emerald-900 font-bold text-[10px]">
-                  100% Excel Data Preservation
-                </span>
-              </div>
-              <p className="text-emerald-800 text-[11px]">
-                Converting prospect to commercial fleet account. All 10 attributes from database sample are preserved in the Fleet record.
-              </p>
-            </div>
-
-            {/* 10 Captured Excel Attributes Grid */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Preserved Prospect Details
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
-                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Company</div>
-                  <div className="font-bold text-slate-800 truncate">{convertingLead.companyName}</div>
-                </div>
-                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
-                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Fleet Manager</div>
-                  <div className="font-bold text-slate-800 truncate">{convertingLead.fleetManager || convertingLead.contactPerson}</div>
-                </div>
-                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
-                  <div className="text-[10px] text-slate-400 font-semibold uppercase">CEO / Owner</div>
-                  <div className="font-bold text-slate-800 truncate">{convertingLead.ceoOwnerName || '—'}</div>
-                </div>
-                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
-                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Phone</div>
-                  <div className="font-bold text-slate-800 font-mono truncate">{convertingLead.phone}</div>
-                </div>
-                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
-                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Alt Phone</div>
-                  <div className="font-bold text-slate-800 font-mono truncate">{convertingLead.altPhone || '—'}</div>
-                </div>
-                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
-                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Units (NOU)</div>
-                  <div className="font-bold text-slate-800">{convertingLead.numberOfUnits ? `${convertingLead.numberOfUnits} Units` : '—'}</div>
-                </div>
-                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
-                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Official Email</div>
-                  <div className="font-bold text-slate-800 truncate">{convertingLead.email || '—'}</div>
-                </div>
-                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
-                  <div className="text-[10px] text-slate-400 font-semibold uppercase">POA Email</div>
-                  <div className="font-bold text-slate-800 truncate">{convertingLead.poaEmail || '—'}</div>
-                </div>
-                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
-                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Website</div>
-                  <div className="font-bold text-slate-800 truncate">{convertingLead.website || '—'}</div>
-                </div>
-              </div>
-              <div className="p-2 bg-white rounded-lg border border-slate-200/80">
-                <div className="text-[10px] text-slate-400 font-semibold uppercase">Depot Address</div>
-                <div className="font-medium text-slate-700 truncate">{convertingLead.address || '—'}</div>
-              </div>
-            </div>
-
-            {/* Editable Contract Terms */}
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Custom Fleet Code *</label>
-                <input
-                  type="text"
-                  value={convertForm.customFleetCode}
-                  onChange={(e) => setConvertForm({ ...convertForm, customFleetCode: e.target.value })}
-                  placeholder="e.g. XMT-4501"
-                  className="input-field font-mono font-bold"
-                />
-              </div>
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Contract Discount %</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={convertForm.discountPercent}
-                  onChange={(e) => setConvertForm({ ...convertForm, discountPercent: Number(e.target.value) })}
-                  placeholder="0"
-                  className="input-field font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setConvertingLead(null)}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={convertMutation.isPending}
-                onClick={() => {
-                  convertMutation.mutate({
-                    id: convertingLead.id,
-                    customFleetCode: convertForm.customFleetCode || undefined,
-                    extraData: {
-                      discountPercent: convertForm.discountPercent,
-                    },
-                  });
-                }}
-                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs cursor-pointer shadow-xs disabled:opacity-50 flex items-center gap-1.5"
-              >
-                <Truck size={13} />
-                <span>{convertMutation.isPending ? 'Converting...' : 'Execute Fleet Conversion'}</span>
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      <ConvertFleetModal
+        lead={convertingLead}
+        isOpen={!!convertingLead}
+        onClose={() => setConvertingLead(null)}
+        onConvert={(params) => {
+          convertMutation.mutate({
+            id: params.id,
+            customFleetCode: params.customFleetCode,
+            extraData: {
+              discountPercent: params.discountPercent,
+            },
+          });
+        }}
+        isPending={convertMutation.isPending}
+      />
 
       {/* Push Lead Modal */}
       <Modal
@@ -1243,162 +1043,27 @@ export default function Leads() {
       </Modal>
 
       {/* Call Disposition Modal */}
-      {selectedDispositionLead && (
-        <Modal
-          isOpen={!!selectedDispositionLead}
-          onClose={() => setSelectedDispositionLead(null)}
-          title={`Log Call Outcome — ${selectedDispositionLead.companyName}`}
-          maxWidth="max-w-md"
-        >
-          <div className="space-y-3.5 text-xs">
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-              <div className="font-bold text-sm text-slate-900">{selectedDispositionLead.companyName}</div>
-              <div className="text-slate-600 mt-0.5">
-                Contact: <span className="font-semibold">{selectedDispositionLead.contactPerson}</span> • <span className="font-mono">{selectedDispositionLead.phone}</span>
-              </div>
-            </div>
+      <DispositionModal
+        lead={selectedDispositionLead}
+        isOpen={!!selectedDispositionLead}
+        onClose={() => setSelectedDispositionLead(null)}
+        onSubmit={(payload) => {
+          dispositionMutation.mutate({
+            id: payload.id,
+            disposition: payload.disposition,
+            notes: payload.notes,
+            callbackData: payload.callbackData,
+          });
+        }}
+        isPending={dispositionMutation.isPending}
+      />
 
-            <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-2">
-                Call Outcome *
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: 'INTERESTED', label: 'Interested / Qualified', color: 'border-purple-500 bg-purple-50 text-purple-800' },
-                  { value: 'CALLBACK', label: 'Callback Requested', color: 'border-blue-500 bg-blue-50 text-blue-800' },
-                  { value: 'NOT_INTERESTED', label: 'Not Interested', color: 'border-slate-400 bg-slate-100 text-slate-700' },
-                  { value: 'WRONG_NUMBER', label: 'Wrong Number', color: 'border-rose-400 bg-rose-50 text-rose-700' },
-                  { value: 'NO_ANSWER', label: 'No Answer / Ringing', color: 'border-amber-400 bg-amber-50 text-amber-800' },
-                  { value: 'VOICEMAIL', label: 'Left Voicemail', color: 'border-purple-400 bg-purple-50 text-purple-800' },
-                  { value: 'CONVERTED', label: 'Direct Fleet Deal', color: 'border-emerald-500 bg-emerald-50 text-emerald-800' },
-                ].map((disp) => (
-                  <button
-                    key={disp.value}
-                    type="button"
-                    onClick={() => setSelectedDisposition(disp.value)}
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold text-left transition cursor-pointer ${
-                      selectedDisposition === disp.value
-                        ? `${disp.color} ring-2 ring-red-500 ring-offset-1`
-                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {disp.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* If Callback Requested */}
-            {selectedDisposition === 'CALLBACK' && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
-                <div className="font-bold text-blue-900">Schedule Follow-up Callback</div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="block font-semibold text-blue-800 mb-1">Date</label>
-                    <input
-                      type="date"
-                      value={callbackDate}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setCallbackDate(val);
-                        if (val) {
-                          const [y, m, d] = val.split('-').map(Number);
-                          const dt = new Date(y, m - 1, d);
-                          const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                          setCallbackDay(days[dt.getDay()]);
-                        }
-                      }}
-                      className="input-field"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-blue-800 mb-1">Day</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={callbackDay}
-                      placeholder="e.g. Wed"
-                      className="input-field bg-blue-100/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-blue-800 mb-1">Time</label>
-                    <input
-                      type="text"
-                      value={callbackTime}
-                      placeholder="11:00 AM"
-                      onChange={(e) => setCallbackTime(e.target.value)}
-                      className="input-field"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* If Disqualified outcome */}
-            {['NOT_INTERESTED', 'WRONG_NUMBER'].includes(selectedDisposition) && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-2">
-                <div className="font-bold text-rose-900">Disqualification Root Cause</div>
-                <select
-                  value={dispositionReason}
-                  onChange={(e) => setDispositionReason(e.target.value as DisqualificationReason)}
-                  className="input-field"
-                >
-                  <option value="NOT_INTERESTED">Not Interested</option>
-                  <option value="WRONG_NUMBER">Wrong Number / Inactive</option>
-                  <option value="OUT_OF_SERVICE_AREA">Out of Service Area</option>
-                  <option value="COMPETITOR_LOCKED">Locked into Competitor Contract</option>
-                  <option value="FLEET_TOO_SMALL">Fleet Too Small</option>
-                  <option value="OTHER">Other Reason</option>
-                </select>
-              </div>
-            )}
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Call Notes</label>
-              <textarea
-                rows={2}
-                placeholder="Call notes & prospect feedback..."
-                value={dispositionNotes}
-                onChange={(e) => setDispositionNotes(e.target.value)}
-                className="input-field resize-none"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setSelectedDispositionLead(null)}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!selectedDisposition || dispositionMutation.isPending}
-                onClick={() => {
-                  dispositionMutation.mutate({
-                    id: selectedDispositionLead.id,
-                    disposition: selectedDisposition,
-                    notes: dispositionNotes,
-                    callbackData: {
-                      callbackDate: callbackDate || undefined,
-                      callbackDay: callbackDay || undefined,
-                      callbackTime: callbackTime || undefined,
-                      disqualificationReason: ['NOT_INTERESTED', 'WRONG_NUMBER'].includes(selectedDisposition)
-                        ? dispositionReason
-                        : undefined,
-                    },
-                  });
-                }}
-                className="btn-primary"
-              >
-                {dispositionMutation.isPending ? 'Logging...' : 'Save & Claim Next Lead'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* Spreadsheet Upload Modal */}
+      <UploadSpreadsheetModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        defaultCountry={country}
+      />
     </div>
   );
 }

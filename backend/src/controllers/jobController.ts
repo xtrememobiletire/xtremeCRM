@@ -104,6 +104,14 @@ export const jobController = {
               },
             },
             serviceItems: true,
+            lead: {
+              select: {
+                id: true,
+                companyName: true,
+                contactPerson: true,
+                phone: true,
+              },
+            },
           },
         }),
         prisma.job.count({ where }),
@@ -388,13 +396,15 @@ export const jobController = {
         ? Math.round(Number(cashAmountCents)) 
         : (cashCollected !== undefined ? Math.round(Number(cashCollected) * 100) : 0);
 
+      const isTrialJob = Boolean(job.isTestService);
+
       const updateData: any = {
         status,
         updatedAt: new Date(),
       };
       if (urgency) updateData.urgency = urgency;
       if (status === 'COMPLETED') {
-        if (effectiveCashCents <= 0 && (!job.totalCents || job.totalCents <= 0)) {
+        if (!isTrialJob && effectiveCashCents <= 0 && (!job.totalCents || job.totalCents <= 0)) {
           return sendError(res, 'Payment amount or cash collected on scene is required to complete this job', 400);
         }
         updateData.completedAt = new Date();
@@ -406,6 +416,8 @@ export const jobController = {
             updateData.totalCents = effectiveCashCents;
             updateData.subtotalCents = effectiveCashCents;
           }
+        } else if (isTrialJob) {
+          updateData.paymentStatus = 'VERIFIED_PAID';
         }
       }
 
@@ -419,6 +431,23 @@ export const jobController = {
           serviceItems: true,
         },
       });
+
+      // Auto-advance prospective lead to ADMIN_APPROVAL if complimentary trial job completed
+      if (status === 'COMPLETED' && isTrialJob && job.leadId) {
+        try {
+          const updatedLead = await prisma.lead.update({
+            where: { id: job.leadId },
+            data: {
+              stage: 'ADMIN_APPROVAL',
+              status: 'CALLED',
+            },
+          });
+          sseManager.broadcast(`sse:leads:${updatedLead.countryCode}`, 'lead:updated', updatedLead);
+          sseManager.broadcast(`sse:leads:${updatedLead.countryCode}`, 'lead:stats_updated', { countryCode: updatedLead.countryCode });
+        } catch (leadErr) {
+          console.warn('Lead auto-advance to ADMIN_APPROVAL skipped:', leadErr);
+        }
+      }
 
       // VA Commission attribution on completed fleet jobs (PRD FR-2.1 / Rule 6.3)
       if (status === 'COMPLETED' && updated.fleetId) {

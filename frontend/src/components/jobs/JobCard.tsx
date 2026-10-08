@@ -20,7 +20,14 @@ export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps
   return (
     <div className="card-surface p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <span className="font-mono font-bold text-red-600 text-xs">{job.jobNumber}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="font-mono font-bold text-red-600 text-xs">{job.jobNumber}</span>
+          {(job as any).isTestService && (
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+              TRIAL RUN
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1.5">
           <StatusBadge status={job.urgency} />
           <StatusBadge status={job.status} />
@@ -28,10 +35,19 @@ export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps
       </div>
 
       <div className="space-y-1">
-        <h4 className="font-bold text-slate-900 text-sm">{job.customer?.fullName || job.customer?.name || job.recipientName || 'Customer'}</h4>
+        <div className="flex items-center gap-1.5">
+          <h4 className="font-bold text-slate-900 text-sm">
+            {(job as any).lead?.companyName || job.customer?.fullName || job.customer?.name || job.recipientName || 'Customer'}
+          </h4>
+          {(job as any).isTestService && (
+            <span className="px-1 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+              Prospect
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
           <Phone className="w-3.5 h-3.5 text-slate-400" />
-          <span>{job.customer?.phone || job.recipientPhone}</span>
+          <span>{(job as any).lead?.phone || job.customer?.phone || job.recipientPhone}</span>
         </div>
       </div>
 
@@ -57,7 +73,11 @@ export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps
         <div>
           <span className="text-[10px] text-slate-400 uppercase font-semibold">Total Price</span>
           <div className="text-base font-mono font-bold text-slate-900">
-            {formatCurrency(centsToDollars(job.totalAmount), currencySymbol)}
+            {(job as any).isTestService && (centsToDollars(job.totalAmount) === 0 || Number(job.totalAmount) === 0) ? (
+              <span className="text-emerald-700 text-xs font-bold">$0.00 (Complimentary)</span>
+            ) : (
+              formatCurrency(centsToDollars(job.totalAmount), currencySymbol)
+            )}
           </div>
         </div>
 

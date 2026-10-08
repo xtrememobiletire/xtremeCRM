@@ -26,17 +26,15 @@ const TechnicianPortal = lazy(() => import('./pages/TechnicianPortal'));
 const History = lazy(() => import('./pages/History'));
 const Leads = lazy(() => import('./pages/Leads'));
 const Inbound = lazy(() => import('./pages/Inbound'));
-const VaUpload = lazy(() => import('./pages/VaUpload'));
-const DeveloperProfit = lazy(() => import('./pages/DeveloperProfit'));
 
 function getRoleHome(role?: string) {
   switch (role) {
     case 'DRIVER':
       return '/technician';
     case 'CALL_AGENT':
-      return '/inbound';
+      return '/leads';
     case 'VIRTUAL_ASSISTANT':
-      return '/va-upload';
+      return '/leads';
     case 'FLEET_MANAGER':
       return '/fleet-dashboard';
     case 'CUSTOMER_MEMBER':
@@ -62,6 +60,17 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+function RoleRoute({ allowedRoles, children }: { allowedRoles: string[]; children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <PageLoader />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === 'ADMIN' || user.role === 'GENERAL_MANAGER') return <>{children}</>;
+  if (!allowedRoles.includes(user.role)) {
+    return <Navigate to={getRoleHome(user.role)} replace />;
+  }
   return <>{children}</>;
 }
 
@@ -129,9 +138,11 @@ function AppRoutes() {
           path="/fleet-dashboard"
           element={
             <ProtectedRoute>
-              <Suspense fallback={<PageLoader />}>
-                <FleetDashboard />
-              </Suspense>
+              <RoleRoute allowedRoles={['FLEET_MANAGER']}>
+                <Suspense fallback={<PageLoader />}>
+                  <FleetDashboard />
+                </Suspense>
+              </RoleRoute>
             </ProtectedRoute>
           }
         />
@@ -144,21 +155,19 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/jobs" element={<Jobs />} />
-          <Route path="/dispatch" element={<Dispatch />} />
-          <Route path="/customers" element={<Customers />} />
-          <Route path="/fleets" element={<Fleets />} />
-          <Route path="/vehicles" element={<Vehicles />} />
-          <Route path="/accounting" element={<Accounting />} />
-          <Route path="/member-dashboard" element={<MemberDashboard />} />
-          <Route path="/technician" element={<TechnicianPortal />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/inbound" element={<Inbound />} />
-          <Route path="/outbound" element={<Leads />} />
-          <Route path="/va-upload" element={<VaUpload />} />
-          <Route path="/developer-profit" element={<DeveloperProfit />} />
-          <Route path="/leads" element={<Navigate to="/outbound" replace />} />
+          <Route path="/dashboard" element={<RoleRoute allowedRoles={['DISPATCHER', 'ACCOUNTANT']}><Dashboard /></RoleRoute>} />
+          <Route path="/leads" element={<RoleRoute allowedRoles={['VIRTUAL_ASSISTANT', 'CALL_AGENT', 'DISPATCHER']}><Leads /></RoleRoute>} />
+          <Route path="/outbound" element={<Navigate to="/leads" replace />} />
+          <Route path="/jobs" element={<RoleRoute allowedRoles={['DISPATCHER']}><Jobs /></RoleRoute>} />
+          <Route path="/dispatch" element={<RoleRoute allowedRoles={['DISPATCHER']}><Dispatch /></RoleRoute>} />
+          <Route path="/customers" element={<RoleRoute allowedRoles={['DISPATCHER']}><Customers /></RoleRoute>} />
+          <Route path="/fleets" element={<RoleRoute allowedRoles={['DISPATCHER']}><Fleets /></RoleRoute>} />
+          <Route path="/vehicles" element={<RoleRoute allowedRoles={['DISPATCHER']}><Vehicles /></RoleRoute>} />
+          <Route path="/accounting" element={<RoleRoute allowedRoles={['ACCOUNTANT']}><Accounting /></RoleRoute>} />
+          <Route path="/inbound" element={<RoleRoute allowedRoles={['CALL_AGENT', 'DISPATCHER']}><Inbound /></RoleRoute>} />
+          <Route path="/technician" element={<RoleRoute allowedRoles={['DRIVER']}><TechnicianPortal /></RoleRoute>} />
+          <Route path="/history" element={<RoleRoute allowedRoles={['DRIVER']}><History /></RoleRoute>} />
+          <Route path="/member-dashboard" element={<RoleRoute allowedRoles={['CUSTOMER_MEMBER']}><MemberDashboard /></RoleRoute>} />
         </Route>
 
         <Route path="*" element={<Navigate to={user ? getRoleHome(user.role) : "/"} replace />} />

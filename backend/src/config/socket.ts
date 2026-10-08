@@ -8,7 +8,17 @@ export const initSocket = (httpServer: HttpServer): SocketIOServer => {
   io = new SocketIOServer(httpServer, {
     cors: {
       origin: (origin: any, callback: any) => {
-        callback(null, true);
+        if (
+          !origin ||
+          origin.includes('localhost') ||
+          origin.includes('127.0.0.1') ||
+          origin.endsWith('.vercel.app') ||
+          (config.FRONTEND_URL && config.FRONTEND_URL.includes(origin))
+        ) {
+          callback(null, true);
+        } else {
+          callback(new Error('Blocked by CORS'));
+        }
       },
       credentials: true,
     },

@@ -487,6 +487,18 @@ export default function FleetDashboard() {
 
         {/* MAIN BODY AREA */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+          {fleet?.status === 'PENDING' && (
+            <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 flex items-start gap-3 shadow-xs">
+              <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-bold text-amber-950">Fleet Account Pending Approval</h4>
+                <p className="text-xs text-amber-800 mt-0.5">
+                  Your corporate fleet onboarding is currently under review by our operations management team. You can add vehicles and review services, which will be dispatched upon account verification.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* 1. DASHBOARD TAB - EXACT LAYOUT AS SHOWN IN SCREENSHOT */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">

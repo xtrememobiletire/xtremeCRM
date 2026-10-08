@@ -169,7 +169,11 @@ export function useSSE() {
     };
 
     const handleBulkLeadsChanged = () => {
-      scheduleInvalidation(['leads', 'agent-queue', 'dashboard-stats']);
+      scheduleInvalidation(['lead-stats', 'leads', 'agent-queue', 'dashboard-stats']);
+    };
+
+    const handleLeadStatsUpdated = () => {
+      scheduleInvalidation(['lead-stats', 'leads', 'agent-queue', 'dashboard-stats']);
     };
 
     // Job Event Handlers
@@ -212,6 +216,7 @@ export function useSSE() {
     es.addEventListener('lead:created', handleLeadCreated);
     es.addEventListener('lead:replenished', handleLeadReplenished);
     es.addEventListener('lead:uploaded', handleBulkLeadsChanged);
+    es.addEventListener('lead:stats_updated', handleLeadStatsUpdated);
     es.addEventListener('leads:distributed', handleBulkLeadsChanged);
     es.addEventListener('campaign:batch_started', handleBulkLeadsChanged);
     es.addEventListener('batch:activated', handleBulkLeadsChanged);

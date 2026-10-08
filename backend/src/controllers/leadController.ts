@@ -14,6 +14,115 @@ import { sseManager } from '../services/sseManager.js';
 
 export const leadController = {
   /**
+   * Get Real-time Lead Stats & VA Workload for Command Center (Admin / GM)
+   */
+  async getLeadStats(req: Request, res: Response) {
+    try {
+      const countryCode = (req.query.countryCode as any) || (req as any).countryCode;
+      const whereBase: any = countryCode ? { countryCode } : {};
+
+      const [
+        total,
+        unassigned,
+        inProgress,
+        dispatcherReview,
+        testService,
+        adminApproval,
+        converted,
+        disqualified,
+        vaWorkloads,
+      ] = await Promise.all([
+        prisma.lead.count({ where: whereBase }),
+        prisma.lead.count({
+          where: {
+            ...whereBase,
+            assignedAgentId: null,
+            stage: 'VA_OUTREACH',
+            status: 'NEW',
+          },
+        }),
+        prisma.lead.count({
+          where: {
+            ...whereBase,
+            stage: { in: ['VA_OUTREACH', 'AGENT_CALLBACK'] },
+            assignedAgentId: { not: null },
+          },
+        }),
+        prisma.lead.count({
+          where: {
+            ...whereBase,
+            stage: 'DISPATCHER_REVIEW',
+          },
+        }),
+        prisma.lead.count({
+          where: {
+            ...whereBase,
+            stage: 'TEST_SERVICE',
+          },
+        }),
+        prisma.lead.count({
+          where: {
+            ...whereBase,
+            stage: 'ADMIN_APPROVAL',
+          },
+        }),
+        prisma.lead.count({
+          where: {
+            ...whereBase,
+            status: 'CONVERTED',
+          },
+        }),
+        prisma.lead.count({
+          where: {
+            ...whereBase,
+            status: 'DISQUALIFIED',
+          },
+        }),
+        prisma.user.findMany({
+          where: {
+            role: { in: ['VIRTUAL_ASSISTANT', 'CALL_AGENT'] },
+            deletedAt: null,
+            ...(countryCode ? { countryCode } : {}),
+          },
+          select: {
+            id: true,
+            fullName: true,
+            role: true,
+            countryCode: true,
+            assignedLeads: {
+              where: {
+                stage: { in: ['VA_OUTREACH', 'AGENT_CALLBACK'] },
+                status: { in: ['NEW', 'CALLED'] },
+              },
+              select: { id: true },
+            },
+          },
+        }),
+      ]);
+
+      return sendSuccess(res, {
+        total,
+        unassigned,
+        inProgress,
+        dispatcherReview,
+        testService,
+        adminApproval,
+        converted,
+        disqualified,
+        vaWorkloads: vaWorkloads.map((va) => ({
+          id: va.id,
+          fullName: va.fullName,
+          role: va.role,
+          countryCode: va.countryCode,
+          activeCount: va.assignedLeads.length,
+        })),
+      }, 'Lead stats retrieved successfully');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
    * List Outbound Leads with pool-based filtering and pagination
    * Pools: 'va' (5-cap outreach), 'callbacks' (agent callbacks), 'dispatcher' (review/trial), 'admin' (all), 'disqualified'
    */
@@ -232,6 +341,7 @@ export const leadController = {
         lead,
         isDuplicate: !!existing,
       });
+      sseManager.broadcast(`sse:leads:${countryCode}`, 'lead:stats_updated', { countryCode });
 
       try {
         const io = getIO();
@@ -291,6 +401,7 @@ export const leadController = {
       });
 
       sseManager.broadcast(`sse:leads:${updated.countryCode}`, 'lead:updated', updated);
+      sseManager.broadcast(`sse:leads:${updated.countryCode}`, 'lead:stats_updated', { countryCode: updated.countryCode });
 
       try {
         const io = getIO();
@@ -347,6 +458,7 @@ export const leadController = {
       });
 
       sseManager.broadcast(`sse:leads:${updated.countryCode}`, 'lead:updated', updated);
+      sseManager.broadcast(`sse:leads:${updated.countryCode}`, 'lead:stats_updated', { countryCode: updated.countryCode });
 
       try {
         const io = getIO();
@@ -397,6 +509,7 @@ export const leadController = {
       }
 
       sseManager.broadcast(`sse:leads:${updated.countryCode}`, 'lead:updated', updated);
+      sseManager.broadcast(`sse:leads:${updated.countryCode}`, 'lead:stats_updated', { countryCode: updated.countryCode });
 
       try {
         const io = getIO();
@@ -437,6 +550,7 @@ export const leadController = {
       });
 
       sseManager.broadcast(`sse:leads:${updated.countryCode}`, 'lead:updated', updated);
+      sseManager.broadcast(`sse:leads:${updated.countryCode}`, 'lead:stats_updated', { countryCode: updated.countryCode });
 
       try {
         const io = getIO();
@@ -543,7 +657,7 @@ export const leadController = {
           discountPercent: req.body.discountPercent ? Number(req.body.discountPercent) : 0,
           contractSignedAt: new Date(),
           convertedFromLeadId: lead.id,
-          virtualAssistantId: !lead.isCompanySourced && lead.uploadedById ? lead.uploadedById : undefined,
+          virtualAssistantId: lead.lastCalledByVaId || lead.assignedAgentId || (!lead.isCompanySourced && lead.uploadedById ? lead.uploadedById : undefined),
         },
       });
 
@@ -558,6 +672,7 @@ export const leadController = {
       });
 
       sseManager.broadcast(`sse:leads:${lead.countryCode}`, 'lead:updated', updatedLead);
+      sseManager.broadcast(`sse:leads:${lead.countryCode}`, 'lead:stats_updated', { countryCode: lead.countryCode });
 
       return sendSuccess(res, { fleet, lead: updatedLead }, 'Lead successfully converted to Fleet Account');
     } catch (err: any) {
@@ -572,13 +687,14 @@ export const leadController = {
     try {
       const id = String(req.params.id);
       const user = (req as any).user;
-      const { driverId, description, scheduledDate, tireSizes, unitNumber, location } = req.body;
+      const { driverId, description, scheduledDate, tireSizes, unitNumber, location, priceDollars } = req.body;
 
       const lead = await prisma.lead.findUnique({ where: { id } });
       if (!lead) return sendError(res, 'Lead not found', 404);
 
       const country = lead.countryCode;
-      const jobCode = `TRIAL-${country}-${Math.floor(10000 + Math.random() * 90000)}`;
+      const jobCode = `TRIAL-${country}-${Date.now().toString().slice(-4)}${Math.floor(100 + Math.random() * 900)}`;
+      const priceCents = Math.round(Number(priceDollars || 0) * 100);
 
       // Resolve or provision vehicle for this test service
       const vehicle = await prisma.vehicle.create({
@@ -608,9 +724,9 @@ export const leadController = {
           problemNotes: description || `Trial/Test Service for Fleet Prospect: ${lead.companyName}. Unit: ${unitNumber || 'N/A'}. Tire: ${tireSizes || 'N/A'}`,
           appointmentDate: scheduledDate ? new Date(scheduledDate) : new Date(),
           status: driverId ? 'ASSIGNED' : 'PENDING',
-          paymentStatus: 'UNPAID',
-          subtotalCents: 0,
-          totalCents: 0,
+          paymentStatus: priceCents === 0 ? 'VERIFIED_PAID' : 'UNPAID',
+          subtotalCents: priceCents,
+          totalCents: priceCents,
           itPlatformFeeCents: country === 'CA' ? 150 : 100,
           repairerFeeCents: 0,
         },
@@ -632,6 +748,7 @@ export const leadController = {
       });
 
       sseManager.broadcast(`sse:leads:${country}`, 'lead:updated', updatedLead);
+      sseManager.broadcast(`sse:leads:${country}`, 'lead:stats_updated', { countryCode: country });
       sseManager.broadcast(`sse:jobs:${country}`, 'job:created', job);
 
       try {
@@ -747,6 +864,7 @@ export const leadController = {
         totalDistributed,
         vasCount: vas.length,
       });
+      sseManager.broadcast(`sse:leads:${countryCode}`, 'lead:stats_updated', { countryCode });
 
       try {
         const io = getIO();
@@ -972,6 +1090,7 @@ export const leadController = {
       sseManager.broadcast(`sse:leads:${targetCountry}`, 'lead:uploaded', {
         importedCount: result.count,
       });
+      sseManager.broadcast(`sse:leads:${targetCountry}`, 'lead:stats_updated', { countryCode: targetCountry });
 
       return sendSuccess(res, {
         importedCount: result.count,
@@ -1062,6 +1181,7 @@ export const leadController = {
         batchId,
         totalAssigned,
       });
+      sseManager.broadcast(`sse:leads:${countryCode}`, 'lead:stats_updated', { countryCode });
 
       try {
         const io = getIO();
@@ -1129,8 +1249,11 @@ export const leadController = {
       const currentCount = activeLeads.length;
       let newlyAssignedCount = 0;
 
-      // 3. Auto-replenish up to 5 cap
-      if (currentCount < MAX_ACTIVE) {
+      const userRole = (req as any).user?.role;
+      const isProspectiveAgent = ['VIRTUAL_ASSISTANT', 'CALL_AGENT'].includes(userRole);
+
+      // 3. Auto-replenish up to 5 cap (restricted to prospecting staff to prevent lead theft by Admin/GM)
+      if (isProspectiveAgent && currentCount < MAX_ACTIVE) {
         const slotsNeeded = MAX_ACTIVE - currentCount;
 
         const unassignedLeads = await prisma.lead.findMany({
@@ -1266,6 +1389,7 @@ export const leadController = {
 
       // Realtime notification via SSE & Socket.io
       sseManager.broadcast(`sse:leads:${updated.countryCode}`, 'lead:updated', updated);
+      sseManager.broadcast(`sse:leads:${updated.countryCode}`, 'lead:stats_updated', { countryCode: updated.countryCode });
 
       try {
         const io = getIO();

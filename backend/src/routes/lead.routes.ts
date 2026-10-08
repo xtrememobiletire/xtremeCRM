@@ -1,9 +1,17 @@
 import { Router } from 'express';
 import { leadController } from '../controllers/leadController.js';
 import { authenticate } from '../middleware/auth.js';
+import { authorize } from '../middleware/authorize.js';
 import { memoryUpload } from '../config/multer.js';
 
 const router = Router();
+
+/**
+ * @route   GET /api/leads/stats
+ * @desc    Get real-time pipeline count metrics & VA workloads (Admin / GM)
+ * @access  Private (Admin, General Manager)
+ */
+router.get('/stats', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.getLeadStats);
 
 /**
  * @route   POST /api/leads/upload
@@ -17,7 +25,7 @@ router.post('/upload', authenticate, memoryUpload.single('file'), leadController
  * @desc    Evenly distribute leads across VAs with 5-cap limit (Admin / GM)
  * @access  Private (Admin, General Manager)
  */
-router.post('/distribute', authenticate, leadController.distributeLeads);
+router.post('/distribute', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.distributeLeads);
 
 /**
  * @route   GET /api/leads/agent-queue
@@ -29,9 +37,9 @@ router.get('/agent-queue', authenticate, leadController.getAgentQueue);
 /**
  * @route   POST /api/leads/start-batch
  * @desc    Start campaign batch and assign 5 leads to active agents (Admin / GM)
- * @access  Private
+ * @access  Private (Admin, General Manager)
  */
-router.post('/start-batch', authenticate, leadController.startBatch);
+router.post('/start-batch', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.startBatch);
 
 /**
  * @route   GET /api/leads
@@ -85,16 +93,16 @@ router.post('/:id/disqualify', authenticate, leadController.disqualifyLead);
 /**
  * @route   POST /api/leads/:id/reactivate
  * @desc    Reactivate disqualified lead back to VA_OUTREACH pool
- * @access  Private
+ * @access  Private (Admin, GM)
  */
-router.post('/:id/reactivate', authenticate, leadController.reactivateLead);
+router.post('/:id/reactivate', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.reactivateLead);
 
 /**
  * @route   POST /api/leads/:id/test-service
  * @desc    Create trial / test service work order for prospective fleet lead
- * @access  Private (Dispatcher, Admin, GM)
+ * @access  Private (Admin, GM only)
  */
-router.post('/:id/test-service', authenticate, leadController.createTestServiceJob);
+router.post('/:id/test-service', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.createTestServiceJob);
 
 /**
  * @route   POST /api/leads/:id/transfer
@@ -106,8 +114,8 @@ router.post('/:id/transfer', authenticate, leadController.transferLeadToDm);
 /**
  * @route   POST /api/leads/:id/convert
  * @desc    Convert lead to Fleet Account (100% data preservation)
- * @access  Private
+ * @access  Private (Admin, GM)
  */
-router.post('/:id/convert', authenticate, leadController.convertToFleet);
+router.post('/:id/convert', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.convertToFleet);
 
 export default router;

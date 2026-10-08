@@ -107,18 +107,41 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
       <div className="space-y-4">
         {/* Trial Service Banner */}
         {job.isTestService && (
-          <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 flex items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold uppercase tracking-wider text-[10px] bg-purple-700 text-white px-2 py-0.5 rounded-full">
-                Trial Work Order
-              </span>
-              <span className="font-bold text-purple-900">
-                Prospective Fleet Feasibility Service
+          <div className="p-3.5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-300 space-y-2.5 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold uppercase tracking-wider text-[10px] bg-amber-600 text-white px-2 py-0.5 rounded-full shadow-2xs">
+                  TRIAL RUN
+                </span>
+                <span className="font-bold text-amber-950 text-sm">
+                  Prospective Fleet Trial Service
+                </span>
+              </div>
+              <span className="font-mono font-bold text-xs px-2.5 py-1 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                {centsToDollars(job.totalAmount) === 0 ? '$0.00 Complimentary Trial' : `Trial Fee: ${formatCurrency(centsToDollars(job.totalAmount), currencySymbol)}`}
               </span>
             </div>
-            <span className="text-[11px] text-purple-700 font-semibold">
-              Quality verification prior to B2B contract onboarding
-            </span>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-amber-200/80 text-slate-700">
+              <div>
+                <span className="text-amber-800/70 block text-[10px] uppercase font-bold">Prospect Company</span>
+                <span className="font-bold text-slate-900 text-xs">
+                  {job.lead?.companyName || job.recipientName || 'Prospective Fleet'}
+                </span>
+              </div>
+              <div>
+                <span className="text-amber-800/70 block text-[10px] uppercase font-bold">Lead Contact</span>
+                <span className="font-medium text-slate-800 text-xs">
+                  {job.lead?.contactPerson || 'Fleet Decision Maker'}
+                </span>
+              </div>
+              <div>
+                <span className="text-amber-800/70 block text-[10px] uppercase font-bold">Contact Phone</span>
+                <span className="font-mono text-slate-800 text-xs">
+                  {job.lead?.phone || job.recipientPhone || 'N/A'}
+                </span>
+              </div>
+            </div>
           </div>
         )}
 
@@ -227,9 +250,15 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
             )}
           </div>
           <div className="bg-slate-50/80 px-3.5 py-2.5 border-t border-slate-200 flex justify-between items-center">
-            <span className="text-xs font-bold text-slate-700 uppercase">Total Billed to Customer</span>
+            <span className="text-xs font-bold text-slate-700 uppercase">
+              {job.isTestService ? 'Trial Work Order Fee' : 'Total Billed to Customer'}
+            </span>
             <span className="text-base font-mono font-black text-slate-900">
-              {formatCurrency(centsToDollars(job.totalAmount), currencySymbol)}
+              {job.isTestService && (centsToDollars(job.totalAmount) === 0 || Number(job.totalAmount) === 0) ? (
+                <span className="text-emerald-700 font-bold">$0.00 (Complimentary)</span>
+              ) : (
+                formatCurrency(centsToDollars(job.totalAmount), currencySymbol)
+              )}
             </span>
           </div>
         </div>

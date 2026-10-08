@@ -52,16 +52,22 @@ export async function initQueueService(): Promise<PgBoss | null> {
             const slotsNeeded = Math.max(0, 5 - activeCount);
             if (slotsNeeded <= 0) return 0;
 
-            // Atomic selection with PostgreSQL row-level SKIP LOCKED
+            // Atomic selection with PostgreSQL row-level SKIP LOCKED (EXISTS subquery eliminates outer join)
             const leadsToClaim: Array<{ id: string }> = await tx.$queryRaw`
               SELECT l.id
               FROM leads l
-              LEFT JOIN batches b ON l.batch_id = b.id
               WHERE l.assigned_agent_id IS NULL
                 AND l.stage = 'VA_OUTREACH'::"LeadStage"
                 AND l.status = 'NEW'::"LeadStatus"
                 AND l.country_code = ${countryCode || 'CA'}::"CountryCode"
-                AND (b.scheduled_date IS NULL OR b.scheduled_date <= NOW() OR l.batch_id IS NULL)
+                AND (
+                  l.batch_id IS NULL
+                  OR EXISTS (
+                    SELECT 1 FROM batches b
+                    WHERE b.id = l.batch_id
+                      AND (b.scheduled_date IS NULL OR b.scheduled_date <= NOW())
+                  )
+                )
               ORDER BY l.priority DESC, l.created_at ASC
               LIMIT ${slotsNeeded}
               FOR UPDATE SKIP LOCKED

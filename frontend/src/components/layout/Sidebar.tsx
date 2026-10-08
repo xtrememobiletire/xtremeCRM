@@ -13,9 +13,7 @@ import {
   LogOut,
   History,
   PhoneIncoming,
-  PhoneOutgoing,
-  UploadCloud,
-  Shield
+  PhoneOutgoing
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,13 +23,12 @@ interface SidebarProps {
 }
 
 const baseNavItems = [
-  { icon: BarChart3, label: 'Dashboard', path: '/' },
-  { icon: PhoneOutgoing, label: 'Outbound', path: '/outbound' },
-  { icon: Wrench, label: 'Jobs', path: '/jobs' },
+  { icon: BarChart3, label: 'Dashboard', path: '/dashboard' },
+  { icon: PhoneOutgoing, label: 'Leads', path: '/leads' },
   { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
-  { icon: Users, label: 'Customers', path: '/customers' },
+  { icon: Wrench, label: 'Jobs', path: '/jobs' },
   { icon: Truck, label: 'Fleets', path: '/fleets' },
-  { icon: Car, label: 'Vehicles', path: '/vehicles' },
+  { icon: Users, label: 'Customers', path: '/customers' },
   { icon: DollarSign, label: 'Accounting', path: '/accounting' },
 ];
 
@@ -45,7 +42,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
   const isDispatcher = user?.role === 'DISPATCHER';
   const isAgent = user?.role === 'CALL_AGENT';
   const isVa = user?.role === 'VIRTUAL_ASSISTANT';
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER';
 
   const navItems = isFleetManager
     ? [{ icon: Truck, label: 'Fleet Portal', path: '/fleet-dashboard' }]
@@ -63,36 +59,21 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     : isDispatcher
     ? [
         { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
-        { icon: PhoneOutgoing, label: 'Outbound', path: '/outbound' },
+        { icon: PhoneOutgoing, label: 'Leads', path: '/leads' },
         { icon: Wrench, label: 'Jobs', path: '/jobs' },
         { icon: Truck, label: 'Fleets', path: '/fleets' },
         { icon: Users, label: 'Customers', path: '/customers' },
-        { icon: BarChart3, label: 'Dashboard', path: '/' },
       ]
     : isVa
     ? [
-        { icon: PhoneOutgoing, label: 'Outbound Queue', path: '/outbound' },
-        { icon: UploadCloud, label: 'Upload Leads', path: '/va-upload' },
+        { icon: PhoneOutgoing, label: 'Leads Queue', path: '/leads' },
       ]
     : isAgent
     ? [
+        { icon: PhoneOutgoing, label: 'Leads Queue', path: '/leads' },
         { icon: PhoneIncoming, label: 'Inbound', path: '/inbound' },
-        { icon: PhoneOutgoing, label: 'Outbound', path: '/outbound' },
       ]
-    : [
-        ...baseNavItems,
-        ...(isAdmin
-          ? [
-              { icon: UploadCloud, label: 'Upload Leads', path: '/va-upload' },
-              { icon: PhoneIncoming, label: 'Inbound Preview', path: '/inbound' },
-              { icon: BarChart3, label: 'Technician Preview', path: '/technician' },
-              { icon: History, label: 'History Preview', path: '/history' },
-              { icon: Truck, label: 'Fleet Preview', path: '/fleet-dashboard' },
-              { icon: Car, label: 'Member Preview', path: '/member-dashboard' },
-              { icon: Shield, label: 'Developer Profit', path: '/developer-profit' },
-            ]
-          : []),
-      ];
+    : baseNavItems;
 
   return (
     <>

@@ -44,20 +44,37 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono font-bold text-red-600 text-xs">{job.jobNumber}</span>
                   {(job as any).isTestService && (
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">
-                      Trial Lead
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+                      TRIAL RUN
                     </span>
                   )}
                 </div>
                 <div className="text-[11px] text-slate-400">{formatDate(job.createdAt)}</div>
               </td>
               <td className="table-td">
-                <div className="font-semibold text-slate-900 text-xs sm:text-sm">
-                  {job.customer?.fullName || job.customer?.name || job.recipientName || 'Walk-in'}
-                </div>
-                <div className="text-[11px] font-mono text-slate-500">
-                  {job.customer?.phone || job.recipientPhone || ''}
-                </div>
+                {(job as any).isTestService && (job as any).lead?.companyName ? (
+                  <div>
+                    <div className="font-semibold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
+                      <span>{(job as any).lead.companyName}</span>
+                      <span className="px-1 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                        Prospect
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-mono text-slate-500">
+                      {(job as any).lead.contactPerson ? `${(job as any).lead.contactPerson} • ` : ''}
+                      {(job as any).lead.phone || job.recipientPhone || ''}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="font-semibold text-slate-900 text-xs sm:text-sm">
+                      {job.customer?.fullName || job.customer?.name || job.recipientName || 'Walk-in'}
+                    </div>
+                    <div className="text-[11px] font-mono text-slate-500">
+                      {job.customer?.phone || job.recipientPhone || ''}
+                    </div>
+                  </>
+                )}
               </td>
               <td className="table-td">
                 <div className="text-xs font-semibold text-slate-800">
@@ -100,7 +117,13 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                 <StatusBadge status={job.urgency} />
               </td>
               <td className="table-td text-right font-mono font-bold text-slate-900 whitespace-nowrap">
-                {formatCurrency(centsToDollars(job.totalAmount), currencySymbol)}
+                {(job as any).isTestService && (centsToDollars(job.totalAmount) === 0 || Number(job.totalAmount) === 0) ? (
+                  <span className="text-emerald-700 font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    $0.00 (Complimentary)
+                  </span>
+                ) : (
+                  formatCurrency(centsToDollars(job.totalAmount), currencySymbol)
+                )}
               </td>
               <td className="table-td text-center whitespace-nowrap">
                 <div className="flex items-center justify-center gap-1">

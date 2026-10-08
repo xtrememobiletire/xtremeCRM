@@ -117,6 +117,8 @@ enum LeadStatus {
 enum LeadDisposition {
   CALLBACK
   CONVERTED
+  INTERESTED
+  WARM_TRANSFER
   NOT_INTERESTED
   WRONG_NUMBER
   NO_ANSWER
@@ -144,6 +146,7 @@ enum DisqualificationReason {
   COMPETITOR_LOCKED        // Locked into existing vendor contract
   PRICING_MISMATCH         // Rejected fleet pricing or credit terms
   UNRESPONSIVE             // Maximum contact attempts exceeded
+  WRONG_NUMBER             // Inactive or incorrect phone number
   OTHER                    // Operational or custom rejection reason
 }
 
