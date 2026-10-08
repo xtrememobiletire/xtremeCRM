@@ -45,7 +45,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
   const isDispatcher = user?.role === 'DISPATCHER';
   const isAgent = user?.role === 'CALL_AGENT';
   const isVa = user?.role === 'VIRTUAL_ASSISTANT';
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER';
 
   const navItems = isFleetManager
     ? [{ icon: Truck, label: 'Fleet Portal', path: '/fleet-dashboard' }]
@@ -71,6 +71,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       ]
     : isVa
     ? [
+        { icon: PhoneOutgoing, label: 'Outbound Queue', path: '/outbound' },
         { icon: UploadCloud, label: 'Upload Leads', path: '/va-upload' },
       ]
     : isAgent
@@ -82,6 +83,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         ...baseNavItems,
         ...(isAdmin
           ? [
+              { icon: UploadCloud, label: 'Upload Leads', path: '/va-upload' },
               { icon: PhoneIncoming, label: 'Inbound Preview', path: '/inbound' },
               { icon: BarChart3, label: 'Technician Preview', path: '/technician' },
               { icon: History, label: 'History Preview', path: '/history' },

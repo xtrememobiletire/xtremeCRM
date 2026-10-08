@@ -22,7 +22,7 @@ interface JobDetailModalProps {
 export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalProps) {
   const { user } = useAuth();
   const isDriver = user?.role === 'DRIVER';
-  const isAdminOrAccountant = user?.role === 'ADMIN' || user?.role === 'ACCOUNTANT';
+  const isAdminOrAccountant = user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER' || user?.role === 'ACCOUNTANT';
   const { country, currencySymbol } = useTenant();
   const { openChatJob } = useSocket();
   const updateStatusMutation = useUpdateJobStatus();

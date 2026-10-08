@@ -17,6 +17,12 @@ export const userService = {
     return Array.isArray(raw.data) ? raw.data : (Array.isArray(raw) ? raw : []);
   },
 
+  async getVirtualAssistants(countryCode?: string): Promise<UserItem[]> {
+    const res = await api.get('/users', { params: { role: 'VIRTUAL_ASSISTANT', countryCode, limit: 100 } });
+    const raw = res.data;
+    return Array.isArray(raw.data) ? raw.data : (Array.isArray(raw) ? raw : []);
+  },
+
   async toggleMyPresence(isAgentActive?: boolean) {
     const res = await api.patch('/users/me/active', { isAgentActive });
     return res.data.data;

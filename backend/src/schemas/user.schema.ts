@@ -6,6 +6,8 @@ export const createUserSchema = z.object({
   fullName: z.string().min(1, 'Full name is required'),
   role: z.enum([
     'ADMIN',
+    'GENERAL_MANAGER',
+    'DEVELOPER',
     'CALL_AGENT',
     'DISPATCHER',
     'DRIVER',
@@ -27,6 +29,8 @@ export const userQuerySchema = z.object({
   search: z.string().optional(),
   role: z.enum([
     'ADMIN',
+    'GENERAL_MANAGER',
+    'DEVELOPER',
     'CALL_AGENT',
     'DISPATCHER',
     'DRIVER',

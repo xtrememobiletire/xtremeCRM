@@ -4,11 +4,17 @@ import { config } from './config/env.js';
 import { prisma } from './config/database.js';
 import { initSocket } from './sockets/index.js';
 import { logger } from './utils/logger.js';
+import { initQueueService, stopQueueService } from './services/queueService.js';
 
 const server = http.createServer(app);
 
 // Initialize Socket.io with all handlers
 initSocket(server);
+
+// Initialize pg-boss background worker queue
+initQueueService().catch((err) => {
+  logger.error('[Queue] Failed to initialize queue service on boot:', err);
+});
 
 // Start HTTP Server
 server.listen(config.PORT, () => {
@@ -21,6 +27,7 @@ const shutdown = async (signal: string) => {
   logger.info(`Received ${signal}. Shutting down gracefully...`);
   server.close(async () => {
     logger.info('HTTP server closed.');
+    await stopQueueService();
     await prisma.$disconnect();
     logger.info('Database connections closed.');
     process.exit(0);

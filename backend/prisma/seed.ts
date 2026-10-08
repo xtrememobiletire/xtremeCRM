@@ -32,6 +32,15 @@ async function main() {
       canApprovePayouts: true,
     },
     {
+      email: 'gm@xtremecrm.com',
+      fullName: 'General Manager',
+      role: 'GENERAL_MANAGER' as const,
+      countryCode: 'CA' as const,
+      phone: '+14165550198',
+      isAgentActive: true,
+      canApprovePayouts: true,
+    },
+    {
       email: 'agent@xtremecrm.com',
       fullName: 'Sarah Agent',
       role: 'CALL_AGENT' as const,

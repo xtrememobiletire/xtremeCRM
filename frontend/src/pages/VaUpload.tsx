@@ -21,11 +21,22 @@ import { useAuth } from '../context/AuthContext';
 import { leadService } from '../services/leadService';
 import { toast } from 'sonner';
 
+import { userService } from '../services/userService';
+
 export default function VaUpload() {
   const { country } = useTenant();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isAdminOrGm = ['ADMIN', 'GENERAL_MANAGER'].includes(user?.role || '');
+  const [assignedVaId, setAssignedVaId] = useState<string>('');
+
+  const { data: vasList = [] } = useQuery({
+    queryKey: ['vas-list', country],
+    queryFn: () => userService.getVirtualAssistants(country),
+    enabled: isAdminOrGm,
+  });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -52,6 +63,9 @@ export default function VaUpload() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('countryCode', country);
+      if (assignedVaId) {
+        formData.append('assignedVaId', assignedVaId);
+      }
       return leadService.uploadLeadsFile(formData);
     },
     onSuccess: (data: any) => {
@@ -336,6 +350,30 @@ export default function VaUpload() {
               </div>
             )}
           </div>
+
+          {isAdminOrGm && (
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
+              <label className="font-bold text-slate-700 flex items-center gap-1.5">
+                <Users size={13} className="text-slate-500" />
+                <span>Assign Ingestion Target:</span>
+              </label>
+              <select
+                value={assignedVaId}
+                onChange={(e) => setAssignedVaId(e.target.value)}
+                className="input-field max-w-sm"
+              >
+                <option value="">Unassigned Pool (5-Cap Auto-Distributed across active VAs)</option>
+                {vasList.map((va: any) => (
+                  <option key={va.id} value={va.id}>
+                    Assign directly to VA: {va.fullName} ({va.email})
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-slate-500">
+                Leaving as unassigned allows the pg-boss queue to dynamically feed cold leads to VAs as they disposition calls.
+              </p>
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
             <div className="text-xs text-slate-500 flex items-center gap-1.5">

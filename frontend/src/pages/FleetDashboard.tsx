@@ -449,8 +449,8 @@ export default function FleetDashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Admin return button */}
-            {user?.role === 'ADMIN' && (
+            {/* Admin & GM return button */}
+            {(user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER') && (
               <button
                 onClick={() => navigate('/dashboard')}
                 className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 flex items-center gap-1.5 transition font-semibold cursor-pointer"

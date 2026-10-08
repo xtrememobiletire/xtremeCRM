@@ -8,6 +8,7 @@ import { TenantProvider } from './context/TenantContext';
 import { SocketProvider } from './context/SocketContext';
 import MainLayout from './components/layout/MainLayout';
 import { RouteErrorBoundary } from './components/common/RouteErrorBoundary';
+import { useSSE } from './hooks/useSSE';
 
 // Lazy Loaded Pages
 const Landing = lazy(() => import('./pages/Landing'));
@@ -73,6 +74,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  useSSE();
   if (loading) return <PageLoader />;
 
   return (

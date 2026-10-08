@@ -25,6 +25,8 @@ enum CurrencyCode {
 enum UserRole {
   // Internal Staff Roles (Operate in /admin)
   ADMIN
+  GENERAL_MANAGER    // Co-Administrator with complete operational parity to ADMIN
+  DEVELOPER          // Platform engineer role (reserved; no active user accounts seeded)
   CALL_AGENT
   DISPATCHER
   DRIVER
@@ -122,6 +124,29 @@ enum LeadDisposition {
   RNC
 }
 
+// Multi-Phase Qualification & Transfer Pipeline Stages
+// Tracks progression: VA -> Call Agent -> Dispatcher -> Admin/GM
+enum LeadStage {
+  VA_OUTREACH       // Stage 1: VA initial outbound qualification call
+  AGENT_CALLBACK    // Stage 2: Call Agent detailed requirement pitch & callback
+  DISPATCHER_REVIEW // Stage 3: Dispatcher feasibility check or test service scheduling
+  ADMIN_APPROVAL    // Stage 4: Admin / General Manager contract & onboarding signoff
+  CONVERTED         // Stage 5: Converted to active contracted B2B Fleet
+  DISQUALIFIED      // Disqualified at any stage (records exact drop-off phase)
+}
+
+// Root-Cause Disqualification Metric
+// Categorizes why a prospect failed qualification for operational conversion metrics
+enum DisqualificationReason {
+  NO_FLEET_VEHICLES        // Prospect has no commercial vehicles
+  OUT_OF_SERVICE_AREA      // Location outside active regional coverage (CA/US/UK)
+  NOT_INTERESTED           // Declined commercial tire service offerings
+  COMPETITOR_LOCKED        // Locked into existing vendor contract
+  PRICING_MISMATCH         // Rejected fleet pricing or credit terms
+  UNRESPONSIVE             // Maximum contact attempts exceeded
+  OTHER                    // Operational or custom rejection reason
+}
+
 enum AssignmentMethod {
   MANUAL
   ROUND_ROBIN
@@ -194,8 +219,9 @@ model User {
   uploadedBatches     Batch[]                 @relation("UploadedBatches")
   uploadedLeads       Lead[]                  @relation("UploadedLeads")
   assignedLeads       Lead[]                  @relation("AgentAssignedLeads")
-  staffAssignedLeads  Lead[]                  @relation("StaffAssignedLeads")
-  vaCalledLeads       Lead[]                  @relation("VaCalledLeads")
+  staffAssignedLeads      Lead[]                  @relation("StaffAssignedLeads")
+  vaCalledLeads           Lead[]                  @relation("VaCalledLeads")
+  dispatcherAssignedLeads Lead[]                  @relation("DispatcherAssignedLeads")
 
   // External Portal Client Relations
   customerAccount Customer? @relation("UserCustomer")
@@ -252,9 +278,13 @@ model Fleet {
   name          String      // Company legal name (e.g. "KT Group")
   contactPerson String      @map("contact_person")
   phone         String      // E.164 formatted primary management phone (e.g. +17035550144)
+  altPhone            String?     @map("alt_phone")
+  ceoOwnerName        String?     @map("ceo_owner_name")
   email               String?     // Billing/contact email
   poaEmail            String?     @map("poa_email") // Power of Attorney (Signing / Billing Authority)
   fleetManager        String?     @map("fleet_manager")
+  website             String?
+  numberOfUnits       Int?        @map("number_of_units")
   address             String?     // e.g. "10100 Richmond Hwy, Lorton, VA 22079"
   countryCode         CountryCode @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
   status              FleetStatus @default(PENDING) // Must be verified before active dispatching
@@ -419,6 +449,11 @@ model Job {
   createdById String      @map("created_by_id")
   createdBy   User        @relation("AgentJobs", fields: [createdById], references: [id])
 
+  // Prospective Fleet Test Service Link (Trial run before formal contract onboarding)
+  leadId        String?  @map("lead_id")
+  lead          Lead?    @relation("LeadTestServices", fields: [leadId], references: [id])
+  isTestService Boolean  @default(false) @map("is_test_service") // True if trial service provided to prospective fleet lead
+
   // Lifecycle & Priorities
   status      JobStatus   @default(PENDING)
   urgency     JobUrgency  @default(STANDARD)
@@ -508,6 +543,7 @@ model Job {
   @@index([customerId])
   @@index([urgency])
   @@index([fleetId, status])
+  @@index([leadId])
   @@index([invoiceId])
   @@index([paymentStatus])
   @@index([completedAt])
@@ -591,13 +627,27 @@ model Lead {
   id                 String            @id @default(uuid())
   companyName        String            @map("company_name")
   contactPerson      String            @map("contact_person")
+  fleetManager       String?           @map("fleet_manager")
+  ceoOwnerName       String?           @map("ceo_owner_name")
   phone              String            // Primary contact phone
+  altPhone           String?           @map("alt_phone")
   email              String?           // Optional contact email
+  poaEmail           String?           @map("poa_email") // Power of Attorney / Billing authority email
   address            String?           // City / Address
+  website            String?
+  numberOfUnits      Int?              @map("number_of_units") // NOU from Excel
   countryCode        CountryCode       @default(CA) @map("country_code")
   status             LeadStatus        @default(NEW)
   disposition        LeadDisposition?
   notes              String?           @db.Text
+  priority           Int               @default(1)
+
+  // Multi-Phase Qualification & Transfer Pipeline
+  // Flow: VA (outreach) -> Call Agent (pitch) -> Dispatcher (test service) -> Admin/GM (contract)
+  stage                  LeadStage               @default(VA_OUTREACH)
+  disqualifiedAtStage    LeadStage?              @map("disqualified_at_stage")   // Metric: exact pipeline phase where lead was disqualified
+  disqualificationReason DisqualificationReason? @map("disqualification_reason") // Metric: root cause category why lead failed qualification
+  disqualifiedNotes      String?                 @map("disqualified_notes")      // Specific reason/notes from staff member who disqualified the lead
 
   // Callback Scheduling
   callbackDate       DateTime?         @db.Timestamptz @map("callback_date")
@@ -611,19 +661,29 @@ model Lead {
   uploadedBy         User?             @relation("UploadedLeads", fields: [uploadedById], references: [id])
   isCompanySourced   Boolean           @default(false) @map("is_company_sourced") // true if GM/Owner, false if VA
 
-  // Assignment & 5-Cap Queue
-  assignedAgentId    String?           @map("assigned_agent_id")
-  assignedAgent      User?             @relation("AgentAssignedLeads", fields: [assignedAgentId], references: [id])
-  assignedById       String?           @map("assigned_by_id")
-  assignedBy         User?             @relation("StaffAssignedLeads", fields: [assignedById], references: [id])
-  assignmentMethod   AssignmentMethod? @map("assignment_method") // MANUAL | ROUND_ROBIN | AUTO_ASSIGN
-  assignedAt         DateTime?         @db.Timestamptz @map("assigned_at")
+  // Assignment & Staff Handover Chain
+  assignedAgentId      String?           @map("assigned_agent_id")
+  assignedAgent        User?             @relation("AgentAssignedLeads", fields: [assignedAgentId], references: [id])
+  assignedDispatcherId String?           @map("assigned_dispatcher_id") // Dispatcher reviewing feasibility or coordinating test service
+  assignedDispatcher   User?             @relation("DispatcherAssignedLeads", fields: [assignedDispatcherId], references: [id])
+  assignedById         String?           @map("assigned_by_id")
+  assignedBy           User?             @relation("StaffAssignedLeads", fields: [assignedById], references: [id])
+  assignmentMethod     AssignmentMethod? @map("assignment_method") // MANUAL | ROUND_ROBIN | AUTO_ASSIGN
+  assignedAt           DateTime?         @db.Timestamptz @map("assigned_at")
 
   // Caller Performance & Call Commissions
   lastCalledByVaId   String?           @map("last_called_by_va_id")
   lastCalledByVa     User?             @relation("VaCalledLeads", fields: [lastCalledByVaId], references: [id])
   lastCalledAt       DateTime?         @db.Timestamptz @map("last_called_at")
   callAttemptsCount  Int               @default(0) @map("call_attempts_count")
+
+  // Fleet Qualification Scratchpad (Captured by VA/Agent to brief Dispatcher & Admin)
+  estimatedFleetSize Int?              @map("estimated_fleet_size") // Total truck/van count (e.g. 15 vehicles)
+  vehicleTypes       String?           @map("vehicle_types")        // Vehicle categories (e.g. "Box Trucks, Cargo Vans, 18-Wheelers")
+  commonTireSizes    String?           @map("common_tire_sizes")     // Core tire specifications (e.g. "11R22.5, 235/65R17")
+
+  // Prospective Fleet Test Services (Trial roadside work orders prior to full contract)
+  testServices       Job[]             @relation("LeadTestServices")
 
   // Link to converted Fleet (1-to-1)
   resultingFleet     Fleet?            @relation("LeadConvertedToFleet")
@@ -632,7 +692,10 @@ model Lead {
   updatedAt          DateTime          @updatedAt @db.Timestamptz @map("updated_at")
 
   @@index([countryCode, status])
+  @@index([stage])
+  @@index([disqualifiedAtStage])
   @@index([assignedAgentId, status])
+  @@index([assignedDispatcherId])
   @@index([callbackDate, status])
   @@index([batchId])
   @@index([uploadedById])

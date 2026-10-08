@@ -7,8 +7,8 @@ export default function DeveloperProfit() {
   const { user } = useAuth();
   const { data: profitData, isLoading, refetch } = useDeveloperProfit();
 
-  // Strict Admin isolation (unauthorized access redirected)
-  if (user && user.role !== 'ADMIN') {
+  // Strict Admin & GM isolation (unauthorized access redirected)
+  if (user && user.role !== 'ADMIN' && user.role !== 'GENERAL_MANAGER') {
     return <Navigate to="/dashboard" replace />;
   }
 

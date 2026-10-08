@@ -34,7 +34,7 @@ export default function MainLayout() {
   // When active: navigating to /outbound automatically sets OUTBOUND; navigating to /inbound automatically sets INBOUND.
   // When inactive: stays INACTIVE.
   useEffect(() => {
-    if (user?.role === 'CALL_AGENT' || user?.role === 'ADMIN') {
+    if (user?.role === 'CALL_AGENT' || user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER') {
       if (!isAgentActive) {
         setAgentMode('INACTIVE');
         if (socket && user?.id) {

@@ -322,7 +322,7 @@ export const jobController = {
       const serviceAddress = data.serviceAddress || data.locationAddress || 'Roadside Breakdown Location';
       const repairerFeeCents = data.repairerFeeCents !== undefined 
         ? Math.round(Number(data.repairerFeeCents)) 
-        : 4500;
+        : 0;
 
       const job = await prisma.job.create({
         data: {
@@ -396,9 +396,6 @@ export const jobController = {
           return sendError(res, 'Payment amount or cash collected on scene is required to complete this job', 400);
         }
         updateData.completedAt = new Date();
-        if (!job.repairerFeeCents || job.repairerFeeCents <= 0) {
-          updateData.repairerFeeCents = 4500;
-        }
         if (effectiveCashCents > 0) {
           updateData.paymentMethod = 'CASH';
           updateData.cashCollectedCents = effectiveCashCents;
@@ -563,7 +560,7 @@ export const jobController = {
   async stateJobExpenses(req: Request, res: Response) {
     try {
       const userRole = (req.user as any)?.role;
-      if (userRole && !['ADMIN', 'ACCOUNTANT'].includes(userRole)) {
+      if (userRole && !['ADMIN', 'GENERAL_MANAGER', 'ACCOUNTANT'].includes(userRole)) {
         return sendError(res, 'Only Administrators and Accountants can state job expenses', 403);
       }
       const id = String(req.params.id);

@@ -4,7 +4,7 @@ export const authorize = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const userRole = (req.user as any)?.role;
 
-    if (!userRole || (!allowedRoles.includes(userRole) && userRole !== 'ADMIN')) {
+    if (!userRole || (!allowedRoles.includes(userRole) && userRole !== 'ADMIN' && userRole !== 'GENERAL_MANAGER')) {
       res.status(403).json({
         success: false,
         error: 'Forbidden: Insufficient permissions',

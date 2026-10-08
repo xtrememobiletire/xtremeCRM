@@ -3,6 +3,8 @@ export type CurrencyCode = 'CAD' | 'USD' | 'GBP';
 
 export type UserRole =
   | 'ADMIN'
+  | 'GENERAL_MANAGER'
+  | 'DEVELOPER'
   | 'CALL_AGENT'
   | 'DISPATCHER'
   | 'DRIVER'
@@ -10,6 +12,23 @@ export type UserRole =
   | 'VIRTUAL_ASSISTANT'
   | 'FLEET_MANAGER'
   | 'CUSTOMER_MEMBER';
+
+export type LeadStage =
+  | 'VA_OUTREACH'
+  | 'AGENT_CALLBACK'
+  | 'DISPATCHER_REVIEW'
+  | 'ADMIN_APPROVAL'
+  | 'CONVERTED'
+  | 'DISQUALIFIED';
+
+export type DisqualificationReason =
+  | 'NO_FLEET_VEHICLES'
+  | 'OUT_OF_SERVICE_AREA'
+  | 'NOT_INTERESTED'
+  | 'COMPETITOR_LOCKED'
+  | 'PRICING_MISMATCH'
+  | 'UNRESPONSIVE'
+  | 'OTHER';
 
 export type JobStatus =
   | 'PENDING'

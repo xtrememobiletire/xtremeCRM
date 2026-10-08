@@ -13,6 +13,8 @@ export const registerSchema = z.object({
   role: z
     .enum([
       'ADMIN',
+      'GENERAL_MANAGER',
+      'DEVELOPER',
       'CALL_AGENT',
       'DISPATCHER',
       'DRIVER',

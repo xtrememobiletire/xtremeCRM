@@ -182,7 +182,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     // Attended / Warm Transfer to Dispatcher Manager (FR-1.2, FR-9.6)
     s.on('call:transfer', (data: any) => {
-      if (['DISPATCHER', 'ADMIN'].includes(userRef.current?.role || '')) {
+      if (['DISPATCHER', 'ADMIN', 'GENERAL_MANAGER'].includes(userRef.current?.role || '')) {
         setIncomingTransfer({
           transferType: data.transferType || 'INBOUND_MOTORIST',
           callId: data.callId || `call-${Date.now()}`,
