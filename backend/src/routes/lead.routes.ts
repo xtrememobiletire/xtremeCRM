@@ -83,6 +83,13 @@ router.post('/:id/advance-stage', authenticate, leadController.advanceStage);
 router.post('/:id/disqualify', authenticate, leadController.disqualifyLead);
 
 /**
+ * @route   POST /api/leads/:id/reactivate
+ * @desc    Reactivate disqualified lead back to VA_OUTREACH pool
+ * @access  Private
+ */
+router.post('/:id/reactivate', authenticate, leadController.reactivateLead);
+
+/**
  * @route   POST /api/leads/:id/test-service
  * @desc    Create trial / test service work order for prospective fleet lead
  * @access  Private (Dispatcher, Admin, GM)

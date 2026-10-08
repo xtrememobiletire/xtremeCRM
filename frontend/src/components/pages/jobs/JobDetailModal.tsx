@@ -105,6 +105,23 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
       maxWidth="max-w-2xl"
     >
       <div className="space-y-4">
+        {/* Trial Service Banner */}
+        {job.isTestService && (
+          <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 flex items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold uppercase tracking-wider text-[10px] bg-purple-700 text-white px-2 py-0.5 rounded-full">
+                Trial Work Order
+              </span>
+              <span className="font-bold text-purple-900">
+                Prospective Fleet Feasibility Service
+              </span>
+            </div>
+            <span className="text-[11px] text-purple-700 font-semibold">
+              Quality verification prior to B2B contract onboarding
+            </span>
+          </div>
+        )}
+
         {/* Status Bar */}
         <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
           <div className="flex items-center gap-2">

@@ -41,7 +41,14 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
           {jobs.map((job) => (
             <tr key={job.id} className="hover:bg-slate-50/70 transition-colors">
               <td className="table-td whitespace-nowrap">
-                <div className="font-mono font-bold text-red-600 text-xs">{job.jobNumber}</div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono font-bold text-red-600 text-xs">{job.jobNumber}</span>
+                  {(job as any).isTestService && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">
+                      Trial Lead
+                    </span>
+                  )}
+                </div>
                 <div className="text-[11px] text-slate-400">{formatDate(job.createdAt)}</div>
               </td>
               <td className="table-td">

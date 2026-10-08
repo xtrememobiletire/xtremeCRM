@@ -78,6 +78,13 @@ export default function Leads() {
   const [disqualificationCategory, setDisqualificationCategory] = useState<DisqualificationReason>('NOT_INTERESTED');
   const [disqualificationText, setDisqualificationText] = useState('');
 
+  // Fleet conversion modal state
+  const [convertingLead, setConvertingLead] = useState<Lead | null>(null);
+  const [convertForm, setConvertForm] = useState({
+    customFleetCode: '',
+    discountPercent: 0,
+  });
+
   // Auto-dialer toggle
   const [autoDialEnabled, setAutoDialEnabled] = useState(false);
 
@@ -249,10 +256,24 @@ export default function Leads() {
     },
   });
 
+  const reactivateMutation = useMutation({
+    mutationFn: (id: string) => leadService.reactivateLead(id),
+    onSuccess: (data: any) => {
+      toast.success(data?.message || 'Lead restored to active outreach pipeline!');
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to reactivate lead');
+    },
+  });
+
   const convertMutation = useMutation({
-    mutationFn: (id: string) => leadService.convertToFleet(id),
+    mutationFn: ({ id, customFleetCode, extraData }: { id: string; customFleetCode?: string; extraData?: any }) =>
+      leadService.convertToFleet(id, customFleetCode, extraData),
     onSuccess: () => {
       toast.success('Lead converted to Fleet Account! All 10 columns preserved.');
+      setConvertingLead(null);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['fleets'] });
     },
@@ -718,7 +739,13 @@ export default function Leads() {
                           {isAdminOrGm && !isConverted && !isDisqualified && (
                             <button
                               type="button"
-                              onClick={() => convertMutation.mutate(lead.id)}
+                              onClick={() => {
+                                setConvertingLead(lead);
+                                setConvertForm({
+                                  customFleetCode: `XMT-${Math.floor(1000 + Math.random() * 9000)}`,
+                                  discountPercent: 0,
+                                });
+                              }}
                               className="px-2 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[10px] transition cursor-pointer"
                               title="Convert to Active Contracted Fleet Account"
                             >
@@ -749,6 +776,20 @@ export default function Leads() {
                               title="Disqualify Lead"
                             >
                               <XCircle size={13} />
+                            </button>
+                          )}
+
+                          {/* Reactivate Disqualified Lead */}
+                          {isDisqualified && (isAdminOrGm || isAgent || isVa) && (
+                            <button
+                              type="button"
+                              onClick={() => reactivateMutation.mutate(lead.id)}
+                              disabled={reactivateMutation.isPending}
+                              className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] transition cursor-pointer flex items-center gap-1 shadow-xs disabled:opacity-50"
+                              title="Reactivate lead back into outreach queue"
+                            >
+                              <RefreshCw size={11} className={reactivateMutation.isPending ? 'animate-spin' : ''} />
+                              <span>Reactivate</span>
                             </button>
                           )}
                         </div>
@@ -914,6 +955,132 @@ export default function Leads() {
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs cursor-pointer shadow-xs"
               >
                 {disqualifyMutation.isPending ? 'Logging...' : 'Confirm Disqualification'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Fleet Account Conversion Modal */}
+      {convertingLead && (
+        <Modal
+          isOpen={!!convertingLead}
+          onClose={() => setConvertingLead(null)}
+          title={`Convert Lead to Active Fleet — ${convertingLead.companyName}`}
+          maxWidth="max-w-2xl"
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-emerald-950 text-sm">{convertingLead.companyName}</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-200/60 text-emerald-900 font-bold text-[10px]">
+                  100% Excel Data Preservation
+                </span>
+              </div>
+              <p className="text-emerald-800 text-[11px]">
+                Converting prospect to commercial fleet account. All 10 attributes from database sample are preserved in the Fleet record.
+              </p>
+            </div>
+
+            {/* 10 Captured Excel Attributes Grid */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Preserved Prospect Details
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Company</div>
+                  <div className="font-bold text-slate-800 truncate">{convertingLead.companyName}</div>
+                </div>
+                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Fleet Manager</div>
+                  <div className="font-bold text-slate-800 truncate">{convertingLead.fleetManager || convertingLead.contactPerson}</div>
+                </div>
+                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase">CEO / Owner</div>
+                  <div className="font-bold text-slate-800 truncate">{convertingLead.ceoOwnerName || '—'}</div>
+                </div>
+                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Phone</div>
+                  <div className="font-bold text-slate-800 font-mono truncate">{convertingLead.phone}</div>
+                </div>
+                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Alt Phone</div>
+                  <div className="font-bold text-slate-800 font-mono truncate">{convertingLead.altPhone || '—'}</div>
+                </div>
+                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Units (NOU)</div>
+                  <div className="font-bold text-slate-800">{convertingLead.numberOfUnits ? `${convertingLead.numberOfUnits} Units` : '—'}</div>
+                </div>
+                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Official Email</div>
+                  <div className="font-bold text-slate-800 truncate">{convertingLead.email || '—'}</div>
+                </div>
+                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase">POA Email</div>
+                  <div className="font-bold text-slate-800 truncate">{convertingLead.poaEmail || '—'}</div>
+                </div>
+                <div className="p-2 bg-white rounded-lg border border-slate-200/80">
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Website</div>
+                  <div className="font-bold text-slate-800 truncate">{convertingLead.website || '—'}</div>
+                </div>
+              </div>
+              <div className="p-2 bg-white rounded-lg border border-slate-200/80">
+                <div className="text-[10px] text-slate-400 font-semibold uppercase">Depot Address</div>
+                <div className="font-medium text-slate-700 truncate">{convertingLead.address || '—'}</div>
+              </div>
+            </div>
+
+            {/* Editable Contract Terms */}
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Custom Fleet Code *</label>
+                <input
+                  type="text"
+                  value={convertForm.customFleetCode}
+                  onChange={(e) => setConvertForm({ ...convertForm, customFleetCode: e.target.value })}
+                  placeholder="e.g. XMT-4501"
+                  className="input-field font-mono font-bold"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Contract Discount %</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={convertForm.discountPercent}
+                  onChange={(e) => setConvertForm({ ...convertForm, discountPercent: Number(e.target.value) })}
+                  placeholder="0"
+                  className="input-field font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setConvertingLead(null)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={convertMutation.isPending}
+                onClick={() => {
+                  convertMutation.mutate({
+                    id: convertingLead.id,
+                    customFleetCode: convertForm.customFleetCode || undefined,
+                    extraData: {
+                      discountPercent: convertForm.discountPercent,
+                    },
+                  });
+                }}
+                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs cursor-pointer shadow-xs disabled:opacity-50 flex items-center gap-1.5"
+              >
+                <Truck size={13} />
+                <span>{convertMutation.isPending ? 'Converting...' : 'Execute Fleet Conversion'}</span>
               </button>
             </div>
           </div>

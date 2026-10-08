@@ -40,42 +40,38 @@ export async function initQueueService(): Promise<PgBoss | null> {
         if (!vaId) continue;
 
         try {
-          // Check current active cold count for this VA
-          const activeCount = await prisma.lead.count({
-            where: {
-              assignedAgentId: vaId,
-              stage: 'VA_OUTREACH',
-              status: { in: ['NEW', 'CALLED'] },
-            },
-          });
+          const replenishedCount = await prisma.$transaction(async (tx) => {
+            const activeCount = await tx.lead.count({
+              where: {
+                assignedAgentId: vaId,
+                stage: 'VA_OUTREACH',
+                status: { in: ['NEW', 'CALLED'] },
+              },
+            });
 
-          const slotsNeeded = Math.max(0, 5 - activeCount);
-          if (slotsNeeded <= 0) continue;
+            const slotsNeeded = Math.max(0, 5 - activeCount);
+            if (slotsNeeded <= 0) return 0;
 
-          // Pull next unassigned leads in FIFO order respecting scheduled release
-          const availableLeads = await prisma.lead.findMany({
-            where: {
-              assignedAgentId: null,
-              stage: 'VA_OUTREACH',
-              status: 'NEW',
-              countryCode: (countryCode as any) || 'CA',
-              OR: [
-                { batch: { scheduledDate: null } },
-                { batch: { scheduledDate: { lte: new Date() } } },
-                { batchId: null },
-              ],
-            },
-            orderBy: [
-              { priority: 'desc' },
-              { createdAt: 'asc' },
-            ],
-            take: slotsNeeded,
-          });
+            // Atomic selection with PostgreSQL row-level SKIP LOCKED
+            const leadsToClaim: Array<{ id: string }> = await tx.$queryRaw`
+              SELECT l.id
+              FROM leads l
+              LEFT JOIN batches b ON l.batch_id = b.id
+              WHERE l.assigned_agent_id IS NULL
+                AND l.stage = 'VA_OUTREACH'::"LeadStage"
+                AND l.status = 'NEW'::"LeadStatus"
+                AND l.country_code = ${countryCode || 'CA'}::"CountryCode"
+                AND (b.scheduled_date IS NULL OR b.scheduled_date <= NOW() OR l.batch_id IS NULL)
+              ORDER BY l.priority DESC, l.created_at ASC
+              LIMIT ${slotsNeeded}
+              FOR UPDATE SKIP LOCKED
+            `;
 
-          if (availableLeads.length > 0) {
-            const leadIds = availableLeads.map((l) => l.id);
-            await prisma.lead.updateMany({
-              where: { id: { in: leadIds } },
+            if (leadsToClaim.length === 0) return 0;
+
+            const ids = leadsToClaim.map((l) => l.id);
+            await tx.lead.updateMany({
+              where: { id: { in: ids } },
               data: {
                 assignedAgentId: vaId,
                 assignmentMethod: 'AUTO_ASSIGN',
@@ -83,12 +79,16 @@ export async function initQueueService(): Promise<PgBoss | null> {
               },
             });
 
-            logger.info(`[Queue] Auto-replenished ${availableLeads.length} leads for VA ${vaId}`);
+            return leadsToClaim.length;
+          });
+
+          if (replenishedCount > 0) {
+            logger.info(`[Queue] Auto-replenished ${replenishedCount} leads for VA ${vaId}`);
 
             // Broadcast real-time SSE event to trigger in-memory TanStack Query invalidation
             sseManager.broadcast(`sse:leads:${countryCode}`, 'lead:replenished', {
               vaId,
-              replenishedCount: availableLeads.length,
+              replenishedCount,
             });
           }
         } catch (err: any) {

@@ -107,6 +107,11 @@ export const leadService = {
     return res.data.data;
   },
 
+  async reactivateLead(id: string): Promise<Lead> {
+    const res = await api.post(`/leads/${id}/reactivate`);
+    return res.data.data;
+  },
+
   async distributeLeads(data: { countryCode?: string; targetVaIds?: string[] } = {}) {
     const res = await api.post('/leads/distribute', data);
     return res.data.data;

@@ -410,6 +410,46 @@ export const leadController = {
   },
 
   /**
+   * Reactivate Disqualified Lead back into VA_OUTREACH pool
+   */
+  async reactivateLead(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const lead = await prisma.lead.findUnique({ where: { id } });
+      if (!lead) return sendError(res, 'Lead not found', 404);
+
+      const updated = await prisma.lead.update({
+        where: { id },
+        data: {
+          stage: 'VA_OUTREACH',
+          status: 'NEW',
+          disposition: null,
+          disqualificationReason: null,
+          disqualifiedAtStage: null,
+          disqualifiedNotes: null,
+          assignedAgentId: null,
+        },
+        include: {
+          uploadedBy: { select: { id: true, fullName: true, role: true } },
+          assignedAgent: { select: { id: true, fullName: true, role: true } },
+          assignedDispatcher: { select: { id: true, fullName: true, role: true } },
+        },
+      });
+
+      sseManager.broadcast(`sse:leads:${updated.countryCode}`, 'lead:updated', updated);
+
+      try {
+        const io = getIO();
+        io.to(`dispatch:${updated.countryCode}`).emit('lead:updated', updated);
+      } catch {}
+
+      return sendSuccess(res, updated, 'Lead reactivated back into unassigned outreach pool');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
    * Warm Transfer Lead to Dispatcher Manager (FR-9.6)
    */
   async transferLeadToDm(req: Request, res: Response) {
