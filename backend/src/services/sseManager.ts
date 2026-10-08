@@ -96,6 +96,7 @@ class SSEManager {
   private clientMatchesChannel(client: SSEClient, channel: string): boolean {
     if (channel === 'global') return true;
     if (channel === `sse:dispatch:${client.countryCode}`) return true;
+    if (channel === `sse:jobs:${client.countryCode}`) return true;
     if (channel === `sse:leads:${client.countryCode}`) return true;
     if (channel === `sse:driver:${client.userId}`) return true;
     if (channel === `sse:user:${client.userId}`) return true;

@@ -9,6 +9,7 @@ import {
   createPaginatedResponse,
 } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
+import { sseManager } from '../services/sseManager.js';
 
 const stripDriverFinancials = (job: any) => {
   const {
@@ -362,10 +363,11 @@ export const jobController = {
         },
       });
 
-      // Notify dispatch room via socket
+      // Notify dispatch room via socket & SSE
       try {
         const io = getIO();
         io.to(`dispatch:${country}`).emit('job:created', job);
+        sseManager.broadcast(`sse:dispatch:${country}`, 'job:created', job);
       } catch {}
 
       return sendSuccess(res, job, 'Job created successfully', 201);
@@ -460,11 +462,13 @@ export const jobController = {
 
         // Notify dispatchers and admins
         io.to(`dispatch:${updated.countryCode}`).emit('job:status_updated', statusPayload);
+        sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:status_updated', statusPayload);
 
         // Notify driver
         if (updated.driverId) {
           io.to(`driver:${updated.driverId}`).emit('job:status_updated', statusPayload);
           io.to(`user:${updated.driverId}`).emit('job:status_updated', statusPayload);
+          sseManager.broadcast(`sse:driver:${updated.driverId}`, 'job:status_updated', statusPayload);
         }
 
         // Notify ticket creator
@@ -581,6 +585,17 @@ export const jobController = {
           expenseStatedBy: true,
         },
       });
+
+      try {
+        const io = getIO();
+        io.to(`dispatch:${updated.countryCode}`).emit('job:status_updated', updated);
+        sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:status_updated', updated);
+        if (updated.driverId) {
+          io.to(`driver:${updated.driverId}`).emit('job:status_updated', updated);
+          io.to(`user:${updated.driverId}`).emit('job:status_updated', updated);
+          sseManager.broadcast(`sse:driver:${updated.driverId}`, 'job:status_updated', updated);
+        }
+      } catch {}
 
       return sendSuccess(res, updated, 'Job expenses stated successfully');
     } catch (err: any) {
