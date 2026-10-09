@@ -88,6 +88,11 @@ export interface GeocodeResponse {
 }
 
 export const mapService = {
+  async getConfig(): Promise<{ token: string }> {
+    const res = await api.get('/map/config');
+    return res.data?.data || res.data || { token: '' };
+  },
+
   async getCustomers(countryCode?: string): Promise<MapCustomer[]> {
     const res = await api.get('/map/customers', { params: { countryCode } });
     return res.data?.data || res.data || [];

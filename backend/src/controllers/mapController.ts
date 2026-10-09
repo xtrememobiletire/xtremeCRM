@@ -181,6 +181,20 @@ export const mapController = {
       return sendError(res, err.message, 500);
     }
   },
+
+  /**
+   * GET /api/map/config
+   * Return mapbox public token for client initialization
+   */
+  async getConfig(_req: Request, res: Response) {
+    try {
+      const { config } = await import('../config/env.js');
+      const token = config.MAPBOX_ACCESS_TOKEN || '';
+      return sendSuccess(res, { token });
+    } catch (err: any) {
+      return sendError(res, err.message, 500);
+    }
+  },
 };
 
 export default mapController;
