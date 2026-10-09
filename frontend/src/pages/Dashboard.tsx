@@ -6,7 +6,7 @@ import TimeframeDropdown from '../components/ui/TimeframeDropdown';
 import Card from '../components/ui/Card';
 import DashboardKpiGrid from '../components/pages/dashboard/DashboardKpiGrid';
 import JobTable from '../components/jobs/JobTable';
-import CreateJobModal from '../components/jobs/CreateJobModal';
+import CreateRoadsideJobModal from '../components/pages/jobs/CreateRoadsideJobModal';
 import JobDetailModal from '../components/jobs/JobDetailModal';
 import AssignDriverModal from '../components/jobs/AssignDriverModal';
 import ProximityDistanceTool from '../components/dispatch/ProximityDistanceTool';
@@ -81,7 +81,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <CreateJobModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
+      <CreateRoadsideJobModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
       <JobDetailModal isOpen={!!selectedJob} onClose={() => setSelectedJob(null)} job={selectedJob} />
       <AssignDriverModal isOpen={!!assignJob} onClose={() => setAssignJob(null)} job={assignJob} />
     </div>

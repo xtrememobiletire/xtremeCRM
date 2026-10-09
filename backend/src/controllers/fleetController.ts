@@ -40,6 +40,7 @@ export const fleetController = {
           take: limit,
           orderBy: { createdAt: 'desc' },
           include: {
+            vehicles: true,
             _count: {
               select: {
                 vehicles: true,

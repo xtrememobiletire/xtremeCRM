@@ -5,7 +5,7 @@ import PageHeader from '../components/ui/PageHeader';
 import JobFilters from '../components/pages/jobs/JobFilters';
 import JobListContainer from '../components/pages/jobs/JobListContainer';
 import DriverActiveOrderCard from '../components/jobs/DriverActiveOrderCard';
-import CreateJobModal from '../components/pages/jobs/CreateJobModal';
+import CreateRoadsideJobModal from '../components/pages/jobs/CreateRoadsideJobModal';
 import JobDetailModal from '../components/pages/jobs/JobDetailModal';
 import AssignDriverModal from '../components/pages/jobs/AssignDriverModal';
 import ExpenseStatingModal from '../components/accounting/ExpenseStatingModal';
@@ -227,7 +227,7 @@ export default function Jobs() {
         </>
       )}
 
-      <CreateJobModal
+      <CreateRoadsideJobModal
         isOpen={isCreateOpen}
         onClose={handleCloseCreate}
         prefillPhone={intakePhoneParam}

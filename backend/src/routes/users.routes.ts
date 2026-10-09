@@ -21,7 +21,7 @@ router.use(authenticate);
  */
 router.get(
   '/',
-  authorize(['ADMIN', 'DISPATCHER', 'CALL_AGENT', 'ACCOUNTANT']),
+  authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER', 'CALL_AGENT', 'ACCOUNTANT']),
   validateRequest({ query: userQuerySchema }),
   userController.getUsers
 );
@@ -40,11 +40,11 @@ router.get(
 /**
  * @route   POST /api/users
  * @desc    Create new user
- * @access  Private (ADMIN only)
+ * @access  Private (ADMIN, GENERAL_MANAGER)
  */
 router.post(
   '/',
-  authorize(['ADMIN']),
+  authorize(['ADMIN', 'GENERAL_MANAGER']),
   validateRequest({ body: createUserSchema }),
   userController.createUser
 );
@@ -52,11 +52,11 @@ router.post(
 /**
  * @route   PATCH /api/users/:id
  * @desc    Update user profile or role
- * @access  Private (ADMIN only)
+ * @access  Private (ADMIN, GENERAL_MANAGER)
  */
 router.patch(
   '/:id',
-  authorize(['ADMIN']),
+  authorize(['ADMIN', 'GENERAL_MANAGER']),
   validateRequest({ params: idParamSchema, body: updateUserSchema }),
   userController.updateUser
 );
@@ -82,11 +82,11 @@ router.patch(
 /**
  * @route   DELETE /api/users/:id
  * @desc    Soft delete user
- * @access  Private (ADMIN only)
+ * @access  Private (ADMIN, GENERAL_MANAGER)
  */
 router.delete(
   '/:id',
-  authorize(['ADMIN']),
+  authorize(['ADMIN', 'GENERAL_MANAGER']),
   validateRequest({ params: idParamSchema }),
   userController.deleteUser
 );

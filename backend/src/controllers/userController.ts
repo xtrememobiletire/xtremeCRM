@@ -23,7 +23,7 @@ export const userController = {
 
       const where: any = { deletedAt: null };
       if (role) where.role = role;
-      if (countryCode) where.countryCode = countryCode;
+      if (countryCode && countryCode !== 'ALL') where.countryCode = countryCode;
       if (search) {
         where.OR = [
           { fullName: { contains: search, mode: 'insensitive' } },

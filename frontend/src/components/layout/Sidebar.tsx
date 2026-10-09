@@ -28,6 +28,8 @@ const baseNavItems = [
   { icon: Wrench, label: 'Jobs', path: '/jobs' },
   { icon: Truck, label: 'Fleet Jobs', path: '/fleet-jobs' },
   { icon: Globe, label: 'Bookings', path: '/bookings' },
+  { icon: PhoneIncoming, label: 'Roadside Intake', path: '/inbound' },
+  { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
   { icon: PhoneOutgoing, label: 'Leads', path: '/leads' },
   { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
   { icon: Truck, label: 'Fleets', path: '/fleets' },
@@ -64,6 +66,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         { icon: Wrench, label: 'Jobs', path: '/jobs' },
         { icon: Truck, label: 'Fleet Jobs', path: '/fleet-jobs' },
         { icon: Globe, label: 'Bookings', path: '/bookings' },
+        { icon: PhoneIncoming, label: 'Roadside Intake', path: '/inbound' },
+        { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
         { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
         { icon: PhoneOutgoing, label: 'Leads', path: '/leads' },
         { icon: Truck, label: 'Fleets', path: '/fleets' },
@@ -75,8 +79,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       ]
     : isAgent
     ? [
+        { icon: PhoneIncoming, label: 'Roadside Intake', path: '/inbound' },
+        { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
         { icon: PhoneOutgoing, label: 'Leads Queue', path: '/leads' },
-        { icon: PhoneIncoming, label: 'Inbound', path: '/inbound' },
       ]
     : baseNavItems;
 

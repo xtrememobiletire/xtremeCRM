@@ -9,9 +9,11 @@ import { jobService } from '../services/jobService';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { REGIONAL_SIMULATION_DATA } from '../constants/simulation';
 import { toast } from 'sonner';
+import type { SelectedServiceItem } from '../components/common/MultiServiceSelector';
+import type { GeocodeLocation } from '../components/common/AddressAutocompleteInput';
 
 export default function Inbound() {
-  const { country } = useTenant();
+  const { country, currencySymbol, taxRate } = useTenant();
   const { 
     incomingCall, 
     activeCall, 
@@ -26,9 +28,25 @@ export default function Inbound() {
   const [callerName, setCallerName] = useState('');
   const [leadSource, setLeadSource] = useState('DIRECT_CALL');
   const [serviceAddress, setServiceAddress] = useState('');
+  const [serviceCoords, setServiceCoords] = useState<{ latitude: number | null; longitude: number | null }>({
+    latitude: null,
+    longitude: null,
+  });
   const [vehicleMakeModel, setVehicleMakeModel] = useState('');
   const [tireSize, setTireSize] = useState('');
-  const [selectedService, setSelectedService] = useState('Tire Repair (plug)');
+  
+  // Multi-service work order items
+  const [serviceItems, setServiceItems] = useState<SelectedServiceItem[]>([
+    {
+      serviceId: 'TIRE_REPAIR',
+      serviceName: 'Tire Repair (Plug)',
+      category: 'TIRE_SERVICE',
+      unitPriceCents: 12000,
+      quantity: 1,
+    },
+  ]);
+  const [isTaxIncluded, setIsTaxIncluded] = useState(false);
+
   const [urgency, setUrgency] = useState<'URGENT' | 'STANDARD' | 'FUTURE'>('URGENT');
   const [etaMinutes, setEtaMinutes] = useState('30');
   const [notes, setNotes] = useState('');
@@ -71,11 +89,12 @@ export default function Inbound() {
     setIsTransferring(true);
     try {
       const vehicleInfo = `${vehicleMakeModel || 'Vehicle'} | Tire: ${tireSize || 'Pending'}`;
-      const transferNotes = `Breakdown at: ${serviceAddress || 'Address Pending'}. Service: ${selectedService}. Vehicle: ${vehicleInfo}. Notes: ${notes || 'Immediate dispatch required'}`;
+      const primaryService = serviceItems[0]?.serviceName || 'Roadside Tire Service';
+      const transferNotes = `Breakdown at: ${serviceAddress || 'Address Pending'}. Services: ${serviceItems.map(s => `${s.quantity}x ${s.serviceName}`).join(', ')}. Vehicle: ${vehicleInfo}. Notes: ${notes || 'Immediate dispatch required'}`;
       
       await transferCallToDm({
         callerPhone,
-        callerName: callerName || 'Roadside Motorist',
+        callerName: callerName || 'Customer',
         notes: transferNotes,
         vehicleInfo,
         transferType: 'INBOUND_MOTORIST',
@@ -85,9 +104,9 @@ export default function Inbound() {
         {
           id: `log-${Date.now()}`,
           phone: callerPhone,
-          callerName: callerName || 'Roadside Motorist',
+          callerName: callerName || 'Customer',
           time: 'Just now',
-          service: selectedService,
+          service: primaryService,
           disposition: 'Transferred to DM',
           transferredToDm: true,
         },
@@ -106,23 +125,45 @@ export default function Inbound() {
   // Direct Book Job Ticket into Dispatch Queue
   const handleDirectBookJob = async () => {
     if (!callerPhone || !serviceAddress) {
-      toast.error('Caller phone and breakdown address are required');
+      toast.error('Customer phone and breakdown address are required');
       return;
     }
+    if (serviceItems.length === 0) {
+      toast.error('Please add at least one service item to the ticket');
+      return;
+    }
+
     setIsBooking(true);
     try {
+      const subtotalCents = serviceItems.reduce(
+        (sum, item) => sum + item.unitPriceCents * item.quantity,
+        0
+      );
+      const taxCents = isTaxIncluded ? 0 : Math.round(subtotalCents * taxRate);
+      const totalCents = isTaxIncluded ? subtotalCents : subtotalCents + taxCents;
+
       await jobService.createJob({
-        customerName: callerName || 'Roadside Motorist',
+        customerName: callerName || 'Valued Customer',
         customerPhone: callerPhone,
-        recipientName: callerName || 'Roadside Motorist',
+        recipientName: callerName || 'Valued Customer',
         recipientPhone: callerPhone,
         serviceAddress,
+        serviceLatitude: serviceCoords.latitude ?? undefined,
+        serviceLongitude: serviceCoords.longitude ?? undefined,
         notes,
         urgency,
         countryCode: country,
         source: leadSource,
         makeUserAccount: isProvisionAccount,
-        services: [selectedService],
+        serviceItems: serviceItems.map((item) => ({
+          serviceName: item.serviceName,
+          category: item.category,
+          unitPriceCents: item.unitPriceCents,
+          quantity: item.quantity,
+        })),
+        subtotalCents,
+        taxCents,
+        totalCents,
         vehicleMakeModel,
         tireSize,
         vehicle: {
@@ -131,26 +172,37 @@ export default function Inbound() {
         },
       });
 
+      const primaryService = serviceItems[0]?.serviceName || 'Roadside Service';
       setCallLogs((prev) => [
         {
           id: `log-${Date.now()}`,
           phone: callerPhone,
-          callerName: callerName || 'Roadside Motorist',
+          callerName: callerName || 'Customer',
           time: 'Just now',
-          service: selectedService,
+          service: `${serviceItems.length} services (${primaryService})`,
           disposition: 'Booked Direct',
           transferredToDm: false,
         },
         ...prev,
       ]);
 
-      toast.success('Job ticket created & dispatched');
+      toast.success('Job ticket created & dispatched successfully');
       setCallerPhone('');
       setCallerName('');
       setServiceAddress('');
+      setServiceCoords({ latitude: null, longitude: null });
       setVehicleMakeModel('');
       setTireSize('');
       setNotes('');
+      setServiceItems([
+        {
+          serviceId: 'TIRE_REPAIR',
+          serviceName: 'Tire Repair (Plug)',
+          category: 'TIRE_SERVICE',
+          unitPriceCents: 12000,
+          quantity: 1,
+        },
+      ]);
       endCall();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to create dispatch ticket');
@@ -169,9 +221,9 @@ export default function Inbound() {
       {
         id: `log-${Date.now()}`,
         phone: callerPhone || incomingCall?.from || activeCall?.from || 'Unknown',
-        callerName: callerName || 'Motorist',
+        callerName: callerName || 'Customer',
         time: 'Just now',
-        service: selectedService,
+        service: serviceItems[0]?.serviceName || 'Call Ingestion',
         disposition: disp,
         transferredToDm: false,
       },
@@ -190,7 +242,6 @@ export default function Inbound() {
     setServiceAddress(blueprint.serviceAddress);
     setVehicleMakeModel(blueprint.vehicleMakeModel);
     setTireSize(blueprint.tireSize);
-    setSelectedService(blueprint.service);
     toast.info(`Simulated incoming call for ${country}: ${blueprint.serviceAddress}`);
   };
 
@@ -228,6 +279,7 @@ export default function Inbound() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
         <div className="lg:col-span-2">
           <InboundIntakeForm
+            countryCode={country}
             callerPhone={callerPhone}
             setCallerPhone={setCallerPhone}
             callerName={callerName}
@@ -236,12 +288,19 @@ export default function Inbound() {
             setLeadSource={setLeadSource}
             serviceAddress={serviceAddress}
             setServiceAddress={setServiceAddress}
+            onSelectLocation={(loc: GeocodeLocation) => {
+              setServiceCoords({ latitude: loc.latitude, longitude: loc.longitude });
+            }}
             vehicleMakeModel={vehicleMakeModel}
             setVehicleMakeModel={setVehicleMakeModel}
             tireSize={tireSize}
             setTireSize={setTireSize}
-            selectedService={selectedService}
-            setSelectedService={setSelectedService}
+            serviceItems={serviceItems}
+            setServiceItems={setServiceItems}
+            isTaxIncluded={isTaxIncluded}
+            setIsTaxIncluded={setIsTaxIncluded}
+            currencySymbol={currencySymbol}
+            taxRate={taxRate}
             urgency={urgency}
             setUrgency={setUrgency}
             etaMinutes={etaMinutes}

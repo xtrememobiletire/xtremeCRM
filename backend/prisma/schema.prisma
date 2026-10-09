@@ -493,6 +493,8 @@ model Job {
   serviceLongitude   Float?    @map("service_longitude")
   estimatedArrivalAt DateTime? @db.Timestamptz @map("estimated_arrival_at") // ponytail: replaces stale etaMinutes — UI computes live countdown
   appointmentDate    DateTime? @db.Timestamptz @map("appointment_date") // Scheduled booking date/time
+  arrivalWindowStart DateTime? @db.Timestamptz @map("arrival_window_start") // Contractual arrival window start (e.g. 6:00 PM)
+  arrivalWindowEnd   DateTime? @db.Timestamptz @map("arrival_window_end")   // Contractual arrival window end (e.g. 7:00 PM)
   assignedAt         DateTime? @db.Timestamptz @map("assigned_at")
   completedAt        DateTime? @db.Timestamptz @map("completed_at")
 
@@ -570,6 +572,7 @@ model Job {
   @@index([paymentStatus])
   @@index([completedAt])
   @@index([appointmentDate])
+  @@index([arrivalWindowStart, arrivalWindowEnd])
   @@index([createdById])
   @@index([countryCode, paymentStatus])
   @@map("jobs")

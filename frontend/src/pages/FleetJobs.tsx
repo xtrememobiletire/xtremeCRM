@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import FleetJobDetailModal from '../components/pages/jobs/FleetJobDetailModal';
 import AssignDriverModal from '../components/pages/jobs/AssignDriverModal';
-import CreateJobModal from '../components/pages/jobs/CreateJobModal';
+import CreateFleetJobModal from '../components/pages/jobs/CreateFleetJobModal';
 import EmptyState from '../components/ui/EmptyState';
 import { jobService } from '../services/jobService';
 import { fleetService } from '../services/fleetService';
@@ -399,7 +399,7 @@ export default function FleetJobs() {
       )}
 
       {isCreateOpen && (
-        <CreateJobModal
+        <CreateFleetJobModal
           isOpen={isCreateOpen}
           onClose={() => {
             setIsCreateOpen(false);

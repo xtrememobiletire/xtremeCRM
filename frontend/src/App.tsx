@@ -30,6 +30,7 @@ const CustomerMapView = lazy(() => import('./pages/customers/CustomerMapView'));
 const JobMapView = lazy(() => import('./pages/jobs/JobMapView'));
 const FleetJobs = lazy(() => import('./pages/FleetJobs'));
 const Bookings = lazy(() => import('./pages/Bookings'));
+const FleetInbound = lazy(() => import('./pages/FleetInbound'));
 
 function getRoleHome(role?: string) {
   switch (role) {
@@ -173,6 +174,7 @@ function AppRoutes() {
           <Route path="/vehicles" element={<RoleRoute allowedRoles={['DISPATCHER']}><Vehicles /></RoleRoute>} />
           <Route path="/accounting" element={<RoleRoute allowedRoles={['ACCOUNTANT']}><Accounting /></RoleRoute>} />
           <Route path="/inbound" element={<RoleRoute allowedRoles={['CALL_AGENT', 'DISPATCHER']}><Inbound /></RoleRoute>} />
+          <Route path="/inbound-fleet" element={<RoleRoute allowedRoles={['CALL_AGENT', 'DISPATCHER']}><FleetInbound /></RoleRoute>} />
           <Route path="/technician" element={<RoleRoute allowedRoles={['DRIVER']}><TechnicianPortal /></RoleRoute>} />
           <Route path="/history" element={<RoleRoute allowedRoles={['DRIVER']}><History /></RoleRoute>} />
           <Route path="/member-dashboard" element={<RoleRoute allowedRoles={['CUSTOMER_MEMBER']}><MemberDashboard /></RoleRoute>} />
