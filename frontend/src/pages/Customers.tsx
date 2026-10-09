@@ -28,14 +28,23 @@ export default function Customers() {
         title="Customer Directory"
         subtitle="Manage personal vehicle owners and commercial roadside accounts"
         actions={
-          <button
-            type="button"
-            onClick={() => setIsAddOpen(true)}
-            className="btn-primary"
-          >
-            <Plus size={14} />
-            <span>Add Customer</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="/customers/map"
+              className="btn-secondary text-xs flex items-center gap-1.5"
+            >
+              <Users size={14} className="text-emerald-600" />
+              <span>Map View</span>
+            </a>
+            <button
+              type="button"
+              onClick={() => setIsAddOpen(true)}
+              className="btn-primary"
+            >
+              <Plus size={14} />
+              <span>Add Customer</span>
+            </button>
+          </div>
         }
       />
 

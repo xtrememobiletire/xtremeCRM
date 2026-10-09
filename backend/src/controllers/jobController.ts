@@ -9,6 +9,7 @@ import {
   createPaginatedResponse,
 } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
+import { geocodingService } from '../services/geocodingService.js';
 
 const stripDriverFinancials = (job: any) => {
   const {
@@ -324,6 +325,16 @@ export const jobController = {
         ? Math.round(Number(data.repairerFeeCents)) 
         : 4500;
 
+      let serviceLatitude = data.serviceLatitude !== undefined && data.serviceLatitude !== null ? Number(data.serviceLatitude) : data.latitude ? Number(data.latitude) : null;
+      let serviceLongitude = data.serviceLongitude !== undefined && data.serviceLongitude !== null ? Number(data.serviceLongitude) : data.longitude ? Number(data.longitude) : null;
+      if (serviceAddress && (serviceLatitude === null || serviceLongitude === null)) {
+        const geo = await geocodingService.geocodeAddress(serviceAddress, country);
+        if (geo.latitude && geo.longitude) {
+          serviceLatitude = geo.latitude;
+          serviceLongitude = geo.longitude;
+        }
+      }
+
       const job = await prisma.job.create({
         data: {
           jobCode,
@@ -334,6 +345,8 @@ export const jobController = {
           fleetId: data.fleetId,
           createdById: creatorId,
           serviceAddress,
+          serviceLatitude,
+          serviceLongitude,
           recipientName: data.recipientName || data.customer?.name || data.customer?.fullName || data.customerName || name,
           recipientPhone: data.recipientPhone || data.customer?.phone || data.customerPhone || phone,
           problemNotes: data.problemNotes || data.notes,
@@ -638,13 +651,25 @@ export const jobController = {
       const taxAmountCents = Math.round((subtotalCents * taxRateBps) / 10000);
       const totalCents = subtotalCents + taxAmountCents;
       const itPlatformFeeCents = country === 'CA' ? 150 : 100;
+      const serviceAddress = data.serviceAddress || 'Roadside Breakdown Location';
+      let serviceLatitude = data.serviceLatitude !== undefined && data.serviceLatitude !== null ? Number(data.serviceLatitude) : null;
+      let serviceLongitude = data.serviceLongitude !== undefined && data.serviceLongitude !== null ? Number(data.serviceLongitude) : null;
+      if (serviceAddress && (serviceLatitude === null || serviceLongitude === null)) {
+        const geo = await geocodingService.geocodeAddress(serviceAddress, country);
+        if (geo.latitude && geo.longitude) {
+          serviceLatitude = geo.latitude;
+          serviceLongitude = geo.longitude;
+        }
+      }
 
       const job = await prisma.job.create({
         data: {
           jobCode,
           countryCode: country,
           currency: country === 'US' ? 'USD' : country === 'UK' ? 'GBP' : 'CAD',
-          serviceAddress: data.serviceAddress || 'Roadside Breakdown Location',
+          serviceAddress,
+          serviceLatitude,
+          serviceLongitude,
           recipientName: data.recipientName || data.customer?.name,
           recipientPhone: data.recipientPhone || data.customer?.phone,
           problemNotes: data.problemNotes || data.notes,

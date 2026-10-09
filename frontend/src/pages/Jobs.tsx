@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams, Navigate } from 'react-router-dom';
-import { Plus, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle2, MapPin } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import JobFilters from '../components/pages/jobs/JobFilters';
 import JobListContainer from '../components/pages/jobs/JobListContainer';
@@ -103,6 +103,13 @@ export default function Jobs() {
         subtitle={pageSubtitle}
         actions={
           <div className="flex items-center gap-2">
+            <a
+              href="/jobs/map"
+              className="btn-secondary text-xs flex items-center gap-1.5"
+            >
+              <MapPin size={14} className="text-red-600" />
+              <span>Map View</span>
+            </a>
             <button
               type="button"
               onClick={() => refetch()}

@@ -27,6 +27,8 @@ const Leads = lazy(() => import('./pages/Leads'));
 const Inbound = lazy(() => import('./pages/Inbound'));
 const VaUpload = lazy(() => import('./pages/VaUpload'));
 const DeveloperProfit = lazy(() => import('./pages/DeveloperProfit'));
+const CustomerMapView = lazy(() => import('./pages/customers/CustomerMapView'));
+const JobMapView = lazy(() => import('./pages/jobs/JobMapView'));
 
 function getRoleHome(role?: string) {
   switch (role) {
@@ -144,8 +146,10 @@ function AppRoutes() {
         >
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/jobs" element={<Jobs />} />
+          <Route path="/jobs/map" element={<JobMapView />} />
           <Route path="/dispatch" element={<Dispatch />} />
           <Route path="/customers" element={<Customers />} />
+          <Route path="/customers/map" element={<CustomerMapView />} />
           <Route path="/fleets" element={<Fleets />} />
           <Route path="/vehicles" element={<Vehicles />} />
           <Route path="/accounting" element={<Accounting />} />

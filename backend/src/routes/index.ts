@@ -14,6 +14,7 @@ import docsRoutes from './docs.routes.js';
 import healthRoutes from './health.routes.js';
 import fleetPortalRoutes from './fleetPortal.routes.js';
 import memberPortalRoutes from './memberPortal.routes.js';
+import mapRoutes from './mapRoutes.js';
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.use('/leads', leadRoutes);
 router.use('/messages', messagesRoutes);
 router.use('/fleet-portal', fleetPortalRoutes);
 router.use('/member-portal', memberPortalRoutes);
+router.use('/map', mapRoutes);
 router.use('/docs', docsRoutes);
 router.use('/', healthRoutes);
 

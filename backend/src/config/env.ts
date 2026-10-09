@@ -23,6 +23,7 @@ export const config = {
     CONNECTION_ID: process.env.TELNYX_CONNECTION_ID || '',
   },
   GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY || '',
+  MAPBOX_ACCESS_TOKEN: process.env.MAPBOX_ACCESS_TOKEN || process.env.VITE_MAPBOX_ACCESS_TOKEN || '',
 } as const;
 
 export default config;

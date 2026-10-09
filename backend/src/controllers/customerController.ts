@@ -7,6 +7,7 @@ import {
   calculateSkip,
   createPaginatedResponse,
 } from '../utils/index.js';
+import { geocodingService } from '../services/geocodingService.js';
 
 export const customerController = {
   async getCustomers(req: Request, res: Response) {
@@ -176,7 +177,7 @@ export const customerController = {
 
   async createCustomer(req: Request, res: Response) {
     try {
-      const { fullName, phone, altPhone, email, countryCode, customerType, membershipTier } = req.body;
+      const { fullName, phone, altPhone, email, address, countryCode, customerType, membershipTier } = req.body;
       const resolvedName = (fullName || req.body.name || '').trim();
       const cleanPhone = (phone || '').trim();
       const effectiveCountry = countryCode || (req as any).countryCode || 'CA';
@@ -198,12 +199,25 @@ export const customerController = {
         return sendError(res, 'Customer with this phone already exists in this country', 409);
       }
 
+      let latitude = req.body.latitude !== undefined && req.body.latitude !== null ? Number(req.body.latitude) : null;
+      let longitude = req.body.longitude !== undefined && req.body.longitude !== null ? Number(req.body.longitude) : null;
+      if (address && (latitude === null || longitude === null)) {
+        const geo = await geocodingService.geocodeAddress(address, effectiveCountry);
+        if (geo.latitude && geo.longitude) {
+          latitude = geo.latitude;
+          longitude = geo.longitude;
+        }
+      }
+
       const customer = await prisma.customer.create({
         data: {
           fullName: resolvedName,
           phone: cleanPhone,
           altPhone: altPhone?.trim() || null,
           email: email?.trim() || null,
+          address: address?.trim() || null,
+          latitude,
+          longitude,
           countryCode: effectiveCountry,
           customerType: customerType || 'RETAIL',
           membershipTier: membershipTier || null,
@@ -228,6 +242,7 @@ export const customerController = {
         phone,
         altPhone,
         email,
+        address,
         countryCode,
         customerType,
         membershipTier,
@@ -243,6 +258,23 @@ export const customerController = {
       if (customerType) data.customerType = customerType;
       if (membershipTier !== undefined) data.membershipTier = membershipTier;
       if (membershipExpiresAt !== undefined) data.membershipExpiresAt = membershipExpiresAt;
+
+      if (address !== undefined) {
+        data.address = address?.trim() || null;
+        if (req.body.latitude !== undefined && req.body.longitude !== undefined) {
+          data.latitude = req.body.latitude ? Number(req.body.latitude) : null;
+          data.longitude = req.body.longitude ? Number(req.body.longitude) : null;
+        } else if (data.address) {
+          const geo = await geocodingService.geocodeAddress(data.address, countryCode || (req as any).countryCode);
+          if (geo.latitude && geo.longitude) {
+            data.latitude = geo.latitude;
+            data.longitude = geo.longitude;
+          }
+        } else {
+          data.latitude = null;
+          data.longitude = null;
+        }
+      }
 
       const updated = await prisma.customer.update({
         where: { id },

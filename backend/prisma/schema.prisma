@@ -219,6 +219,9 @@ model Customer {
   email        String?
   countryCode  CountryCode  @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
   customerType CustomerType @default(RETAIL) @map("customer_type")
+  address      String?
+  latitude     Float?
+  longitude    Float?
 
   // Membership Benefits (B2C)
   // ponytail: isMembershipActive derived dynamically: membershipExpiresAt != null && membershipExpiresAt > now()
@@ -256,6 +259,8 @@ model Fleet {
   poaEmail            String?     @map("poa_email") // Power of Attorney (Signing / Billing Authority)
   fleetManager        String?     @map("fleet_manager")
   address             String?     // e.g. "10100 Richmond Hwy, Lorton, VA 22079"
+  latitude            Float?
+  longitude           Float?
   countryCode         CountryCode @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
   status              FleetStatus @default(PENDING) // Must be verified before active dispatching
   discountPercent     Float       @default(0.0) @map("discount_percent") // Negotiated fleet discount percentage
@@ -432,8 +437,10 @@ model Job {
   recipientPhone String? @map("recipient_phone") // E.164 phone of on-scene driver
   problemNotes   String? @db.Text @map("problem_notes") // Roadside notes ("flat on shoulder, wheel lock in glovebox")
 
-  // Service Location & Timing (Human Address - ponytail: serviceLat/Lng omitted, Distance Matrix takes address string directly)
+  // Service Location & Timing (Human Address & Coordinates for Mapbox dispatch)
   serviceAddress     String    @map("service_address")
+  serviceLatitude    Float?    @map("service_latitude")
+  serviceLongitude   Float?    @map("service_longitude")
   estimatedArrivalAt DateTime? @db.Timestamptz @map("estimated_arrival_at") // ponytail: replaces stale etaMinutes — UI computes live countdown
   appointmentDate    DateTime? @db.Timestamptz @map("appointment_date") // Scheduled booking date/time
   assignedAt         DateTime? @db.Timestamptz @map("assigned_at")

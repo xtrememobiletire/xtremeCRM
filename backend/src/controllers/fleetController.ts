@@ -7,6 +7,7 @@ import {
   calculateSkip,
   createPaginatedResponse,
 } from '../utils/index.js';
+import { geocodingService } from '../services/geocodingService.js';
 
 export const fleetController = {
   async getFleets(req: Request, res: Response) {
@@ -200,6 +201,16 @@ export const fleetController = {
         return sendError(res, 'Fleet code already in use', 409);
       }
 
+      let latitude = req.body.latitude !== undefined && req.body.latitude !== null ? Number(req.body.latitude) : null;
+      let longitude = req.body.longitude !== undefined && req.body.longitude !== null ? Number(req.body.longitude) : null;
+      if (address && (latitude === null || longitude === null)) {
+        const geo = await geocodingService.geocodeAddress(address, effectiveCountry);
+        if (geo.latitude && geo.longitude) {
+          latitude = geo.latitude;
+          longitude = geo.longitude;
+        }
+      }
+
       const fleet = await prisma.fleet.create({
         data: {
           fleetCode: code,
@@ -210,6 +221,8 @@ export const fleetController = {
           poaEmail: req.body.poaEmail?.trim() || null,
           fleetManager: fleetManager?.trim() || null,
           address: address?.trim() || null,
+          latitude,
+          longitude,
           countryCode: effectiveCountry,
           status: status || 'APPROVED',
           discountPercent: req.body.discountPercent ? Number(req.body.discountPercent) : 0,
@@ -262,7 +275,6 @@ export const fleetController = {
       if (fleetManager !== undefined) data.fleetManager = fleetManager?.trim() || null;
       if (managerPhone !== undefined) data.managerPhone = managerPhone?.trim() || null;
       if (ceoOwnerName !== undefined) data.ceoOwnerName = ceoOwnerName?.trim() || null;
-      if (address !== undefined) data.address = address?.trim() || null;
       if (website !== undefined) data.website = website?.trim() || null;
       if (countryCode !== undefined) data.countryCode = countryCode;
       if (status !== undefined) data.status = status;
@@ -272,6 +284,23 @@ export const fleetController = {
       if (businessType !== undefined) data.businessType = businessType?.trim() || null;
       if (assignedDid !== undefined) data.assignedDid = assignedDid?.trim() || null;
       if (managerUserId !== undefined) data.managerUserId = managerUserId || null;
+
+      if (address !== undefined) {
+        data.address = address?.trim() || null;
+        if (req.body.latitude !== undefined && req.body.longitude !== undefined) {
+          data.latitude = req.body.latitude ? Number(req.body.latitude) : null;
+          data.longitude = req.body.longitude ? Number(req.body.longitude) : null;
+        } else if (data.address) {
+          const geo = await geocodingService.geocodeAddress(data.address, countryCode || (req as any).countryCode);
+          if (geo.latitude && geo.longitude) {
+            data.latitude = geo.latitude;
+            data.longitude = geo.longitude;
+          }
+        } else {
+          data.latitude = null;
+          data.longitude = null;
+        }
+      }
 
       const updated = await prisma.fleet.update({
         where: { id },
