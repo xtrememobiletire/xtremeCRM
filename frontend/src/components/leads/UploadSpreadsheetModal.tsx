@@ -22,6 +22,8 @@ export default function UploadSpreadsheetModal({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [countryCode, setCountryCode] = useState(defaultCountry || 'CA');
   const [batchName, setBatchName] = useState('');
+  const [activationMode, setActivationMode] = useState<'IMMEDIATE' | 'SCHEDULED'>('IMMEDIATE');
+  const [scheduledDate, setScheduledDate] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
@@ -115,6 +117,10 @@ export default function UploadSpreadsheetModal({
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('countryCode', countryCode);
+      formData.append('activationMode', activationMode);
+      if (activationMode === 'SCHEDULED' && scheduledDate) {
+        formData.append('scheduledDate', new Date(scheduledDate).toISOString());
+      }
       if (batchName.trim()) {
         formData.append('batchName', batchName.trim());
       }
@@ -131,6 +137,7 @@ export default function UploadSpreadsheetModal({
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['batches'] });
 
       setSelectedFile(null);
       setBatchName('');
@@ -174,6 +181,51 @@ export default function UploadSpreadsheetModal({
               className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
             />
           </div>
+        </div>
+
+        {/* Activation Mode Selector */}
+        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider font-mono">
+            Activation Mode
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setActivationMode('IMMEDIATE')}
+              className={`py-2 px-3 rounded-xl border text-xs font-bold text-center transition cursor-pointer ${
+                activationMode === 'IMMEDIATE'
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-500/20'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              🟢 Start Immediately
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivationMode('SCHEDULED')}
+              className={`py-2 px-3 rounded-xl border text-xs font-bold text-center transition cursor-pointer ${
+                activationMode === 'SCHEDULED'
+                  ? 'border-blue-500 bg-blue-50 text-blue-800 ring-2 ring-blue-500/20'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              ⏱️ Schedule for Later
+            </button>
+          </div>
+
+          {activationMode === 'SCHEDULED' && (
+            <div className="pt-2">
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Scheduled Release Date & Time
+              </label>
+              <input
+                type="datetime-local"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs rounded-xl border border-blue-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+          )}
         </div>
 
         {/* Drag and Drop Box */}

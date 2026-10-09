@@ -383,12 +383,12 @@ export const accountingController = {
       const id = String(req.params.id);
       const accountantId = (req.user as any)?.id;
 
-      // Barrier check: Senior Accountant or Admin required
+      // Barrier check: Senior Accountant, Admin, or General Manager required
       const user = await prisma.user.findUnique({ where: { id: accountantId } });
-      if (!user?.canApprovePayouts && user?.role !== 'ADMIN') {
+      if (!user?.canApprovePayouts && !['ADMIN', 'GENERAL_MANAGER'].includes(user?.role || '')) {
         return sendError(
           res,
-          'Junior accountants cannot verify cash payments. Senior accountant approval required.',
+          'Junior accountants cannot verify cash payments. Senior accountant or Manager approval required.',
           403
         );
       }
@@ -464,8 +464,8 @@ export const accountingController = {
   async getDeveloperProfit(req: Request, res: Response) {
     try {
       const userRole = (req.user as any)?.role;
-      if (userRole !== 'ADMIN') {
-        return sendError(res, 'Unauthorized: Access restricted to System Administrators only', 403);
+      if (!['ADMIN', 'GENERAL_MANAGER', 'DEVELOPER'].includes(userRole)) {
+        return sendError(res, 'Unauthorized: Access restricted to System Administrators and General Managers only', 403);
       }
 
       const [caCompleted, usCompleted, ukCompleted] = await Promise.all([

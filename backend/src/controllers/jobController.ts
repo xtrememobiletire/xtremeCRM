@@ -633,9 +633,10 @@ export const jobController = {
         io.to(`dispatch:${updated.countryCode}`).emit('job:status_updated', updated);
         sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:status_updated', updated);
         if (updated.driverId) {
-          io.to(`driver:${updated.driverId}`).emit('job:status_updated', updated);
-          io.to(`user:${updated.driverId}`).emit('job:status_updated', updated);
-          sseManager.broadcast(`sse:driver:${updated.driverId}`, 'job:status_updated', updated);
+          const strippedForDriver = stripDriverFinancials(updated);
+          io.to(`driver:${updated.driverId}`).emit('job:status_updated', strippedForDriver);
+          io.to(`user:${updated.driverId}`).emit('job:status_updated', strippedForDriver);
+          sseManager.broadcast(`sse:driver:${updated.driverId}`, 'job:status_updated', strippedForDriver);
         }
       } catch {}
 

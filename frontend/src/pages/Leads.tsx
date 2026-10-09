@@ -9,7 +9,6 @@ import {
   RefreshCw, 
   Truck, 
   ClipboardCheck, 
-  Play, 
   Calendar, 
   Zap, 
   Wrench, 
@@ -25,6 +24,8 @@ import UploadSpreadsheetModal from '../components/leads/UploadSpreadsheetModal';
 import ConvertFleetModal from '../components/leads/ConvertFleetModal';
 import DispositionModal from '../components/leads/DispositionModal';
 import TrialServiceModal from '../components/leads/TrialServiceModal';
+import BatchDrawer from '../components/leads/BatchDrawer';
+import VaFocusCard from '../components/leads/VaFocusCard';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -80,6 +81,7 @@ export default function Leads() {
   const [stageFilter, setStageFilter] = useState<string>('');
   const [isPushModalOpen, setIsPushModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isBatchDrawerOpen, setIsBatchDrawerOpen] = useState(false);
 
   // Manual push form
   const [formData, setFormData] = useState({
@@ -137,18 +139,6 @@ export default function Leads() {
   };
 
   // Mutations
-  const startBatchMutation = useMutation({
-    mutationFn: () => leadService.startBatch(country),
-    onSuccess: (data: any) => {
-      toast.success(data?.message || 'Campaign batch started! 5 leads assigned.');
-      queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-    },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Failed to start campaign batch');
-    },
-  });
-
   const distributeMutation = useMutation({
     mutationFn: () => leadService.distributeLeads({ countryCode: country }),
     onSuccess: (data: any) => {
@@ -323,34 +313,66 @@ export default function Leads() {
     });
   };
 
+  // Dedicated 1-Lead Focus Mode for Virtual Assistants
+  if (isVa) {
+    const currentLead = queueData.leads?.[0] || null;
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="VA Outbound Focus Mode"
+          subtitle={`High-velocity single-lead outreach for ${country}. Next lead auto-advances in <200ms upon disposition.`}
+          actions={
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={refetchAll}
+                className="btn-secondary px-3 py-1.5 cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                title="Refresh Queue"
+              >
+                <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+                <span>Refresh Queue</span>
+              </button>
+            </div>
+          }
+        />
+
+        <VaFocusCard
+          lead={currentLead}
+          onDisposition={(params) => dispositionMutation.mutate(params)}
+          isSubmitting={dispositionMutation.isPending}
+          onRefreshQueue={refetchAll}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
         title="Outbound B2B Fleet Sales & Lead Pools"
-        subtitle={`Role-based lead pools for ${country} Region: 5-Cap VA Outreach, Callbacks, Dispatcher Feasibility, and Master Pipeline.`}
+        subtitle={`Role-based lead pools for ${country} Region: 1-Cap VA Outreach, Callbacks, Dispatcher Feasibility, and Master Pipeline.`}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             {isAdminOrGm && (
               <>
                 <button
                   type="button"
-                  onClick={() => distributeMutation.mutate()}
-                  disabled={distributeMutation.isPending}
-                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-50"
-                  title="Evenly distribute unassigned leads to VAs up to 5 cap"
+                  onClick={() => setIsBatchDrawerOpen(true)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                  title="Manage Regional Day Batches & Scheduled Releases"
                 >
-                  <Share2 size={13} />
-                  <span>{distributeMutation.isPending ? 'Distributing...' : 'Distribute to VAs'}</span>
+                  <Layers size={14} className="text-red-600" />
+                  <span>Day Batches</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => startBatchMutation.mutate()}
-                  disabled={startBatchMutation.isPending}
-                  className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-50"
-                  title="Assign 5 leads to active outbound callers"
+                  onClick={() => distributeMutation.mutate()}
+                  disabled={distributeMutation.isPending}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Evenly distribute unassigned leads to VAs (1-lead cap)"
                 >
-                  <Play size={13} fill="currentColor" />
-                  <span>{startBatchMutation.isPending ? 'Starting...' : 'Start Campaign Batch'}</span>
+                  <Share2 size={13} />
+                  <span>{distributeMutation.isPending ? 'Distributing...' : 'Distribute (1-Cap)'}</span>
                 </button>
               </>
             )}
@@ -420,10 +442,10 @@ export default function Leads() {
           }`}
         >
           <Zap size={13} />
-          <span>VA Outbound (5 Cap)</span>
+          <span>VA Outbound (1 Cap)</span>
           {activeTab === 'va' && queueData.activeCount > 0 && (
             <span className="bg-red-700 text-white px-1.5 py-0.2 rounded-full text-[10px]">
-              {queueData.activeCount}/5
+              {queueData.activeCount}/1
             </span>
           )}
         </button>
@@ -483,22 +505,22 @@ export default function Leads() {
         </button>
       </div>
 
-      {/* VA 5-Cap Banner (Only shown in 'va' pool) */}
+      {/* VA 1-Cap Banner (Only shown in 'va' pool) */}
       {activeTab === 'va' && (
         <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-md flex flex-wrap items-center justify-between gap-4 border border-slate-800">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-400 bg-red-950/80 px-2.5 py-0.5 rounded-full border border-red-800">
-                5-Cap Dynamic Replenishment
+                1-Cap Focus Replenishment
               </span>
               <span className="text-xs text-slate-300">
-                Active Slot Load: <strong className="text-white font-bold">{queueData.activeCount} / 5</strong>
+                Active Slot Load: <strong className="text-white font-bold">{queueData.activeCount} / 1</strong>
               </span>
             </div>
             <div className="text-xs text-slate-300">
               {queueData.unassignedPoolCount > 0 ? (
                 <span>
-                  🚀 <strong className="text-emerald-400 font-bold">{queueData.unassignedPoolCount} unassigned cold leads</strong> waiting in queue. As you log call outcomes, fresh leads replenish your cap instantly via pg-boss!
+                  🚀 <strong className="text-emerald-400 font-bold">{queueData.unassignedPoolCount} unassigned cold leads</strong> waiting in queue. As you log call outcomes, next lead replenishes instantly (&lt;200ms)!
                 </span>
               ) : (
                 <span className="text-slate-400">
@@ -1063,6 +1085,14 @@ export default function Leads() {
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         defaultCountry={country}
+      />
+
+      {/* Regional Day Batch Drawer (Admin / GM) */}
+      <BatchDrawer
+        isOpen={isBatchDrawerOpen}
+        onClose={() => setIsBatchDrawerOpen(false)}
+        country={country}
+        onOpenUpload={() => setIsUploadModalOpen(true)}
       />
     </div>
   );

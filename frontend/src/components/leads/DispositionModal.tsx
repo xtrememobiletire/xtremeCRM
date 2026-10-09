@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import Modal from '../ui/Modal';
+import { useAuth } from '../../context/AuthContext';
 
 interface DispositionModalProps {
   lead: any | null;
@@ -26,7 +27,9 @@ export default function DispositionModal({
   onSubmit,
   isPending,
 }: DispositionModalProps) {
-  const [selectedDisposition, setSelectedDisposition] = useState<string>('CONNECTED');
+  const { user } = useAuth();
+  const canConvert = user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER';
+  const [selectedDisposition, setSelectedDisposition] = useState<string>('INTERESTED');
   const [dispositionNotes, setDispositionNotes] = useState('');
   const [callbackDate, setCallbackDate] = useState('');
   const [callbackDay, setCallbackDay] = useState('');
@@ -89,11 +92,12 @@ export default function DispositionModal({
             {[
               { value: 'INTERESTED', label: 'Interested / Qualified', color: 'border-purple-500 bg-purple-50 text-purple-800' },
               { value: 'CALLBACK', label: 'Callback Requested', color: 'border-blue-500 bg-blue-50 text-blue-800' },
-              { value: 'NOT_INTERESTED', label: 'Not Interested', color: 'border-slate-400 bg-slate-100 text-slate-700' },
-              { value: 'WRONG_NUMBER', label: 'Wrong Number', color: 'border-rose-400 bg-rose-50 text-rose-700' },
+              { value: 'RNC', label: 'RNC (Dead Line)', color: 'border-rose-600 bg-rose-50 text-rose-800' },
               { value: 'NO_ANSWER', label: 'No Answer / Ringing', color: 'border-amber-400 bg-amber-50 text-amber-800' },
               { value: 'VOICEMAIL', label: 'Left Voicemail', color: 'border-purple-400 bg-purple-50 text-purple-800' },
-              { value: 'CONVERTED', label: 'Direct Fleet Deal', color: 'border-emerald-500 bg-emerald-50 text-emerald-800' },
+              { value: 'NOT_INTERESTED', label: 'Not Interested', color: 'border-slate-400 bg-slate-100 text-slate-700' },
+              { value: 'WRONG_NUMBER', label: 'Wrong Number', color: 'border-rose-400 bg-rose-50 text-rose-700' },
+              ...(canConvert ? [{ value: 'CONVERTED', label: 'Direct Fleet Deal', color: 'border-emerald-500 bg-emerald-50 text-emerald-800' }] : []),
             ].map((disp) => (
               <button
                 key={disp.value}

@@ -116,9 +116,8 @@ export function useSSE() {
       });
     };
 
-    const token = localStorage.getItem('xtreme_token');
     const targetCountry = country || user.countryCode || 'CA';
-    const sseUrl = `${BACKEND_ROOT_URL}/api/events/stream?countryCode=${targetCountry}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
+    const sseUrl = `${BACKEND_ROOT_URL}/api/events/stream?countryCode=${targetCountry}`;
 
     const es = new EventSource(sseUrl, { withCredentials: true });
     eventSourceRef.current = es;

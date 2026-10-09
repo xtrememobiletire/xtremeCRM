@@ -9,10 +9,74 @@ import {
   createPaginatedResponse,
 } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
-import { triggerVaReplenish } from '../services/queueService.js';
+import { refillAgentQueueAtomic, checkAndCompleteBatches } from '../services/queueService.js';
 import { sseManager } from '../services/sseManager.js';
 
+export const VA_LEAD_CAP = 1;
+
 export const leadController = {
+  /**
+   * Get Batches with unassigned and held counts (Admin / GM)
+   */
+  async getBatches(req: Request, res: Response) {
+    try {
+      const countryCode = (req.query.countryCode as any) || (req as any).countryCode;
+      const where: any = countryCode ? { countryCode } : {};
+
+      const batches = await prisma.batch.findMany({
+        where,
+        orderBy: [{ scheduledDate: 'desc' }, { createdAt: 'desc' }],
+        include: {
+          uploadedBy: { select: { id: true, fullName: true, role: true } },
+          _count: {
+            select: { leads: true },
+          },
+        },
+      });
+
+      const batchesWithMetrics = await Promise.all(
+        batches.map(async (b) => {
+          const [unassignedLeads, heldLeads, completedLeads] = await Promise.all([
+            prisma.lead.count({
+              where: {
+                batchId: b.id,
+                assignedAgentId: null,
+                status: 'NEW',
+                stage: 'VA_OUTREACH',
+              },
+            }),
+            prisma.lead.count({
+              where: {
+                batchId: b.id,
+                assignedAgentId: { not: null },
+                status: { in: ['NEW', 'CALLED'] },
+                stage: { in: ['VA_OUTREACH', 'AGENT_CALLBACK'] },
+              },
+            }),
+            prisma.lead.count({
+              where: {
+                batchId: b.id,
+                status: { in: ['CONVERTED', 'DEAD'] },
+              },
+            }),
+          ]);
+
+          return {
+            ...b,
+            totalLeads: b._count.leads || b.totalLeads,
+            unassignedLeads,
+            heldLeads,
+            completedLeads,
+          };
+        })
+      );
+
+      return sendSuccess(res, batchesWithMetrics, 'Batches retrieved successfully');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
   /**
    * Get Real-time Lead Stats & VA Workload for Command Center (Admin / GM)
    */
@@ -30,6 +94,8 @@ export const leadController = {
         adminApproval,
         converted,
         disqualified,
+        overdueCallbacks,
+        scheduledBatches,
         vaWorkloads,
       ] = await Promise.all([
         prisma.lead.count({ where: whereBase }),
@@ -57,7 +123,7 @@ export const leadController = {
         prisma.lead.count({
           where: {
             ...whereBase,
-            stage: 'TEST_SERVICE',
+            testServices: { some: {} },
           },
         }),
         prisma.lead.count({
@@ -76,6 +142,19 @@ export const leadController = {
           where: {
             ...whereBase,
             status: 'DISQUALIFIED',
+          },
+        }),
+        prisma.lead.count({
+          where: {
+            ...whereBase,
+            stage: 'AGENT_CALLBACK',
+            callbackDate: { lte: new Date() },
+          },
+        }),
+        prisma.batch.count({
+          where: {
+            ...(countryCode ? { countryCode } : {}),
+            status: 'SCHEDULED',
           },
         }),
         prisma.user.findMany({
@@ -109,6 +188,9 @@ export const leadController = {
         adminApproval,
         converted,
         disqualified,
+        overdueCallbacks,
+        pendingGmSignoff: adminApproval,
+        scheduledBatches,
         vaWorkloads: vaWorkloads.map((va) => ({
           id: va.id,
           fullName: va.fullName,
@@ -505,7 +587,8 @@ export const leadController = {
 
       // Replenish previous VA if lead was with a VA
       if (lead.assignedAgentId) {
-        triggerVaReplenish(lead.assignedAgentId, lead.countryCode).catch(() => {});
+        await refillAgentQueueAtomic(lead.assignedAgentId, lead.countryCode, 1);
+        await checkAndCompleteBatches(lead.countryCode);
       }
 
       sseManager.broadcast(`sse:leads:${updated.countryCode}`, 'lead:updated', updated);
@@ -591,7 +674,7 @@ export const leadController = {
 
       // Replenish VA
       if (agent?.id) {
-        triggerVaReplenish(agent.id, lead.countryCode).catch(() => {});
+        await refillAgentQueueAtomic(agent.id, lead.countryCode, 1);
       }
 
       sseManager.broadcast(`sse:leads:${lead.countryCode}`, 'lead:updated', updated);
@@ -629,6 +712,11 @@ export const leadController = {
    */
   async convertToFleet(req: Request, res: Response) {
     try {
+      const userRole = (req as any).user?.role;
+      if (!['ADMIN', 'GENERAL_MANAGER'].includes(userRole)) {
+        return sendError(res, 'Only Administrators and General Managers can convert leads to active Fleets', 403);
+      }
+
       const id = String(req.params.id);
       const { customFleetCode } = req.body;
 
@@ -637,7 +725,9 @@ export const leadController = {
 
       const fleetCode = customFleetCode || `XMT-${Math.floor(1000 + Math.random() * 9000)}`;
 
-      // Create new Fleet linked to Lead and VA for commission
+      // Create new Fleet linked to Lead and VA for commission (credited regardless of company source)
+      const virtualAssistantId = lead.lastCalledByVaId || lead.assignedAgentId || lead.uploadedById || (req as any).user?.id;
+
       const fleet = await prisma.fleet.create({
         data: {
           fleetCode,
@@ -657,7 +747,7 @@ export const leadController = {
           discountPercent: req.body.discountPercent ? Number(req.body.discountPercent) : 0,
           contractSignedAt: new Date(),
           convertedFromLeadId: lead.id,
-          virtualAssistantId: lead.lastCalledByVaId || lead.assignedAgentId || (!lead.isCompanySourced && lead.uploadedById ? lead.uploadedById : undefined),
+          virtualAssistantId,
         },
       });
 
@@ -687,7 +777,7 @@ export const leadController = {
     try {
       const id = String(req.params.id);
       const user = (req as any).user;
-      const { driverId, description, scheduledDate, tireSizes, unitNumber, location, priceDollars } = req.body;
+      const { driverId, description, scheduledDate, tireSizes, unitNumber, location, priceDollars, latitude, longitude } = req.body;
 
       const lead = await prisma.lead.findUnique({ where: { id } });
       if (!lead) return sendError(res, 'Lead not found', 404);
@@ -708,6 +798,9 @@ export const leadController = {
         },
       });
 
+      const serviceLatitude = latitude !== undefined && latitude !== null ? Number(latitude) : null;
+      const serviceLongitude = longitude !== undefined && longitude !== null ? Number(longitude) : null;
+
       const job = await prisma.job.create({
         data: {
           jobCode,
@@ -721,6 +814,8 @@ export const leadController = {
           recipientName: lead.contactPerson || lead.companyName,
           recipientPhone: lead.phone,
           serviceAddress: location || lead.address || 'Customer Depot',
+          serviceLatitude,
+          serviceLongitude,
           problemNotes: description || `Trial/Test Service for Fleet Prospect: ${lead.companyName}. Unit: ${unitNumber || 'N/A'}. Tire: ${tireSizes || 'N/A'}`,
           appointmentDate: scheduledDate ? new Date(scheduledDate) : new Date(),
           status: driverId ? 'ASSIGNED' : 'PENDING',
@@ -765,7 +860,7 @@ export const leadController = {
 
   /**
    * Distribute Leads (Admin / General Manager Control)
-   * Even distribution across VAs respecting 5-lead cap
+   * Even distribution across VAs respecting 1-lead cap
    */
   async distributeLeads(req: Request, res: Response) {
     try {
@@ -776,7 +871,7 @@ export const leadController = {
 
       const countryCode = (req.body.countryCode as any) || user?.countryCode || 'CA';
       const targetVaIds: string[] = req.body.targetVaIds || [];
-      const BATCH_CAP = 5;
+      const BATCH_CAP = VA_LEAD_CAP; // 1-lead focus mode
 
       let vas: any[] = [];
       if (targetVaIds.length > 0) {
@@ -804,60 +899,14 @@ export const leadController = {
       const distributionSummary: any[] = [];
 
       for (const va of vas) {
-        const activeCount = await prisma.lead.count({
-          where: {
-            assignedAgentId: va.id,
-            stage: 'VA_OUTREACH',
-            status: { in: ['NEW', 'CALLED'] },
-          },
+        const assigned = await refillAgentQueueAtomic(va.id, countryCode, BATCH_CAP);
+        totalDistributed += assigned;
+        distributionSummary.push({
+          vaId: va.id,
+          vaName: va.fullName,
+          assignedNow: assigned,
+          totalActive: assigned,
         });
-
-        const slotsNeeded = Math.max(0, BATCH_CAP - activeCount);
-        if (slotsNeeded > 0) {
-          const unassigned = await prisma.lead.findMany({
-            where: {
-              assignedAgentId: null,
-              stage: 'VA_OUTREACH',
-              status: 'NEW',
-              countryCode: countryCode as any,
-            },
-            orderBy: [
-              { priority: 'desc' },
-              { createdAt: 'asc' },
-            ],
-            take: slotsNeeded,
-          });
-
-          if (unassigned.length > 0) {
-            const ids = unassigned.map((l) => l.id);
-            await prisma.lead.updateMany({
-              where: { id: { in: ids } },
-              data: {
-                assignedAgentId: va.id,
-                assignmentMethod: 'MANUAL',
-                assignedById: user.id,
-                assignedAt: new Date(),
-              },
-            });
-            totalDistributed += unassigned.length;
-          }
-
-          distributionSummary.push({
-            vaId: va.id,
-            vaName: va.fullName,
-            previousCount: activeCount,
-            assignedCount: unassigned.length,
-            totalActive: activeCount + unassigned.length,
-          });
-        } else {
-          distributionSummary.push({
-            vaId: va.id,
-            vaName: va.fullName,
-            previousCount: activeCount,
-            assignedCount: 0,
-            totalActive: activeCount,
-          });
-        }
       }
 
       sseManager.broadcast(`sse:leads:${countryCode}`, 'leads:distributed', {
@@ -875,7 +924,7 @@ export const leadController = {
         totalDistributed,
         vasCount: vas.length,
         summary: distributionSummary,
-      }, `Successfully distributed ${totalDistributed} leads across ${vas.length} VAs`);
+      }, `Successfully distributed leads across ${vas.length} VAs (1-lead focus).`);
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }
@@ -883,7 +932,7 @@ export const leadController = {
 
   /**
    * Upload Leads via CSV / Excel (.xlsx, .xls, .csv)
-   * Maps all 10 sample columns: Company, Address, Website, Fleet Manager, CEO/Owner, Phone, Alt Phone, Email, POA Email, Units
+   * Maps all 10 columns, provisions Batch record with immediate vs scheduled activation
    */
   async uploadLeads(req: Request, res: Response) {
     try {
@@ -922,9 +971,13 @@ export const leadController = {
         return sendError(res, `Sheet "${chosenSheetName}" is empty. Please check your spreadsheet data.`, 400);
       }
 
-      const vaUserId = (req as any).user?.id;
+      const user = (req as any).user;
+      const vaUserId = user?.id;
       const targetCountry = (req.body.countryCode as any) || (req as any).countryCode || 'CA';
       const assignedVaId = req.body.assignedVaId || req.body.assignedAgentId || null;
+      const batchName = req.body.batchName as string;
+      const activationMode = req.body.activationMode || 'IMMEDIATE'; // IMMEDIATE or SCHEDULED
+      const scheduledDate = req.body.scheduledDate ? new Date(req.body.scheduledDate) : new Date();
 
       const leadsToCreate: any[] = [];
 
@@ -1053,7 +1106,7 @@ export const leadController = {
 
         if (!phone && !comp) continue;
 
-        const uploaderRole = (req as any).user?.role;
+        const uploaderRole = user?.role;
         const isCompanySourced = uploaderRole === 'ADMIN' || uploaderRole === 'GENERAL_MANAGER' || uploaderRole === 'DISPATCHER';
 
         leadsToCreate.push({
@@ -1083,34 +1136,101 @@ export const leadController = {
         return sendError(res, 'No valid lead rows found in file. Please ensure columns include Company, Contact, and Phone.', 400);
       }
 
-      const result = await prisma.lead.createMany({
-        data: leadsToCreate,
+      // Create Batch record
+      const isScheduled = activationMode === 'SCHEDULED';
+      const batchStatus = isScheduled ? 'SCHEDULED' : 'ACTIVE';
+      const finalBatchName = batchName?.trim() || `Batch ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+      const batch = await prisma.batch.create({
+        data: {
+          batchName: finalBatchName,
+          countryCode: targetCountry as any,
+          uploadedById: vaUserId,
+          totalLeads: leadsToCreate.length,
+          scheduledDate,
+          status: batchStatus as any,
+        },
       });
 
+      // Link leads to batch
+      const leadsWithBatch = leadsToCreate.map((l) => ({
+        ...l,
+        batchId: batch.id,
+      }));
+
+      const result = await prisma.lead.createMany({
+        data: leadsWithBatch,
+      });
+
+      // If active immediately, replenish online VAs to 1-lead cap
+      if (!isScheduled) {
+        const activeVas = await prisma.user.findMany({
+          where: {
+            role: { in: ['VIRTUAL_ASSISTANT', 'CALL_AGENT'] },
+            countryCode: targetCountry as any,
+            deletedAt: null,
+          },
+        });
+
+        for (const va of activeVas) {
+          await refillAgentQueueAtomic(va.id, targetCountry, VA_LEAD_CAP);
+        }
+      }
+
       sseManager.broadcast(`sse:leads:${targetCountry}`, 'lead:uploaded', {
+        batchId: batch.id,
         importedCount: result.count,
+        status: batchStatus,
       });
       sseManager.broadcast(`sse:leads:${targetCountry}`, 'lead:stats_updated', { countryCode: targetCountry });
 
       return sendSuccess(res, {
+        batchId: batch.id,
+        batchName: batch.batchName,
+        status: batch.status,
         importedCount: result.count,
         totalRows: rawRows.length,
         sheetUsed: chosenSheetName,
-      }, `Successfully imported ${result.count} leads from "${chosenSheetName}"`);
+      }, `Successfully imported ${result.count} leads into batch "${batch.batchName}" (${batchStatus})`);
     } catch (err: any) {
       return sendError(res, `Failed to process spreadsheet: ${err.message}`, 400);
     }
   },
 
   /**
-   * Start Outbound Campaign Batch (Admin Control - PRD FR-9.2)
+   * Start Outbound Campaign Batch (Admin / GM Control)
+   * Activates batch and assigns 1 lead to each active online VA via zero-poll Postgres refill
    */
   async startBatch(req: Request, res: Response) {
     try {
-      const countryCode = (req.body.countryCode as any) || (req as any).countryCode || 'CA';
-      const BATCH_CAP = 5;
+      const user = (req as any).user;
+      if (!['ADMIN', 'GENERAL_MANAGER'].includes(user?.role)) {
+        return sendError(res, 'Only Administrators and General Managers can start batches', 403);
+      }
 
-      const activeAgents = await prisma.user.findMany({
+      const { batchId } = req.body;
+      const countryCode = (req.body.countryCode as any) || (req as any).countryCode || 'CA';
+
+      let targetBatch = null;
+      if (batchId) {
+        targetBatch = await prisma.batch.findUnique({ where: { id: batchId } });
+        if (!targetBatch) return sendError(res, 'Batch not found', 404);
+
+        const unassignedInBatch = await prisma.lead.count({
+          where: { batchId, assignedAgentId: null, status: 'NEW' },
+        });
+
+        if (unassignedInBatch === 0) {
+          return sendError(res, 'This batch has 0 unassigned leads remaining', 400);
+        }
+
+        await prisma.batch.update({
+          where: { id: batchId },
+          data: { status: 'ACTIVE', scheduledDate: new Date() },
+        });
+      }
+
+      const activeVas = await prisma.user.findMany({
         where: {
           role: { in: ['CALL_AGENT', 'VIRTUAL_ASSISTANT'] },
           countryCode: countryCode as any,
@@ -1118,93 +1238,44 @@ export const leadController = {
         },
       });
 
-      if (activeAgents.length === 0) {
-        return sendError(res, 'No Call Agents or VAs found for this region to assign leads to.', 400);
+      if (activeVas.length === 0) {
+        return sendError(res, 'No Virtual Assistants found for this region to assign leads to.', 400);
       }
 
-      const batchId = `BATCH-${Date.now().toString(36).toUpperCase()}`;
       let totalAssigned = 0;
-      const agentSummary: any[] = [];
-
-      for (const agent of activeAgents) {
-        const activeCount = await prisma.lead.count({
-          where: {
-            assignedAgentId: agent.id,
-            status: { in: ['NEW', 'CALLED'] },
-            OR: [{ disposition: null }],
-          },
-        });
-
-        const slotsNeeded = Math.max(0, BATCH_CAP - activeCount);
-        if (slotsNeeded > 0) {
-          const unassigned = await prisma.lead.findMany({
-            where: {
-              assignedAgentId: null,
-              status: 'NEW',
-              countryCode: countryCode as any,
-            },
-            take: slotsNeeded,
-            orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
-          });
-
-          if (unassigned.length > 0) {
-            const ids = unassigned.map((l) => l.id);
-            await prisma.lead.updateMany({
-              where: { id: { in: ids } },
-              data: {
-                assignedAgentId: agent.id,
-                batchId,
-              },
-            });
-            totalAssigned += unassigned.length;
-          }
-
-          agentSummary.push({
-            agentId: agent.id,
-            agentName: agent.fullName,
-            previousActive: activeCount,
-            assignedNow: unassigned.length,
-            totalActive: activeCount + unassigned.length,
-          });
-        } else {
-          agentSummary.push({
-            agentId: agent.id,
-            agentName: agent.fullName,
-            previousActive: activeCount,
-            assignedNow: 0,
-            totalActive: activeCount,
-          });
-        }
+      for (const va of activeVas) {
+        const assigned = await refillAgentQueueAtomic(va.id, countryCode, VA_LEAD_CAP, batchId);
+        totalAssigned += assigned;
       }
 
       sseManager.broadcast(`sse:leads:${countryCode}`, 'campaign:batch_started', {
-        batchId,
+        batchId: batchId || null,
         totalAssigned,
+        activeVasCount: activeVas.length,
       });
       sseManager.broadcast(`sse:leads:${countryCode}`, 'lead:stats_updated', { countryCode });
 
       try {
         const io = getIO();
         io.to(`dispatch:${countryCode}`).emit('campaign:batch_started', {
-          batchId,
+          batchId: batchId || null,
           totalAssigned,
-          agentsCount: activeAgents.length,
+          vasCount: activeVas.length,
         });
       } catch {}
 
       return sendSuccess(res, {
-        batchId,
+        batchId: batchId || null,
         totalAssigned,
-        agentsCount: activeAgents.length,
-        agentSummary,
-      }, `Campaign batch started! ${totalAssigned} leads assigned across ${activeAgents.length} agents (5-cap).`);
+        activeVasCount: activeVas.length,
+      }, `Batch activated! Assigned 1 lead each to ${activeVas.length} VAs.`);
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }
   },
 
   /**
-   * Get Active Queue for VA / Call Agent with 5-cap Auto-Replenishment (PRD FR-9.2, FR-9.5)
+   * Get Active Queue for VA / Call Agent with 1-Lead Cap Auto-Replenishment
    */
   async getAgentQueue(req: Request, res: Response) {
     try {
@@ -1212,7 +1283,7 @@ export const leadController = {
       if (!agentId) return sendError(res, 'Unauthorized', 401);
 
       const countryCode = (req.query.countryCode as any) || (req as any).countryCode;
-      const MAX_ACTIVE = 5;
+      const MAX_ACTIVE = VA_LEAD_CAP; // 1-lead focus mode
 
       // 1. Fetch scheduled callbacks due
       const now = new Date();
@@ -1233,7 +1304,7 @@ export const leadController = {
       });
 
       // 2. Fetch currently active leads for this agent
-      const activeLeads = await prisma.lead.findMany({
+      let activeLeads = await prisma.lead.findMany({
         where: {
           assignedAgentId: agentId,
           stage: 'VA_OUTREACH',
@@ -1241,6 +1312,7 @@ export const leadController = {
           OR: [{ disposition: null }],
         },
         orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
+        take: MAX_ACTIVE,
         include: {
           uploadedBy: { select: { id: true, fullName: true, role: true } },
         },
@@ -1252,37 +1324,23 @@ export const leadController = {
       const userRole = (req as any).user?.role;
       const isProspectiveAgent = ['VIRTUAL_ASSISTANT', 'CALL_AGENT'].includes(userRole);
 
-      // 3. Auto-replenish up to 5 cap (restricted to prospecting staff to prevent lead theft by Admin/GM)
+      // 3. Synchronous atomic replenishment to 1-lead cap
       if (isProspectiveAgent && currentCount < MAX_ACTIVE) {
-        const slotsNeeded = MAX_ACTIVE - currentCount;
-
-        const unassignedLeads = await prisma.lead.findMany({
-          where: {
-            assignedAgentId: null,
-            stage: 'VA_OUTREACH',
-            status: 'NEW',
-            ...(countryCode ? { countryCode } : {}),
-          },
-          take: slotsNeeded,
-          orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
-          include: {
-            uploadedBy: { select: { id: true, fullName: true, role: true } },
-          },
-        });
-
-        if (unassignedLeads.length > 0) {
-          const leadIds = unassignedLeads.map((l) => l.id);
-          await prisma.lead.updateMany({
-            where: { id: { in: leadIds } },
-            data: {
+        newlyAssignedCount = await refillAgentQueueAtomic(agentId, countryCode, MAX_ACTIVE);
+        if (newlyAssignedCount > 0) {
+          activeLeads = await prisma.lead.findMany({
+            where: {
               assignedAgentId: agentId,
-              assignmentMethod: 'AUTO_ASSIGN',
-              assignedAt: new Date(),
+              stage: 'VA_OUTREACH',
+              status: { in: ['NEW', 'CALLED'] },
+              OR: [{ disposition: null }],
+            },
+            orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
+            take: MAX_ACTIVE,
+            include: {
+              uploadedBy: { select: { id: true, fullName: true, role: true } },
             },
           });
-
-          activeLeads.push(...unassignedLeads);
-          newlyAssignedCount = unassignedLeads.length;
         }
       }
 
@@ -1309,7 +1367,7 @@ export const leadController = {
   },
 
   /**
-   * Set Lead Call Disposition (FR-9.4) & Trigger pg-boss 5-Cap Replenishment
+   * Set Lead Call Disposition & Synchronously Trigger Atomic 1-Cap Replenishment
    */
   async setDisposition(req: Request, res: Response) {
     try {
@@ -1322,14 +1380,28 @@ export const leadController = {
         callbackTime,
         disqualificationReason,
       } = req.body;
-      const agentId = (req as any).user?.id;
+      const user = (req as any).user;
+      const agentId = user?.id;
 
       if (!disposition) {
         return sendError(res, 'Disposition is required', 400);
       }
 
+      // RBAC: Only Admin or GM can set CONVERTED
+      if (disposition === 'CONVERTED' && !['ADMIN', 'GENERAL_MANAGER'].includes(user?.role)) {
+        return sendError(res, 'Only Administrators or General Managers can convert leads to active Fleets', 403);
+      }
+
+      const lead = await prisma.lead.findUnique({ where: { id } });
+      if (!lead) return sendError(res, 'Lead not found', 404);
+
       let newStatus: any = 'CALLED';
       let newStage: any = 'VA_OUTREACH';
+
+      const updateData: any = {
+        disposition: disposition as any,
+        notes: notes || undefined,
+      };
 
       if (disposition === 'CONVERTED') {
         newStatus = 'CONVERTED';
@@ -1337,34 +1409,47 @@ export const leadController = {
       } else if (disposition === 'CALLBACK') {
         newStatus = 'CALLBACK';
         newStage = 'AGENT_CALLBACK';
-      } else if (disposition === 'INTERESTED' || disposition === 'WARM_TRANSFER') {
-        newStatus = 'CALLED';
-        newStage = 'DISPATCHER_REVIEW';
-      } else if (['NOT_INTERESTED', 'WRONG_NUMBER'].includes(disposition)) {
-        newStatus = 'DEAD';
-        newStage = 'DISQUALIFIED';
-      }
-
-      const updateData: any = {
-        disposition: disposition as any,
-        notes: notes || undefined,
-        status: newStatus,
-        stage: newStage,
-      };
-
-      if (disposition === 'CALLBACK') {
         updateData.callbackDate = callbackDate ? new Date(callbackDate) : new Date(Date.now() + 24 * 3600 * 1000);
         updateData.callbackDay = callbackDay || undefined;
         updateData.callbackTime = callbackTime || undefined;
         updateData.assignedAgentId = null; // Released to callbacks pool
-      } else if (newStage === 'DISQUALIFIED') {
+      } else if (disposition === 'INTERESTED' || disposition === 'WARM_TRANSFER') {
+        newStatus = 'CALLED';
+        newStage = 'DISPATCHER_REVIEW';
+        updateData.assignedAgentId = null; // Handed off to Dispatcher
+      } else if (disposition === 'RNC') {
+        // Immediate 1-strike kill for Ring No Contact
+        newStatus = 'DEAD';
+        newStage = 'DISQUALIFIED';
+        updateData.disqualifiedAtStage = 'VA_OUTREACH';
+        updateData.disqualificationReason = 'UNRESPONSIVE';
+        updateData.disqualifiedNotes = 'Ring No Contact (Dead line / continuous ringing) - Disqualified on 1st attempt';
+        updateData.assignedAgentId = null;
+      } else if (['NO_ANSWER', 'VOICEMAIL'].includes(disposition)) {
+        const newAttempts = (lead.callAttemptsCount || 0) + 1;
+        if (newAttempts >= 3) {
+          newStatus = 'DEAD';
+          newStage = 'DISQUALIFIED';
+          updateData.disqualifiedAtStage = 'VA_OUTREACH';
+          updateData.disqualificationReason = 'UNRESPONSIVE';
+          updateData.disqualifiedNotes = `Auto-disqualified after 3 failed call attempts (${disposition})`;
+          updateData.assignedAgentId = null;
+        } else {
+          newStatus = 'CALLED';
+          newStage = 'VA_OUTREACH';
+          updateData.assignedAgentId = null; // Recycled back to unassigned pool
+        }
+      } else if (['NOT_INTERESTED', 'WRONG_NUMBER'].includes(disposition)) {
+        newStatus = 'DEAD';
+        newStage = 'DISQUALIFIED';
         updateData.disqualifiedAtStage = 'VA_OUTREACH';
         updateData.disqualificationReason = disqualificationReason || (disposition === 'WRONG_NUMBER' ? 'WRONG_NUMBER' : 'NOT_INTERESTED');
         updateData.disqualifiedNotes = notes || null;
-        updateData.assignedAgentId = null; // Freed from VA queue
-      } else if (newStage === 'DISPATCHER_REVIEW') {
-        updateData.assignedAgentId = null; // Handed off to Dispatcher
+        updateData.assignedAgentId = null;
       }
+
+      updateData.status = newStatus;
+      updateData.stage = newStage;
 
       if (agentId) {
         updateData.lastCalledByVaId = agentId;
@@ -1382,10 +1467,11 @@ export const leadController = {
         },
       });
 
-      // Trigger pg-boss auto-replenishment for the VA (-1 active slot -> +1 fresh lead)
+      // Synchronously execute atomic refill for VA (1-lead cap, zero polling)
       if (agentId) {
-        triggerVaReplenish(agentId, updated.countryCode).catch(() => {});
+        await refillAgentQueueAtomic(agentId, updated.countryCode, VA_LEAD_CAP, updated.batchId || undefined);
       }
+      await checkAndCompleteBatches(updated.countryCode);
 
       // Realtime notification via SSE & Socket.io
       sseManager.broadcast(`sse:leads:${updated.countryCode}`, 'lead:updated', updated);

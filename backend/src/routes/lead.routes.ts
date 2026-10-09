@@ -14,6 +14,13 @@ const router = Router();
 router.get('/stats', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.getLeadStats);
 
 /**
+ * @route   GET /api/leads/batches
+ * @desc    Get outbound batches with progress and lead counters (Admin / GM)
+ * @access  Private (Admin, General Manager)
+ */
+router.get('/batches', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.getBatches);
+
+/**
  * @route   POST /api/leads/upload
  * @desc    Upload CSV / Excel spreadsheet with leads (VA / Admin)
  * @access  Private
@@ -100,9 +107,9 @@ router.post('/:id/reactivate', authenticate, authorize(['ADMIN', 'GENERAL_MANAGE
 /**
  * @route   POST /api/leads/:id/test-service
  * @desc    Create trial / test service work order for prospective fleet lead
- * @access  Private (Admin, GM only)
+ * @access  Private (Admin, GM, Dispatcher)
  */
-router.post('/:id/test-service', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.createTestServiceJob);
+router.post('/:id/test-service', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']), leadController.createTestServiceJob);
 
 /**
  * @route   POST /api/leads/:id/transfer

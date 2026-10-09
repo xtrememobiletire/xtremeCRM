@@ -150,6 +150,12 @@ enum DisqualificationReason {
   OTHER                    // Operational or custom rejection reason
 }
 
+enum BatchStatus {
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+}
+
 enum AssignmentMethod {
   MANUAL
   ROUND_ROBIN
@@ -620,11 +626,12 @@ model Batch {
   uploadedBy    User        @relation("UploadedBatches", fields: [uploadedById], references: [id])
   totalLeads    Int         @default(0) @map("total_leads")
   scheduledDate DateTime?   @default(now()) @db.Timestamptz @map("scheduled_date")
+  status        BatchStatus @default(ACTIVE)
   leads         Lead[]
   createdAt     DateTime    @default(now()) @db.Timestamptz @map("created_at")
   updatedAt     DateTime    @updatedAt @db.Timestamptz @map("updated_at")
 
-  @@index([countryCode, scheduledDate])
+  @@index([countryCode, status, scheduledDate])
   @@index([uploadedById])
   @@map("batches")
 }

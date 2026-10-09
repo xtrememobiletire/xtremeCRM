@@ -9,7 +9,6 @@ const opts: StrategyOptions = {
   jwtFromRequest: ExtractJwt.fromExtractors([
     ExtractJwt.fromAuthHeaderAsBearerToken(),
     cookieExtractor,
-    ExtractJwt.fromUrlQueryParameter('token'),
   ]),
   secretOrKey: config.JWT_SECRET,
 };
