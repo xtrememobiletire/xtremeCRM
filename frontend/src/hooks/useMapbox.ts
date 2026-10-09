@@ -17,6 +17,7 @@ interface UseMapboxOptions {
 export function useMapbox(options: UseMapboxOptions = {}) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const [map, setMap] = useState<mapboxgl.Map | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +33,7 @@ export function useMapbox(options: UseMapboxOptions = {}) {
     try {
       mapboxgl.accessToken = MAPBOX_TOKEN;
 
-      const map = new mapboxgl.Map({
+      const m = new mapboxgl.Map({
         container: containerRef.current,
         style: options.style || DEFAULT_MAP_STYLE,
         center: options.center || DEFAULT_MAP_CENTER,
@@ -42,28 +43,31 @@ export function useMapbox(options: UseMapboxOptions = {}) {
       });
 
       if (options.interactive !== false) {
-        map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right');
-        map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+        m.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right');
+        m.addControl(new mapboxgl.FullscreenControl(), 'top-right');
       }
 
-      map.on('load', () => {
+      m.on('load', () => {
         setIsLoaded(true);
       });
 
-      map.on('error', (e) => {
+      m.on('error', (e) => {
         console.warn('[Mapbox] Map error:', e);
       });
 
-      mapRef.current = map;
-    } catch (err: any) {
+      mapRef.current = m;
+      setMap(m);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to initialize Mapbox';
       console.error('[Mapbox] Init error:', err);
-      setError(err?.message || 'Failed to initialize Mapbox');
+      setError(msg);
     }
 
     return () => {
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
+        setMap(null);
         setIsLoaded(false);
       }
     };
@@ -100,7 +104,7 @@ export function useMapbox(options: UseMapboxOptions = {}) {
 
   return {
     containerRef,
-    map: mapRef.current,
+    map,
     isLoaded,
     error,
     flyTo,
