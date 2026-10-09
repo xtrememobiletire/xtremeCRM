@@ -16,6 +16,11 @@ export interface JobItem {
   paymentMethod?: string;
   createdAt: string;
   scheduledFor?: string;
+  appointmentDate?: string;
+  arrivalWindowStart?: string;
+  arrivalWindowEnd?: string;
+  estimatedArrivalAt?: string;
+  countryCode?: string;
   materialCostCents?: number;
   repairerFeeCents?: number;
   otherExpenseCents?: number;

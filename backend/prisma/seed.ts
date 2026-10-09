@@ -306,7 +306,87 @@ async function main() {
     },
   });
 
-  console.log('✅ Seeded Commercial Fleets: KT Group & Apex Freight.');
+  // Seed US Commercial Fleet
+  const usFleet = await prisma.fleet.create({
+    data: {
+      fleetCode: 'XFC-US-101',
+      name: 'Capitol Logistics Express LLC',
+      contactPerson: 'Robert Hayes',
+      phone: '+17035550882',
+      email: 'dispatch@capitollogistics.com',
+      address: '8401 Arlington Blvd, Fairfax, VA 22031 USA',
+      countryCode: 'US',
+      status: 'APPROVED',
+      discountPercent: 12.0,
+      contractSignedAt: new Date(),
+    },
+  });
+
+  const usVeh1 = await prisma.vehicle.create({
+    data: {
+      fleetId: usFleet.id,
+      countryCode: 'US',
+      year: 2023,
+      make: 'Mack',
+      model: 'Anthem',
+      unitNumber: 'US-88',
+      unitType: 'COMMERCIAL_TRUCK',
+      licensePlate: 'VA-8812',
+      tireSize: '11R22.5',
+    },
+  });
+
+  await prisma.fleetDriver.create({
+    data: {
+      fleetId: usFleet.id,
+      fullName: 'Travis Scott',
+      phone: '+17035550388',
+      licensePlate: 'VA-8812',
+      isActive: true,
+    },
+  });
+
+  // Seed UK Commercial Fleet
+  const ukFleet = await prisma.fleet.create({
+    data: {
+      fleetCode: 'XFC-UK-201',
+      name: 'Thames Express Freight Ltd',
+      contactPerson: 'David Brown',
+      phone: '+442079460883',
+      email: 'dispatch@thamesfreight.co.uk',
+      address: '25 Bank St, Canary Wharf, London E14 5JP UK',
+      countryCode: 'UK',
+      status: 'APPROVED',
+      discountPercent: 10.0,
+      contractSignedAt: new Date(),
+    },
+  });
+
+  const ukVeh1 = await prisma.vehicle.create({
+    data: {
+      fleetId: ukFleet.id,
+      countryCode: 'UK',
+      year: 2022,
+      make: 'Scania',
+      model: 'R500',
+      unitNumber: 'UK-07',
+      unitType: 'COMMERCIAL_TRUCK',
+      licensePlate: 'LN-7741',
+      tireSize: '295/80R22.5',
+    },
+  });
+
+  await prisma.fleetDriver.create({
+    data: {
+      fleetId: ukFleet.id,
+      fullName: 'Callum Clarke',
+      phone: '+442079460299',
+      licensePlate: 'LN-7741',
+      isActive: true,
+    },
+  });
+
+  console.log('✅ Seeded Commercial Fleets: KT Group (CA), Apex (CA), Capitol Logistics (US), Thames Express (UK).');
 
   // 3. Seed Retail Customers & Vehicles
   const customers = [
@@ -505,7 +585,148 @@ async function main() {
       },
     });
   }
-  console.log('✅ Seeded Category 1: 5 Retail Roadside Jobs (/jobs).');
+
+  // Seed US and UK Cross-Border Retail Roadside Jobs
+  const usDriver = userMap['driver.us@xtremecrm.com'];
+  const ukDriver = userMap['driver.uk@xtremecrm.com'];
+
+  const usCust = await prisma.customer.create({
+    data: {
+      fullName: 'Robert Jackson',
+      phone: '+17035550211',
+      email: 'rjackson@gmail.com',
+      countryCode: 'US',
+      customerType: 'RETAIL',
+    },
+  });
+
+  const usVeh = await prisma.vehicle.create({
+    data: {
+      customerId: usCust.id,
+      countryCode: 'US',
+      make: 'Chevrolet',
+      model: 'Silverado 1500',
+      year: 2022,
+      licensePlate: 'VA-CHEV1',
+      tireSize: '275/65R18',
+    },
+  });
+
+  const now = new Date();
+  const windowStartUS = new Date(now.getTime() + 60 * 60000);
+  const windowEndUS = new Date(now.getTime() + 120 * 60000);
+
+  await prisma.job.create({
+    data: {
+      jobCode: 'JOB-US-10201',
+      customerId: usCust.id,
+      vehicleId: usVeh.id,
+      createdById: agentUser.id,
+      driverId: usDriver ? usDriver.id : null,
+      countryCode: 'US',
+      currency: 'USD',
+      status: 'ASSIGNED',
+      urgency: 'STANDARD',
+      source: 'DIRECT_CALL',
+      recipientName: usCust.fullName,
+      recipientPhone: usCust.phone,
+      serviceAddress: '10500 Judicial Dr, Fairfax, VA 22030 USA',
+      serviceLatitude: 38.8462,
+      serviceLongitude: -77.3064,
+      problemNotes: 'Rear driver tire puncture on I-66 exit. Promised arrival between window.',
+      subtotalCents: 15000,
+      taxRateBps: 800,
+      taxAmountCents: 1200,
+      totalCents: 16200,
+      itPlatformFeeCents: 100,
+      paymentMethod: 'POS',
+      paymentStatus: 'UNPAID',
+      assignedAt: new Date(),
+      estimatedArrivalAt: windowStartUS,
+      arrivalWindowStart: windowStartUS,
+      arrivalWindowEnd: windowEndUS,
+      appointmentDate: windowStartUS,
+      serviceItems: {
+        create: [
+          {
+            serviceName: 'Tire Repair (Plug)',
+            category: 'TIRE_SERVICE',
+            unitPriceCents: 15000,
+            quantity: 1,
+          },
+        ],
+      },
+    },
+  });
+
+  const ukCust = await prisma.customer.create({
+    data: {
+      fullName: 'Liam Davies',
+      phone: '+442079460212',
+      email: 'liam.davies@ukmail.co.uk',
+      countryCode: 'UK',
+      customerType: 'RETAIL',
+    },
+  });
+
+  const ukVeh = await prisma.vehicle.create({
+    data: {
+      customerId: ukCust.id,
+      countryCode: 'UK',
+      make: 'Vauxhall',
+      model: 'Vivaro',
+      year: 2023,
+      licensePlate: 'LD-VAUX1',
+      tireSize: '215/65R16',
+    },
+  });
+
+  const windowStartUK = new Date(now.getTime() + 45 * 60000);
+  const windowEndUK = new Date(now.getTime() + 105 * 60000);
+
+  await prisma.job.create({
+    data: {
+      jobCode: 'JOB-UK-10301',
+      customerId: ukCust.id,
+      vehicleId: ukVeh.id,
+      createdById: agentUser.id,
+      driverId: ukDriver ? ukDriver.id : null,
+      countryCode: 'UK',
+      currency: 'GBP',
+      status: 'PENDING',
+      urgency: 'URGENT',
+      source: 'DIRECT_CALL',
+      recipientName: ukCust.fullName,
+      recipientPhone: ukCust.phone,
+      serviceAddress: '100 Victoria St, London SW1E 5JL UK',
+      serviceLatitude: 51.4975,
+      serviceLongitude: -0.1384,
+      problemNotes: 'Punctured front nearside tire. Customer waiting on roadside.',
+      subtotalCents: 12500,
+      taxRateBps: 2000,
+      taxAmountCents: 2500,
+      totalCents: 15000,
+      itPlatformFeeCents: 100,
+      paymentMethod: 'POS',
+      paymentStatus: 'UNPAID',
+      estimatedArrivalAt: windowStartUK,
+      arrivalWindowStart: windowStartUK,
+      arrivalWindowEnd: windowEndUK,
+      appointmentDate: windowStartUK,
+      serviceItems: {
+        create: [
+          {
+            serviceName: 'Emergency Mobile Tire Fitting',
+            category: 'TIRE_SERVICE',
+            unitPriceCents: 12500,
+            quantity: 1,
+          },
+        ],
+      },
+    },
+  });
+
+  console.log('✅ Seeded Cross-Border Retail Jobs: Canada (5), US (1), UK (1).');
 
   // =========================================================================
   // 5. SEED CATEGORY 2: COMMERCIAL FLEET WORK ORDERS (/fleet-jobs page)

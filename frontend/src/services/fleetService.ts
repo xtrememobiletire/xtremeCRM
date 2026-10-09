@@ -1,5 +1,17 @@
 import { api } from '../utils/api';
 
+export interface FleetDriverItem {
+  id: string;
+  fullName: string;
+  phone: string;
+  email?: string;
+  licenseNumber?: string;
+  licensePlate?: string;
+  isActive: boolean;
+  vehicleId?: string;
+  vehicle?: any;
+}
+
 export interface FleetItem {
   id: string;
   companyName: string;
@@ -13,6 +25,7 @@ export interface FleetItem {
   creditLimitCents?: number;
   outstandingBalanceCents?: number;
   vehicles?: any[];
+  drivers?: FleetDriverItem[];
   jobs?: any[];
   createdAt?: string;
 }

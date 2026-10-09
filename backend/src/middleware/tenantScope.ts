@@ -5,7 +5,7 @@ export const tenantScope = (req: Request, _res: Response, next: NextFunction): v
   const countryQuery = req.query.countryCode as string;
   const userCountry = (req.user as any)?.countryCode;
 
-  req.countryCode = countryHeader || countryQuery || userCountry || 'CA';
+  req.countryCode = countryQuery || countryHeader || userCountry || 'CA';
   next();
 };
 

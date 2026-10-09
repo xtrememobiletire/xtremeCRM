@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { 
   Building2, 
   Truck, 
@@ -9,35 +9,53 @@ import {
   CheckCircle2, 
   AlertTriangle,
   ArrowRight,
-  RotateCcw
+  RotateCcw,
+  Globe,
+  Clock,
+  Wrench,
+  Navigation,
+  UserCheck
 } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import AddressAutocompleteInput, { type GeocodeLocation } from '../components/common/AddressAutocompleteInput';
 import MultiServiceSelector, { type SelectedServiceItem } from '../components/common/MultiServiceSelector';
+import { ArrivalWindowSelector, type ArrivalWindowData } from '../components/common/ArrivalWindowSelector';
 import { useTenant } from '../context/TenantContext';
-import { fleetService } from '../services/fleetService';
+import { fleetService, type FleetDriverItem } from '../services/fleetService';
 import { jobService } from '../services/jobService';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
-export default function FleetInbound() {
-  const { country, currencySymbol, taxRate } = useTenant();
+const COMMON_COMMERCIAL_TIRE_SIZES = ['11R22.5', '295/75R22.5', '275/65R18', '225/65R17'];
 
-  // 1. Fetch Fleets for current region
+export default function FleetInbound() {
+  const { country: tenantCountry } = useTenant();
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // 1. Regional Country Silo
+  const [formCountry, setFormCountry] = useState<'CA' | 'US' | 'UK'>((tenantCountry as any) || 'CA');
+  const currencySymbol = formCountry === 'US' ? '$' : formCountry === 'UK' ? '£' : '$';
+  const taxRate = formCountry === 'CA' ? 0.13 : formCountry === 'UK' ? 0.20 : 0.08;
+
+  // 2. Fetch Fleets for current region
   const { data: fleetsResponse } = useQuery({
-    queryKey: ['fleets', country],
-    queryFn: () => fleetService.getFleets({ countryCode: country }),
+    queryKey: ['fleets', formCountry],
+    queryFn: () => fleetService.getFleets({ countryCode: formCountry }),
   });
 
   const fleets = fleetsResponse?.data || [];
 
   // Form State
   const [selectedFleetId, setSelectedFleetId] = useState<string>('');
+  const [selectedFleetDriverId, setSelectedFleetDriverId] = useState<string>('');
+  const [driverName, setDriverName] = useState('');
+  const [driverPhone, setDriverPhone] = useState('');
+
+  // Vehicle Specs
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
   const [isManualVehicle, setIsManualVehicle] = useState(false);
-
-  // Vehicle Specs (auto-filled or manual)
   const [vehicleMake, setVehicleMake] = useState('');
   const [vehicleModel, setVehicleModel] = useState('');
   const [vehicleYear, setVehicleYear] = useState('');
@@ -45,16 +63,14 @@ export default function FleetInbound() {
   const [licensePlate, setLicensePlate] = useState('');
   const [unitNumber, setUnitNumber] = useState('');
 
-  // Location & Driver Contact
+  // Location & Geocoding
   const [serviceAddress, setServiceAddress] = useState('');
   const [serviceCoords, setServiceCoords] = useState<{ latitude: number | null; longitude: number | null }>({
     latitude: null,
     longitude: null,
   });
-  const [driverName, setDriverName] = useState('');
-  const [driverPhone, setDriverPhone] = useState('');
 
-  // Work Order Services
+  // Commercial Work Order Services
   const [serviceItems, setServiceItems] = useState<SelectedServiceItem[]>([
     {
       serviceId: 'TIRE_SWAP_OFF_RIM',
@@ -65,6 +81,9 @@ export default function FleetInbound() {
     },
   ]);
   const [isTaxIncluded, setIsTaxIncluded] = useState(false);
+
+  // Arrival Window & Timing
+  const [arrivalWindow, setArrivalWindow] = useState<ArrivalWindowData>({});
   const [urgency, setUrgency] = useState<'URGENT' | 'STANDARD' | 'FUTURE'>('URGENT');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,6 +96,11 @@ export default function FleetInbound() {
     return fleets.find((f: any) => f.id === selectedFleetId);
   }, [fleets, selectedFleetId]);
 
+  // Registered drivers for selected fleet
+  const registeredFleetDrivers: FleetDriverItem[] = useMemo(() => {
+    return selectedFleet?.drivers || [];
+  }, [selectedFleet]);
+
   // Vehicles for selected fleet
   const fleetVehicles: any[] = useMemo(() => {
     return selectedFleet?.vehicles || [];
@@ -85,6 +109,7 @@ export default function FleetInbound() {
   // Handle Fleet Selection
   const handleSelectFleet = (fleetId: string) => {
     setSelectedFleetId(fleetId);
+    setSelectedFleetDriverId('');
     setSelectedVehicleId('');
     setIsManualVehicle(false);
     setVehicleMake('');
@@ -93,46 +118,63 @@ export default function FleetInbound() {
     setLicensePlate('');
     setUnitNumber('');
     setTireSize('11R22.5');
+    setDriverName('');
+    setDriverPhone('');
 
     const f = fleets.find((item: any) => item.id === fleetId);
     if (f && Array.isArray(f.vehicles) && f.vehicles.length === 1) {
-      // Auto-select if only 1 vehicle in fleet
       handleSelectVehicle(f.vehicles[0].id, f.vehicles);
     }
   };
 
-  // Handle Vehicle Selection
-  const handleSelectVehicle = (vehId: string, customVehiclesList?: any[]) => {
-    setSelectedVehicleId(vehId);
-    setIsManualVehicle(false);
+  // Handle Registered Fleet Driver Selection
+  const handleSelectFleetDriver = (driverId: string) => {
+    setSelectedFleetDriverId(driverId);
+    if (!driverId) return;
 
-    const list = customVehiclesList || fleetVehicles;
-    const veh = list.find((v: any) => v.id === vehId);
-    if (veh) {
-      setVehicleMake(veh.make || 'Commercial');
-      setVehicleModel(veh.model || 'Semi-Truck');
-      setVehicleYear(veh.year ? String(veh.year) : '2022');
-      setLicensePlate(veh.licensePlate || '');
-      setUnitNumber(veh.unitNumber || veh.licensePlate || '');
-      setTireSize(veh.tireSize || '11R22.5');
+    const fd = registeredFleetDrivers.find((d) => d.id === driverId);
+    if (fd) {
+      setDriverName(fd.fullName || '');
+      setDriverPhone(fd.phone || '');
+
+      if (fd.licensePlate) {
+        const match = fleetVehicles.find((v) => v.licensePlate?.toLowerCase() === fd.licensePlate?.toLowerCase());
+        if (match) handleSelectVehicle(match.id, fleetVehicles);
+      }
+    }
+  };
+
+  // Handle Vehicle Selection from Registry
+  const handleSelectVehicle = (vehicleId: string, vehiclesList = fleetVehicles) => {
+    setSelectedVehicleId(vehicleId);
+    if (!vehicleId) return;
+
+    const v = vehiclesList.find((item: any) => item.id === vehicleId);
+    if (v) {
+      setVehicleMake(v.make || '');
+      setVehicleModel(v.model || '');
+      setVehicleYear(v.year ? String(v.year) : '');
+      setLicensePlate(v.licensePlate || '');
+      setUnitNumber(v.unitNumber || '');
+      if (v.tireSize) setTireSize(v.tireSize);
     }
   };
 
   const handleResetForm = () => {
     setSelectedFleetId('');
+    setSelectedFleetDriverId('');
     setSelectedVehicleId('');
     setIsManualVehicle(false);
     setVehicleMake('');
     setVehicleModel('');
     setVehicleYear('');
+    setTireSize('11R22.5');
     setLicensePlate('');
     setUnitNumber('');
-    setTireSize('11R22.5');
-    setServiceAddress('');
-    setServiceCoords({ latitude: null, longitude: null });
     setDriverName('');
     setDriverPhone('');
-    setNotes('');
+    setServiceAddress('');
+    setServiceCoords({ latitude: null, longitude: null });
     setServiceItems([
       {
         serviceId: 'TIRE_SWAP_OFF_RIM',
@@ -142,26 +184,29 @@ export default function FleetInbound() {
         quantity: 1,
       },
     ]);
+    setArrivalWindow({});
+    setUrgency('URGENT');
+    setNotes('');
     setLastCreatedJob(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
 
     if (!selectedFleetId) {
-      toast.error('Please select a commercial fleet');
-      return;
-    }
-    if (!driverPhone) {
-      toast.error('Driver/Operator phone number is required');
+      toast.error('Please select a commercial fleet account');
       return;
     }
     if (!serviceAddress) {
-      toast.error('Breakdown address is required');
+      toast.error('Breakdown service address is required');
+      return;
+    }
+    if (!driverName || !driverPhone) {
+      toast.error('Fleet driver / operator name and contact phone are required');
       return;
     }
     if (serviceItems.length === 0) {
-      toast.error('Please add at least one service item');
+      toast.error('Please add at least one commercial service item');
       return;
     }
 
@@ -172,49 +217,47 @@ export default function FleetInbound() {
         0
       );
       const taxCents = isTaxIncluded ? 0 : Math.round(subtotalCents * taxRate);
-      const totalCents = isTaxIncluded ? subtotalCents : subtotalCents + taxCents;
-
-      const fullVehicleMakeModel = unitNumber 
-        ? `Unit ${unitNumber} - ${vehicleYear || '2022'} ${vehicleMake || 'Commercial'} ${vehicleModel || 'Truck'}`.trim()
-        : `${vehicleYear || '2022'} ${vehicleMake || 'Commercial'} ${vehicleModel || 'Truck'}`.trim();
+      const totalCents = subtotalCents + taxCents;
 
       const created = await jobService.createJob({
+        countryCode: formCountry,
         fleetId: selectedFleetId,
-        vehicleId: selectedVehicleId || undefined,
-        customerName: selectedFleet?.name || 'Commercial Fleet',
-        customerPhone: driverPhone,
-        recipientName: driverName || selectedFleet?.name || 'Fleet Operator',
+        recipientName: driverName,
         recipientPhone: driverPhone,
         serviceAddress,
         serviceLatitude: serviceCoords.latitude ?? undefined,
         serviceLongitude: serviceCoords.longitude ?? undefined,
+        vehicleId: isManualVehicle ? undefined : selectedVehicleId || undefined,
         urgency,
-        countryCode: country,
-        source: 'FLEET_PORTAL',
         paymentMethod: 'INVOICE_NET30',
+        source: 'FLEET_PORTAL',
+        notes: `Unit: ${unitNumber || 'N/A'}${notes ? ` | ${notes}` : ''}`,
         problemNotes: notes || undefined,
-        serviceItems: serviceItems.map((s) => ({
-          serviceName: s.serviceName,
-          category: s.category,
-          unitPriceCents: s.unitPriceCents,
-          quantity: s.quantity,
+        arrivalWindowStart: arrivalWindow.arrivalWindowStart,
+        arrivalWindowEnd: arrivalWindow.arrivalWindowEnd,
+        estimatedArrivalMinutes: arrivalWindow.estimatedArrivalMinutes,
+        appointmentDate: arrivalWindow.appointmentDate,
+        serviceItems: serviceItems.map((item) => ({
+          serviceName: item.serviceName,
+          category: item.category,
+          unitPriceCents: item.unitPriceCents,
+          quantity: item.quantity,
         })),
         subtotalCents,
         taxCents,
         totalCents,
-        vehicleMakeModel: fullVehicleMakeModel,
-        tireSize,
         vehicle: {
           make: vehicleMake || 'Commercial',
-          model: vehicleModel || 'Truck',
-          year: vehicleYear ? parseInt(vehicleYear, 10) : 2022,
+          model: vehicleModel || 'Unit',
+          year: vehicleYear ? parseInt(vehicleYear, 10) : new Date().getFullYear(),
           tireSize,
           licensePlate: licensePlate || undefined,
+          unitNumber: unitNumber || undefined,
         },
       });
 
-      toast.success(`Fleet Job #${created.jobCode || created.jobNumber || ''} dispatched successfully!`);
       setLastCreatedJob(created);
+      toast.success('Commercial fleet job ticket dispatched successfully');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to dispatch fleet ticket');
     } finally {
@@ -222,28 +265,59 @@ export default function FleetInbound() {
     }
   };
 
+  // Keyboard navigation & Alt+Enter submit shortcut
+  useKeyboardShortcuts({
+    'Alt+Enter': () => {
+      if (!lastCreatedJob) handleSubmit();
+    },
+    'Alt+ArrowDown': () => {
+      const inputs = formRef.current?.querySelectorAll<HTMLElement>('input, select, textarea, button[type="button"]');
+      if (!inputs) return;
+      const active = document.activeElement;
+      const arr = Array.from(inputs);
+      const idx = arr.indexOf(active as HTMLElement);
+      if (idx >= 0 && idx < arr.length - 1) {
+        arr[idx + 1].focus();
+      }
+    },
+    'Alt+ArrowUp': () => {
+      const inputs = formRef.current?.querySelectorAll<HTMLElement>('input, select, textarea, button[type="button"]');
+      if (!inputs) return;
+      const active = document.activeElement;
+      const arr = Array.from(inputs);
+      const idx = arr.indexOf(active as HTMLElement);
+      if (idx > 0) {
+        arr[idx - 1].focus();
+      }
+    },
+  });
+
+  const subtotalCents = serviceItems.reduce(
+    (sum, item) => sum + item.unitPriceCents * item.quantity,
+    0
+  );
+  const taxCents = isTaxIncluded ? 0 : Math.round(subtotalCents * taxRate);
+  const totalCents = subtotalCents + taxCents;
+
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12">
+    <div className="space-y-6 max-w-4xl mx-auto pb-12">
       <PageHeader
-        title="Commercial Fleet Intake"
-        subtitle={`Rapid intake & breakdown dispatch for contracted B2B fleets (${country})`}
+        title="Commercial Fleet Intake Station"
+        subtitle="Sequential commercial intake: select account, registered driver, breakdown location, and dispatch work order."
       />
 
-      {/* Confirmation State if just booked */}
       {lastCreatedJob ? (
-        <div className="bg-white border border-emerald-200 rounded-3xl p-8 shadow-sm text-center space-y-5 animate-in fade-in">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
-            <CheckCircle2 size={32} />
+        <div className="bg-white border border-emerald-200 rounded-2xl p-8 shadow-xs text-center space-y-6">
+          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+            <CheckCircle2 size={36} />
           </div>
-          <div className="space-y-1">
-            <h3 className="text-xl font-bold text-slate-900">
-              Commercial Fleet Ticket Dispatched!
-            </h3>
-            <p className="text-sm font-mono font-bold text-emerald-700">
-              Job Code: #{lastCreatedJob.jobCode || lastCreatedJob.jobNumber || lastCreatedJob.id}
-            </p>
-            <p className="text-xs text-slate-500">
-              Contracted Fleet: <strong>{selectedFleet?.name}</strong> • Status: PENDING DISPATCH
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">
+              Fleet Ticket Dispatched #{lastCreatedJob.jobCode || 'CONFIRMED'}
+            </h2>
+            <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+              Dispatched for <strong className="text-slate-800">{selectedFleet?.name}</strong> at{' '}
+              <span className="font-medium text-slate-800">{serviceAddress}</span>. Billed on NET-30 terms.
             </p>
           </div>
 
@@ -266,68 +340,166 @@ export default function FleetInbound() {
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Section 1: Fleet Account Selection */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2 font-bold text-xs text-slate-800 uppercase tracking-wider">
-                <span className="w-5 h-5 rounded-full bg-red-100 text-red-700 text-[11px] font-mono flex items-center justify-center font-bold">1</span>
-                <Building2 className="w-4 h-4 text-red-600" />
-                <span>Contracted Commercial Fleet</span>
-              </div>
-              <span className="text-[11px] font-mono text-slate-500">
-                {fleets.length} Active Accounts in {country}
+        <form 
+          ref={formRef} 
+          onSubmit={handleSubmit} 
+          className="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 shadow-xs space-y-5"
+        >
+          {/* Step 1: Regional Country Silo */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] font-mono flex items-center justify-center font-bold">1</span>
+                <Globe className="w-3.5 h-3.5 text-blue-600" />
+                <span>Operating Country / Currency Silo</span>
               </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Select Registered Fleet Account <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={selectedFleetId}
-                  onChange={(e) => handleSelectFleet(e.target.value)}
-                  required
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 cursor-pointer shadow-2xs"
+              <span className="text-[11px] font-mono text-slate-400">Cross-Border Intake</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { code: 'CA', label: '🇨🇦 Canada (CAD)' },
+                { code: 'US', label: '🇺🇸 United States (USD)' },
+                { code: 'UK', label: '🇬🇧 United Kingdom (GBP)' },
+              ].map((c) => (
+                <button
+                  key={c.code}
+                  type="button"
+                  onClick={() => {
+                    setFormCountry(c.code as any);
+                    setSelectedFleetId('');
+                    setSelectedFleetDriverId('');
+                  }}
+                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                    formCountry === c.code
+                      ? 'border-red-600 bg-red-50 text-red-700 shadow-2xs'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
                 >
-                  <option value="">-- Choose Contracted Fleet --</option>
-                  {fleets.map((f: any) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name} {f.fleetCode ? `(${f.fleetCode})` : ''} • {f.vehicles?.length || 0} Registered Units
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {selectedFleet && (
-                <div className="sm:col-span-2 p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
-                  <div>
-                    <span className="text-slate-500">Billing Terms: </span>
-                    <span className="font-bold text-slate-900">{selectedFleet.paymentTerms || 'NET 30 Invoicing'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Dispatch Hotline: </span>
-                    <span className="font-mono font-bold text-slate-900">{(selectedFleet as any).companyPhone || selectedFleet.phone || 'On file'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Account Manager: </span>
-                    <span className="font-bold text-slate-900">{selectedFleet.contactPerson || 'Fleet Dispatcher'}</span>
-                  </div>
-                </div>
-              )}
+                  <span>{c.label}</span>
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Section 2: Vehicle Specs (Dropdown from Fleet) */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2 font-bold text-xs text-slate-800 uppercase tracking-wider">
-                <span className="w-5 h-5 rounded-full bg-red-100 text-red-700 text-[11px] font-mono flex items-center justify-center font-bold">2</span>
-                <Truck className="w-4 h-4 text-red-600" />
-                <span>Commercial Vehicle & Tire Specs</span>
+          {/* Step 2: Contracted Commercial Fleet Account */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">2</span>
+                <Building2 className="w-3.5 h-3.5 text-red-600" />
+                <span>Select Contracted Fleet Account <span className="text-red-500">*</span></span>
+              </span>
+              <span className="text-[11px] font-mono text-slate-400">{fleets.length} Accounts in {formCountry}</span>
+            </label>
+            <select
+              value={selectedFleetId}
+              onChange={(e) => handleSelectFleet(e.target.value)}
+              required
+              autoFocus
+              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
+            >
+              <option value="">-- Choose Contracted Fleet Account --</option>
+              {fleets.map((f: any) => (
+                <option key={f.id} value={f.id}>
+                  {f.name} {f.fleetCode ? `(${f.fleetCode})` : ''} • {f.vehicles?.length || 0} Units • {f.drivers?.length || 0} Drivers
+                </option>
+              ))}
+            </select>
+
+            {selectedFleet && (
+              <div className="mt-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div>
+                  <span className="text-slate-500">Billing: </span>
+                  <span className="font-bold text-slate-900">{selectedFleet.paymentTerms || 'NET 30 Invoicing'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Hotline: </span>
+                  <span className="font-mono font-bold text-slate-900">{(selectedFleet as any).companyPhone || selectedFleet.phone || 'On file'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Contact: </span>
+                  <span className="font-bold text-slate-900">{selectedFleet.contactPerson || 'Fleet Dispatcher'}</span>
+                </div>
               </div>
-              <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+            )}
+          </div>
+
+          {/* Step 3: Registered Fleet Driver Dropdown */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">3</span>
+                <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+                <span>Registered Fleet Driver (Auto-Fill)</span>
+              </span>
+              <span className="text-[11px] font-mono text-slate-400">
+                {registeredFleetDrivers.length} Registered Drivers
+              </span>
+            </label>
+            <select
+              value={selectedFleetDriverId}
+              onChange={(e) => handleSelectFleetDriver(e.target.value)}
+              disabled={!selectedFleetId}
+              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs disabled:bg-slate-100 disabled:text-slate-400"
+            >
+              <option value="">
+                {!selectedFleetId 
+                  ? '-- Select a Fleet Account First --' 
+                  : registeredFleetDrivers.length === 0 
+                    ? '-- No registered drivers found (Enter manually below) --' 
+                    : '-- Choose Registered Driver or Enter Manually Below --'}
+              </option>
+              {registeredFleetDrivers.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.fullName} ({d.phone}) {d.licenseNumber ? `• Lic: ${d.licenseNumber}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Step 4: Driver / Operator Name */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">4</span>
+              <User className="w-3.5 h-3.5 text-slate-400" />
+              <span>Driver / Operator Name <span className="text-red-500">*</span></span>
+            </label>
+            <input
+              type="text"
+              value={driverName}
+              onChange={(e) => setDriverName(e.target.value)}
+              placeholder="e.g. Mike Vance"
+              required
+              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
+            />
+          </div>
+
+          {/* Step 5: Driver On-Scene Phone */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">5</span>
+              <Phone className="w-3.5 h-3.5 text-red-600" />
+              <span>Driver On-Scene Phone <span className="text-red-500">*</span></span>
+            </label>
+            <input
+              type="text"
+              value={driverPhone}
+              onChange={(e) => setDriverPhone(e.target.value)}
+              placeholder="+1 (555) 019-2834"
+              required
+              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
+            />
+          </div>
+
+          {/* Step 6: Commercial Vehicle Unit / Plate */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">6</span>
+                <Truck className="w-3.5 h-3.5 text-slate-400" />
+                <span>Commercial Vehicle Unit</span>
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={isManualVehicle}
@@ -335,238 +507,223 @@ export default function FleetInbound() {
                     setIsManualVehicle(e.target.checked);
                     if (e.target.checked) setSelectedVehicleId('');
                   }}
-                  className="w-3.5 h-3.5 rounded text-red-600 focus:ring-red-500 border-slate-300 cursor-pointer"
+                  className="w-3.5 h-3.5 rounded text-red-600 focus:ring-red-500 border-slate-300"
                 />
                 <span>Unlisted / Rental Unit</span>
               </label>
             </div>
 
             {!isManualVehicle ? (
-              <div className="space-y-3">
-                <label className="block text-xs font-bold text-slate-700">
-                  Select Unit from Fleet Registry <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={selectedVehicleId}
-                  onChange={(e) => handleSelectVehicle(e.target.value)}
-                  disabled={!selectedFleetId}
-                  required={!isManualVehicle}
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 cursor-pointer shadow-2xs disabled:bg-slate-100 disabled:text-slate-400"
-                >
-                  <option value="">
-                    {!selectedFleetId 
-                      ? '-- Select fleet first --' 
-                      : fleetVehicles.length === 0 
-                      ? '-- No vehicles registered (Check "Unlisted" box above) --'
-                      : '-- Choose Fleet Vehicle --'}
+              <select
+                value={selectedVehicleId}
+                onChange={(e) => handleSelectVehicle(e.target.value)}
+                disabled={!selectedFleetId}
+                className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs disabled:bg-slate-100"
+              >
+                <option value="">-- Choose Unit from Fleet Registry --</option>
+                {fleetVehicles.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.unitNumber ? `Unit #${v.unitNumber} • ` : ''}{v.year} {v.make} {v.model} • Plate: {v.licensePlate || 'N/A'} • {v.tireSize || '11R22.5'}
                   </option>
-                  {fleetVehicles.map((v: any) => (
-                    <option key={v.id} value={v.id}>
-                      Unit {v.unitNumber || v.licensePlate || 'N/A'} • {v.year} {v.make} {v.model} • Tire: {v.tireSize || '11R22.5'} • Plate: {v.licensePlate || 'N/A'}
-                    </option>
-                  ))}
-                </select>
-
-                {selectedVehicleId && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                    <div>
-                      <span className="text-slate-400 block text-[10px] font-bold uppercase">Unit #</span>
-                      <span className="font-mono font-bold text-slate-900">{unitNumber || 'Standard'}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px] font-bold uppercase">Vehicle</span>
-                      <span className="font-bold text-slate-900">{vehicleYear} {vehicleMake} {vehicleModel}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px] font-bold uppercase">License Plate</span>
-                      <span className="font-mono font-bold text-slate-900">{licensePlate || 'N/A'}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px] font-bold uppercase">Tire Spec</span>
-                      <span className="font-mono font-black text-red-600">{tireSize}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
+                ))}
+              </select>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 animate-in fade-in">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Unit Number</label>
-                  <input
-                    type="text"
-                    value={unitNumber}
-                    onChange={(e) => setUnitNumber(e.target.value)}
-                    placeholder="e.g. TRK-409"
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 font-mono font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Vehicle Make / Model</label>
-                  <input
-                    type="text"
-                    value={`${vehicleMake} ${vehicleModel}`.trim()}
-                    onChange={(e) => {
-                      setVehicleMake(e.target.value);
-                      setVehicleModel('Truck');
-                    }}
-                    placeholder="e.g. 2023 Peterbilt 579"
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 font-medium"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">License Plate</label>
-                  <input
-                    type="text"
-                    value={licensePlate}
-                    onChange={(e) => setLicensePlate(e.target.value)}
-                    placeholder="e.g. 982-XYZ"
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 font-mono font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Tire Size <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    value={tireSize}
-                    onChange={(e) => setTireSize(e.target.value)}
-                    placeholder="e.g. 11R22.5"
-                    required
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 font-mono font-bold text-red-600"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  value={unitNumber}
+                  onChange={(e) => setUnitNumber(e.target.value)}
+                  placeholder="Unit # (e.g. TRK-402)"
+                  className="px-4 py-2 text-xs rounded-xl border border-slate-200 text-slate-900"
+                />
+                <input
+                  type="text"
+                  value={licensePlate}
+                  onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
+                  placeholder="Plate (e.g. 9812-FL)"
+                  className="px-4 py-2 text-xs rounded-xl border border-slate-200 font-mono uppercase text-slate-900"
+                />
               </div>
             )}
           </div>
 
-          {/* Section 3: Location & On-site Driver Contact */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2 font-bold text-xs text-slate-800 uppercase tracking-wider">
-                <span className="w-5 h-5 rounded-full bg-red-100 text-red-700 text-[11px] font-mono flex items-center justify-center font-bold">3</span>
-                <MapPin className="w-4 h-4 text-red-600" />
-                <span>Breakdown Location & Driver Contact</span>
+          {/* Step 7: Commercial Tire Size */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">7</span>
+                <Wrench className="w-3.5 h-3.5 text-slate-400" />
+                <span>Commercial Tire Size / Specs</span>
+              </label>
+              <div className="flex items-center gap-1">
+                {COMMON_COMMERCIAL_TIRE_SIZES.map((sz) => (
+                  <button
+                    key={sz}
+                    type="button"
+                    onClick={() => setTireSize(sz)}
+                    className={`px-1.5 py-0.5 text-[10px] font-mono rounded border transition ${
+                      tireSize === sz
+                        ? 'bg-red-50 border-red-300 text-red-700 font-bold'
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    {sz}
+                  </button>
+                ))}
               </div>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Breakdown Location / Highway Address <span className="text-red-500">*</span>
-                </label>
-                <AddressAutocompleteInput
-                  value={serviceAddress}
-                  onChange={setServiceAddress}
-                  onSelectLocation={(loc: GeocodeLocation) => {
-                    setServiceCoords({ latitude: loc.latitude, longitude: loc.longitude });
-                  }}
-                  countryCode={country}
-                  placeholder="Enter breakdown address, intersection, or highway milepost..."
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-slate-400" />
-                  <span>On-site Driver Name</span>
-                </label>
-                <input
-                  type="text"
-                  value={driverName}
-                  onChange={(e) => setDriverName(e.target.value)}
-                  placeholder="e.g. Robert Miller"
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-red-600" />
-                  <span>Driver Cell Phone Number <span className="text-red-500">*</span></span>
-                </label>
-                <input
-                  type="text"
-                  value={driverPhone}
-                  onChange={(e) => setDriverPhone(e.target.value)}
-                  placeholder="+1 (416) 555-0199"
-                  required
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Dispatch Urgency</span>
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['URGENT', 'STANDARD', 'FUTURE'] as const).map((level) => (
-                    <button
-                      key={level}
-                      type="button"
-                      onClick={() => setUrgency(level)}
-                      className={`py-2 text-xs font-bold rounded-xl border transition cursor-pointer ${
-                        urgency === level
-                          ? level === 'URGENT'
-                            ? 'bg-red-600 text-white border-red-600 shadow-2xs'
-                            : 'bg-slate-900 text-white border-slate-900 shadow-2xs'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      {level}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Roadside Breakdown Details & Instructions</span>
-                </label>
-                <textarea
-                  rows={2}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g. Left rear trailer inner dual blown out. Truck stopped safely on shoulder near weigh station."
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 resize-none focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Section 4: Work Order Services & Billing */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2 font-bold text-xs text-slate-800 uppercase tracking-wider">
-                <span className="w-5 h-5 rounded-full bg-red-100 text-red-700 text-[11px] font-mono flex items-center justify-center font-bold">4</span>
-                <span>Work Order Services & Account Billing</span>
-              </div>
-              <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold">
-                Contract Terms: NET 30 Invoice
-              </span>
-            </div>
-
-            <MultiServiceSelector
-              items={serviceItems}
-              onChange={setServiceItems}
-              currencySymbol={currencySymbol}
-              taxRate={taxRate}
-              isTaxIncluded={isTaxIncluded}
-              setIsTaxIncluded={setIsTaxIncluded}
+            <input
+              type="text"
+              value={tireSize}
+              onChange={(e) => setTireSize(e.target.value)}
+              placeholder="e.g. 11R22.5 or 295/75R22.5"
+              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
             />
           </div>
 
-          {/* Section 5: Submit Action */}
-          <div className="pt-2 flex items-center justify-end">
-            <button
-              type="submit"
-              disabled={isSubmitting || !selectedFleetId || serviceItems.length === 0}
-              className="px-8 py-3.5 rounded-xl bg-red-600 hover:bg-red-700 active:scale-98 text-white font-bold text-sm flex items-center gap-2 shadow-md transition disabled:opacity-50 cursor-pointer"
-            >
-              <CheckCircle2 size={16} />
-              <span>{isSubmitting ? 'Dispatching Fleet Ticket...' : 'Dispatch Commercial Fleet Ticket'}</span>
-            </button>
+          {/* Step 8: Breakdown Location */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">8</span>
+                <MapPin className="w-3.5 h-3.5 text-red-600" />
+                <span>Breakdown Location / Yard Address <span className="text-red-500">*</span></span>
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">Mapbox Places ({formCountry})</span>
+            </label>
+            <AddressAutocompleteInput
+              value={serviceAddress}
+              onChange={setServiceAddress}
+              onSelectLocation={(loc: GeocodeLocation) => {
+                setServiceAddress(loc.address);
+                setServiceCoords({ latitude: loc.latitude, longitude: loc.longitude });
+              }}
+              countryCode={formCountry}
+              placeholder={`Enter yard, dock, highway mile marker in ${formCountry}...`}
+              className="w-full"
+              required
+            />
+            {serviceCoords.latitude && serviceCoords.longitude && (
+              <div className="mt-1 flex items-center gap-1 text-[11px] font-mono text-emerald-700">
+                <Navigation className="w-3 h-3 text-emerald-600" />
+                <span>GPS Coordinates locked: {serviceCoords.latitude.toFixed(4)}, {serviceCoords.longitude.toFixed(4)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Step 9: Commercial Work Order Services */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">9</span>
+              <Wrench className="w-3.5 h-3.5 text-red-600" />
+              <span>Commercial Services & Fleet Work Order</span>
+            </label>
+            <MultiServiceSelector
+              countryCode={formCountry}
+              currencySymbol={currencySymbol}
+              taxRate={taxRate}
+              selectedItems={serviceItems}
+              onChange={setServiceItems}
+              isTaxIncluded={isTaxIncluded}
+              onToggleTaxIncluded={setIsTaxIncluded}
+            />
+          </div>
+
+          {/* Step 10: Arrival Timing & Service Window ("Between Time") */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">10</span>
+                <Clock className="w-3.5 h-3.5 text-blue-600" />
+                <span>Arrival Timing & Service Window ("Between Time")</span>
+              </span>
+              <span className="text-[11px] font-mono text-blue-600 font-bold">{arrivalWindow.displayLabel || 'Default ~30m'}</span>
+            </label>
+            <ArrivalWindowSelector
+              value={arrivalWindow}
+              onChange={setArrivalWindow}
+            />
+          </div>
+
+          {/* Step 11: Dispatch Urgency Priority */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">11</span>
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+              <span>Fleet Urgency Level</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'URGENT', label: 'Urgent / Breakdown', desc: 'Highway dead stop', color: 'border-red-500 text-red-700 bg-red-50' },
+                { id: 'STANDARD', label: 'Standard Yard Service', desc: 'Scheduled maintenance', color: 'border-blue-500 text-blue-700 bg-blue-50' },
+                { id: 'FUTURE', label: 'Future Appointment', desc: 'Booked service', color: 'border-purple-500 text-purple-700 bg-purple-50' },
+              ].map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => setUrgency(u.id as any)}
+                  className={`p-2.5 rounded-xl border text-left transition ${
+                    urgency === u.id
+                      ? `${u.color} font-bold shadow-2xs`
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="text-xs font-bold leading-tight">{u.label}</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">{u.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Step 12: PO Notes & Yard Instructions */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">12</span>
+              <FileText className="w-3.5 h-3.5 text-slate-400" />
+              <span>PO Number & Yard Instructions</span>
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g. PO #99482. Driver will be in tractor unit at loading dock 14. Gate code 4492."
+              rows={2}
+              className="w-full px-4 py-2 text-xs rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
+            />
+          </div>
+
+          {/* Total Price Summary & Submit Bar */}
+          <div className="pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="text-[11px] text-slate-500">Commercial Work Order Total:</div>
+              <div className="text-xl font-black text-slate-900 font-mono">
+                {currencySymbol}{(totalCents / 100).toFixed(2)}{' '}
+                <span className="text-xs font-medium text-slate-500">
+                  ({formCountry} {currencySymbol}{(subtotalCents / 100).toFixed(2)} + tax)
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleResetForm}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Clear Form
+              </button>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-8 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-2 transition shadow-sm cursor-pointer disabled:opacity-50"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>{isSubmitting ? 'Dispatching...' : 'Dispatch Commercial Fleet Ticket'}</span>
+                <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-mono bg-slate-800 rounded text-slate-300">
+                  Alt+Enter
+                </kbd>
+              </button>
+            </div>
           </div>
         </form>
       )}

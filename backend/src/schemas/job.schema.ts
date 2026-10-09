@@ -47,6 +47,9 @@ export const CreateJobSchema = z.object({
   source: z.enum(['DIRECT_CALL', 'WHATSAPP', 'WEBSITE', 'LANDING_PAGE_SELF_BOOK', 'FLEET_PORTAL', 'MEMBER_PORTAL']).optional().default('DIRECT_CALL'),
   scheduledFor: z.string().optional(),
   appointmentDate: z.string().optional(),
+  arrivalWindowStart: z.string().optional(),
+  arrivalWindowEnd: z.string().optional(),
+  estimatedArrivalMinutes: z.coerce.number().optional(),
   services: z.array(z.string()).optional(),
   lineItems: z.array(
     z.object({

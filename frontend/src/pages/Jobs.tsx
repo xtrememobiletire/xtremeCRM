@@ -41,7 +41,7 @@ export default function Jobs() {
     urgency: urgency || undefined,
     search: search || undefined,
     driverId: isDriver ? user?.id : undefined,
-    countryCode: selectedCountry === 'ALL' ? undefined : selectedCountry,
+    countryCode: selectedCountry,
     isFleetJob: 'false',
   });
 

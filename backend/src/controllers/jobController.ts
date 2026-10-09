@@ -407,7 +407,20 @@ export const jobController = {
           urgency: normalizeUrgency(data.urgency),
           source: data.source || 'DIRECT_CALL',
           disposition: (data.disposition as any) || 'BOOKED',
-          appointmentDate: data.appointmentDate ? new Date(data.appointmentDate) : data.scheduledFor ? new Date(data.scheduledFor) : undefined,
+          appointmentDate: data.appointmentDate 
+            ? new Date(data.appointmentDate) 
+            : data.arrivalWindowStart 
+              ? new Date(data.arrivalWindowStart) 
+              : data.scheduledFor 
+                ? new Date(data.scheduledFor) 
+                : undefined,
+          arrivalWindowStart: data.arrivalWindowStart ? new Date(data.arrivalWindowStart) : undefined,
+          arrivalWindowEnd: data.arrivalWindowEnd ? new Date(data.arrivalWindowEnd) : undefined,
+          estimatedArrivalAt: data.estimatedArrivalAt 
+            ? new Date(data.estimatedArrivalAt) 
+            : data.estimatedArrivalMinutes 
+              ? new Date(Date.now() + Number(data.estimatedArrivalMinutes) * 60000) 
+              : undefined,
           subtotalCents,
           taxRateBps,
           taxAmountCents,

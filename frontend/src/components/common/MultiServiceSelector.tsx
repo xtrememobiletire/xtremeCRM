@@ -11,23 +11,31 @@ export interface SelectedServiceItem {
   quantity: number;
 }
 
-interface MultiServiceSelectorProps {
-  items: SelectedServiceItem[];
+export interface MultiServiceSelectorProps {
+  items?: SelectedServiceItem[];
+  selectedItems?: SelectedServiceItem[];
   onChange: (items: SelectedServiceItem[]) => void;
+  countryCode?: string;
   currencySymbol?: string;
   taxRate?: number;
   isTaxIncluded: boolean;
-  setIsTaxIncluded: (val: boolean) => void;
+  setIsTaxIncluded?: (val: boolean) => void;
+  onToggleTaxIncluded?: (val: boolean) => void;
 }
 
 export default function MultiServiceSelector({
   items,
+  selectedItems,
   onChange,
+  countryCode: _countryCode,
   currencySymbol = '$',
   taxRate = 0.13,
   isTaxIncluded,
   setIsTaxIncluded,
+  onToggleTaxIncluded,
 }: MultiServiceSelectorProps) {
+  const activeItems = selectedItems || items || [];
+  const handleToggleTax = setIsTaxIncluded || onToggleTaxIncluded || (() => {});
   const [selectedCatalogId, setSelectedCatalogId] = useState<string>('');
 
   const handleAddService = (catalogId: string) => {
@@ -43,16 +51,16 @@ export default function MultiServiceSelector({
         ? 'MAINTENANCE'
         : 'ROADSIDE_ASSISTANCE';
 
-    const existingIndex = items.findIndex((i) => i.serviceId === catalogId);
+    const existingIndex = activeItems.findIndex((i) => i.serviceId === catalogId);
     if (existingIndex >= 0) {
       // Increment quantity if already added
-      const updated = [...items];
+      const updated = [...activeItems];
       updated[existingIndex].quantity += 1;
       onChange(updated);
     } else {
       // Add new item
       onChange([
-        ...items,
+        ...activeItems,
         {
           serviceId: catItem.id,
           serviceName: catItem.name,
@@ -66,7 +74,7 @@ export default function MultiServiceSelector({
   };
 
   const handleUpdatePrice = (index: number, dollars: number) => {
-    const updated = [...items];
+    const updated = [...activeItems];
     updated[index].unitPriceCents = Math.max(0, dollarsToCents(dollars));
     onChange(updated);
   };
@@ -76,18 +84,18 @@ export default function MultiServiceSelector({
       handleRemoveItem(index);
       return;
     }
-    const updated = [...items];
+    const updated = [...activeItems];
     updated[index].quantity = qty;
     onChange(updated);
   };
 
   const handleRemoveItem = (index: number) => {
-    const updated = items.filter((_, i) => i !== index);
+    const updated = activeItems.filter((_, i) => i !== index);
     onChange(updated);
   };
 
   // Financial calculations
-  const subtotalCents = items.reduce(
+  const subtotalCents = activeItems.reduce(
     (sum, item) => sum + item.unitPriceCents * item.quantity,
     0
   );
@@ -128,7 +136,7 @@ export default function MultiServiceSelector({
       </div>
 
       {/* Selected Service Line Items */}
-      {items.length === 0 ? (
+      {activeItems.length === 0 ? (
         <div className="p-4 rounded-xl border border-dashed border-slate-200 text-center bg-slate-50/50">
           <p className="text-xs text-slate-500 font-medium">
             No services added yet. Select a service from the dropdown above to add it to the ticket.
@@ -136,7 +144,7 @@ export default function MultiServiceSelector({
         </div>
       ) : (
         <div className="space-y-2">
-          {items.map((item, idx) => {
+          {activeItems.map((item, idx) => {
             const lineSubtotal = item.unitPriceCents * item.quantity;
             return (
               <div
@@ -222,7 +230,7 @@ export default function MultiServiceSelector({
           <input
             type="checkbox"
             checked={isTaxIncluded}
-            onChange={(e) => setIsTaxIncluded(e.target.checked)}
+            onChange={(e) => handleToggleTax(e.target.checked)}
             className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-slate-300 cursor-pointer"
           />
           <span className="font-semibold text-slate-700">

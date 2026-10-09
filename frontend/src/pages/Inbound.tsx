@@ -11,9 +11,10 @@ import { REGIONAL_SIMULATION_DATA } from '../constants/simulation';
 import { toast } from 'sonner';
 import type { SelectedServiceItem } from '../components/common/MultiServiceSelector';
 import type { GeocodeLocation } from '../components/common/AddressAutocompleteInput';
+import type { ArrivalWindowData } from '../components/common/ArrivalWindowSelector';
 
 export default function Inbound() {
-  const { country, currencySymbol, taxRate } = useTenant();
+  const { country } = useTenant();
   const { 
     incomingCall, 
     activeCall, 
@@ -24,6 +25,7 @@ export default function Inbound() {
   } = useSocket();
 
   // Intake Form State
+  const [formCountry, setFormCountry] = useState<'CA' | 'US' | 'UK'>((country as any) || 'CA');
   const [callerPhone, setCallerPhone] = useState('');
   const [callerName, setCallerName] = useState('');
   const [leadSource, setLeadSource] = useState('DIRECT_CALL');
@@ -48,9 +50,16 @@ export default function Inbound() {
   const [isTaxIncluded, setIsTaxIncluded] = useState(false);
 
   const [urgency, setUrgency] = useState<'URGENT' | 'STANDARD' | 'FUTURE'>('URGENT');
-  const [etaMinutes, setEtaMinutes] = useState('30');
+  const [arrivalWindow, setArrivalWindow] = useState<ArrivalWindowData>({});
   const [notes, setNotes] = useState('');
   const [isProvisionAccount, setIsProvisionAccount] = useState(true);
+
+  useEffect(() => {
+    setFormCountry((country as any) || 'CA');
+  }, [country]);
+
+  const effectiveCurrency = formCountry === 'US' ? '$' : formCountry === 'UK' ? '£' : '$';
+  const effectiveTaxRate = formCountry === 'CA' ? 0.13 : formCountry === 'UK' ? 0.20 : 0.08;
 
   // Telephony & Call State
   const [callDuration, setCallDuration] = useState(0);
@@ -139,7 +148,7 @@ export default function Inbound() {
         (sum, item) => sum + item.unitPriceCents * item.quantity,
         0
       );
-      const taxCents = isTaxIncluded ? 0 : Math.round(subtotalCents * taxRate);
+      const taxCents = isTaxIncluded ? 0 : Math.round(subtotalCents * effectiveTaxRate);
       const totalCents = isTaxIncluded ? subtotalCents : subtotalCents + taxCents;
 
       await jobService.createJob({
@@ -152,9 +161,13 @@ export default function Inbound() {
         serviceLongitude: serviceCoords.longitude ?? undefined,
         notes,
         urgency,
-        countryCode: country,
+        countryCode: formCountry,
         source: leadSource,
         makeUserAccount: isProvisionAccount,
+        arrivalWindowStart: arrivalWindow.arrivalWindowStart,
+        arrivalWindowEnd: arrivalWindow.arrivalWindowEnd,
+        estimatedArrivalMinutes: arrivalWindow.estimatedArrivalMinutes,
+        appointmentDate: arrivalWindow.appointmentDate,
         serviceItems: serviceItems.map((item) => ({
           serviceName: item.serviceName,
           category: item.category,
@@ -279,7 +292,8 @@ export default function Inbound() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
         <div className="lg:col-span-2">
           <InboundIntakeForm
-            countryCode={country}
+            countryCode={formCountry}
+            onCountryChange={setFormCountry}
             callerPhone={callerPhone}
             setCallerPhone={setCallerPhone}
             callerName={callerName}
@@ -299,12 +313,12 @@ export default function Inbound() {
             setServiceItems={setServiceItems}
             isTaxIncluded={isTaxIncluded}
             setIsTaxIncluded={setIsTaxIncluded}
-            currencySymbol={currencySymbol}
-            taxRate={taxRate}
+            currencySymbol={effectiveCurrency}
+            taxRate={effectiveTaxRate}
             urgency={urgency}
             setUrgency={setUrgency}
-            etaMinutes={etaMinutes}
-            setEtaMinutes={setEtaMinutes}
+            arrivalWindow={arrivalWindow}
+            setArrivalWindow={setArrivalWindow}
             notes={notes}
             setNotes={setNotes}
             isProvisionAccount={isProvisionAccount}

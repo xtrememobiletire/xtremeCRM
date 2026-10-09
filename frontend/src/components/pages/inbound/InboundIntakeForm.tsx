@@ -9,14 +9,17 @@ import {
   Clock, 
   FileText, 
   CheckCircle2, 
-  Share2 
+  Share2,
+  Globe
 } from 'lucide-react';
 import { useKeyboardShortcuts } from '../../../hooks/useKeyboardShortcuts';
 import AddressAutocompleteInput, { type GeocodeLocation } from '../../common/AddressAutocompleteInput';
 import MultiServiceSelector, { type SelectedServiceItem } from '../../common/MultiServiceSelector';
+import { ArrivalWindowSelector, type ArrivalWindowData } from '../../common/ArrivalWindowSelector';
 
 interface InboundIntakeFormProps {
   countryCode: string;
+  onCountryChange?: (country: 'CA' | 'US' | 'UK') => void;
   callerPhone: string;
   setCallerPhone: (val: string) => void;
   callerName: string;
@@ -38,8 +41,10 @@ interface InboundIntakeFormProps {
   taxRate: number;
   urgency: 'URGENT' | 'STANDARD' | 'FUTURE';
   setUrgency: (val: 'URGENT' | 'STANDARD' | 'FUTURE') => void;
-  etaMinutes: string;
-  setEtaMinutes: (val: string) => void;
+  arrivalWindow?: ArrivalWindowData;
+  setArrivalWindow?: (data: ArrivalWindowData) => void;
+  etaMinutes?: string;
+  setEtaMinutes?: (val: string) => void;
   notes: string;
   setNotes: (val: string) => void;
   isProvisionAccount: boolean;
@@ -52,6 +57,7 @@ const COMMON_TIRE_SIZES = ['275/65R18', '225/65R17', '265/70R17', '11R22.5', '29
 
 export default function InboundIntakeForm({
   countryCode,
+  onCountryChange,
   callerPhone,
   setCallerPhone,
   callerName,
@@ -73,6 +79,8 @@ export default function InboundIntakeForm({
   taxRate,
   urgency,
   setUrgency,
+  arrivalWindow,
+  setArrivalWindow,
   etaMinutes,
   setEtaMinutes,
   notes,
@@ -139,10 +147,44 @@ export default function InboundIntakeForm({
 
       {/* Sequential Fields Container */}
       <div className="p-6 sm:p-8 space-y-5">
-        {/* Field 1: Caller Phone */}
+        {/* Step 1: Regional Silo Country Selector */}
+        {onCountryChange && (
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] font-mono flex items-center justify-center font-bold">1</span>
+                <Globe className="w-3.5 h-3.5 text-blue-600" />
+                <span>Operating Country / Currency Silo</span>
+              </span>
+              <span className="text-[11px] font-mono text-slate-400">Agent Region Control</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { code: 'CA', label: '🇨🇦 Canada (CAD)' },
+                { code: 'US', label: '🇺🇸 United States (USD)' },
+                { code: 'UK', label: '🇬🇧 United Kingdom (GBP)' },
+              ].map((c) => (
+                <button
+                  key={c.code}
+                  type="button"
+                  onClick={() => onCountryChange(c.code as any)}
+                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                    countryCode === c.code
+                      ? 'border-red-600 bg-red-50 text-red-700 shadow-2xs'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <span>{c.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Caller Phone */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">1</span>
+            <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 2 : 1}</span>
             <Phone className="w-3.5 h-3.5 text-red-600" />
             <span>Caller Phone Number <span className="text-red-500">*</span></span>
           </label>
@@ -157,10 +199,10 @@ export default function InboundIntakeForm({
           />
         </div>
 
-        {/* Field 2: Customer Name (Updated from Motorist Name) */}
+        {/* Step 3: Customer Name */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">2</span>
+            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 3 : 2}</span>
             <User className="w-3.5 h-3.5 text-slate-400" />
             <span>Customer Name <span className="text-red-500">*</span></span>
           </label>
@@ -174,47 +216,51 @@ export default function InboundIntakeForm({
           />
         </div>
 
-        {/* Field 3: Lead Source Channel */}
+        {/* Step 4: Lead Source Channel */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">3</span>
+            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 4 : 3}</span>
             <Share2 className="w-3.5 h-3.5 text-slate-400" />
-            <span>Lead Source Channel</span>
+            <span>Inbound Source Channel</span>
           </label>
           <select
             value={leadSource}
             onChange={(e) => setLeadSource(e.target.value)}
-            className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all cursor-pointer shadow-2xs"
+            className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
           >
-            <option value="DIRECT_CALL">Direct Phone Call</option>
-            <option value="WHATSAPP">WhatsApp Hotline</option>
-            <option value="WEBSITE">Website Booking</option>
-            <option value="FLEET_PORTAL">Fleet Portal</option>
-            <option value="MEMBER_PORTAL">Member Portal</option>
+            <option value="DIRECT_CALL">Direct Phone Call (Hotline)</option>
+            <option value="WHATSAPP">WhatsApp Dispatch</option>
+            <option value="WEBSITE">Website Self-Book</option>
+            <option value="LANDING_PAGE_SELF_BOOK">Landing Page Form</option>
+            <option value="FLEET_PORTAL">Fleet Portal Inbound</option>
           </select>
         </div>
 
-        {/* Field 4: Breakdown Location / Address with Quick Autocomplete */}
+        {/* Step 5: Breakdown Address & Mapbox Autocomplete */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">4</span>
-            <MapPin className="w-3.5 h-3.5 text-red-600" />
-            <span>Breakdown Location / Address <span className="text-red-500">*</span></span>
+          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 5 : 4}</span>
+              <MapPin className="w-3.5 h-3.5 text-red-600" />
+              <span>Breakdown Location / Address <span className="text-red-500">*</span></span>
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono">Mapbox Places ({countryCode})</span>
           </label>
           <AddressAutocompleteInput
             value={serviceAddress}
             onChange={setServiceAddress}
             onSelectLocation={onSelectLocation}
             countryCode={countryCode}
-            placeholder="Type address, intersection, or highway shoulder (e.g. 857 Winterton Way, Mississauga)..."
+            placeholder={`Enter street address, intersection, highway marker in ${countryCode}...`}
+            className="w-full"
             required
           />
         </div>
 
-        {/* Field 5: Vehicle Make & Model */}
+        {/* Step 6: Vehicle Make & Model */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">5</span>
+            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 6 : 5}</span>
             <Car className="w-3.5 h-3.5 text-slate-400" />
             <span>Vehicle (Year / Make / Model)</span>
           </label>
@@ -222,28 +268,28 @@ export default function InboundIntakeForm({
             type="text"
             value={vehicleMakeModel}
             onChange={(e) => setVehicleMakeModel(e.target.value)}
-            placeholder="e.g. 2021 Ford F-150 / Toyota RAV4"
+            placeholder="e.g. 2021 Toyota RAV4 / Ford F-150"
             className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
           />
         </div>
 
-        {/* Field 6: Tire Size */}
+        {/* Step 7: Tire Specification */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">6</span>
-            <Wrench className="w-3.5 h-3.5 text-slate-400" />
-            <span>Tire Size (On Sidewall) <span className="text-red-500">*</span></span>
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 7 : 6}</span>
+              <Wrench className="w-3.5 h-3.5 text-slate-400" />
+              <span>Tire Size / Specification</span>
+            </label>
+          </div>
           <input
             type="text"
             value={tireSize}
             onChange={(e) => setTireSize(e.target.value)}
             placeholder="e.g. 275/65R18 or 225/65R17"
-            required
-            className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
+            className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
           />
-          <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-0.5">
-            <span className="text-[10px] font-medium text-slate-400">Quick Select:</span>
+          <div className="flex flex-wrap gap-1.5 mt-2">
             {COMMON_TIRE_SIZES.map((size) => (
               <button
                 key={size}
@@ -261,24 +307,58 @@ export default function InboundIntakeForm({
           </div>
         </div>
 
-        {/* Field 7: Required Services (Multi-service with Quantity & Pricing) */}
+        {/* Step 8: Multi-Service Work Order */}
         <div className="pt-2">
+          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 8 : 7}</span>
+            <Wrench className="w-3.5 h-3.5 text-red-600" />
+            <span>Billable Work Order & Services</span>
+          </label>
           <MultiServiceSelector
-            items={serviceItems}
-            onChange={setServiceItems}
+            countryCode={countryCode}
             currencySymbol={currencySymbol}
             taxRate={taxRate}
+            selectedItems={serviceItems}
+            onChange={setServiceItems}
             isTaxIncluded={isTaxIncluded}
-            setIsTaxIncluded={setIsTaxIncluded}
+            onToggleTaxIncluded={setIsTaxIncluded}
           />
         </div>
 
-        {/* Field 8: Dispatch Urgency */}
+        {/* Step 9: Arrival Timing & Service Window ("Between Time") */}
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 9 : 8}</span>
+              <Clock className="w-3.5 h-3.5 text-blue-600" />
+              <span>Arrival Timing & Service Window ("Between Time")</span>
+            </span>
+            <span className="text-[11px] font-mono text-blue-600 font-bold">{arrivalWindow?.displayLabel || 'Default ~30m'}</span>
+          </label>
+          {setArrivalWindow ? (
+            <ArrivalWindowSelector
+              value={arrivalWindow}
+              onChange={setArrivalWindow}
+            />
+          ) : (
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={etaMinutes}
+                onChange={(e) => setEtaMinutes && setEtaMinutes(e.target.value)}
+                placeholder="30"
+                className="w-28 px-4 py-2.5 text-sm rounded-xl border border-slate-200 font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Step 10: Dispatch Urgency */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">8</span>
+            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 10 : 9}</span>
             <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-            <span>Dispatch Urgency</span>
+            <span>Dispatch Urgency Priority</span>
           </label>
           <div className="grid grid-cols-3 gap-2">
             {(['URGENT', 'STANDARD', 'FUTURE'] as const).map((level) => (
@@ -300,44 +380,10 @@ export default function InboundIntakeForm({
           </div>
         </div>
 
-        {/* Field 9: Agreed Customer ETA */}
+        {/* Step 11: Problem Notes for Technician */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">9</span>
-            <Clock className="w-3.5 h-3.5 text-slate-400" />
-            <span>Agreed Customer ETA (Minutes)</span>
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              value={etaMinutes}
-              onChange={(e) => setEtaMinutes(e.target.value)}
-              placeholder="30"
-              className="w-28 px-4 py-2.5 text-sm rounded-xl border border-slate-200 font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
-            />
-            <div className="flex items-center gap-1.5">
-              {['15', '30', '45', '60'].map((mins) => (
-                <button
-                  key={mins}
-                  type="button"
-                  onClick={() => setEtaMinutes(mins)}
-                  className={`px-3 py-2 text-xs font-bold rounded-xl border transition cursor-pointer ${
-                    etaMinutes === mins
-                      ? 'bg-slate-900 text-white border-slate-900'
-                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                  }`}
-                >
-                  {mins}m
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Field 10: Problem Notes for Technician */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">10</span>
+            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 11 : 10}</span>
             <FileText className="w-3.5 h-3.5 text-slate-400" />
             <span>Problem Notes for Technician</span>
           </label>
@@ -350,7 +396,7 @@ export default function InboundIntakeForm({
           />
         </div>
 
-        {/* Field 11: Auto-Provision Customer Portal Account */}
+        {/* Step 12: Auto-Provision Customer Portal Account */}
         <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100">
           <input
             type="checkbox"

@@ -41,6 +41,9 @@ export const fleetController = {
           orderBy: { createdAt: 'desc' },
           include: {
             vehicles: true,
+            drivers: {
+              where: { isActive: true },
+            },
             _count: {
               select: {
                 vehicles: true,
