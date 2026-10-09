@@ -10,9 +10,14 @@ export const registerSchema = z.object({
   password: z.string().min(8),
   fullName: z.string().min(1),
   phone: z.string().optional(),
+  countryCode: z.enum(['CA', 'US', 'UK']).default('CA'),
+  accountType: z.enum(['CUSTOMER', 'FLEET']).optional(),
+  companyName: z.string().optional(),
   role: z
     .enum([
       'ADMIN',
+      'GENERAL_MANAGER',
+      'DEVELOPER',
       'CALL_AGENT',
       'DISPATCHER',
       'DRIVER',
@@ -21,6 +26,5 @@ export const registerSchema = z.object({
       'FLEET_MANAGER',
       'CUSTOMER_MEMBER',
     ])
-    .default('CALL_AGENT'),
-  countryCode: z.enum(['CA', 'US', 'UK']).default('CA'),
+    .optional(),
 });

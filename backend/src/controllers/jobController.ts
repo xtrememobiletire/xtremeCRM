@@ -10,6 +10,7 @@ import {
 } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
 import { geocodingService } from '../services/geocodingService.js';
+import { sseManager } from '../services/sseManager.js';
 
 const stripDriverFinancials = (job: any) => {
   const {
@@ -104,6 +105,14 @@ export const jobController = {
               },
             },
             serviceItems: true,
+            lead: {
+              select: {
+                id: true,
+                companyName: true,
+                contactPerson: true,
+                phone: true,
+              },
+            },
           },
         }),
         prisma.job.count({ where }),
@@ -323,7 +332,7 @@ export const jobController = {
       const serviceAddress = data.serviceAddress || data.locationAddress || 'Roadside Breakdown Location';
       const repairerFeeCents = data.repairerFeeCents !== undefined 
         ? Math.round(Number(data.repairerFeeCents)) 
-        : 4500;
+        : 0;
 
       let serviceLatitude = data.serviceLatitude !== undefined && data.serviceLatitude !== null ? Number(data.serviceLatitude) : data.latitude ? Number(data.latitude) : null;
       let serviceLongitude = data.serviceLongitude !== undefined && data.serviceLongitude !== null ? Number(data.serviceLongitude) : data.longitude ? Number(data.longitude) : null;
@@ -375,10 +384,11 @@ export const jobController = {
         },
       });
 
-      // Notify dispatch room via socket
+      // Notify dispatch room via socket & SSE
       try {
         const io = getIO();
         io.to(`dispatch:${country}`).emit('job:created', job);
+        sseManager.broadcast(`sse:dispatch:${country}`, 'job:created', job);
       } catch {}
 
       return sendSuccess(res, job, 'Job created successfully', 201);
@@ -399,19 +409,18 @@ export const jobController = {
         ? Math.round(Number(cashAmountCents)) 
         : (cashCollected !== undefined ? Math.round(Number(cashCollected) * 100) : 0);
 
+      const isTrialJob = Boolean(job.isTestService);
+
       const updateData: any = {
         status,
         updatedAt: new Date(),
       };
       if (urgency) updateData.urgency = urgency;
       if (status === 'COMPLETED') {
-        if (effectiveCashCents <= 0 && (!job.totalCents || job.totalCents <= 0)) {
+        if (!isTrialJob && effectiveCashCents <= 0 && (!job.totalCents || job.totalCents <= 0)) {
           return sendError(res, 'Payment amount or cash collected on scene is required to complete this job', 400);
         }
         updateData.completedAt = new Date();
-        if (!job.repairerFeeCents || job.repairerFeeCents <= 0) {
-          updateData.repairerFeeCents = 4500;
-        }
         if (effectiveCashCents > 0) {
           updateData.paymentMethod = 'CASH';
           updateData.cashCollectedCents = effectiveCashCents;
@@ -420,6 +429,8 @@ export const jobController = {
             updateData.totalCents = effectiveCashCents;
             updateData.subtotalCents = effectiveCashCents;
           }
+        } else if (isTrialJob) {
+          updateData.paymentStatus = 'VERIFIED_PAID';
         }
       }
 
@@ -433,6 +444,23 @@ export const jobController = {
           serviceItems: true,
         },
       });
+
+      // Auto-advance prospective lead to ADMIN_APPROVAL if complimentary trial job completed
+      if (status === 'COMPLETED' && isTrialJob && job.leadId) {
+        try {
+          const updatedLead = await prisma.lead.update({
+            where: { id: job.leadId },
+            data: {
+              stage: 'ADMIN_APPROVAL',
+              status: 'CALLED',
+            },
+          });
+          sseManager.broadcast(`sse:leads:${updatedLead.countryCode}`, 'lead:updated', updatedLead);
+          sseManager.broadcast(`sse:leads:${updatedLead.countryCode}`, 'lead:stats_updated', { countryCode: updatedLead.countryCode });
+        } catch (leadErr) {
+          console.warn('Lead auto-advance to ADMIN_APPROVAL skipped:', leadErr);
+        }
+      }
 
       // VA Commission attribution on completed fleet jobs (PRD FR-2.1 / Rule 6.3)
       if (status === 'COMPLETED' && updated.fleetId) {
@@ -476,11 +504,13 @@ export const jobController = {
 
         // Notify dispatchers and admins
         io.to(`dispatch:${updated.countryCode}`).emit('job:status_updated', statusPayload);
+        sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:status_updated', statusPayload);
 
         // Notify driver
         if (updated.driverId) {
           io.to(`driver:${updated.driverId}`).emit('job:status_updated', statusPayload);
           io.to(`user:${updated.driverId}`).emit('job:status_updated', statusPayload);
+          sseManager.broadcast(`sse:driver:${updated.driverId}`, 'job:status_updated', statusPayload);
         }
 
         // Notify ticket creator
@@ -576,7 +606,7 @@ export const jobController = {
   async stateJobExpenses(req: Request, res: Response) {
     try {
       const userRole = (req.user as any)?.role;
-      if (userRole && !['ADMIN', 'ACCOUNTANT'].includes(userRole)) {
+      if (userRole && !['ADMIN', 'GENERAL_MANAGER', 'ACCOUNTANT'].includes(userRole)) {
         return sendError(res, 'Only Administrators and Accountants can state job expenses', 403);
       }
       const id = String(req.params.id);
@@ -597,6 +627,17 @@ export const jobController = {
           expenseStatedBy: true,
         },
       });
+
+      try {
+        const io = getIO();
+        io.to(`dispatch:${updated.countryCode}`).emit('job:status_updated', updated);
+        sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:status_updated', updated);
+        if (updated.driverId) {
+          io.to(`driver:${updated.driverId}`).emit('job:status_updated', updated);
+          io.to(`user:${updated.driverId}`).emit('job:status_updated', updated);
+          sseManager.broadcast(`sse:driver:${updated.driverId}`, 'job:status_updated', updated);
+        }
+      } catch {}
 
       return sendSuccess(res, updated, 'Job expenses stated successfully');
     } catch (err: any) {

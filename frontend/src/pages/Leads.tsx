@@ -1,56 +1,87 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Building2, 
   PhoneCall, 
-  ArrowRightLeft, 
   MessageSquare, 
   Plus, 
   Search, 
   RefreshCw, 
-  Truck,
-  ClipboardCheck,
-  Play,
-  Calendar,
-  Zap
+  Truck, 
+  ClipboardCheck, 
+  Play, 
+  Calendar, 
+  Zap, 
+  Wrench, 
+  XCircle, 
+  Share2, 
+  Layers,
+  UploadCloud
 } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Modal from '../components/ui/Modal';
+import LeadCommandCenter from '../components/leads/LeadCommandCenter';
+import UploadSpreadsheetModal from '../components/leads/UploadSpreadsheetModal';
+import ConvertFleetModal from '../components/leads/ConvertFleetModal';
+import DispositionModal from '../components/leads/DispositionModal';
+import TrialServiceModal from '../components/leads/TrialServiceModal';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../context/AuthContext';
-import { useSocket } from '../context/SocketContext';
-import { leadService, type Lead } from '../services/leadService';
+import { 
+  leadService, 
+  type Lead, 
+  type LeadStage, 
+  type DisqualificationReason 
+} from '../services/leadService';
 import { toast } from 'sonner';
+
+type LeadPoolTab = 'va' | 'callbacks' | 'dispatcher' | 'admin' | 'disqualified';
 
 export default function Leads() {
   const { country } = useTenant();
   const { user } = useAuth();
-  const { dialOutbound, transferCallToDm } = useSocket();
   const queryClient = useQueryClient();
 
+  const isVa = user?.role === 'VIRTUAL_ASSISTANT';
   const isAgent = user?.role === 'CALL_AGENT';
-  const isAdminOrDispatcher = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
-  const [viewMode, setViewMode] = useState<'queue' | 'all'>(isAgent ? 'queue' : 'all');
+  const isDispatcher = user?.role === 'DISPATCHER';
+  const isAdminOrGm = ['ADMIN', 'GENERAL_MANAGER'].includes(user?.role || '');
+
+  // Determine initial tab based on role
+  const initialTab: LeadPoolTab = isVa
+    ? 'va'
+    : isAgent
+    ? 'callbacks'
+    : isDispatcher
+    ? 'dispatcher'
+    : 'admin';
+
+  const [activeTab, setActiveTab] = useState<LeadPoolTab>(initialTab);
+
+  // Modals & form states
   const [selectedDispositionLead, setSelectedDispositionLead] = useState<Lead | null>(null);
-  const [selectedDisposition, setSelectedDisposition] = useState('');
-  const [dispositionNotes, setDispositionNotes] = useState('');
 
-  // Callback Scheduling Form State (Available Agent Routing - PRD FR-9.5)
-  const [callbackDate, setCallbackDate] = useState('');
-  const [callbackDay, setCallbackDay] = useState('');
-  const [callbackTime, setCallbackTime] = useState('');
+  // Test service booking modal state
+  const [testServiceLead, setTestServiceLead] = useState<Lead | null>(null);
 
-  // Auto-Dialer Toggle State (Defaults to false to prevent unexpected auto-dial on page mount)
+  // Disqualification modal state
+  const [disqualifyingLead, setDisqualifyingLead] = useState<Lead | null>(null);
+  const [disqualificationCategory, setDisqualificationCategory] = useState<DisqualificationReason>('NOT_INTERESTED');
+  const [disqualificationText, setDisqualificationText] = useState('');
+
+  // Fleet conversion modal state
+  const [convertingLead, setConvertingLead] = useState<Lead | null>(null);
+
+  // Auto-dialer toggle
   const [autoDialEnabled, setAutoDialEnabled] = useState(false);
-  const hasAutoDialedRef = useRef(false);
 
+  // Filters & search
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [stageFilter, setStageFilter] = useState<string>('');
   const [isPushModalOpen, setIsPushModalOpen] = useState(false);
-  const [transferringLead, setTransferringLead] = useState<Lead | null>(null);
-  const [transferNotes, setTransferNotes] = useState('');
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  // Form State for manual lead push
+  // Manual push form
   const [formData, setFormData] = useState({
     companyName: '',
     contactPerson: '',
@@ -64,15 +95,15 @@ export default function Leads() {
     website: '',
     numberOfUnits: '',
     notes: '',
+    priority: 1,
     countryCode: country,
   });
 
-  // Agent 5-cap round robin auto-fill queue (PRD FR-9.2)
+  // 1. Agent / VA 5-cap queue
   const { data: queueResponse, isLoading: isLoadingQueue, refetch: refetchQueue } = useQuery({
     queryKey: ['agent-queue', country],
     queryFn: () => leadService.getAgentQueue(country),
-    enabled: isAgent || viewMode === 'queue',
-    refetchInterval: 15000,
+    enabled: activeTab === 'va',
   });
 
   const queueData = queueResponse || {
@@ -83,32 +114,33 @@ export default function Leads() {
     unassignedPoolCount: 0,
   };
 
-  const { data: leadsResponse, isLoading: isLoadingAll, refetch: refetchAll } = useQuery({
-    queryKey: ['leads', country, statusFilter, search],
+  // 2. Tab-specific leads query
+  const { data: leadsResponse, isLoading: isLoadingLeads, refetch: refetchLeads } = useQuery({
+    queryKey: ['leads', country, activeTab, stageFilter, search],
     queryFn: () => leadService.getLeads({
       countryCode: country,
-      status: statusFilter || undefined,
+      pool: activeTab,
+      stage: stageFilter || undefined,
       search: search || undefined,
       limit: 50,
     }),
-    enabled: !isAgent && viewMode === 'all',
+    enabled: activeTab !== 'va',
   });
 
-  const allLeads: Lead[] = leadsResponse?.data || [];
-  const activeInQueue = isAgent || viewMode === 'queue';
-  const displayLeads: Lead[] = activeInQueue ? queueData.leads : allLeads;
-  const isLoading = activeInQueue ? isLoadingQueue : isLoadingAll;
+  const tabLeads: Lead[] = leadsResponse?.data || [];
+  const displayLeads: Lead[] = activeTab === 'va' ? queueData.leads : tabLeads;
+  const isLoading = activeTab === 'va' ? isLoadingQueue : isLoadingLeads;
 
-  const refetch = () => {
-    if (activeInQueue) refetchQueue();
-    else refetchAll();
+  const refetchAll = () => {
+    if (activeTab === 'va') refetchQueue();
+    else refetchLeads();
   };
 
-  // Start Campaign Batch Mutation (Admin Control - PRD FR-9.2)
+  // Mutations
   const startBatchMutation = useMutation({
     mutationFn: () => leadService.startBatch(country),
     onSuccess: (data: any) => {
-      toast.success(data?.message || 'Campaign batch started! 5 leads assigned to active agents.');
+      toast.success(data?.message || 'Campaign batch started! 5 leads assigned.');
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
     },
@@ -117,31 +149,36 @@ export default function Leads() {
     },
   });
 
+  const distributeMutation = useMutation({
+    mutationFn: () => leadService.distributeLeads({ countryCode: country }),
+    onSuccess: (data: any) => {
+      toast.success(data?.message || 'Leads evenly distributed across active VAs!');
+      queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to distribute leads');
+    },
+  });
+
   const dispositionMutation = useMutation({
     mutationFn: ({ 
       id, 
       disposition, 
-      notes,
-      callbackData,
+      notes, 
+      callbackData 
     }: { 
       id: string; 
       disposition: string; 
-      notes?: string;
-      callbackData?: { callbackDate?: string; callbackDay?: string; callbackTime?: string };
-    }) =>
-      leadService.setDisposition(id, disposition, notes, callbackData),
+      notes?: string; 
+      callbackData?: any; 
+    }) => leadService.setDisposition(id, disposition, notes, callbackData),
     onSuccess: async () => {
-      toast.success('Call outcome recorded! 5-cap slot auto-replenished.');
+      toast.success('Call outcome recorded! 5-cap slot auto-replenished via pg-boss.');
       setSelectedDispositionLead(null);
-      setSelectedDisposition('');
-      setDispositionNotes('');
-      setCallbackDate('');
-      setCallbackDay('');
-      setCallbackTime('');
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
 
-      // Auto-Dialer: Dial next lead in queue automatically
       if (autoDialEnabled && isAgent) {
         setTimeout(async () => {
           const freshQueue: any = await queryClient.fetchQuery({
@@ -160,10 +197,77 @@ export default function Leads() {
     },
   });
 
+  const advanceStageMutation = useMutation({
+    mutationFn: ({ id, stage, notes }: { id: string; stage: LeadStage; notes?: string }) =>
+      leadService.advanceStage(id, { stage, notes }),
+    onSuccess: () => {
+      toast.success('Lead stage advanced!');
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to advance stage');
+    },
+  });
+
+  const disqualifyMutation = useMutation({
+    mutationFn: ({ id, reason, notes }: { id: string; reason: DisqualificationReason; notes?: string }) =>
+      leadService.disqualifyLead(id, reason, notes),
+    onSuccess: () => {
+      toast.success('Lead disqualified and logged in metrics audit trail');
+      setDisqualifyingLead(null);
+      setDisqualificationText('');
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to disqualify lead');
+    },
+  });
+
+  const createTestServiceMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => leadService.createTestService(id, data),
+    onSuccess: () => {
+      toast.success('Trial service work order created! Dispatched for feasibility verification.');
+      setTestServiceLead(null);
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to create trial service job');
+    },
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (id: string) => leadService.reactivateLead(id),
+    onSuccess: (data: any) => {
+      toast.success(data?.message || 'Lead restored to active outreach pipeline!');
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to reactivate lead');
+    },
+  });
+
+  const convertMutation = useMutation({
+    mutationFn: ({ id, customFleetCode, extraData }: { id: string; customFleetCode?: string; extraData?: any }) =>
+      leadService.convertToFleet(id, customFleetCode, extraData),
+    onSuccess: () => {
+      toast.success('Lead converted to Fleet Account! All 10 columns preserved.');
+      setConvertingLead(null);
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['fleets'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to convert lead');
+    },
+  });
+
   const createMutation = useMutation({
     mutationFn: (data: Partial<Lead>) => leadService.createLead(data),
     onSuccess: () => {
-      toast.success('Fleet lead pushed successfully to outbound queue!');
+      toast.success('Fleet lead pushed successfully!');
       setIsPushModalOpen(false);
       setFormData({
         companyName: '',
@@ -178,6 +282,7 @@ export default function Leads() {
         website: '',
         numberOfUnits: '',
         notes: '',
+        priority: 1,
         countryCode: country,
       });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
@@ -187,87 +292,28 @@ export default function Leads() {
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Lead> }) => leadService.updateLead(id, data),
-    onSuccess: () => {
-      toast.success('Lead updated');
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-    },
-  });
-
-  const convertMutation = useMutation({
-    mutationFn: (id: string) => leadService.convertToFleet(id),
-    onSuccess: () => {
-      toast.success('Lead converted to Fleet Account! VA commission recorded.');
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-    },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Failed to convert lead');
-    },
-  });
-
   const handleCallLead = (lead: Lead) => {
-    dialOutbound(lead.phone, `${lead.companyName} (${lead.contactPerson})`, lead.id);
-    updateMutation.mutate({
-      id: lead.id,
-      data: { status: 'CALLED' },
-    });
-  };
-
-  // Auto-Dial on queue load when in OUTBOUND mode (PRD FR-9.3)
-  useEffect(() => {
-    if (isAgent && autoDialEnabled && queueData?.leads?.length > 0 && !hasAutoDialedRef.current) {
-      hasAutoDialedRef.current = true;
-      const initialLead = queueData.scheduledCallbacks?.[0] || queueData.leads[0];
-      if (initialLead && initialLead.phone && !initialLead.disposition) {
-        toast.info(`Auto-Dialer: Dialing next prospect ${initialLead.companyName}...`);
-        handleCallLead(initialLead);
-      }
+    const cleanPhone = lead.phone?.replace(/[^0-9+]/g, '') || lead.phone;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(cleanPhone);
+      toast.success(`Copied ${cleanPhone} to clipboard`);
     }
-  }, [isAgent, autoDialEnabled, queueData]);
-
-  const handleOpenTransferModal = (lead: Lead) => {
-    setTransferringLead(lead);
-    setTransferNotes(`Qualified prospect: ${lead.companyName}. Fleet units: ${lead.numberOfUnits || 'Pending'}. Interested in standard fleet tire account.`);
-  };
-
-  const handleConfirmTransfer = async () => {
-    if (!transferringLead) return;
-    try {
-      await transferCallToDm({
-        leadId: transferringLead.id,
-        companyName: transferringLead.companyName,
-        callerName: transferringLead.contactPerson,
-        callerPhone: transferringLead.phone,
-        notes: transferNotes,
-        transferType: 'OUTBOUND_LEAD',
-      });
-      await leadService.transferLeadToDm(transferringLead.id, transferNotes);
-      toast.success(`Prospect ${transferringLead.companyName} handed over to Dispatcher Manager!`);
-      setTransferringLead(null);
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-    } catch {
-      toast.error('Failed to initiate warm transfer');
-    }
+    window.open(`tel:${cleanPhone}`, '_self');
+    setSelectedDispositionLead(lead);
   };
 
   const handleWhatsAppChat = (lead: Lead) => {
     const cleanPhone = lead.phone.replace(/[^0-9]/g, '');
     const message = encodeURIComponent(
-      `Hi ${lead.contactPerson}, this is Xtreme Mobile Tire dispatch team regarding fleet tire servicing for ${lead.companyName}. Please find our commercial pricing & service agreement terms here.`
+      `Hi ${lead.contactPerson}, this is Xtreme Mobile Tire dispatch team regarding fleet tire servicing for ${lead.companyName}. Please find our commercial agreement details here.`
     );
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
-    updateMutation.mutate({
-      id: lead.id,
-      data: { whatsappFollowUp: true },
-    });
-    toast.success('WhatsApp conversation opened');
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.companyName || !formData.contactPerson || !formData.phone) {
-      toast.error('Please enter Company Name, Contact Person, and Phone');
+    if (!formData.companyName || !formData.phone) {
+      toast.error('Please enter Company Name and Phone');
       return;
     }
     createMutation.mutate({
@@ -277,39 +323,40 @@ export default function Leads() {
     });
   };
 
-  const counts = {
-    all: displayLeads.length,
-    new: displayLeads.filter((l) => l.status === 'NEW').length,
-    called: displayLeads.filter((l) => l.status === 'CALLED' || l.status === 'CALLBACK').length,
-    converted: displayLeads.filter((l) => l.status === 'CONVERTED').length,
-  };
-
   return (
     <div className="space-y-5">
       <PageHeader
-        title={activeInQueue ? "Outbound Calling Queue (5 Max)" : "Outbound B2B Fleet Sales & Leads"}
-        subtitle={
-          activeInQueue
-            ? `Admin-started 5-cap batch queue for ${country} Region. Fast agents auto-receive fresh leads upon dispositioning.`
-            : `Prospect pool and lead qualification for ${country} Region.`
-        }
+        title="Outbound B2B Fleet Sales & Lead Pools"
+        subtitle={`Role-based lead pools for ${country} Region: 5-Cap VA Outreach, Callbacks, Dispatcher Feasibility, and Master Pipeline.`}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
-            {isAdminOrDispatcher && (
-              <button
-                type="button"
-                onClick={() => startBatchMutation.mutate()}
-                disabled={startBatchMutation.isPending}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer disabled:opacity-50"
-                title="Assign 5 leads to each active agent and kick off outbound campaign"
-              >
-                <Play size={13} fill="currentColor" />
-                <span>{startBatchMutation.isPending ? 'Starting Batch...' : 'Start Campaign Batch'}</span>
-              </button>
+            {isAdminOrGm && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => distributeMutation.mutate()}
+                  disabled={distributeMutation.isPending}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Evenly distribute unassigned leads to VAs up to 5 cap"
+                >
+                  <Share2 size={13} />
+                  <span>{distributeMutation.isPending ? 'Distributing...' : 'Distribute to VAs'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => startBatchMutation.mutate()}
+                  disabled={startBatchMutation.isPending}
+                  className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Assign 5 leads to active outbound callers"
+                >
+                  <Play size={13} fill="currentColor" />
+                  <span>{startBatchMutation.isPending ? 'Starting...' : 'Start Campaign Batch'}</span>
+                </button>
+              </>
             )}
 
-            {activeInQueue && (
-              <label className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer select-none">
+            {activeTab === 'va' && (
+              <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer select-none">
                 <Zap size={13} className={autoDialEnabled ? 'text-amber-500 fill-amber-500' : 'text-slate-400'} />
                 <span>Auto-Dialer</span>
                 <input
@@ -321,214 +368,232 @@ export default function Leads() {
               </label>
             )}
 
-            {!isAgent && (
-              <div className="bg-slate-100 p-0.5 rounded-xl border border-slate-200 flex items-center">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('queue')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    viewMode === 'queue' ? 'bg-red-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  My Queue (5)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('all')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    viewMode === 'all' ? 'bg-red-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  All Leads Pool
-                </button>
-              </div>
-            )}
             <button
               type="button"
-              onClick={() => refetch()}
-              className="btn-secondary px-2.5 py-2 cursor-pointer"
+              onClick={refetchAll}
+              className="btn-secondary px-2.5 py-1.5 cursor-pointer"
               title="Refresh queue"
             >
-              <RefreshCw size={14} />
+              <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
             </button>
+
+            <button
+              type="button"
+              onClick={() => setIsUploadModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+              title="Upload leads spreadsheet (.xlsx, .xls, .csv)"
+            >
+              <UploadCloud size={14} className="text-slate-600" />
+              <span>Upload Spreadsheet</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setIsPushModalOpen(true)}
-              className="btn-primary cursor-pointer flex items-center gap-1.5"
+              className="btn-primary cursor-pointer flex items-center gap-1.5 text-xs py-1.5"
             >
-              <Plus size={15} />
-              <span>Push New Lead</span>
+              <Plus size={14} />
+              <span>Push Single Lead</span>
             </button>
           </div>
         }
       />
 
-      {/* 5-Cap Batch Queue Banner */}
-      {activeInQueue && (
+      {/* Real-time Command Center for Admin / GM */}
+      <LeadCommandCenter
+        country={country}
+        isAdminOrGm={isAdminOrGm}
+        onSelectTab={setActiveTab}
+        onStartDistribution={() => distributeMutation.mutate()}
+        onOpenUpload={() => setIsUploadModalOpen(true)}
+      />
+
+      {/* Role-Based Lead Pool Navigation Tabs */}
+      <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200 overflow-x-auto">
+        <button
+          type="button"
+          onClick={() => setActiveTab('va')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+            activeTab === 'va'
+              ? 'bg-red-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+          }`}
+        >
+          <Zap size={13} />
+          <span>VA Outbound (5 Cap)</span>
+          {activeTab === 'va' && queueData.activeCount > 0 && (
+            <span className="bg-red-700 text-white px-1.5 py-0.2 rounded-full text-[10px]">
+              {queueData.activeCount}/5
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('callbacks')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+            activeTab === 'callbacks'
+              ? 'bg-red-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+          }`}
+        >
+          <Calendar size={13} />
+          <span>Agent Callbacks</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('dispatcher')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+            activeTab === 'dispatcher'
+              ? 'bg-red-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+          }`}
+        >
+          <Truck size={13} />
+          <span>Dispatcher Feasibility</span>
+        </button>
+
+        {isAdminOrGm && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('admin')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+              activeTab === 'admin'
+                ? 'bg-red-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            <Layers size={13} />
+            <span>Master Pipeline</span>
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('disqualified')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+            activeTab === 'disqualified'
+              ? 'bg-red-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+          }`}
+        >
+          <XCircle size={13} />
+          <span>Disqualification Audit</span>
+        </button>
+      </div>
+
+      {/* VA 5-Cap Banner (Only shown in 'va' pool) */}
+      {activeTab === 'va' && (
         <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-md flex flex-wrap items-center justify-between gap-4 border border-slate-800">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-400 bg-red-950/80 px-2 py-0.5 rounded-full border border-red-800">
-                Campaign Batch Active (5 Max)
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-400 bg-red-950/80 px-2.5 py-0.5 rounded-full border border-red-800">
+                5-Cap Dynamic Replenishment
               </span>
               <span className="text-xs text-slate-300">
-                Agent Workload: <strong className="text-white font-bold">{queueData.activeCount} / {queueData.maxCapacity}</strong> Calls Assigned
+                Active Slot Load: <strong className="text-white font-bold">{queueData.activeCount} / 5</strong>
               </span>
             </div>
             <div className="text-xs text-slate-300">
               {queueData.unassignedPoolCount > 0 ? (
                 <span>
-                  🚀 <strong className="text-emerald-400 font-bold">{queueData.unassignedPoolCount} unassigned leads</strong> available in pool. When you log call dispositions, fresh leads refill your queue automatically!
+                  🚀 <strong className="text-emerald-400 font-bold">{queueData.unassignedPoolCount} unassigned cold leads</strong> waiting in queue. As you log call outcomes, fresh leads replenish your cap instantly via pg-boss!
                 </span>
               ) : (
                 <span className="text-slate-400">
-                  All unassigned leads are currently distributed among active agents.
+                  Unassigned pool is fully distributed. New uploaded leads will feed in automatically.
                 </span>
               )}
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => refetchQueue()}
-              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
-            >
-              <RefreshCw size={12} className={isLoadingQueue ? 'animate-spin' : ''} />
-              <span>Sync Queue</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => refetchQueue()}
+            className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+          >
+            <RefreshCw size={12} className={isLoadingQueue ? 'animate-spin' : ''} />
+            <span>Sync Queue</span>
+          </button>
         </div>
       )}
-
-      {/* Scheduled Callbacks Due Banner */}
-      {activeInQueue && queueData.scheduledCallbacks && queueData.scheduledCallbacks.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-amber-600" />
-              <span className="font-bold text-xs text-amber-900 uppercase tracking-wider">
-                Scheduled Callbacks Due ({queueData.scheduledCallbacks.length})
-              </span>
-            </div>
-            <span className="text-[11px] text-amber-700 font-semibold">Resurfaced for available agent</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-            {queueData.scheduledCallbacks.map((cb: Lead) => (
-              <div key={cb.id} className="bg-white border border-amber-200 rounded-xl p-3 flex flex-col justify-between shadow-2xs">
-                <div>
-                  <div className="font-bold text-xs text-slate-900">{cb.companyName}</div>
-                  <div className="text-[11px] text-slate-600">{cb.contactPerson} • {cb.phone}</div>
-                  <div className="text-[10px] text-amber-700 font-semibold mt-1 flex items-center gap-1">
-                    <Calendar size={10} />
-                    <span>{cb.callbackDay || 'Scheduled'} at {cb.callbackTime || '11:00 AM'}</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleCallLead(cb)}
-                  className="mt-2.5 w-full py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-                >
-                  <PhoneCall size={12} />
-                  <span>Call Scheduled Prospect</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* KPI Counters */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
-          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Leads</div>
-          <div className="text-2xl font-bold text-slate-900 mt-1">{counts.all}</div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
-          <div className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">New Unworked</div>
-          <div className="text-2xl font-bold text-blue-700 mt-1">{counts.new}</div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
-          <div className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Called / In Progress</div>
-          <div className="text-2xl font-bold text-amber-700 mt-1">{counts.called}</div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
-          <div className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Converted Fleets</div>
-          <div className="text-2xl font-bold text-emerald-700 mt-1">{counts.converted}</div>
-        </div>
-      </div>
 
       {/* Search & Filters */}
-      <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-        <div className="relative flex-1 min-w-[220px]">
+      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+        <div className="relative flex-1 min-w-[240px]">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search company, contact person, phone, or email..."
+            placeholder="Search company, contact, phone, email, units..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-red-500"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto">
-          {['', 'NEW', 'CALLED', 'CALLBACK', 'CONVERTED', 'DEAD'].map((st) => (
-            <button
-              key={st}
-              type="button"
-              onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                statusFilter === st
-                  ? 'bg-red-600 text-white shadow-2xs'
-                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
-              }`}
-            >
-              {st === '' ? 'All Statuses' : st.replace('_', ' ')}
-            </button>
-          ))}
-        </div>
+        {activeTab === 'admin' && (
+          <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
+            <span className="text-slate-500 font-bold text-[11px] uppercase mr-1">Stage:</span>
+            {['', 'VA_OUTREACH', 'AGENT_CALLBACK', 'DISPATCHER_REVIEW', 'ADMIN_APPROVAL', 'CONVERTED'].map((stg) => (
+              <button
+                key={stg}
+                type="button"
+                onClick={() => setStageFilter(stg)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                  stageFilter === stg
+                    ? 'bg-red-600 text-white shadow-2xs'
+                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                {stg === '' ? 'All Stages' : stg.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Leads List */}
+      {/* Main Leads Table */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
         {isLoading ? (
-          <div className="p-8 text-center text-xs text-slate-500">Loading outbound leads queue...</div>
+          <div className="p-10 text-center text-xs text-slate-500">Loading pool records...</div>
         ) : displayLeads.length === 0 ? (
           <div className="p-12 text-center">
             <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-            <h4 className="text-sm font-bold text-slate-700">No Outbound Leads in Queue</h4>
+            <h4 className="text-sm font-bold text-slate-700">No leads found in this pool</h4>
             <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-              {activeInQueue
-                ? "Your active queue is empty. Click Sync Queue above to fetch unassigned leads from the pool."
-                : "Virtual Assistants can upload CSV or Excel files to populate the outbound lead pool."}
+              {activeTab === 'va'
+                ? 'Your active 5-cap queue is empty. Click Sync Queue above or wait for auto-distribution.'
+                : 'No leads match the selected filter in this region.'}
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/75 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-4">Company & Fleet Units</th>
-                  <th className="py-3 px-4">Contact Person</th>
-                  <th className="py-3 px-4">Phone & Email</th>
-                  <th className="py-3 px-4">VA Attribution</th>
-                  <th className="py-3 px-4">Status & Outcome</th>
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-4">Company & Units</th>
+                  <th className="py-3 px-4">Contact & Leadership</th>
+                  <th className="py-3 px-4">Phone & Emails</th>
+                  <th className="py-3 px-4">Stage / Status</th>
+                  <th className="py-3 px-4">Attribution / Assigned</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {displayLeads.map((lead) => {
-                  const isConverted = lead.status === 'CONVERTED';
-                  const isNew = lead.status === 'NEW';
+                  const isConverted = lead.stage === 'CONVERTED';
+                  const isDisqualified = lead.stage === 'DISQUALIFIED';
+
                   return (
-                    <tr key={lead.id} className="hover:bg-slate-50/80 transition">
+                    <tr key={lead.id} className="hover:bg-slate-50/70 transition">
+                      {/* Column 1: Company & Units */}
                       <td className="py-3.5 px-4">
                         <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {lead.numberOfUnits ? (
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
                               <Truck size={10} />
-                              <span>{lead.numberOfUnits} Units (NOU)</span>
+                              <span>{lead.numberOfUnits} Units</span>
                             </span>
                           ) : (
                             <span className="text-[10px] text-slate-400">NOU pending</span>
@@ -540,12 +605,13 @@ export default function Leads() {
                               rel="noreferrer"
                               className="text-[10px] text-blue-600 hover:underline"
                             >
-                              Website
+                              Web
                             </a>
                           )}
                         </div>
                       </td>
 
+                      {/* Column 2: Contact Person, Fleet Manager, CEO */}
                       <td className="py-3.5 px-4 font-semibold text-slate-800">
                         <div>{lead.contactPerson}</div>
                         {(lead.fleetManager || lead.ceoOwnerName) && (
@@ -557,104 +623,161 @@ export default function Leads() {
                         )}
                       </td>
 
+                      {/* Column 3: Phone, Alt Phone, Email, POA Email */}
                       <td className="py-3.5 px-4">
                         <div className="font-mono font-bold text-slate-800">{lead.phone}</div>
-                        {lead.email && <div className="text-[11px] text-slate-500 truncate max-w-[180px]">{lead.email}</div>}
+                        {lead.altPhone && (
+                          <div className="text-[10px] text-slate-500 font-mono">Alt: {lead.altPhone}</div>
+                        )}
+                        {lead.email && <div className="text-[11px] text-slate-500 truncate max-w-[170px]">{lead.email}</div>}
                         {lead.poaEmail && (
-                          <div className="text-[10px] text-amber-700 font-semibold truncate max-w-[180px]" title="Point of Authority / Billing Email">
+                          <div className="text-[10px] text-amber-700 font-semibold truncate max-w-[170px]" title="Power of Attorney Billing Email">
                             POA: {lead.poaEmail}
                           </div>
                         )}
                       </td>
 
-                      <td className="py-3.5 px-4">
-                        <span className="text-[11px] text-slate-600">
-                          {lead.uploadedByVa?.fullName || 'VA Ingestion'}
-                        </span>
-                      </td>
-
+                      {/* Column 4: Stage & Status */}
                       <td className="py-3.5 px-4">
                         <div className="flex flex-col gap-1 items-start">
                           <span
                             className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                               isConverted
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                : isNew
+                                : isDisqualified
+                                ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                : lead.stage === 'DISPATCHER_REVIEW'
+                                ? 'bg-purple-50 text-purple-800 border-purple-200'
+                                : lead.stage === 'AGENT_CALLBACK'
                                 ? 'bg-blue-50 text-blue-800 border-blue-200'
                                 : 'bg-amber-50 text-amber-800 border-amber-200'
                             }`}
                           >
-                            {lead.status}
+                            {lead.stage?.replace('_', ' ')}
                           </span>
-                          {lead.disposition && (
-                            <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                              {lead.disposition.replace('_', ' ')}
+
+                          {lead.callbackDate && (
+                            <span className="text-[10px] font-medium text-blue-700 flex items-center gap-1">
+                              <Calendar size={10} />
+                              <span>{lead.callbackDay || 'Callback'}: {lead.callbackTime || 'Scheduled'}</span>
                             </span>
                           )}
-                          {lead.transferredToDm && (
-                            <span className="text-[10px] text-amber-700 font-semibold flex items-center gap-0.5">
-                              <ArrowRightLeft size={10} />
-                              <span>Transferred DM</span>
+
+                          {isDisqualified && lead.disqualificationReason && (
+                            <span className="text-[10px] text-rose-600 font-semibold">
+                              Reason: {lead.disqualificationReason.replace(/_/g, ' ')}
                             </span>
                           )}
                         </div>
                       </td>
 
+                      {/* Column 5: Staff Handover Chain */}
+                      <td className="py-3.5 px-4 text-slate-600 text-[11px]">
+                        <div>VA: {lead.uploadedBy?.fullName || 'System'}</div>
+                        {lead.assignedAgent && (
+                          <div className="text-[10px] text-slate-500">Agent: {lead.assignedAgent.fullName}</div>
+                        )}
+                        {lead.assignedDispatcher && (
+                          <div className="text-[10px] text-purple-700 font-semibold">Dispatcher: {lead.assignedDispatcher.fullName}</div>
+                        )}
+                      </td>
+
+                      {/* Column 6: Actions */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* 1. Click to Call */}
+                          {/* Dial Button */}
                           <button
                             type="button"
                             onClick={() => handleCallLead(lead)}
                             className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
-                            title="Call Prospect via Telnyx WebRTC"
+                            title="Dial Prospect"
                           >
-                            <PhoneCall size={14} />
+                            <PhoneCall size={13} />
                           </button>
 
-                          {/* 2. Set Call Disposition */}
+                          {/* Log Outcome / Disposition */}
                           <button
                             type="button"
-                            onClick={() => {
-                              setSelectedDispositionLead(lead);
-                              setSelectedDisposition(lead.disposition || '');
-                              setDispositionNotes(lead.notes || '');
-                            }}
+                            onClick={() => setSelectedDispositionLead(lead)}
                             className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
-                            title="Log Call Disposition"
+                            title="Log Call Outcome (Triggers Replenishment)"
                           >
-                            <ClipboardCheck size={14} />
+                            <ClipboardCheck size={13} />
                           </button>
 
-                          {/* 2. Warm Transfer to DM */}
-                          <button
-                            type="button"
-                            onClick={() => handleOpenTransferModal(lead)}
-                            className="p-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition cursor-pointer"
-                            title="Warm Transfer to Dispatcher Manager"
-                          >
-                            <ArrowRightLeft size={14} />
-                          </button>
+                          {/* Admin / GM Feasibility Trial Action */}
+                          {isAdminOrGm && !isConverted && !isDisqualified && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setTestServiceLead(lead)}
+                                className="px-2 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] transition cursor-pointer flex items-center gap-1"
+                                title="Book Feasibility Trial Service (Admin / GM Only)"
+                              >
+                                <Wrench size={11} />
+                                <span>Trial Job</span>
+                              </button>
 
-                          {/* 3. Send WhatsApp Contract */}
+                              <button
+                                type="button"
+                                onClick={() => advanceStageMutation.mutate({ id: lead.id, stage: 'ADMIN_APPROVAL' })}
+                                className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-[10px] transition cursor-pointer"
+                                title="Advance to GM / Admin Signoff"
+                              >
+                                GM Signoff
+                              </button>
+                            </>
+                          )}
+
+                          {/* Admin Conversion Action */}
+                          {isAdminOrGm && !isConverted && !isDisqualified && (
+                            <button
+                              type="button"
+                              onClick={() => setConvertingLead(lead)}
+                              className="px-2 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[10px] transition cursor-pointer"
+                              title="Convert to Active Contracted Fleet Account"
+                            >
+                              Convert Fleet
+                            </button>
+                          )}
+
+                          {/* WhatsApp Pitch */}
                           <button
                             type="button"
                             onClick={() => handleWhatsAppChat(lead)}
                             className="p-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
-                            title="Coordinate Terms / Contract via WhatsApp"
+                            title="WhatsApp Chat"
                           >
-                            <MessageSquare size={14} />
+                            <MessageSquare size={13} />
                           </button>
 
-                          {/* 4. Convert to Fleet (if DM/Admin or qualified) */}
-                          {['ADMIN', 'DISPATCHER'].includes(user?.role || '') && !isConverted && (
+                          {/* Disqualify Button */}
+                          {!isDisqualified && !isConverted && (
                             <button
                               type="button"
-                              onClick={() => convertMutation.mutate(lead.id)}
-                              className="px-2 py-1 rounded-lg bg-slate-900 text-white font-bold text-[10px] hover:bg-slate-800 transition cursor-pointer"
-                              title="Convert to Contracted Fleet Account"
+                              onClick={() => {
+                                setDisqualifyingLead(lead);
+                                setDisqualificationCategory('NOT_INTERESTED');
+                                setDisqualificationText('');
+                              }}
+                              className="p-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition cursor-pointer"
+                              title="Disqualify Lead"
                             >
-                              Convert Fleet
+                              <XCircle size={13} />
+                            </button>
+                          )}
+
+                          {/* Reactivate Disqualified Lead */}
+                          {isDisqualified && (isAdminOrGm || isAgent || isVa) && (
+                            <button
+                              type="button"
+                              onClick={() => reactivateMutation.mutate(lead.id)}
+                              disabled={reactivateMutation.isPending}
+                              className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] transition cursor-pointer flex items-center gap-1 shadow-xs disabled:opacity-50"
+                              title="Reactivate lead back into outreach queue"
+                            >
+                              <RefreshCw size={11} className={reactivateMutation.isPending ? 'animate-spin' : ''} />
+                              <span>Reactivate</span>
                             </button>
                           )}
                         </div>
@@ -668,31 +791,127 @@ export default function Leads() {
         )}
       </div>
 
-      {/* Push Lead Modal (VA Input) */}
+      {/* Trial Service Booking Modal (Admin & GM Exclusive) */}
+      <TrialServiceModal
+        lead={testServiceLead}
+        isOpen={!!testServiceLead}
+        onClose={() => setTestServiceLead(null)}
+        onSubmit={(payload) => {
+          createTestServiceMutation.mutate({
+            id: payload.id,
+            data: payload.data,
+          });
+        }}
+        isPending={createTestServiceMutation.isPending}
+      />
+
+      {/* Disqualification Modal */}
+      {disqualifyingLead && (
+        <Modal
+          isOpen={!!disqualifyingLead}
+          onClose={() => setDisqualifyingLead(null)}
+          title={`Disqualify Lead — ${disqualifyingLead.companyName}`}
+          maxWidth="max-w-md"
+        >
+          <div className="space-y-3.5 text-xs">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Root Cause Category *</label>
+              <select
+                value={disqualificationCategory}
+                onChange={(e) => setDisqualificationCategory(e.target.value as DisqualificationReason)}
+                className="input-field"
+              >
+                <option value="NOT_INTERESTED">Not Interested</option>
+                <option value="WRONG_NUMBER">Wrong Number / Inactive</option>
+                <option value="OUT_OF_SERVICE_AREA">Out of Service Area</option>
+                <option value="COMPETITOR_LOCKED">Locked into Competitor Contract</option>
+                <option value="FLEET_TOO_SMALL">Fleet Too Small (&lt; 3 Units)</option>
+                <option value="NO_COMMERCIAL_FLEET">No Commercial Fleet (Personal Vehicles)</option>
+                <option value="CREDIT_TERMS_REJECTED">Credit / Terms Rejected</option>
+                <option value="OTHER">Other Operational Constraint</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Audit Notes & Reason Details</label>
+              <textarea
+                rows={3}
+                placeholder="Specific feedback from prospect..."
+                value={disqualificationText}
+                onChange={(e) => setDisqualificationText(e.target.value)}
+                className="input-field resize-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDisqualifyingLead(null)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={disqualifyMutation.isPending}
+                onClick={() => {
+                  disqualifyMutation.mutate({
+                    id: disqualifyingLead.id,
+                    reason: disqualificationCategory,
+                    notes: disqualificationText,
+                  });
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs cursor-pointer shadow-xs"
+              >
+                {disqualifyMutation.isPending ? 'Logging...' : 'Confirm Disqualification'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Fleet Account Conversion Modal */}
+      <ConvertFleetModal
+        lead={convertingLead}
+        isOpen={!!convertingLead}
+        onClose={() => setConvertingLead(null)}
+        onConvert={(params) => {
+          convertMutation.mutate({
+            id: params.id,
+            customFleetCode: params.customFleetCode,
+            extraData: {
+              discountPercent: params.discountPercent,
+            },
+          });
+        }}
+        isPending={convertMutation.isPending}
+      />
+
+      {/* Push Lead Modal */}
       <Modal
         isOpen={isPushModalOpen}
         onClose={() => setIsPushModalOpen(false)}
         title="Push Fleet Prospect to Outbound Queue"
         maxWidth="max-w-lg"
       >
-        <form onSubmit={handleFormSubmit} className="space-y-3.5">
+        <form onSubmit={handleFormSubmit} className="space-y-3 text-xs">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Company Name *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Company Name *</label>
               <input
                 type="text"
                 required
-                placeholder="e.g. Apex Logistics Corp"
+                placeholder="e.g. Metro Freight Logistics"
                 value={formData.companyName}
                 onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                 className="input-field"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Number of Units (NOU)</label>
+              <label className="block font-semibold text-slate-700 mb-1">Number of Units (NOU)</label>
               <input
                 type="number"
-                placeholder="e.g. 18"
+                placeholder="e.g. 25"
                 value={formData.numberOfUnits}
                 onChange={(e) => setFormData({ ...formData, numberOfUnits: e.target.value })}
                 className="input-field"
@@ -702,17 +921,17 @@ export default function Leads() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Fleet Manager</label>
+              <label className="block font-semibold text-slate-700 mb-1">Fleet Manager</label>
               <input
                 type="text"
-                placeholder="e.g. Robert Sterling"
+                placeholder="e.g. Robert Vance"
                 value={formData.fleetManager}
                 onChange={(e) => setFormData({ ...formData, fleetManager: e.target.value, contactPerson: e.target.value || formData.contactPerson })}
                 className="input-field"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">CEO / Owner Name</label>
+              <label className="block font-semibold text-slate-700 mb-1">CEO / Owner Name</label>
               <input
                 type="text"
                 placeholder="e.g. David Vance"
@@ -725,7 +944,7 @@ export default function Leads() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Phone *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Contact Phone *</label>
               <input
                 type="text"
                 required
@@ -736,7 +955,7 @@ export default function Leads() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Alt Contact Phone</label>
+              <label className="block font-semibold text-slate-700 mb-1">Alt Phone</label>
               <input
                 type="text"
                 placeholder="+1 (416) 555-0145"
@@ -749,20 +968,20 @@ export default function Leads() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Official Email</label>
+              <label className="block font-semibold text-slate-700 mb-1">Official Email</label>
               <input
                 type="email"
-                placeholder="robert@apexlogistics.com"
+                placeholder="dispatch@metrofreight.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="input-field"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">POA : Email (Billing)</label>
+              <label className="block font-semibold text-slate-700 mb-1">POA Email (Billing)</label>
               <input
                 type="email"
-                placeholder="invoices@apexlogistics.com"
+                placeholder="accounting@metrofreight.com"
                 value={formData.poaEmail}
                 onChange={(e) => setFormData({ ...formData, poaEmail: e.target.value })}
                 className="input-field"
@@ -770,22 +989,34 @@ export default function Leads() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Company Depot / Address</label>
-            <input
-              type="text"
-              placeholder="e.g. 5000 Dixie Rd, Mississauga, ON"
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              className="input-field"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Depot Address</label>
+              <input
+                type="text"
+                placeholder="e.g. 5000 Dixie Rd, Mississauga, ON"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Website URL</label>
+              <input
+                type="text"
+                placeholder="e.g. metrofreight.com"
+                value={formData.website}
+                onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                className="input-field"
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">VA Prospect Notes / Pitch Details</label>
+            <label className="block font-semibold text-slate-700 mb-1">Prospect Notes</label>
             <textarea
               rows={2}
-              placeholder="e.g. Fleets running 11R22.5 steer and drive tires, interested in 24/7 emergency roadside coverage."
+              placeholder="e.g. Operating 20 dry vans with 11R22.5 tires."
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="input-field resize-none"
@@ -811,208 +1042,28 @@ export default function Leads() {
         </form>
       </Modal>
 
-      {/* Warm Transfer to DM Modal */}
-      {transferringLead && (
-        <Modal
-          isOpen={!!transferringLead}
-          onClose={() => setTransferringLead(null)}
-          title="Warm Transfer to Dispatcher Manager"
-          maxWidth="max-w-md"
-        >
-          <div className="space-y-3.5">
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-              <div className="font-bold text-sm text-slate-900">{transferringLead.companyName}</div>
-              <div className="text-xs text-slate-700 mt-0.5">
-                Contact: <span className="font-semibold">{transferringLead.contactPerson}</span> ({transferringLead.phone})
-              </div>
-              {transferringLead.numberOfUnits && (
-                <div className="text-xs text-slate-600 mt-0.5">
-                  Fleet Size: <span className="font-bold text-slate-900">{transferringLead.numberOfUnits} Units</span>
-                </div>
-              )}
-            </div>
+      {/* Call Disposition Modal */}
+      <DispositionModal
+        lead={selectedDispositionLead}
+        isOpen={!!selectedDispositionLead}
+        onClose={() => setSelectedDispositionLead(null)}
+        onSubmit={(payload) => {
+          dispositionMutation.mutate({
+            id: payload.id,
+            disposition: payload.disposition,
+            notes: payload.notes,
+            callbackData: payload.callbackData,
+          });
+        }}
+        isPending={dispositionMutation.isPending}
+      />
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Briefing Notes for Dispatcher Manager
-              </label>
-              <textarea
-                rows={3}
-                value={transferNotes}
-                onChange={(e) => setTransferNotes(e.target.value)}
-                className="input-field resize-none"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setTransferringLead(null)}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmTransfer}
-                className="py-2 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
-              >
-                <ArrowRightLeft size={14} />
-                <span>Handover to DM Now</span>
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Set Call Disposition Modal */}
-      {selectedDispositionLead && (
-        <Modal
-          isOpen={!!selectedDispositionLead}
-          onClose={() => setSelectedDispositionLead(null)}
-          title={`Log Call Outcome — ${selectedDispositionLead.companyName}`}
-          maxWidth="max-w-md"
-        >
-          <div className="space-y-4">
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-              <div className="font-bold text-sm text-slate-900">{selectedDispositionLead.companyName}</div>
-              <div className="text-xs text-slate-600 mt-0.5">
-                Contact: <span className="font-semibold text-slate-800">{selectedDispositionLead.contactPerson}</span> • <span className="font-mono text-slate-700 font-semibold">{selectedDispositionLead.phone}</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                Call Disposition *
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: 'CONVERTED', label: 'Converted / Fleet Deal', color: 'border-emerald-500 bg-emerald-50 text-emerald-800' },
-                  { value: 'CALLBACK', label: 'Callback Requested', color: 'border-blue-500 bg-blue-50 text-blue-800' },
-                  { value: 'NOT_INTERESTED', label: 'Not Interested', color: 'border-slate-400 bg-slate-100 text-slate-700' },
-                  { value: 'WRONG_NUMBER', label: 'Wrong Number', color: 'border-rose-400 bg-rose-50 text-rose-700' },
-                  { value: 'NO_ANSWER', label: 'No Answer / Ringing', color: 'border-amber-400 bg-amber-50 text-amber-800' },
-                  { value: 'VOICEMAIL', label: 'Left Voicemail', color: 'border-purple-400 bg-purple-50 text-purple-800' },
-                  { value: 'RNC', label: 'Relevant Not Converted', color: 'border-orange-400 bg-orange-50 text-orange-800' },
-                ].map((disp) => (
-                  <button
-                    key={disp.value}
-                    type="button"
-                    onClick={() => setSelectedDisposition(disp.value)}
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold text-left transition cursor-pointer ${
-                      selectedDisposition === disp.value
-                        ? `${disp.color} ring-2 ring-red-500 ring-offset-1`
-                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {disp.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Callback Scheduling Section (Available Agent Routing - PRD FR-9.5) */}
-            {selectedDisposition === 'CALLBACK' && (
-              <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl space-y-3 animate-in fade-in duration-200">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-blue-900">
-                  <Calendar size={14} className="text-blue-600" />
-                  <span>Schedule Callback Details</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div>
-                    <label className="block text-[11px] font-bold text-blue-800 mb-1">Callback Date *</label>
-                    <input
-                      type="date"
-                      required
-                      value={callbackDate}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setCallbackDate(val);
-                        if (val) {
-                          const [y, m, d] = val.split('-').map(Number);
-                          const dt = new Date(y, m - 1, d);
-                          const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                          setCallbackDay(days[dt.getDay()]);
-                        }
-                      }}
-                      className="w-full text-xs rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-blue-800 mb-1">Day</label>
-                    <input
-                      type="text"
-                      readOnly
-                      placeholder="e.g. Wednesday"
-                      value={callbackDay}
-                      className="w-full text-xs rounded-lg border border-blue-200 bg-blue-100/50 px-2.5 py-1.5 font-semibold text-blue-900"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-blue-800 mb-1">Time</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 11:00 AM"
-                      value={callbackTime}
-                      onChange={(e) => setCallbackTime(e.target.value)}
-                      className="w-full text-xs rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-                <div className="text-[10px] text-blue-700 italic">
-                  💡 When this callback time arrives, the lead resurfaces at the top of the queue for the next available active agent with auto-dial.
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Disposition Notes & Pitch Feedback
-              </label>
-              <textarea
-                rows={3}
-                placeholder="e.g. Spoke with fleet supervisor, requested email quote on 11R22.5 steer tires."
-                value={dispositionNotes}
-                onChange={(e) => setDispositionNotes(e.target.value)}
-                className="input-field resize-none text-xs"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setSelectedDispositionLead(null)}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!selectedDisposition || dispositionMutation.isPending}
-                onClick={() => {
-                  if (!selectedDisposition) return;
-                  dispositionMutation.mutate({
-                    id: selectedDispositionLead.id,
-                    disposition: selectedDisposition,
-                    notes: dispositionNotes,
-                    callbackData: selectedDisposition === 'CALLBACK' ? {
-                      callbackDate: callbackDate || undefined,
-                      callbackDay: callbackDay || undefined,
-                      callbackTime: callbackTime || '11:00 AM',
-                    } : undefined,
-                  });
-                }}
-                className={`btn-primary flex items-center gap-1.5 ${
-                  !selectedDisposition || dispositionMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              >
-                <ClipboardCheck size={14} />
-                <span>{dispositionMutation.isPending ? 'Saving...' : 'Save & Claim Next Lead'}</span>
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* Spreadsheet Upload Modal */}
+      <UploadSpreadsheetModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        defaultCountry={country}
+      />
     </div>
   );
 }

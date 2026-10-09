@@ -19,7 +19,7 @@ export default function ReconciliationTable({
 }: ReconciliationTableProps) {
   const { user } = useAuth();
   const verifyJobPaymentMutation = useVerifyJobPayment();
-  const isSeniorAccountant = user?.role === 'ADMIN' || Boolean(user?.canApprovePayouts);
+  const isSeniorAccountant = user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER' || Boolean(user?.canApprovePayouts);
 
   const handleVerify = async (jobId: string) => {
     if (!isSeniorAccountant) {

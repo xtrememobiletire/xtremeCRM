@@ -25,8 +25,8 @@ export default function TopNav({
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
-  const isAgentOrAdmin = user?.role === 'CALL_AGENT' || user?.role === 'ADMIN';
-  const canSwitchCountry = user?.role === 'ADMIN' || user?.role === 'DISPATCHER' || user?.role === 'ACCOUNTANT';
+  const isAgentOrAdmin = ['CALL_AGENT', 'ADMIN', 'GENERAL_MANAGER'].includes(user?.role || '');
+  const canSwitchCountry = ['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER', 'ACCOUNTANT'].includes(user?.role || '');
 
   return (
     <>

@@ -1,11 +1,8 @@
 import { useState, useEffect, Suspense } from 'react';
-import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopNav from './TopNav';
 import { RouteErrorBoundary } from '../common/RouteErrorBoundary';
-import ActiveCallBar from '../telephony/ActiveCallBar';
-import IncomingCallPop from '../telephony/IncomingCallPop';
-import WarmTransferModal from '../telephony/WarmTransferModal';
 import JobChatModal from '../dispatch/JobChatModal';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
@@ -20,7 +17,6 @@ function PageLoader() {
 }
 
 export default function MainLayout() {
-  const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
   const { activeChatJob, closeChatJob, socket } = useSocket();
@@ -34,7 +30,7 @@ export default function MainLayout() {
   // When active: navigating to /outbound automatically sets OUTBOUND; navigating to /inbound automatically sets INBOUND.
   // When inactive: stays INACTIVE.
   useEffect(() => {
-    if (user?.role === 'CALL_AGENT' || user?.role === 'ADMIN') {
+    if (user?.role === 'CALL_AGENT' || user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER') {
       if (!isAgentActive) {
         setAgentMode('INACTIVE');
         if (socket && user?.id) {
@@ -57,19 +53,19 @@ export default function MainLayout() {
     }
   }, [location.pathname, isAgentActive, user?.id, user?.role, country, socket, setAgentMode]);
 
-  // Strict role containment: CALL_AGENT only allowed on /inbound and /outbound
+  // Strict role containment: CALL_AGENT only allowed on /inbound and /leads
   if (user?.role === 'CALL_AGENT') {
-    const agentAllowed = ['/inbound', '/outbound', '/leads'];
+    const agentAllowed = ['/inbound', '/leads'];
     if (!agentAllowed.includes(location.pathname)) {
-      return <Navigate to="/inbound" replace />;
+      return <Navigate to="/leads" replace />;
     }
   }
 
-  // Strict role containment: VIRTUAL_ASSISTANT only allowed on /va-upload
+  // Strict role containment: VIRTUAL_ASSISTANT only allowed on /leads
   if (user?.role === 'VIRTUAL_ASSISTANT') {
-    const vaAllowed = ['/va-upload'];
+    const vaAllowed = ['/leads'];
     if (!vaAllowed.includes(location.pathname)) {
-      return <Navigate to="/va-upload" replace />;
+      return <Navigate to="/leads" replace />;
     }
   }
 
@@ -81,14 +77,6 @@ export default function MainLayout() {
       }
       return next;
     });
-  };
-
-  const handleIntakeJob = (phone: string) => {
-    if (user?.role === 'CALL_AGENT') {
-      navigate('/inbound');
-    } else {
-      navigate(`/jobs?intakePhone=${encodeURIComponent(phone)}`);
-    }
   };
 
   return (
@@ -115,10 +103,6 @@ export default function MainLayout() {
         </main>
       </div>
 
-      {/* Global Active Call Bar Dock, Screen Pop & Warm Transfer Pop */}
-      <ActiveCallBar />
-      <IncomingCallPop onIntakeJob={handleIntakeJob} />
-      <WarmTransferModal />
 
       {/* Global Two-Way Job Chat for Cross-Role Communication */}
       {activeChatJob && (

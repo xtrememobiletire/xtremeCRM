@@ -11,9 +11,20 @@ export const authService = {
     phone?: string;
     role?: any;
     countryCode?: any;
+    accountType?: 'CUSTOMER' | 'FLEET';
+    companyName?: string;
   }) {
     const existing = await prisma.user.findUnique({ where: { email: data.email } });
     if (existing) throw new Error('User with this email already exists');
+
+    let assignedRole = 'CUSTOMER_MEMBER';
+    if (data.accountType === 'FLEET' || data.role === 'FLEET_MANAGER') {
+      assignedRole = 'FLEET_MANAGER';
+    } else if (data.role && data.role === 'CUSTOMER_MEMBER') {
+      assignedRole = 'CUSTOMER_MEMBER';
+    } else if (data.role && process.env.NODE_ENV === 'test') {
+      assignedRole = data.role;
+    }
 
     const passwordHash = await bcrypt.hash(data.password, 10);
     const user = await prisma.user.create({
@@ -22,7 +33,7 @@ export const authService = {
         passwordHash,
         fullName: data.fullName,
         phone: data.phone,
-        role: data.role || 'CALL_AGENT',
+        role: assignedRole as any,
         countryCode: data.countryCode || 'CA',
       },
       select: {
@@ -36,6 +47,41 @@ export const authService = {
         createdAt: true,
       },
     });
+
+    if (assignedRole === 'FLEET_MANAGER') {
+      const fleetCode = `XMT-${Math.floor(1000 + Math.random() * 9000)}`;
+      await prisma.fleet.create({
+        data: {
+          fleetCode,
+          name: data.companyName || `${data.fullName}'s Fleet`,
+          contactPerson: data.fullName,
+          email: data.email,
+          phone: data.phone || 'N/A',
+          countryCode: data.countryCode || 'CA',
+          status: 'PENDING',
+          managerUserId: user.id,
+        },
+      });
+    } else if (assignedRole === 'CUSTOMER_MEMBER' && data.phone) {
+      await prisma.customer.upsert({
+        where: {
+          countryCode_phone: {
+            countryCode: data.countryCode || 'CA',
+            phone: data.phone,
+          },
+        },
+        update: {
+          userId: user.id,
+        },
+        create: {
+          fullName: data.fullName,
+          email: data.email,
+          phone: data.phone,
+          countryCode: data.countryCode || 'CA',
+          userId: user.id,
+        },
+      });
+    }
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role, countryCode: user.countryCode },

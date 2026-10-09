@@ -26,6 +26,14 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('xtreme_token');
+      localStorage.removeItem('xtreme_user');
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login') && !window.location.pathname.includes('/landing')) {
+        window.location.href = '/login';
+      }
+    }
+
     if (error.response?.data) {
       const data = error.response.data;
       if (data.errors && typeof data.errors === 'object') {

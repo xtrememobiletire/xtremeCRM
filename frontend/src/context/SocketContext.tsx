@@ -4,8 +4,7 @@ import { useTenant } from './TenantContext';
 import { useAuth } from './AuthContext';
 import { queryClient } from '../lib/queryClient';
 import { toast } from 'sonner';
-import { telephonyService } from '../services/telephonyService';
-import { BACKEND_ROOT_URL } from '../utils/api';
+import { api, BACKEND_ROOT_URL } from '../utils/api';
 
 export interface CallEvent {
   callId: string;
@@ -182,7 +181,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     // Attended / Warm Transfer to Dispatcher Manager (FR-1.2, FR-9.6)
     s.on('call:transfer', (data: any) => {
-      if (['DISPATCHER', 'ADMIN'].includes(userRef.current?.role || '')) {
+      if (['DISPATCHER', 'ADMIN', 'GENERAL_MANAGER'].includes(userRef.current?.role || '')) {
         setIncomingTransfer({
           transferType: data.transferType || 'INBOUND_MOTORIST',
           callId: data.callId || `call-${Date.now()}`,
@@ -377,16 +376,12 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     transferType?: 'INBOUND_MOTORIST' | 'OUTBOUND_LEAD';
   }) => {
     try {
-      await telephonyService.transferCall({
-        callId: activeCall?.callId,
-        callerPhone: params.callerPhone || activeCall?.from,
-        callerName: params.callerName || activeCall?.fromName,
-        companyName: params.companyName,
-        notes: params.notes,
-        vehicleInfo: params.vehicleInfo,
-        leadId: params.leadId,
-        transferType: params.transferType || (params.leadId ? 'OUTBOUND_LEAD' : 'INBOUND_MOTORIST'),
-      });
+      if (params.leadId) {
+        await api.post(`/leads/${params.leadId}/transfer`, {
+          transferNotes: params.notes,
+          callId: activeCall?.callId,
+        });
+      }
       toast.success('Warm transfer initiated to Dispatcher Manager!');
     } catch (err: any) {
       toast.error('Failed to initiate transfer');

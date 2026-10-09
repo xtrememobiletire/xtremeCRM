@@ -387,9 +387,15 @@ export default function TechnicianPortal() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                    Earned: {formatCurrency(centsToDollars(job.repairerFeeCents || 4500), currencySymbol)}
-                  </span>
+                  {(job as any).expenseStatedById ? (
+                    <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                      Earned: {formatCurrency(centsToDollars(job.repairerFeeCents || 0), currencySymbol)}
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                      Pending Audit
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => setChatJob(job)}
