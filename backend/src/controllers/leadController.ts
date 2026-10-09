@@ -1208,13 +1208,16 @@ export const leadController = {
         return sendError(res, 'Only Administrators and General Managers can start batches', 403);
       }
 
-      const { batchId } = req.body;
-      const countryCode = (req.body.countryCode as any) || (req as any).countryCode || 'CA';
-
+      const batchId = req.params.id || req.body.batchId;
       let targetBatch = null;
       if (batchId) {
         targetBatch = await prisma.batch.findUnique({ where: { id: batchId } });
         if (!targetBatch) return sendError(res, 'Batch not found', 404);
+      }
+
+      const countryCode = (req.body.countryCode as any) || targetBatch?.countryCode || (req as any).countryCode || 'CA';
+
+      if (batchId && targetBatch) {
 
         const unassignedInBatch = await prisma.lead.count({
           where: { batchId, assignedAgentId: null, status: 'NEW' },

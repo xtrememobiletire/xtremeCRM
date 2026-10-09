@@ -215,10 +215,10 @@ export default function LeadCommandCenter({
           </div>
         </div>
 
-        {/* VA Concurrency Grid (5-Cap Workload) */}
+        {/* VA Concurrency Grid (1-Cap Workload) */}
         <div className="mt-3.5">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 font-mono mb-2 flex items-center justify-between">
-            <span>Active VA Outreach Load (5-Cap Strict Limit)</span>
+            <span>Active VA Outreach Load (1-Cap Focus Mode)</span>
             <span className="text-slate-400 font-normal normal-case">
               {stats.vaWorkloads?.length || 0} agents active
             </span>
@@ -228,7 +228,7 @@ export default function LeadCommandCenter({
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
               {stats.vaWorkloads.map((va: any) => {
                 const count = va.activeCount || 0;
-                const isFull = count >= 5;
+                const isFull = count >= 1;
                 return (
                   <div 
                     key={va.id}
@@ -246,7 +246,7 @@ export default function LeadCommandCenter({
                     <div className="flex items-center justify-between mt-1 text-[11px]">
                       <span className="text-slate-500">Slots:</span>
                       <span className="font-mono font-bold">
-                        {count}/5
+                        {count}/1
                       </span>
                     </div>
                     {/* Progress bar */}

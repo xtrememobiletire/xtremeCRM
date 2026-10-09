@@ -69,6 +69,19 @@ export async function initQueueService(): Promise<PgBoss | null> {
                 data: { status: 'ACTIVE' },
               });
               logger.info(`[Queue] Scheduled batch ${batch.batchName} (${batch.id}) activated`);
+
+              // Push refill to online VAs
+              const activeVas = await prisma.user.findMany({
+                where: {
+                  role: { in: ['CALL_AGENT', 'VIRTUAL_ASSISTANT'] },
+                  countryCode: batch.countryCode,
+                  deletedAt: null,
+                },
+              });
+              for (const va of activeVas) {
+                await refillAgentQueueAtomic(va.id, batch.countryCode, 1, batch.id);
+              }
+
               sseManager.broadcast(`sse:leads:${batch.countryCode}`, 'batch:activated', {
                 batchId: batch.id,
                 batchName: batch.batchName,
@@ -169,6 +182,7 @@ export async function refillAgentQueueAtomic(
           assignedAgentId: vaId,
           assignmentMethod: 'AUTO_ASSIGN',
           assignedAt: new Date(),
+          disposition: null,
         },
       });
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   X, 
@@ -26,13 +26,19 @@ export default function BatchDrawer({
   onOpenUpload,
 }: BatchDrawerProps) {
   const queryClient = useQueryClient();
+  const [selectedCountry, setSelectedCountry] = useState<string>(country || 'CA');
   const [startingBatchId, setStartingBatchId] = useState<string | null>(null);
+
+  // Sync prop country when drawer opens
+  useEffect(() => {
+    if (country) setSelectedCountry(country);
+  }, [country, isOpen]);
 
   // Fetch batches for this country
   const { data: batches = [], isLoading, refetch } = useQuery({
-    queryKey: ['batches', country],
+    queryKey: ['batches', selectedCountry],
     queryFn: async () => {
-      const res = await api.get(`/leads/batches?countryCode=${country}`);
+      const res = await api.get(`/leads/batches?countryCode=${selectedCountry}`);
       return res.data?.data || [];
     },
     enabled: isOpen,
@@ -41,9 +47,9 @@ export default function BatchDrawer({
 
   // Fetch stats & online VAs
   const { data: leadStats } = useQuery({
-    queryKey: ['lead-stats', country],
+    queryKey: ['lead-stats', selectedCountry],
     queryFn: async () => {
-      const res = await api.get(`/leads/stats?countryCode=${country}`);
+      const res = await api.get(`/leads/stats?countryCode=${selectedCountry}`);
       return res.data?.data;
     },
     enabled: isOpen,
@@ -52,9 +58,10 @@ export default function BatchDrawer({
   // Start Batch Mutation
   const startBatchMutation = useMutation({
     mutationFn: async (batchId?: string) => {
-      const res = await api.post('/leads/start-batch', {
+      const endpoint = batchId ? `/leads/batches/${batchId}/start` : '/leads/start-batch';
+      const res = await api.post(endpoint, {
         batchId,
-        countryCode: country,
+        countryCode: selectedCountry,
       });
       return res.data;
     },
@@ -101,10 +108,23 @@ export default function BatchDrawer({
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   Regional Day Batches
-                  <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono text-[10px] font-bold">
-                    {country}
-                  </span>
                 </h3>
+                <div className="flex items-center gap-1.5 mt-1">
+                  {(['CA', 'US', 'UK'] as const).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setSelectedCountry(c)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono transition cursor-pointer ${
+                        selectedCountry === c
+                          ? 'bg-red-600 text-white shadow-xs'
+                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
                 <p className="text-xs text-slate-400">
                   Scheduled lead batches & instant dispatch
                 </p>

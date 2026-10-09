@@ -164,7 +164,7 @@ export default function Leads() {
       callbackData?: any; 
     }) => leadService.setDisposition(id, disposition, notes, callbackData),
     onSuccess: async () => {
-      toast.success('Call outcome recorded! 5-cap slot auto-replenished via pg-boss.');
+      toast.success('Call outcome recorded! 1-cap slot auto-replenished.');
       setSelectedDispositionLead(null);
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });

@@ -38,7 +38,7 @@ export default function DispositionModal({
 
   useEffect(() => {
     if (lead) {
-      setSelectedDisposition('CONNECTED');
+      setSelectedDisposition('INTERESTED');
       setDispositionNotes('');
       setCallbackDate('');
       setCallbackDay('');

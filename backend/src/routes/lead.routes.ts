@@ -36,17 +36,19 @@ router.post('/distribute', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER'])
 
 /**
  * @route   GET /api/leads/agent-queue
- * @desc    Get active calling queue for Call Agent / VA with 5-cap auto-fill
+ * @desc    Get active calling queue for Call Agent / VA with 1-lead cap auto-replenishment
  * @access  Private
  */
 router.get('/agent-queue', authenticate, leadController.getAgentQueue);
 
 /**
  * @route   POST /api/leads/start-batch
- * @desc    Start campaign batch and assign 5 leads to active agents (Admin / GM)
+ * @route   POST /api/leads/batches/:id/start
+ * @desc    Start campaign batch and assign 1 lead to each active agent (Admin / GM)
  * @access  Private (Admin, General Manager)
  */
 router.post('/start-batch', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.startBatch);
+router.post('/batches/:id/start', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.startBatch);
 
 /**
  * @route   GET /api/leads
