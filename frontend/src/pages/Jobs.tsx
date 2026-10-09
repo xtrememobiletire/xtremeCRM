@@ -42,6 +42,7 @@ export default function Jobs() {
     search: search || undefined,
     driverId: isDriver ? user?.id : undefined,
     countryCode: selectedCountry === 'ALL' ? undefined : selectedCountry,
+    isFleetJob: 'false',
   });
 
   if (isAccountant) {

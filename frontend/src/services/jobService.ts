@@ -78,6 +78,9 @@ export const jobService = {
     urgency?: string;
     countryCode?: string;
     driverId?: string;
+    fleetId?: string;
+    isFleetJob?: boolean | string;
+    source?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
   }): Promise<JobsResponse> {

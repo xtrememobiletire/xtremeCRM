@@ -10,6 +10,7 @@ export function useJobs(params?: {
   urgency?: string;
   countryCode?: string;
   driverId?: string;
+  isFleetJob?: boolean | string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }) {

@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Truck, Navigation, MapPin, Zap, Search } from 'lucide-react';
+import { Truck, Navigation, MapPin, Zap, Search, Edit2, X, Loader2, AlertCircle } from 'lucide-react';
 import Modal from '../ui/Modal';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { userService, type UserItem } from '../../services/userService';
 import { useAssignDriver } from '../../hooks/useJobs';
-import { useMapbox, DEFAULT_MAP_CENTER } from '../../hooks/useMapbox';
+import { useMapbox, MAPBOX_TOKEN, DEFAULT_MAP_CENTER } from '../../hooks/useMapbox';
+import { jobService } from '../../services/jobService';
 import mapboxgl from 'mapbox-gl';
 import { toast } from 'sonner';
 
@@ -12,6 +13,12 @@ interface AssignDriverModalProps {
   isOpen: boolean;
   onClose: () => void;
   job: any;
+}
+
+interface GeocodeSuggestion {
+  id: string;
+  place_name: string;
+  center: [number, number]; // [lng, lat]
 }
 
 // Low-API Haversine distance calculation (Zero external API cost)
@@ -28,9 +35,31 @@ function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
 }
 
 export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriverModalProps) {
+  const queryClient = useQueryClient();
   const assignDriverMutation = useAssignDriver();
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
   const [driverSearch, setDriverSearch] = useState<string>('');
+
+  // Local address and geocoding state
+  const [currentAddress, setCurrentAddress] = useState<string>('');
+  const [currentLat, setCurrentLat] = useState<number | null>(null);
+  const [currentLng, setCurrentLng] = useState<number | null>(null);
+  const [isEditingAddress, setIsEditingAddress] = useState<boolean>(false);
+  const [addressSearchInput, setAddressSearchInput] = useState<string>('');
+  const [suggestions, setSuggestions] = useState<GeocodeSuggestion[]>([]);
+  const [isSearchingGeocode, setIsSearchingGeocode] = useState<boolean>(false);
+  const [isSavingAddress, setIsSavingAddress] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (job) {
+      setCurrentAddress(job.serviceAddress || job.locationAddress || 'Roadside Breakdown Location');
+      setCurrentLat(job.serviceLatitude ?? job.latitude ?? null);
+      setCurrentLng(job.serviceLongitude ?? job.longitude ?? null);
+      setIsEditingAddress(false);
+      setAddressSearchInput('');
+      setSuggestions([]);
+    }
+  }, [job]);
 
   // 1. Strict regional isolation: query only drivers matching the job's countryCode
   const countryCode = job?.countryCode || 'CA';
@@ -40,18 +69,14 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
     enabled: isOpen && Boolean(job),
   });
 
-  const jobLat = job?.serviceLatitude ?? job?.latitude ?? null;
-  const jobLng = job?.serviceLongitude ?? job?.longitude ?? null;
-  const destinationAddress = job?.locationAddress || job?.serviceAddress || 'Roadside Breakdown Location';
-
-  // 2. Compute driving distances and roadside ETAs
+  // 2. Compute driving distances and roadside ETAs using current address coordinates
   const rankedDrivers = useMemo(() => {
     return rawDrivers.map((drv) => {
       let distanceKm: number | null = null;
       let etaMinutes: number;
 
-      if (jobLat !== null && jobLng !== null && drv.latitude && drv.longitude) {
-        const straightKm = calculateDistanceKm(jobLat, jobLng, drv.latitude, drv.longitude);
+      if (currentLat !== null && currentLng !== null && drv.latitude && drv.longitude) {
+        const straightKm = calculateDistanceKm(currentLat, currentLng, drv.latitude, drv.longitude);
         distanceKm = Math.round(straightKm * 1.3 * 10) / 10; // 1.3x road winding factor
         etaMinutes = Math.max(5, Math.round((distanceKm / 45) * 60) + 5); // 45 km/h urban speed + 5 min prep
       } else {
@@ -65,7 +90,7 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
         etaMinutes,
       };
     }).sort((a, b) => (a.etaMinutes ?? 999) - (b.etaMinutes ?? 999));
-  }, [rawDrivers, jobLat, jobLng]);
+  }, [rawDrivers, currentLat, currentLng]);
 
   // Filtered drivers by local search
   const filteredDrivers = useMemo(() => {
@@ -83,15 +108,71 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
   const selectedDriver = rankedDrivers.find((d) => d.id === activeSelectedDriverId) || rankedDrivers[0];
 
   // 3. Mapbox Map Visual Setup
-  const initialCenter: [number, number] = jobLng && jobLat ? [jobLng, jobLat] : DEFAULT_MAP_CENTER;
+  const initialCenter: [number, number] = currentLng && currentLat ? [currentLng, currentLat] : DEFAULT_MAP_CENTER;
   const { containerRef, map, isLoaded } = useMapbox({
     center: initialCenter,
     zoom: 11,
     interactive: true,
+    enabled: isOpen,
   });
 
   const jobMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const driverMarkerRef = useRef<mapboxgl.Marker | null>(null);
+
+  // Address search via Mapbox Autofill
+  const handleSearchGeocode = async (query: string) => {
+    setAddressSearchInput(query);
+    if (!query || query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    setIsSearchingGeocode(true);
+    try {
+      const token = MAPBOX_TOKEN;
+      const cc = countryCode.toLowerCase();
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${token}&country=${cc}&limit=5`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data && data.features) {
+        setSuggestions(
+          data.features.map((f: any) => ({
+            id: f.id,
+            place_name: f.place_name,
+            center: f.center,
+          }))
+        );
+      }
+    } catch (err) {
+      console.warn('Geocoding error:', err);
+    } finally {
+      setIsSearchingGeocode(false);
+    }
+  };
+
+  const handleSelectAddress = async (s: GeocodeSuggestion) => {
+    try {
+      setIsSavingAddress(true);
+      const newAddress = s.place_name;
+      const [lng, lat] = s.center;
+      await jobService.verifyBookingAddress(job.id, {
+        serviceAddress: newAddress,
+        serviceLatitude: lat,
+        serviceLongitude: lng,
+      });
+      setCurrentAddress(newAddress);
+      setCurrentLat(lat);
+      setCurrentLng(lng);
+      setIsEditingAddress(false);
+      setSuggestions([]);
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['fleet-jobs'] });
+      toast.success('Breakdown address updated & geocoded successfully!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update address');
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
 
   // Update Mapbox Visual Markers & Fit Bounds
   useEffect(() => {
@@ -105,17 +186,17 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
     let hasCoords = false;
 
     // Destination Marker (Red)
-    if (jobLng && jobLat) {
+    if (currentLng && currentLat) {
       const destEl = document.createElement('div');
       destEl.className = 'w-7 h-7 rounded-full bg-red-600 border-2 border-white shadow-lg flex items-center justify-center text-white';
       destEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>';
 
       jobMarkerRef.current = new mapboxgl.Marker(destEl)
-        .setLngLat([jobLng, jobLat])
-        .setPopup(new mapboxgl.Popup({ offset: 12 }).setText(`Breakdown: ${destinationAddress}`))
+        .setLngLat([currentLng, currentLat])
+        .setPopup(new mapboxgl.Popup({ offset: 12 }).setText(`Breakdown: ${currentAddress}`))
         .addTo(map);
 
-      bounds.extend([jobLng, jobLat]);
+      bounds.extend([currentLng, currentLat]);
       hasCoords = true;
     }
 
@@ -135,13 +216,13 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
     }
 
     if (hasCoords) {
-      if (jobLng && jobLat && selectedDriver?.longitude && selectedDriver?.latitude) {
-        map.fitBounds(bounds, { padding: 50, maxZoom: 14, duration: 800 });
-      } else if (jobLng && jobLat) {
-        map.flyTo({ center: [jobLng, jobLat], zoom: 12, duration: 600 });
+      if (currentLng && currentLat && selectedDriver?.longitude && selectedDriver?.latitude) {
+        map.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 800 });
+      } else if (currentLng && currentLat) {
+        map.flyTo({ center: [currentLng, currentLat], zoom: 12, duration: 600 });
       }
     }
-  }, [map, isLoaded, jobLng, jobLat, selectedDriver, destinationAddress]);
+  }, [map, isLoaded, currentLng, currentLat, selectedDriver, currentAddress]);
 
   if (!job) return null;
 
@@ -178,26 +259,121 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
           <div ref={containerRef} className="w-full h-full" />
 
           {/* Apple Maps Style Floating Route & ETA Header */}
-          <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
-            <div className="bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-2xl shadow-lg border border-slate-200/80 pointer-events-auto flex items-center gap-2.5 max-w-[65%]">
-              <div className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-                <MapPin size={16} />
-              </div>
-              <div className="min-w-0 pr-1">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Target Breakdown</div>
-                <div className="text-xs font-bold text-slate-900 truncate" title={destinationAddress}>
-                  {destinationAddress}
+          <div className="absolute top-3 left-3 right-3 z-20 flex flex-col sm:flex-row sm:items-start justify-between gap-2 pointer-events-none">
+            {/* Address Banner / Autofill Search Card */}
+            <div className="bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl shadow-xl border border-slate-200/90 pointer-events-auto max-w-full sm:max-w-[70%] relative transition-all">
+              {isEditingAddress ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                      <Search size={12} className="text-red-600" />
+                      <span>Search & Verify Address (Mapbox Autofill)</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingAddress(false);
+                        setSuggestions([]);
+                      }}
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                      title="Cancel edit"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type="text"
+                      autoFocus
+                      value={addressSearchInput}
+                      onChange={(e) => handleSearchGeocode(e.target.value)}
+                      placeholder={`Type address or postal code in ${countryCode}...`}
+                      className="w-full pl-3 pr-8 py-1.5 text-xs rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                    />
+                    {isSearchingGeocode && (
+                      <Loader2 size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 animate-spin" />
+                    )}
+                  </div>
+
+                  {/* Suggestions Dropdown */}
+                  {suggestions.length > 0 && (
+                    <div className="mt-1 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl divide-y divide-slate-100">
+                      {suggestions.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => handleSelectAddress(s)}
+                          disabled={isSavingAddress}
+                          className="w-full p-2.5 text-left text-xs hover:bg-red-50/70 transition flex items-start gap-2 cursor-pointer"
+                        >
+                          <MapPin size={13} className="text-red-600 shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <div className="font-semibold text-slate-900 truncate">{s.place_name}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {isSavingAddress && (
+                    <div className="text-[11px] text-red-600 font-semibold flex items-center gap-1.5">
+                      <Loader2 size={12} className="animate-spin" />
+                      <span>Updating address and geocoding...</span>
+                    </div>
+                  )}
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+                    <MapPin size={16} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Target Breakdown</div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditingAddress(true);
+                          setAddressSearchInput(currentAddress);
+                        }}
+                        className="text-[10px] font-bold text-red-600 hover:text-red-700 flex items-center gap-1 hover:underline cursor-pointer"
+                      >
+                        <Edit2 size={10} />
+                        <span>Edit / Fix</span>
+                      </button>
+                    </div>
+                    <div className="text-xs font-bold text-slate-900 truncate" title={currentAddress}>
+                      {currentAddress}
+                    </div>
+                    {(!currentLat || !currentLng) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditingAddress(true);
+                          setAddressSearchInput(currentAddress);
+                        }}
+                        className="mt-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold flex items-center gap-1 cursor-pointer hover:bg-amber-200"
+                      >
+                        <AlertCircle size={10} />
+                        <span>Coordinates missing • Click to Geocode</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* Roadside Driving ETA Badge */}
             {selectedDriver && (
-              <div className="bg-slate-900/90 backdrop-blur-md text-white px-3.5 py-2 rounded-2xl shadow-lg border border-slate-700/80 pointer-events-auto flex items-center gap-2">
+              <div className="bg-slate-900/90 backdrop-blur-md text-white px-3.5 py-2 rounded-2xl shadow-xl border border-slate-700/80 pointer-events-auto flex items-center gap-2 shrink-0">
                 <Zap size={14} className="text-amber-400 fill-amber-400 shrink-0" />
                 <div className="text-right">
                   <div className="text-xs font-black text-amber-300">~{selectedDriver.etaMinutes || 20} MINS</div>
-                  {selectedDriver.distanceKm !== null && (
+                  {selectedDriver.distanceKm !== null ? (
                     <div className="text-[10px] text-slate-400 font-mono">{selectedDriver.distanceKm} km away</div>
+                  ) : (
+                    <div className="text-[9px] text-slate-400">Estimated</div>
                   )}
                 </div>
               </div>

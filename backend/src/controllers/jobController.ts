@@ -80,6 +80,11 @@ export const jobController = {
             { isTestService: true },
           ],
         });
+      } else if (isFleetJob === 'false' || isFleetJob === '0') {
+        andConditions.push({
+          fleetId: null,
+          isTestService: false,
+        });
       }
 
       if (search) {
@@ -650,9 +655,11 @@ export const jobController = {
       if (!job) return sendError(res, 'Job not found', 404);
 
       const updateData: any = {
-        status: 'PENDING',
         updatedAt: new Date(),
       };
+      if (job.status === 'UNVERIFIED_PUBLIC') {
+        updateData.status = 'PENDING';
+      }
       if (serviceAddress) updateData.serviceAddress = serviceAddress;
       if (serviceLatitude !== undefined && serviceLatitude !== null) updateData.serviceLatitude = Number(serviceLatitude);
       if (serviceLongitude !== undefined && serviceLongitude !== null) updateData.serviceLongitude = Number(serviceLongitude);

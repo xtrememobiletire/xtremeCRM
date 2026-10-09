@@ -12,7 +12,7 @@ import {
   Building2,
   Sparkles
 } from 'lucide-react';
-import JobDetailModal from '../components/pages/jobs/JobDetailModal';
+import FleetJobDetailModal from '../components/pages/jobs/FleetJobDetailModal';
 import AssignDriverModal from '../components/pages/jobs/AssignDriverModal';
 import CreateJobModal from '../components/pages/jobs/CreateJobModal';
 import EmptyState from '../components/ui/EmptyState';
@@ -378,7 +378,7 @@ export default function FleetJobs() {
 
       {/* Modals */}
       {selectedJob && (
-        <JobDetailModal
+        <FleetJobDetailModal
           isOpen={Boolean(selectedJob)}
           onClose={() => setSelectedJob(null)}
           job={selectedJob}

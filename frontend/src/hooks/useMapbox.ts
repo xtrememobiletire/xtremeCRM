@@ -17,6 +17,7 @@ interface UseMapboxOptions {
   zoom?: number;
   style?: string;
   interactive?: boolean;
+  enabled?: boolean;
 }
 
 export function useMapbox(options: UseMapboxOptions = {}) {
@@ -26,9 +27,15 @@ export function useMapbox(options: UseMapboxOptions = {}) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isEnabled = options.enabled !== false;
+
   useEffect(() => {
+    if (!isEnabled) return;
     if (!containerRef.current) return;
-    if (mapRef.current) return;
+    if (mapRef.current) {
+      mapRef.current.resize();
+      return;
+    }
 
     const token = MAPBOX_TOKEN;
     if (!token) {
@@ -55,6 +62,8 @@ export function useMapbox(options: UseMapboxOptions = {}) {
 
       m.on('load', () => {
         setIsLoaded(true);
+        setTimeout(() => m.resize(), 100);
+        setTimeout(() => m.resize(), 350);
       });
 
       m.on('error', (e) => {
@@ -77,7 +86,7 @@ export function useMapbox(options: UseMapboxOptions = {}) {
         setIsLoaded(false);
       }
     };
-  }, []);
+  }, [isEnabled]);
 
   const flyTo = useCallback((coords: [number, number], zoom = 14) => {
     if (mapRef.current) {
