@@ -141,7 +141,7 @@ export const leadController = {
         prisma.lead.count({
           where: {
             ...whereBase,
-            status: 'DISQUALIFIED',
+            stage: 'DISQUALIFIED',
           },
         }),
         prisma.lead.count({

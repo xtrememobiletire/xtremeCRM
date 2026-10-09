@@ -13,7 +13,8 @@ import {
   LogOut,
   History,
   PhoneIncoming,
-  PhoneOutgoing
+  PhoneOutgoing,
+  Globe
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,9 +25,11 @@ interface SidebarProps {
 
 const baseNavItems = [
   { icon: BarChart3, label: 'Dashboard', path: '/dashboard' },
+  { icon: Wrench, label: 'Jobs', path: '/jobs' },
+  { icon: Truck, label: 'Fleet Jobs', path: '/fleet-jobs' },
+  { icon: Globe, label: 'Bookings', path: '/bookings' },
   { icon: PhoneOutgoing, label: 'Leads', path: '/leads' },
   { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
-  { icon: Wrench, label: 'Jobs', path: '/jobs' },
   { icon: Truck, label: 'Fleets', path: '/fleets' },
   { icon: Users, label: 'Customers', path: '/customers' },
   { icon: DollarSign, label: 'Accounting', path: '/accounting' },
@@ -58,9 +61,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       ]
     : isDispatcher
     ? [
+        { icon: Wrench, label: 'Jobs', path: '/jobs' },
+        { icon: Truck, label: 'Fleet Jobs', path: '/fleet-jobs' },
+        { icon: Globe, label: 'Bookings', path: '/bookings' },
         { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
         { icon: PhoneOutgoing, label: 'Leads', path: '/leads' },
-        { icon: Wrench, label: 'Jobs', path: '/jobs' },
         { icon: Truck, label: 'Fleets', path: '/fleets' },
         { icon: Users, label: 'Customers', path: '/customers' },
       ]

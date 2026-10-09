@@ -129,8 +129,20 @@ export const jobService = {
     return res.data.data;
   },
 
-  async assignDriver(id: string, driverId: string): Promise<JobItem> {
-    const res = await api.patch(`/jobs/${id}/assign-driver`, { driverId });
+  async assignDriver(id: string, driverId: string, etaMinutes?: number): Promise<JobItem> {
+    const res = await api.patch(`/jobs/${id}/assign-driver`, { driverId, etaMinutes });
+    return res.data.data;
+  },
+
+  async verifyBookingAddress(id: string, payload: {
+    serviceAddress: string;
+    serviceLatitude?: number | null;
+    serviceLongitude?: number | null;
+    recipientName?: string;
+    recipientPhone?: string;
+    problemNotes?: string;
+  }): Promise<JobItem> {
+    const res = await api.patch(`/jobs/${id}/verify-booking`, payload);
     return res.data.data;
   },
 

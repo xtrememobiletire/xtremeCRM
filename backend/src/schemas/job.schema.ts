@@ -109,6 +109,19 @@ export type UpdateJobStatusInput = z.infer<typeof UpdateJobStatusSchema>;
 
 export const AssignDriverSchema = z.object({
   driverId: z.string().uuid('Valid Driver UUID is required'),
+  etaMinutes: z.coerce.number().optional(),
+  estimatedArrivalAt: z.string().optional(),
 });
 
 export type AssignDriverInput = z.infer<typeof AssignDriverSchema>;
+
+export const VerifyBookingAddressSchema = z.object({
+  serviceAddress: z.string().min(1, 'Service address is required'),
+  serviceLatitude: z.coerce.number().optional().nullable(),
+  serviceLongitude: z.coerce.number().optional().nullable(),
+  recipientName: z.string().optional(),
+  recipientPhone: z.string().optional(),
+  problemNotes: z.string().optional(),
+});
+
+export type VerifyBookingAddressInput = z.infer<typeof VerifyBookingAddressSchema>;

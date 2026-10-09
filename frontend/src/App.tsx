@@ -28,6 +28,8 @@ const Leads = lazy(() => import('./pages/Leads'));
 const Inbound = lazy(() => import('./pages/Inbound'));
 const CustomerMapView = lazy(() => import('./pages/customers/CustomerMapView'));
 const JobMapView = lazy(() => import('./pages/jobs/JobMapView'));
+const FleetJobs = lazy(() => import('./pages/FleetJobs'));
+const Bookings = lazy(() => import('./pages/Bookings'));
 
 function getRoleHome(role?: string) {
   switch (role) {
@@ -44,7 +46,7 @@ function getRoleHome(role?: string) {
     case 'ACCOUNTANT':
       return '/accounting';
     case 'DISPATCHER':
-      return '/dispatch';
+      return '/jobs';
     default:
       return '/dashboard';
   }
@@ -161,6 +163,8 @@ function AppRoutes() {
           <Route path="/leads" element={<RoleRoute allowedRoles={['VIRTUAL_ASSISTANT', 'CALL_AGENT', 'DISPATCHER']}><Leads /></RoleRoute>} />
           <Route path="/outbound" element={<Navigate to="/leads" replace />} />
           <Route path="/jobs" element={<RoleRoute allowedRoles={['DISPATCHER']}><Jobs /></RoleRoute>} />
+          <Route path="/fleet-jobs" element={<RoleRoute allowedRoles={['DISPATCHER']}><FleetJobs /></RoleRoute>} />
+          <Route path="/bookings" element={<RoleRoute allowedRoles={['DISPATCHER']}><Bookings /></RoleRoute>} />
           <Route path="/jobs/map" element={<RoleRoute allowedRoles={['DISPATCHER']}><JobMapView /></RoleRoute>} />
           <Route path="/dispatch" element={<RoleRoute allowedRoles={['DISPATCHER']}><Dispatch /></RoleRoute>} />
           <Route path="/customers" element={<RoleRoute allowedRoles={['DISPATCHER']}><Customers /></RoleRoute>} />

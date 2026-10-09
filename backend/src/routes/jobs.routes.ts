@@ -7,6 +7,7 @@ import {
   CreateJobSchema,
   UpdateJobStatusSchema,
   AssignDriverSchema,
+  VerifyBookingAddressSchema,
   idParamSchema,
 } from '../schemas/index.js';
 import { tenantScope } from '../middleware/tenantScope.js';
@@ -89,6 +90,20 @@ router.patch(
     body: AssignDriverSchema,
   }),
   jobController.assignDriver
+);
+
+/**
+ * @route   PATCH /api/jobs/:id/verify-booking
+ * @desc    Verify website booking address with Mapbox geocoding & release to PENDING
+ * @access  Private (Admin, General Manager, Dispatcher)
+ */
+router.patch(
+  '/:id/verify-booking',
+  validateRequest({
+    params: idParamSchema,
+    body: VerifyBookingAddressSchema,
+  }),
+  jobController.verifyBookingAddress
 );
 
 /**

@@ -88,8 +88,8 @@ export function useUpdateJobStatus() {
 export function useAssignDriver() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ jobId, driverId }: { jobId: string; driverId: string }) =>
-      jobService.assignDriver(jobId, driverId),
+    mutationFn: ({ jobId, driverId, etaMinutes }: { jobId: string; driverId: string; etaMinutes?: number }) =>
+      jobService.assignDriver(jobId, driverId, etaMinutes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['technician-jobs'] });

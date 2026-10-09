@@ -67,14 +67,35 @@ export const jobController = {
 
       if (fleetId && userRole !== 'FLEET_MANAGER') where.fleetId = fleetId;
       if (customerId && userRole !== 'CUSTOMER_MEMBER') where.customerId = customerId;
+      const isFleetJob = req.query.isFleetJob;
+      const source = req.query.source as any;
+
+      if (source) where.source = source;
+
+      const andConditions: any[] = [];
+      if (isFleetJob === 'true' || isFleetJob === '1') {
+        andConditions.push({
+          OR: [
+            { fleetId: { not: null } },
+            { isTestService: true },
+          ],
+        });
+      }
+
       if (search) {
-        where.OR = [
-          { jobCode: { contains: search, mode: 'insensitive' } },
-          { serviceAddress: { contains: search, mode: 'insensitive' } },
-          { recipientName: { contains: search, mode: 'insensitive' } },
-          { recipientPhone: { contains: search } },
-          { problemNotes: { contains: search, mode: 'insensitive' } },
-        ];
+        andConditions.push({
+          OR: [
+            { jobCode: { contains: search, mode: 'insensitive' } },
+            { serviceAddress: { contains: search, mode: 'insensitive' } },
+            { recipientName: { contains: search, mode: 'insensitive' } },
+            { recipientPhone: { contains: search } },
+            { problemNotes: { contains: search, mode: 'insensitive' } },
+          ],
+        });
+      }
+
+      if (andConditions.length > 0) {
+        where.AND = andConditions;
       }
 
       const sortBy = (req.query.sortBy as string) || 'createdAt';
@@ -552,10 +573,26 @@ export const jobController = {
   async assignDriver(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
-      const { driverId } = req.body;
+      const { driverId, etaMinutes, estimatedArrivalAt: customArrival } = req.body;
 
-      const driver = await prisma.user.findUnique({ where: { id: driverId } });
+      const [driver, job] = await Promise.all([
+        prisma.user.findUnique({ where: { id: driverId } }),
+        prisma.job.findUnique({ where: { id } }),
+      ]);
+
       if (!driver) return sendError(res, 'Driver not found', 404);
+      if (!job) return sendError(res, 'Job not found', 404);
+
+      // Strict regional silo: region based jobs should only have region based drivers
+      if (driver.countryCode !== job.countryCode) {
+        return sendError(res, `Cannot assign ${driver.countryCode} driver to ${job.countryCode} job`, 400);
+      }
+
+      const estimatedArrivalAt = customArrival 
+        ? new Date(customArrival) 
+        : etaMinutes 
+        ? new Date(Date.now() + Number(etaMinutes) * 60000) 
+        : undefined;
 
       const updated = await prisma.job.update({
         where: { id },
@@ -563,6 +600,7 @@ export const jobController = {
           driverId,
           status: 'ASSIGNED',
           assignedAt: new Date(),
+          estimatedArrivalAt,
           updatedAt: new Date(),
         },
         include: {
@@ -598,6 +636,47 @@ export const jobController = {
       } catch {}
 
       return sendSuccess(res, updated, 'Driver assigned successfully');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  async verifyBookingAddress(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const { serviceAddress, serviceLatitude, serviceLongitude, recipientName, recipientPhone, problemNotes } = req.body;
+
+      const job = await prisma.job.findUnique({ where: { id } });
+      if (!job) return sendError(res, 'Job not found', 404);
+
+      const updateData: any = {
+        status: 'PENDING',
+        updatedAt: new Date(),
+      };
+      if (serviceAddress) updateData.serviceAddress = serviceAddress;
+      if (serviceLatitude !== undefined && serviceLatitude !== null) updateData.serviceLatitude = Number(serviceLatitude);
+      if (serviceLongitude !== undefined && serviceLongitude !== null) updateData.serviceLongitude = Number(serviceLongitude);
+      if (recipientName) updateData.recipientName = recipientName;
+      if (recipientPhone) updateData.recipientPhone = recipientPhone;
+      if (problemNotes) updateData.problemNotes = problemNotes;
+
+      const updated = await prisma.job.update({
+        where: { id },
+        data: updateData,
+        include: {
+          customer: true,
+          vehicle: true,
+          serviceItems: true,
+        },
+      });
+
+      try {
+        const io = getIO();
+        io.to(`dispatch:${updated.countryCode}`).emit('job:verified', updated);
+        sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:verified', updated);
+      } catch {}
+
+      return sendSuccess(res, updated, 'Booking address verified successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }
@@ -716,7 +795,7 @@ export const jobController = {
           recipientPhone: data.recipientPhone || data.customer?.phone,
           problemNotes: data.problemNotes || data.notes,
           urgency: data.urgency || 'STANDARD',
-          source: 'LANDING_PAGE_SELF_BOOK',
+          source: data.source || 'WEBSITE',
           disposition: 'BOOKED',
           createdById: defaultUser.id,
           vehicleId: veh.id,

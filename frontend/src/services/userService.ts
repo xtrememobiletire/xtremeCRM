@@ -7,6 +7,10 @@ export interface UserItem {
   phone?: string;
   role: string;
   countryCode: string;
+  address?: string;
+  assignedVehicle?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   isAgentActive?: boolean;
 }
 
