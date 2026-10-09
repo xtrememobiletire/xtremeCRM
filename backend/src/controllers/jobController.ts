@@ -27,6 +27,24 @@ const stripDriverFinancials = (job: any) => {
   return rest;
 };
 
+const normalizeUrgency = (u?: string | null): 'URGENT' | 'STANDARD' | 'FUTURE' => {
+  if (!u) return 'STANDARD';
+  const upper = String(u).toUpperCase();
+  if (['CRITICAL', 'HIGH', 'EMERGENCY', 'URGENT'].includes(upper)) return 'URGENT';
+  if (['LOW', 'FUTURE', 'SCHEDULED'].includes(upper)) return 'FUTURE';
+  return 'STANDARD';
+};
+
+const validPaymentMethod = (pm?: string | null): 'E_TRANSFER' | 'POS' | 'CASH' | 'MOTO' | 'STRIPE' | null => {
+  if (!pm) return null;
+  const upper = String(pm).toUpperCase();
+  if (upper === 'CREDIT_CARD' || upper === 'PHONE') return 'MOTO';
+  if (['E_TRANSFER', 'POS', 'CASH', 'MOTO', 'STRIPE'].includes(upper)) {
+    return upper as any;
+  }
+  return null;
+};
+
 export const jobController = {
   async getAllJobs(req: Request, res: Response) {
     try {
@@ -84,6 +102,7 @@ export const jobController = {
         andConditions.push({
           fleetId: null,
           isTestService: false,
+          ...(status ? {} : { status: { not: 'UNVERIFIED_PUBLIC' } }),
         });
       }
 
@@ -385,7 +404,7 @@ export const jobController = {
           recipientName: data.recipientName || data.customer?.name || data.customer?.fullName || data.customerName || name,
           recipientPhone: data.recipientPhone || data.customer?.phone || data.customerPhone || phone,
           problemNotes: data.problemNotes || data.notes,
-          urgency: data.urgency || 'STANDARD',
+          urgency: normalizeUrgency(data.urgency),
           source: data.source || 'DIRECT_CALL',
           disposition: (data.disposition as any) || 'BOOKED',
           appointmentDate: data.appointmentDate ? new Date(data.appointmentDate) : data.scheduledFor ? new Date(data.scheduledFor) : undefined,
@@ -395,7 +414,7 @@ export const jobController = {
           totalCents,
           itPlatformFeeCents,
           repairerFeeCents,
-          paymentMethod: data.paymentMethod,
+          paymentMethod: validPaymentMethod(data.paymentMethod),
           paymentStatus: 'UNPAID',
           status: data.source === 'LANDING_PAGE_SELF_BOOK' ? 'UNVERIFIED_PUBLIC' : 'PENDING',
           serviceItems: {
@@ -649,9 +668,27 @@ export const jobController = {
   async verifyBookingAddress(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
-      const { serviceAddress, serviceLatitude, serviceLongitude, recipientName, recipientPhone, problemNotes } = req.body;
+      const {
+        serviceAddress,
+        serviceLatitude,
+        serviceLongitude,
+        recipientName,
+        recipientPhone,
+        problemNotes,
+        urgency,
+        paymentMethod,
+        vehicleMake,
+        vehicleModel,
+        vehicleYear,
+        tireSize,
+        licensePlate,
+        serviceItems: incomingServiceItems,
+      } = req.body;
 
-      const job = await prisma.job.findUnique({ where: { id } });
+      const job = await prisma.job.findUnique({
+        where: { id },
+        include: { vehicle: true, serviceItems: true },
+      });
       if (!job) return sendError(res, 'Job not found', 404);
 
       const updateData: any = {
@@ -666,6 +703,56 @@ export const jobController = {
       if (recipientName) updateData.recipientName = recipientName;
       if (recipientPhone) updateData.recipientPhone = recipientPhone;
       if (problemNotes) updateData.problemNotes = problemNotes;
+      if (urgency) updateData.urgency = normalizeUrgency(urgency);
+      if (paymentMethod !== undefined) updateData.paymentMethod = validPaymentMethod(paymentMethod);
+
+      // Update or create vehicle specs (Crucial for mobile tire vans to stock the right tire)
+      if (vehicleMake || vehicleModel || vehicleYear || tireSize || licensePlate) {
+        if (job.vehicleId) {
+          await prisma.vehicle.update({
+            where: { id: job.vehicleId },
+            data: {
+              ...(vehicleMake ? { make: vehicleMake } : {}),
+              ...(vehicleModel ? { model: vehicleModel } : {}),
+              ...(vehicleYear ? { year: Number(vehicleYear) } : {}),
+              ...(tireSize ? { tireSize } : {}),
+              ...(licensePlate ? { licensePlate } : {}),
+            },
+          });
+        } else {
+          const newVeh = await prisma.vehicle.create({
+            data: {
+              countryCode: job.countryCode,
+              make: vehicleMake || 'Standard',
+              model: vehicleModel || 'Vehicle',
+              year: Number(vehicleYear) || new Date().getFullYear(),
+              tireSize: tireSize || '225/65R17',
+              licensePlate: licensePlate || undefined,
+            },
+          });
+          updateData.vehicleId = newVeh.id;
+        }
+      }
+
+      // Update service items and recalculate totals if services provided
+      if (incomingServiceItems && Array.isArray(incomingServiceItems) && incomingServiceItems.length > 0) {
+        await prisma.jobServiceItem.deleteMany({ where: { jobId: id } });
+        const itemsToCreate = incomingServiceItems.map((item: any) => ({
+          jobId: id,
+          serviceName: item.serviceName,
+          category: item.category || 'TIRE_SERVICE',
+          unitPriceCents: Number(item.unitPriceCents) || 5000,
+          quantity: Number(item.quantity) || 1,
+        }));
+        await prisma.jobServiceItem.createMany({ data: itemsToCreate });
+        const subtotal = itemsToCreate.reduce((s: number, i: any) => s + i.unitPriceCents * i.quantity, 0);
+        const taxRateBps = job.countryCode === 'CA' ? 1300 : job.countryCode === 'UK' ? 2000 : 800;
+        const taxAmount = Math.round((subtotal * taxRateBps) / 10000);
+        updateData.subtotalCents = subtotal;
+        updateData.taxRateBps = taxRateBps;
+        updateData.taxAmountCents = taxAmount;
+        updateData.totalCents = subtotal + taxAmount;
+      }
 
       const updated = await prisma.job.update({
         where: { id },
@@ -801,7 +888,7 @@ export const jobController = {
           recipientName: data.recipientName || data.customer?.name,
           recipientPhone: data.recipientPhone || data.customer?.phone,
           problemNotes: data.problemNotes || data.notes,
-          urgency: data.urgency || 'STANDARD',
+          urgency: normalizeUrgency(data.urgency),
           source: data.source || 'WEBSITE',
           disposition: 'BOOKED',
           createdById: defaultUser.id,
@@ -811,7 +898,7 @@ export const jobController = {
           taxAmountCents,
           totalCents,
           itPlatformFeeCents,
-          paymentMethod: data.paymentMethod,
+          paymentMethod: validPaymentMethod(data.paymentMethod),
           paymentStatus: 'UNPAID',
           status: 'UNVERIFIED_PUBLIC',
           serviceItems: { create: serviceItemsCreate },

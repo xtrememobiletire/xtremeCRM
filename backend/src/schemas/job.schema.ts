@@ -13,9 +13,14 @@ export const PaginationQuerySchema = z.object({
   driverId: z.string().optional(),
   fleetId: z.string().optional(),
   customerId: z.string().optional(),
+  isFleetJob: z.preprocess(
+    (val) => (val === undefined ? undefined : String(val)),
+    z.enum(['true', 'false', '1', '0'])
+  ).optional(),
+  source: z.string().optional(),
   sortBy: z.enum(['createdAt', 'updatedAt', 'scheduledFor']).optional().default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
-});
+}).passthrough();
 
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema>;
 
@@ -122,6 +127,23 @@ export const VerifyBookingAddressSchema = z.object({
   recipientName: z.string().optional(),
   recipientPhone: z.string().optional(),
   problemNotes: z.string().optional(),
+  urgency: z.string().optional(),
+  paymentMethod: z.string().optional(),
+  vehicleMake: z.string().optional(),
+  vehicleModel: z.string().optional(),
+  vehicleYear: z.coerce.number().optional().nullable(),
+  tireSize: z.string().optional(),
+  licensePlate: z.string().optional(),
+  selectedServices: z.array(z.string()).optional(),
+  serviceItems: z.array(
+    z.object({
+      serviceName: z.string(),
+      category: z.string().optional(),
+      unitPriceCents: z.coerce.number().optional(),
+      quantity: z.coerce.number().default(1),
+    })
+  ).optional(),
 });
 
 export type VerifyBookingAddressInput = z.infer<typeof VerifyBookingAddressSchema>;
+

@@ -59,7 +59,9 @@ export default function FleetJobs() {
     },
   });
 
-  const rawJobs = jobsResponse?.data || [];
+  const rawJobs = (jobsResponse?.data || []).filter(
+    (j: any) => Boolean(j.fleetId || j.isTestService)
+  );
   const meta = jobsResponse?.pagination || { page: 1, totalPages: 1, total: 0 };
 
   // Calculate high-level summary counters

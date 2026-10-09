@@ -144,6 +144,14 @@ export const jobService = {
     recipientName?: string;
     recipientPhone?: string;
     problemNotes?: string;
+    urgency?: string;
+    paymentMethod?: string;
+    vehicleMake?: string;
+    vehicleModel?: string;
+    vehicleYear?: number;
+    tireSize?: string;
+    licensePlate?: string;
+    serviceItems?: any[];
   }): Promise<JobItem> {
     const res = await api.patch(`/jobs/${id}/verify-booking`, payload);
     return res.data.data;

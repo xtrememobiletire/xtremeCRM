@@ -50,10 +50,14 @@ export default function Jobs() {
   }
 
   const rawJobs = jobsResponse?.data || [];
+  // Strict retail roadside isolation: never display commercial fleets, trial runs, or unverified bookings on /jobs
+  const retailJobs = rawJobs.filter(
+    (j: any) => !j.fleetId && !j.isTestService && j.status !== 'UNVERIFIED_PUBLIC'
+  );
   // Strict driver isolation: only show jobs where driverId matches current user ID
   const jobs = isDriver && user?.id
-    ? rawJobs.filter((j: any) => j.driverId === user.id || j.driver?.id === user.id)
-    : rawJobs;
+    ? retailJobs.filter((j: any) => j.driverId === user.id || j.driver?.id === user.id)
+    : retailJobs;
 
   // For driver, only show fresh/active orders (not completed, not cancelled)
   const activeJobs = isDriver
