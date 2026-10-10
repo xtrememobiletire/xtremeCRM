@@ -139,7 +139,10 @@ export const leadController = {
   async getLeadStats(req: Request, res: Response) {
     try {
       const countryCode = (req.query.countryCode as any) || (req as any).countryCode;
-      const whereBase: any = countryCode ? { countryCode } : {};
+      const batchId = (req.query.batchId as string) || undefined;
+      const whereBase: any = {};
+      if (countryCode && countryCode !== 'ALL') whereBase.countryCode = countryCode;
+      if (batchId) whereBase.batchId = batchId;
 
       const [
         total,

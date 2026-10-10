@@ -243,6 +243,8 @@ export default function Leads() {
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
       queryClient.invalidateQueries({ queryKey: ['available-batches-va'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
 
       if (autoDialEnabled && isAgent) {
         setTimeout(async () => {
@@ -269,6 +271,8 @@ export default function Leads() {
       toast.success('Lead stage advanced!');
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to advance stage');
@@ -284,6 +288,8 @@ export default function Leads() {
       setDisqualificationText('');
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to disqualify lead');
@@ -297,6 +303,8 @@ export default function Leads() {
       setTestServiceLead(null);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to create trial service job');
@@ -309,6 +317,8 @@ export default function Leads() {
       toast.success(data?.message || 'Lead restored to active outreach pipeline!');
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to reactivate lead');
@@ -323,6 +333,8 @@ export default function Leads() {
       setConvertingLead(null);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['fleets'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to convert lead');
@@ -545,7 +557,7 @@ export default function Leads() {
             onInspectBatch={(batchId: string) => {
               setInspectedBatchId(batchId);
               setManagementViewMode('DRILLDOWN');
-              setActiveTab(isDispatcher ? 'dispatcher' : 'all');
+              setActiveTab(isDispatcher ? 'dispatcher' : 'unassigned');
               setCurrentPage(1);
             }}
             onOpenGlobalLedger={() => {
@@ -839,6 +851,22 @@ export default function Leads() {
                             {lead.assignedAgent ? (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
                                 <span>Agent: {lead.assignedAgent.fullName}</span>
+                              </span>
+                            ) : lead.assignedDispatcher ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                                <span>Dispatcher: {lead.assignedDispatcher.fullName}</span>
+                              </span>
+                            ) : lead.stage === 'ADMIN_APPROVAL' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                                <span>GM Signoff Stage</span>
+                              </span>
+                            ) : lead.stage === 'CONVERTED' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                <span>Converted</span>
+                              </span>
+                            ) : lead.stage === 'DISQUALIFIED' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                                <span>Disqualified</span>
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">

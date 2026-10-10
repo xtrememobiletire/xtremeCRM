@@ -27,6 +27,8 @@ export interface FleetItem {
   vehicles?: any[];
   drivers?: FleetDriverItem[];
   jobs?: any[];
+  numberOfUnits?: number | null;
+  discountPercent?: number;
   createdAt?: string;
 }
 

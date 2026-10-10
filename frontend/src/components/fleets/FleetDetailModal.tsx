@@ -62,7 +62,7 @@ export default function FleetDetailModal({ fleet, isOpen, onClose }: FleetDetail
         poaEmail: activeFleet.poaEmail || '',
         address: activeFleet.address || '',
         website: activeFleet.website || '',
-        numberOfUnits: activeFleet.numberOfUnits || (activeFleet.vehicles?.length || ''),
+        numberOfUnits: activeFleet.numberOfUnits ?? '',
         customFleetCode: activeFleet.fleetCode || '',
         discountPercent: activeFleet.discountPercent || 0,
       });

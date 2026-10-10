@@ -240,6 +240,7 @@ export const fleetController = {
           longitude,
           countryCode: effectiveCountry,
           status: status || 'APPROVED',
+          numberOfUnits: req.body.numberOfUnits ? Number(req.body.numberOfUnits) : null,
           discountPercent: req.body.discountPercent ? Number(req.body.discountPercent) : 0,
           contractSignedAt: new Date(),
           virtualAssistantId: virtualAssistantId || null,
@@ -382,6 +383,12 @@ export const fleetController = {
       if (businessType !== undefined) data.businessType = businessType?.trim() || null;
       if (assignedDid !== undefined) data.assignedDid = assignedDid?.trim() || null;
       if (managerUserId !== undefined) data.managerUserId = managerUserId || null;
+      if (req.body.numberOfUnits !== undefined) {
+        data.numberOfUnits = req.body.numberOfUnits ? Number(req.body.numberOfUnits) : null;
+      }
+      if (req.body.discountPercent !== undefined) {
+        data.discountPercent = Number(req.body.discountPercent) || 0;
+      }
 
       if (address !== undefined) {
         data.address = address?.trim() || null;

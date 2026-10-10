@@ -40,13 +40,20 @@ export default function LeadCommandCenter({
   const [timeframe, setTimeframe] = useState<TimeframePeriod>('ALL_TIME');
   const isAuthorized = isAdminOrGm || isDispatcher;
 
+  const batchId = batch?.id;
   const { data: statsResponse, isLoading } = useQuery({
-    queryKey: ['lead-stats', country, timeframe],
+    queryKey: ['lead-stats', country, timeframe, batchId],
     queryFn: async () => {
-      const res = await api.get(`/leads/stats?countryCode=${country}&timeframe=${timeframe}`);
+      const res = await api.get('/leads/stats', {
+        params: {
+          countryCode: country,
+          timeframe: batch ? undefined : timeframe,
+          batchId: batchId || undefined,
+        },
+      });
       return res.data?.data;
     },
-    enabled: isAuthorized && !batch,
+    enabled: isAuthorized,
     refetchInterval: 15000,
   });
 
@@ -65,12 +72,12 @@ export default function LeadCommandCenter({
     disqualified: 0,
   };
 
-  const unassignedCount = batch ? Number(batch.unassignedLeads || 0) : (stats.unassigned || 0);
-  const inProgressCount = batch ? Number(batch.heldLeads || 0) : (stats.inProgress || 0);
+  const unassignedCount = stats.unassigned || 0;
+  const inProgressCount = stats.inProgress || 0;
   const callbacksCount = stats.callbacks || 0;
   const dispatcherCount = stats.dispatcherReview || 0;
   const approvalCount = stats.pendingGmSignoff || stats.adminApproval || 0;
-  const convertedCount = batch ? Number(batch.completedLeads || 0) : (stats.converted || 0);
+  const convertedCount = stats.converted || 0;
   const disqualifiedCount = stats.disqualified || 0;
 
   return (
