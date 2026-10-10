@@ -7,6 +7,8 @@ import {
   sanitizePaginationParams,
   calculateSkip,
   createPaginatedResponse,
+  validateAndNormalizePhone,
+  normalizePhoneNumber,
 } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
 import { geocodingService } from '../services/geocodingService.js';
@@ -235,24 +237,75 @@ export const jobController = {
 
       // 1. Auto-resolve or create Customer if nested details provided
       let customerId = data.customerId;
-      const phone = data.customer?.phone || data.customerPhone || data.recipientPhone || data.phone;
+      const rawPhone = data.customer?.phone || data.customerPhone || data.recipientPhone || data.phone;
       const name = data.customer?.name || data.customer?.fullName || data.customerName || data.recipientName || data.name;
-      if (!customerId && phone) {
-        const cleanPhone = String(phone).trim();
-        let cust = await prisma.customer.findFirst({
-          where: { phone: cleanPhone, countryCode: country },
-        });
-        if (!cust) {
-          cust = await prisma.customer.create({
-            data: {
-              fullName: name || 'Valued Customer',
-              phone: cleanPhone,
-              email: data.customer?.email || data.email,
-              countryCode: country,
-            },
-          });
+      let normalizedContactPhone = '';
+
+      if (rawPhone) {
+        const phoneValidation = validateAndNormalizePhone(String(rawPhone), country);
+        if (!phoneValidation.isValid) {
+          return sendError(res, phoneValidation.error || 'Invalid customer phone number format', 400);
         }
-        customerId = cust.id;
+        normalizedContactPhone = phoneValidation.normalized;
+        const national10 = phoneValidation.national;
+
+        if (!customerId) {
+          // Smart lookup: Match existing customer by normalized E.164 OR by last 10 national digits
+          const matchingCustomers = await prisma.customer.findMany({
+            where: {
+              countryCode: country as any,
+              OR: [
+                { phone: normalizedContactPhone },
+                { phone: { endsWith: national10 } },
+                { phone: national10 },
+              ],
+            },
+            orderBy: { createdAt: 'asc' }, // oldest primary profile
+          });
+
+          let cust = matchingCustomers[0] || null;
+
+          if (cust) {
+            // Reconcile and merge duplicates if more than one profile matches this phone
+            if (matchingCustomers.length > 1) {
+              const duplicateIds = matchingCustomers.slice(1).map((c) => c.id);
+              await prisma.job.updateMany({
+                where: { customerId: { in: duplicateIds } },
+                data: { customerId: cust.id },
+              });
+              await prisma.vehicle.updateMany({
+                where: { customerId: { in: duplicateIds } },
+                data: { customerId: cust.id },
+              });
+              await prisma.invoice.updateMany({
+                where: { customerId: { in: duplicateIds } },
+                data: { customerId: cust.id },
+              });
+              await prisma.customer.deleteMany({
+                where: { id: { in: duplicateIds } },
+              });
+            }
+
+            // Keep primary customer normalized to standard E.164
+            if (cust.phone !== normalizedContactPhone) {
+              cust = await prisma.customer.update({
+                where: { id: cust.id },
+                data: { phone: normalizedContactPhone },
+              });
+            }
+          } else {
+            // Create brand new customer with standardized E.164 phone
+            cust = await prisma.customer.create({
+              data: {
+                fullName: name || 'Valued Customer',
+                phone: normalizedContactPhone,
+                email: data.customer?.email || data.email,
+                countryCode: country as any,
+              },
+            });
+          }
+          customerId = cust.id;
+        }
       }
 
       // 2. Auto-provision Customer Member Account if requested (PRD FR-1.3)
@@ -402,7 +455,7 @@ export const jobController = {
           serviceLatitude,
           serviceLongitude,
           recipientName: data.recipientName || data.customer?.name || data.customer?.fullName || data.customerName || name,
-          recipientPhone: data.recipientPhone || data.customer?.phone || data.customerPhone || phone,
+          recipientPhone: normalizedContactPhone || (data.recipientPhone ? normalizePhoneNumber(data.recipientPhone, country) : undefined),
           problemNotes: data.problemNotes || data.notes,
           urgency: normalizeUrgency(data.urgency),
           source: data.source || 'DIRECT_CALL',
@@ -760,7 +813,10 @@ export const jobController = {
       if (serviceLatitude !== undefined && serviceLatitude !== null) updateData.serviceLatitude = Number(serviceLatitude);
       if (serviceLongitude !== undefined && serviceLongitude !== null) updateData.serviceLongitude = Number(serviceLongitude);
       if (recipientName) updateData.recipientName = recipientName;
-      if (recipientPhone) updateData.recipientPhone = recipientPhone;
+      if (recipientPhone) {
+        const pVal = validateAndNormalizePhone(recipientPhone, job.countryCode);
+        updateData.recipientPhone = pVal.isValid ? pVal.normalized : recipientPhone;
+      }
       if (problemNotes) updateData.problemNotes = problemNotes;
       if (urgency) updateData.urgency = normalizeUrgency(urgency);
       if (paymentMethod !== undefined) updateData.paymentMethod = validPaymentMethod(paymentMethod);

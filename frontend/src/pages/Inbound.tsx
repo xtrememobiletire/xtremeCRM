@@ -5,6 +5,7 @@ import { useTenant } from '../context/TenantContext';
 import { useSocket } from '../context/SocketContext';
 import { jobService } from '../services/jobService';
 import { toast } from 'sonner';
+import { validateAndNormalizePhone } from '../utils/phone';
 import type { SelectedServiceItem } from '../components/common/MultiServiceSelector';
 import type { GeocodeLocation } from '../components/common/AddressAutocompleteInput';
 import type { ArrivalWindowData } from '../components/common/ArrivalWindowSelector';
@@ -68,6 +69,13 @@ export default function Inbound() {
       toast.error('Customer phone and breakdown address are required');
       return;
     }
+
+    const phoneValidation = validateAndNormalizePhone(callerPhone, formCountry);
+    if (!phoneValidation.isValid) {
+      toast.error(phoneValidation.error || 'Please enter a valid phone number');
+      return;
+    }
+
     if (serviceItems.length === 0) {
       toast.error('Please add at least one service item to the ticket');
       return;
@@ -84,9 +92,9 @@ export default function Inbound() {
 
       await jobService.createJob({
         customerName: callerName || 'Valued Customer',
-        customerPhone: callerPhone,
+        customerPhone: phoneValidation.normalized,
         recipientName: callerName || 'Valued Customer',
-        recipientPhone: callerPhone,
+        recipientPhone: phoneValidation.normalized,
         serviceAddress,
         serviceLatitude: serviceCoords.latitude ?? undefined,
         serviceLongitude: serviceCoords.longitude ?? undefined,

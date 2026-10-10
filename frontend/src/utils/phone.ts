@@ -1,9 +1,47 @@
 export interface PhoneValidationResult {
   isValid: boolean;
   normalized: string; // E.164 formatted: e.g. +14165550192 or +447911123456
-  national: string;   // Clean national digits: e.g. 4165550192
+  national: string;   // Clean national digits without country prefix: e.g. 4165550192
   error?: string;
 }
+
+export const cleanPhoneDigits = (value: string): string => {
+  return (value || '').replace(/\D/g, '');
+};
+
+export const formatAsYouType = (value: string, country: string = 'CA'): string => {
+  if (!value) return '';
+  const digits = cleanPhoneDigits(value);
+  const normCountry = (country || 'CA').toUpperCase();
+
+  if (normCountry === 'CA' || normCountry === 'US') {
+    // If user pastes/types 11 digits starting with 1, strip country code for national display
+    let national = digits;
+    if (national.length === 11 && national.startsWith('1')) {
+      national = national.slice(1);
+    }
+    // Limit to 10 digits
+    national = national.slice(0, 10);
+
+    if (national.length === 0) return '';
+    if (national.length <= 3) return `(${national}`;
+    if (national.length <= 6) return `(${national.slice(0, 3)}) ${national.slice(3)}`;
+    return `(${national.slice(0, 3)}) ${national.slice(3, 6)}-${national.slice(6)}`;
+  }
+
+  if (normCountry === 'UK' || normCountry === 'GB') {
+    let national = digits;
+    if (national.length === 12 && national.startsWith('44')) {
+      national = national.slice(2);
+    }
+    national = national.slice(0, 11);
+
+    if (national.length <= 5) return national;
+    return `${national.slice(0, 5)} ${national.slice(5)}`;
+  }
+
+  return digits.slice(0, 15);
+};
 
 export const validateAndNormalizePhone = (
   rawPhone: string,
@@ -14,12 +52,11 @@ export const validateAndNormalizePhone = (
   }
 
   const trimmed = rawPhone.trim();
-  const digits = trimmed.replace(/\D/g, '');
+  const digits = cleanPhoneDigits(trimmed);
   const normCountry = (country || 'CA').toUpperCase();
 
   if (normCountry === 'CA' || normCountry === 'US') {
-    // North American Numbering Plan (NANP)
-    let nationalDigits = '';
+    let nationalDigits: string;
 
     if (digits.length === 10) {
       nationalDigits = digits;
@@ -30,7 +67,7 @@ export const validateAndNormalizePhone = (
         isValid: false,
         normalized: '',
         national: '',
-        error: `Invalid phone length (${digits.length} digits). North American numbers must be 10 digits (or 11 with country code 1).`,
+        error: `Must be exactly 10 digits (currently ${digits.length}). Example: (416) 555-0199.`,
       };
     }
 
@@ -42,7 +79,7 @@ export const validateAndNormalizePhone = (
         isValid: false,
         normalized: '',
         national: '',
-        error: 'Invalid area code: Area code cannot start with 0 or 1.',
+        error: 'Invalid area code: Cannot start with 0 or 1.',
       };
     }
 
@@ -51,7 +88,7 @@ export const validateAndNormalizePhone = (
         isValid: false,
         normalized: '',
         national: '',
-        error: 'Invalid exchange code: Exchange cannot start with 0 or 1.',
+        error: 'Invalid exchange code: Central office cannot start with 0 or 1.',
       };
     }
 
@@ -60,7 +97,7 @@ export const validateAndNormalizePhone = (
         isValid: false,
         normalized: '',
         national: '',
-        error: 'Invalid phone number: Number cannot be all identical digits.',
+        error: 'Invalid phone number: Cannot be all identical digits.',
       };
     }
 
@@ -69,8 +106,10 @@ export const validateAndNormalizePhone = (
       normalized: `+1${nationalDigits}`,
       national: nationalDigits,
     };
-  } else if (normCountry === 'UK' || normCountry === 'GB') {
-    let nationalDigits = '';
+  }
+
+  if (normCountry === 'UK' || normCountry === 'GB') {
+    let nationalDigits: string;
 
     if (digits.length === 11 && digits.startsWith('0')) {
       nationalDigits = digits.slice(1);
@@ -83,7 +122,7 @@ export const validateAndNormalizePhone = (
         isValid: false,
         normalized: '',
         national: '',
-        error: `Invalid UK phone number length (${digits.length} digits). Must be 10 or 11 digits.`,
+        error: `Must be 10 or 11 digits (currently ${digits.length}). Example: 7123 456789.`,
       };
     }
 
@@ -107,33 +146,6 @@ export const validateAndNormalizePhone = (
   };
 };
 
-export const normalizePhoneNumber = (rawPhone: string, country: string = 'CA'): string => {
-  const result = validateAndNormalizePhone(rawPhone, country);
-  return result.isValid ? result.normalized : rawPhone.trim();
-};
-
-export const isValidPhoneStrict = (rawPhone: string, country: string = 'CA'): boolean => {
+export const isValidPhone = (rawPhone: string, country: string = 'CA'): boolean => {
   return validateAndNormalizePhone(rawPhone, country).isValid;
-};
-
-export const isValidPhone = (phone: string): boolean => {
-  return isValidPhoneStrict(phone);
-};
-
-export const isValidVIN = (vin: string): boolean => {
-  const vinRegex = /^[A-HJ-NPR-Z0-9]{17}$/i;
-  return vinRegex.test(vin);
-};
-
-export const isValidPostalCode = (code: string, country: string = 'CA'): boolean => {
-  if (country === 'CA') {
-    return /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(code);
-  }
-  if (country === 'US') {
-    return /^\d{5}(-\d{4})?$/.test(code);
-  }
-  if (country === 'UK') {
-    return /^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i.test(code);
-  }
-  return true;
 };

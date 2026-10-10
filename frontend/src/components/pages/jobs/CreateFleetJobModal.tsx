@@ -12,7 +12,8 @@ import {
   CheckCircle2, 
   Navigation,
   Globe,
-  UserCheck
+  UserCheck,
+  Check
 } from 'lucide-react';
 import Modal from '../../ui/Modal';
 import AddressAutocompleteInput, { type GeocodeLocation } from '../../common/AddressAutocompleteInput';
@@ -25,6 +26,7 @@ import { userService, type UserItem } from '../../../services/userService';
 import { useKeyboardShortcuts } from '../../../hooks/useKeyboardShortcuts';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { formatAsYouType, validateAndNormalizePhone } from '../../../utils/phone';
 
 interface CreateFleetJobModalProps {
   isOpen: boolean;
@@ -224,6 +226,13 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
       toast.error('Fleet driver / operator name and contact phone are required');
       return;
     }
+
+    const phoneValidation = validateAndNormalizePhone(driverPhone, formCountry);
+    if (!phoneValidation.isValid) {
+      toast.error(phoneValidation.error || 'Please enter a valid driver phone number');
+      return;
+    }
+
     if (serviceItems.length === 0) {
       toast.error('Please add at least one commercial service item');
       return;
@@ -241,7 +250,7 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
         countryCode: formCountry,
         fleetId: selectedFleetId,
         recipientName: driverName,
-        recipientPhone: driverPhone,
+        recipientPhone: phoneValidation.normalized,
         serviceAddress,
         serviceLatitude: serviceCoords.latitude,
         serviceLongitude: serviceCoords.longitude,
@@ -465,19 +474,48 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
 
         {/* Step 5: Driver / Operator Phone */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">5</span>
-            <Phone className="w-3.5 h-3.5 text-red-600" />
-            <span>Driver On-Scene Phone <span className="text-red-500">*</span></span>
+          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">5</span>
+              <Phone className="w-3.5 h-3.5 text-red-600" />
+              <span>Driver On-Scene Phone <span className="text-red-500">*</span></span>
+            </span>
+            <span className="text-[11px] font-mono text-slate-400">
+              Country Dial: <strong className="text-slate-700 font-bold">{formCountry === 'UK' ? '+44 (UK)' : formCountry === 'US' ? '+1 (US)' : '+1 (CA)'}</strong>
+            </span>
           </label>
-          <input
-            type="text"
-            value={driverPhone}
-            onChange={(e) => setDriverPhone(e.target.value)}
-            placeholder="+1 (555) 019-2834"
-            required
-            className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
-          />
+          <div className={`relative flex rounded-xl border transition-all shadow-2xs overflow-hidden bg-white ${
+            driverPhone && !validateAndNormalizePhone(driverPhone, formCountry).isValid
+              ? 'border-red-400 focus-within:ring-2 focus-within:ring-red-500/20 focus-within:border-red-500'
+              : 'border-slate-200 focus-within:ring-2 focus-within:ring-red-500/20 focus-within:border-red-500'
+          }`}>
+            <span className="inline-flex items-center px-3 text-xs font-mono font-bold text-slate-600 bg-slate-50 border-r border-slate-200 select-none">
+              {formCountry === 'UK' ? '+44' : '+1'}
+            </span>
+            <input
+              type="tel"
+              value={driverPhone}
+              onChange={(e) => {
+                const formatted = formatAsYouType(e.target.value, formCountry);
+                setDriverPhone(formatted);
+              }}
+              placeholder={formCountry === 'UK' ? '7123 456789' : '(416) 555-0199'}
+              required
+              className="w-full px-3.5 py-2.5 text-sm rounded-r-xl font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none bg-transparent"
+            />
+          </div>
+          {driverPhone && !validateAndNormalizePhone(driverPhone, formCountry).isValid && (
+            <p className="text-[11px] text-red-600 font-medium mt-1 flex items-center gap-1">
+              <AlertTriangle size={12} className="shrink-0" />
+              <span>{validateAndNormalizePhone(driverPhone, formCountry).error}</span>
+            </p>
+          )}
+          {driverPhone && validateAndNormalizePhone(driverPhone, formCountry).isValid && (
+            <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
+              <Check size={12} className="shrink-0" />
+              <span>Verified format: {validateAndNormalizePhone(driverPhone, formCountry).normalized}</span>
+            </p>
+          )}
         </div>
 
         {/* Step 6: Commercial Vehicle Unit / Plate */}

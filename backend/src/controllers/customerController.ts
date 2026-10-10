@@ -6,6 +6,7 @@ import {
   sanitizePaginationParams,
   calculateSkip,
   createPaginatedResponse,
+  validateAndNormalizePhone,
 } from '../utils/index.js';
 import { geocodingService } from '../services/geocodingService.js';
 
@@ -94,12 +95,19 @@ export const customerController = {
       }
 
       const cleanDigits = phone.replace(/[^0-9]/g, '');
+      const national10 = cleanDigits.slice(-10);
+      const phoneValidation = validateAndNormalizePhone(phone, countryCode);
+      const normalizedPhone = phoneValidation.isValid ? phoneValidation.normalized : '';
 
       // 1. Check Customer
       const customer = await prisma.customer.findFirst({
         where: {
           countryCode,
-          phone: { contains: cleanDigits.slice(-10) },
+          OR: [
+            ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
+            { phone: { contains: national10 } },
+            { phone: { endsWith: national10 } },
+          ],
         },
         include: {
           vehicles: {
@@ -118,7 +126,11 @@ export const customerController = {
       // 2. Check FleetDriver
       const fleetDriver = await prisma.fleetDriver.findFirst({
         where: {
-          phone: { contains: cleanDigits.slice(-10) },
+          OR: [
+            ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
+            { phone: { contains: national10 } },
+            { phone: { endsWith: national10 } },
+          ],
         },
         include: {
           fleet: {
@@ -133,7 +145,11 @@ export const customerController = {
       const fleetDirect = await prisma.fleet.findFirst({
         where: {
           countryCode,
-          phone: { contains: cleanDigits.slice(-10) },
+          OR: [
+            ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
+            { phone: { contains: national10 } },
+            { phone: { endsWith: national10 } },
+          ],
         },
         include: {
           vehicles: true,
@@ -225,20 +241,29 @@ export const customerController = {
     try {
       const { fullName, phone, altPhone, email, address, countryCode, customerType, membershipTier } = req.body;
       const resolvedName = (fullName || req.body.name || '').trim();
-      const cleanPhone = (phone || '').trim();
+      const rawPhone = (phone || '').trim();
       const effectiveCountry = countryCode || (req as any).countryCode || 'CA';
 
-      if (!resolvedName || !cleanPhone) {
+      if (!resolvedName || !rawPhone) {
         return sendError(res, 'Full name and phone number are required', 400);
       }
 
-      // Check unique [countryCode, phone]
-      const existing = await prisma.customer.findUnique({
+      const phoneValidation = validateAndNormalizePhone(rawPhone, effectiveCountry);
+      if (!phoneValidation.isValid) {
+        return sendError(res, phoneValidation.error || 'Invalid phone number format', 400);
+      }
+      const cleanPhone = phoneValidation.normalized;
+      const national10 = phoneValidation.national;
+
+      // Check unique [countryCode, phone] or national digits match
+      const existing = await prisma.customer.findFirst({
         where: {
-          countryCode_phone: {
-            countryCode: effectiveCountry,
-            phone: cleanPhone,
-          },
+          countryCode: effectiveCountry,
+          OR: [
+            { phone: cleanPhone },
+            { phone: { endsWith: national10 } },
+            { phone: national10 },
+          ],
         },
       });
       if (existing) {
@@ -297,7 +322,30 @@ export const customerController = {
 
       const data: any = {};
       if (fullName || name) data.fullName = (fullName || name).trim();
-      if (phone) data.phone = phone.trim();
+      if (phone) {
+        const existingCust = await prisma.customer.findUnique({ where: { id }, select: { countryCode: true } });
+        if (!existingCust) return sendError(res, 'Customer not found', 404);
+        const targetCountry = countryCode || existingCust.countryCode || 'CA';
+        const phoneValidation = validateAndNormalizePhone(phone, targetCountry);
+        if (!phoneValidation.isValid) {
+          return sendError(res, phoneValidation.error || 'Invalid phone number format', 400);
+        }
+        data.phone = phoneValidation.normalized;
+
+        const collision = await prisma.customer.findFirst({
+          where: {
+            id: { not: id },
+            countryCode: targetCountry as any,
+            OR: [
+              { phone: data.phone },
+              { phone: { endsWith: phoneValidation.national } },
+            ],
+          },
+        });
+        if (collision) {
+          return sendError(res, 'Another customer with this phone number already exists', 409);
+        }
+      }
       if (altPhone !== undefined) data.altPhone = altPhone?.trim() || null;
       if (email !== undefined) data.email = email?.trim() || null;
       if (countryCode) data.countryCode = countryCode;

@@ -28,6 +28,7 @@ import { customerService } from '../../../services/customerService';
 import { useKeyboardShortcuts } from '../../../hooks/useKeyboardShortcuts';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { formatAsYouType, validateAndNormalizePhone } from '../../../utils/phone';
 
 interface CreateRoadsideJobModalProps {
   isOpen: boolean;
@@ -196,6 +197,13 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
       toast.error('Customer phone and breakdown address are required');
       return;
     }
+
+    const phoneValidation = validateAndNormalizePhone(customerPhone, formCountry);
+    if (!phoneValidation.isValid) {
+      toast.error(phoneValidation.error || 'Please enter a valid phone number');
+      return;
+    }
+
     if (serviceItems.length === 0) {
       toast.error('Please add at least one service item');
       return;
@@ -212,9 +220,9 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
       await createJobMutation.mutateAsync({
         countryCode: formCountry,
         customerName: customerName || 'Valued Customer',
-        customerPhone,
+        customerPhone: phoneValidation.normalized,
         recipientName: customerName || 'Valued Customer',
-        recipientPhone: customerPhone,
+        recipientPhone: phoneValidation.normalized,
         customerEmail: customerEmail || undefined,
         serviceAddress,
         serviceLatitude: serviceCoords.latitude,
@@ -349,7 +357,11 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
               Country Dial: <strong className="text-slate-700 font-bold">{formCountry === 'UK' ? '+44 (UK)' : formCountry === 'US' ? '+1 (US)' : '+1 (CA)'}</strong>
             </span>
           </label>
-          <div className="relative flex rounded-xl border border-slate-200 focus-within:ring-2 focus-within:ring-red-500/20 focus-within:border-red-500 transition-all shadow-2xs overflow-hidden bg-white">
+          <div className={`relative flex rounded-xl border transition-all shadow-2xs overflow-hidden bg-white ${
+            customerPhone && !validateAndNormalizePhone(customerPhone, formCountry).isValid
+              ? 'border-red-400 focus-within:ring-2 focus-within:ring-red-500/20 focus-within:border-red-500'
+              : 'border-slate-200 focus-within:ring-2 focus-within:ring-red-500/20 focus-within:border-red-500'
+          }`}>
             <span className="inline-flex items-center px-3 text-xs font-mono font-bold text-slate-600 bg-slate-50 border-r border-slate-200 select-none">
               {formCountry === 'UK' ? '+44' : '+1'}
             </span>
@@ -357,7 +369,8 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
               type="tel"
               value={customerPhone}
               onChange={(e) => {
-                setCustomerPhone(e.target.value);
+                const formatted = formatAsYouType(e.target.value, formCountry);
+                setCustomerPhone(formatted);
                 setDismissedLookup(false);
               }}
               placeholder={formCountry === 'UK' ? '7123 456789' : '(416) 555-0199'}
@@ -371,6 +384,18 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
               </div>
             )}
           </div>
+          {customerPhone && !validateAndNormalizePhone(customerPhone, formCountry).isValid && (
+            <p className="text-[11px] text-red-600 font-medium mt-1 flex items-center gap-1">
+              <AlertTriangle size={12} className="shrink-0" />
+              <span>{validateAndNormalizePhone(customerPhone, formCountry).error}</span>
+            </p>
+          )}
+          {customerPhone && validateAndNormalizePhone(customerPhone, formCountry).isValid && (
+            <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
+              <Check size={12} className="shrink-0" />
+              <span>Verified format: {validateAndNormalizePhone(customerPhone, formCountry).normalized}</span>
+            </p>
+          )}
 
           {/* Existing Customer Match Dropdown */}
           {lookupResult && !dismissedLookup && (

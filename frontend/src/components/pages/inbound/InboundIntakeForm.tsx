@@ -21,6 +21,7 @@ import MultiServiceSelector, { type SelectedServiceItem } from '../../common/Mul
 import { ArrivalWindowSelector, type ArrivalWindowData } from '../../common/ArrivalWindowSelector';
 import { customerService } from '../../../services/customerService';
 import { toast } from 'sonner';
+import { formatAsYouType, validateAndNormalizePhone } from '../../../utils/phone';
 
 interface InboundIntakeFormProps {
   countryCode: string;
@@ -255,7 +256,11 @@ export default function InboundIntakeForm({
               Country Dial: <strong className="text-slate-700 font-bold">{countryCode === 'UK' ? '+44 (UK)' : countryCode === 'US' ? '+1 (US)' : '+1 (CA)'}</strong>
             </span>
           </label>
-          <div className="relative flex rounded-xl border border-slate-200 focus-within:ring-2 focus-within:ring-red-500/20 focus-within:border-red-500 transition-all shadow-2xs overflow-hidden bg-white">
+          <div className={`relative flex rounded-xl border transition-all shadow-2xs overflow-hidden bg-white ${
+            callerPhone && !validateAndNormalizePhone(callerPhone, countryCode).isValid
+              ? 'border-red-400 focus-within:ring-2 focus-within:ring-red-500/20 focus-within:border-red-500'
+              : 'border-slate-200 focus-within:ring-2 focus-within:ring-red-500/20 focus-within:border-red-500'
+          }`}>
             <span className="inline-flex items-center px-3 text-xs font-mono font-bold text-slate-600 bg-slate-50 border-r border-slate-200 select-none">
               {countryCode === 'UK' ? '+44' : '+1'}
             </span>
@@ -263,7 +268,8 @@ export default function InboundIntakeForm({
               type="tel"
               value={callerPhone}
               onChange={(e) => {
-                setCallerPhone(e.target.value);
+                const formatted = formatAsYouType(e.target.value, countryCode);
+                setCallerPhone(formatted);
                 setDismissedLookup(false);
               }}
               placeholder={countryCode === 'UK' ? '7123 456789' : '(416) 555-0192'}
@@ -277,6 +283,18 @@ export default function InboundIntakeForm({
               </div>
             )}
           </div>
+          {callerPhone && !validateAndNormalizePhone(callerPhone, countryCode).isValid && (
+            <p className="text-[11px] text-red-600 font-medium mt-1 flex items-center gap-1">
+              <AlertTriangle size={12} className="shrink-0" />
+              <span>{validateAndNormalizePhone(callerPhone, countryCode).error}</span>
+            </p>
+          )}
+          {callerPhone && validateAndNormalizePhone(callerPhone, countryCode).isValid && (
+            <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
+              <Check size={12} className="shrink-0" />
+              <span>Verified format: {validateAndNormalizePhone(callerPhone, countryCode).normalized}</span>
+            </p>
+          )}
 
           {/* Existing Customer Match Dropdown */}
           {lookupResult && !dismissedLookup && (
