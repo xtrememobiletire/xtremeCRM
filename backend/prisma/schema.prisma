@@ -709,6 +709,7 @@ model Lead {
   estimatedFleetSize Int?              @map("estimated_fleet_size") // Total truck/van count (e.g. 15 vehicles)
   vehicleTypes       String?           @map("vehicle_types")        // Vehicle categories (e.g. "Box Trucks, Cargo Vans, 18-Wheelers")
   commonTireSizes    String?           @map("common_tire_sizes")     // Core tire specifications (e.g. "11R22.5, 235/65R17")
+  dispatcherNotes    String?           @db.Text @map("dispatcher_notes") // Feasibility, depot, & technician trial notes
 
   // Prospective Fleet Test Services (Trial roadside work orders prior to full contract)
   testServices       Job[]             @relation("LeadTestServices")

@@ -150,6 +150,7 @@ export const leadController = {
         adminApproval,
         converted,
         disqualified,
+        callbacks,
         overdueCallbacks,
         scheduledBatches,
         vaWorkloads,
@@ -204,6 +205,12 @@ export const leadController = {
           where: {
             ...whereBase,
             stage: 'AGENT_CALLBACK',
+          },
+        }),
+        prisma.lead.count({
+          where: {
+            ...whereBase,
+            stage: 'AGENT_CALLBACK',
             callbackDate: { lte: new Date() },
           },
         }),
@@ -244,6 +251,7 @@ export const leadController = {
         adminApproval,
         converted,
         disqualified,
+        callbacks,
         overdueCallbacks,
         pendingGmSignoff: adminApproval,
         scheduledBatches,
@@ -290,12 +298,9 @@ export const leadController = {
       if (disposition) conditions.push({ disposition });
       if (priority !== undefined) conditions.push({ priority });
 
-      // Clean Pool filtering logic
+      // Clean Pool filtering logic strictly aligned with operational lifecycle
       if (pool === 'all') {
-        // Master view: All leads (assigned and unassigned), strictly excluding Dispatcher Review leads
-        conditions.push({
-          stage: { not: 'DISPATCHER_REVIEW' },
-        });
+        // Master view: All leads across lifecycle, no exclusions
       } else if (pool === 'unassigned') {
         conditions.push({
           assignedAgentId: null,
@@ -303,19 +308,22 @@ export const leadController = {
           disposition: null,
           stage: 'VA_OUTREACH',
         });
-      } else if (pool === 'called') {
+      } else if (pool === 'assigned' || pool === 'called') {
+        // Leads in active VA outreach
         conditions.push({
-          OR: [
-            { assignedAgentId: { not: null } },
-            { status: { not: 'NEW' } },
-            { disposition: { not: null } },
-          ],
-          stage: { notIn: ['DISQUALIFIED', 'CONVERTED', 'DISPATCHER_REVIEW'] },
+          stage: 'VA_OUTREACH',
+          assignedAgentId: { not: null },
         });
-      } else if (pool === 'disqualified') {
-        conditions.push({ stage: 'DISQUALIFIED' });
+      } else if (pool === 'callbacks') {
+        conditions.push({ stage: 'AGENT_CALLBACK' });
+      } else if (pool === 'dispatcher') {
+        conditions.push({ stage: 'DISPATCHER_REVIEW' });
+      } else if (pool === 'approval') {
+        conditions.push({ stage: 'ADMIN_APPROVAL' });
       } else if (pool === 'converted') {
         conditions.push({ stage: 'CONVERTED' });
+      } else if (pool === 'disqualified') {
+        conditions.push({ stage: 'DISQUALIFIED' });
       } else if (pool === 'va') {
         conditions.push({ stage: 'VA_OUTREACH' });
         if (user?.role === 'VIRTUAL_ASSISTANT') {
@@ -323,10 +331,6 @@ export const leadController = {
         } else if (assignedAgentId) {
           conditions.push({ assignedAgentId });
         }
-      } else if (pool === 'callbacks') {
-        conditions.push({ stage: 'AGENT_CALLBACK' });
-      } else if (pool === 'dispatcher') {
-        conditions.push({ stage: 'DISPATCHER_REVIEW' });
       } else if (stage) {
         conditions.push({ stage });
       } else if (assignedAgentId) {
@@ -355,10 +359,12 @@ export const leadController = {
       let orderBy: any[] = [{ createdAt: 'desc' }];
       if (pool === 'unassigned') {
         orderBy = [{ createdAt: 'desc' }, { priority: 'desc' }];
-      } else if (pool === 'called' || pool === 'callbacks') {
-        orderBy = [{ updatedAt: 'desc' }, { callbackDate: 'asc' }];
-      } else if (pool === 'va') {
-        orderBy = [{ createdAt: 'desc' }, { priority: 'desc' }];
+      } else if (pool === 'callbacks') {
+        orderBy = [{ callbackDate: 'asc' }, { updatedAt: 'desc' }];
+      } else if (pool === 'dispatcher' || pool === 'approval') {
+        orderBy = [{ updatedAt: 'desc' }, { createdAt: 'desc' }];
+      } else if (pool === 'called' || pool === 'assigned' || pool === 'va') {
+        orderBy = [{ updatedAt: 'desc' }, { createdAt: 'desc' }];
       } else if (pool === 'disqualified' || pool === 'converted') {
         orderBy = [{ updatedAt: 'desc' }, { createdAt: 'desc' }];
       }
@@ -383,7 +389,14 @@ export const leadController = {
               select: { id: true, fullName: true, role: true },
             },
             testServices: {
-              select: { id: true, jobCode: true, status: true, appointmentDate: true },
+              select: {
+                id: true,
+                jobCode: true,
+                status: true,
+                appointmentDate: true,
+                serviceAddress: true,
+                driver: { select: { id: true, fullName: true, phone: true } },
+              },
             },
             resultingFleet: {
               select: { id: true, fleetCode: true, name: true },
@@ -553,6 +566,7 @@ export const leadController = {
         whatsappNotes,
         vehicleTypes,
         commonTireSizes,
+        dispatcherNotes,
       } = req.body;
 
       const data: any = {};
@@ -560,6 +574,7 @@ export const leadController = {
       if (stage !== undefined) data.stage = stage;
       if (disposition !== undefined) data.disposition = disposition;
       if (notes !== undefined) data.notes = notes;
+      if (dispatcherNotes !== undefined) data.dispatcherNotes = dispatcherNotes;
       if (priority !== undefined) data.priority = Number(priority);
       if (assignedAgentId !== undefined) data.assignedAgentId = assignedAgentId;
       if (assignedDispatcherId !== undefined) data.assignedDispatcherId = assignedDispatcherId;
@@ -598,7 +613,7 @@ export const leadController = {
   async advanceStage(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
-      const { stage, assignedDispatcherId, notes, vehicleTypes, commonTireSizes } = req.body;
+      const { stage, assignedDispatcherId, notes, dispatcherNotes, vehicleTypes, commonTireSizes } = req.body;
 
       const lead = await prisma.lead.findUnique({ where: { id } });
       if (!lead) return sendError(res, 'Lead not found', 404);
@@ -610,6 +625,7 @@ export const leadController = {
 
       if (assignedDispatcherId !== undefined) updateData.assignedDispatcherId = assignedDispatcherId;
       if (notes !== undefined) updateData.notes = notes;
+      if (dispatcherNotes !== undefined) updateData.dispatcherNotes = dispatcherNotes;
       if (vehicleTypes !== undefined) updateData.vehicleTypes = vehicleTypes;
       if (commonTireSizes !== undefined) updateData.commonTireSizes = commonTireSizes;
 

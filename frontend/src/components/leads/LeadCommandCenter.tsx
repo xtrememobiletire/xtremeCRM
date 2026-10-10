@@ -4,8 +4,10 @@ import {
   Layers, 
   CheckCircle2, 
   XCircle, 
-  ArrowRight,
-  PhoneCall
+  PhoneCall,
+  Truck,
+  ShieldCheck,
+  Calendar
 } from 'lucide-react';
 import { api } from '../../utils/api';
 import TimeframeSelector, { type TimeframePeriod } from '../ui/TimeframeSelector';
@@ -25,8 +27,6 @@ interface LeadCommandCenterProps {
   isAdminOrGm: boolean;
   isDispatcher?: boolean;
   onSelectTab: (tab: any) => void;
-  onStartDistribution?: () => void;
-  onOpenUpload?: () => void;
   batch?: BatchStatsSummary | null;
 }
 
@@ -35,13 +35,11 @@ export default function LeadCommandCenter({
   isAdminOrGm,
   isDispatcher = false,
   onSelectTab,
-  onOpenUpload,
   batch = null,
 }: LeadCommandCenterProps) {
   const [timeframe, setTimeframe] = useState<TimeframePeriod>('ALL_TIME');
   const isAuthorized = isAdminOrGm || isDispatcher;
 
-  // Query global/regional pipeline stats if not strictly scoped to a batch
   const { data: statsResponse, isLoading } = useQuery({
     queryKey: ['lead-stats', country, timeframe],
     queryFn: async () => {
@@ -58,23 +56,26 @@ export default function LeadCommandCenter({
     total: 0,
     unassigned: 0,
     inProgress: 0,
-    called: 0,
+    callbacks: 0,
+    dispatcherReview: 0,
+    testService: 0,
+    adminApproval: 0,
+    pendingGmSignoff: 0,
     converted: 0,
     disqualified: 0,
-    conversionRate: 0,
-    disqualificationRate: 0,
   };
 
-  // If batch is provided, metrics are batch-specific; otherwise regional/global
-  const totalCount = batch ? Number(batch.totalLeads || 0) : (stats.total || 0);
   const unassignedCount = batch ? Number(batch.unassignedLeads || 0) : (stats.unassigned || 0);
-  const calledCount = batch ? Number(batch.heldLeads || 0) : (stats.called || stats.inProgress || 0);
+  const inProgressCount = batch ? Number(batch.heldLeads || 0) : (stats.inProgress || 0);
+  const callbacksCount = stats.callbacks || 0;
+  const dispatcherCount = stats.dispatcherReview || 0;
+  const approvalCount = stats.pendingGmSignoff || stats.adminApproval || 0;
   const convertedCount = batch ? Number(batch.completedLeads || 0) : (stats.converted || 0);
   const disqualifiedCount = stats.disqualified || 0;
 
   return (
     <div className="space-y-3">
-      {/* Sleek Header Bar */}
+      {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-2xs">
         <div className="flex items-center gap-2.5">
           <div className="p-1.5 bg-slate-100 text-slate-700 rounded-lg">
@@ -108,123 +109,150 @@ export default function LeadCommandCenter({
         )}
       </div>
 
-      {/* 4 Professional KPI Metric Cards - Unified Single Color Scheme */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* 6 Full Lifecycle KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
         
-        {/* Card 1: Total Ingested Leads */}
+        {/* Card 1: Unassigned Cold Pool */}
         <div 
-          onClick={() => onSelectTab('all')}
-          className="p-4 rounded-xl border border-slate-200 hover:border-slate-300 bg-white shadow-2xs transition cursor-pointer group"
+          onClick={() => onSelectTab('unassigned')}
+          className="p-3.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white shadow-2xs transition cursor-pointer group"
         >
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 font-mono">
-                Total Ingested Leads
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 font-mono">
+                1. Unassigned
               </span>
-              <div className="text-2xl font-bold font-mono text-slate-900 mt-1">
-                {isLoading && !batch ? <span className="text-slate-300">...</span> : totalCount}
+              <div className="text-xl font-bold font-mono text-slate-900 mt-1">
+                {isLoading && !batch ? '...' : unassignedCount}
               </div>
             </div>
-            <div className="p-2 rounded-lg bg-slate-50 text-slate-600 border border-slate-100">
-              <Layers className="w-4 h-4 text-slate-600" />
+            <div className="p-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-100">
+              <Layers className="w-3.5 h-3.5" />
             </div>
           </div>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
+            Awaiting VA pickup
+          </div>
+        </div>
 
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-            <span>
-              <strong className="text-slate-900 font-mono font-bold">{unassignedCount}</strong> unassigned idle
-            </span>
-            {isAdminOrGm && onOpenUpload && (
-              <span className="text-[11px] font-semibold text-slate-500 group-hover:text-red-600 transition">
-                View Pool →
+        {/* Card 2: In Outreach & Callbacks */}
+        <div 
+          onClick={() => onSelectTab('assigned')}
+          className="p-3.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white shadow-2xs transition cursor-pointer group"
+        >
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 font-mono">
+                2. In Outreach
+              </span>
+              <div className="text-xl font-bold font-mono text-slate-900 mt-1">
+                {isLoading && !batch ? '...' : inProgressCount}
+              </div>
+            </div>
+            <div className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-100">
+              <PhoneCall className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+            <span>VA active calling</span>
+            {callbacksCount > 0 && (
+              <span className="text-blue-700 font-bold flex items-center gap-0.5">
+                <Calendar size={10} />
+                <span>{callbacksCount}</span>
               </span>
             )}
           </div>
         </div>
 
-        {/* Card 2: Whom We Called */}
+        {/* Card 3: Dispatcher Review */}
         <div 
-          onClick={() => onSelectTab('called')}
-          className="p-4 rounded-xl border border-slate-200 hover:border-slate-300 bg-white shadow-2xs transition cursor-pointer group"
+          onClick={() => onSelectTab('dispatcher')}
+          className="p-3.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white shadow-2xs transition cursor-pointer group"
         >
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 font-mono">
-                Whom We Called
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 font-mono">
+                3. Dispatch Review
               </span>
-              <div className="text-2xl font-bold font-mono text-slate-900 mt-1">
-                {isLoading && !batch ? <span className="text-slate-300">...</span> : calledCount}
+              <div className="text-xl font-bold font-mono text-purple-900 mt-1">
+                {isLoading && !batch ? '...' : dispatcherCount}
               </div>
             </div>
-            <div className="p-2 rounded-lg bg-slate-50 text-slate-600 border border-slate-100">
-              <PhoneCall className="w-4 h-4 text-slate-600" />
+            <div className="p-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-100">
+              <Truck className="w-3.5 h-3.5" />
             </div>
           </div>
-
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-            <span>
-              <strong className="text-slate-900 font-mono font-bold">{calledCount}</strong> in calling queue
-            </span>
-            <span className="text-[11px] font-semibold text-slate-500 group-hover:text-red-600 transition">
-              Inspect →
-            </span>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 text-[11px] text-purple-700 font-medium">
+            Feasibility & Trials
           </div>
         </div>
 
-        {/* Card 3: Disqualified Leads */}
+        {/* Card 4: GM / Admin Approval */}
         <div 
-          onClick={() => onSelectTab('disqualified')}
-          className="p-4 rounded-xl border border-slate-200 hover:border-slate-300 bg-white shadow-2xs transition cursor-pointer group"
+          onClick={() => onSelectTab('approval')}
+          className="p-3.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white shadow-2xs transition cursor-pointer group"
         >
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 font-mono">
-                Disqualified Leads
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 font-mono">
+                4. GM Approval
               </span>
-              <div className="text-2xl font-bold font-mono text-slate-900 mt-1">
-                {isLoading && !batch ? <span className="text-slate-300">...</span> : disqualifiedCount}
+              <div className="text-xl font-bold font-mono text-indigo-900 mt-1">
+                {isLoading && !batch ? '...' : approvalCount}
               </div>
             </div>
-            <div className="p-2 rounded-lg bg-slate-50 text-rose-600 border border-slate-100">
-              <XCircle className="w-4 h-4 text-rose-600" />
+            <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">
+              <ShieldCheck className="w-3.5 h-3.5" />
             </div>
           </div>
-
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-            <span>Review reason audits</span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 group-hover:text-red-600 transition">
-              <span>Audit</span>
-              <ArrowRight className="w-3 h-3" />
-            </span>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 text-[11px] text-indigo-700 font-medium">
+            Pending Signoff
           </div>
         </div>
 
-        {/* Card 4: Converted to Fleet */}
+        {/* Card 5: Converted Fleets */}
         <div 
           onClick={() => onSelectTab('converted')}
-          className="p-4 rounded-xl border border-slate-200 hover:border-slate-300 bg-white shadow-2xs transition cursor-pointer group"
+          className="p-3.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white shadow-2xs transition cursor-pointer group"
         >
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 font-mono">
-                Converted to Fleet
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 font-mono">
+                5. Converted
               </span>
-              <div className="text-2xl font-bold font-mono text-slate-900 mt-1">
-                {isLoading && !batch ? <span className="text-slate-300">...</span> : convertedCount}
+              <div className="text-xl font-bold font-mono text-emerald-900 mt-1">
+                {isLoading && !batch ? '...' : convertedCount}
               </div>
             </div>
-            <div className="p-2 rounded-lg bg-slate-50 text-emerald-600 border border-slate-100">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">
+              <CheckCircle2 className="w-3.5 h-3.5" />
             </div>
           </div>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 text-[11px] text-emerald-700 font-medium">
+            Won B2B Fleets
+          </div>
+        </div>
 
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-            <span className="text-emerald-700 font-semibold font-mono">
-              Won Commercial Fleets
-            </span>
-            <span className="text-[11px] font-semibold text-slate-500 group-hover:text-red-600 transition">
-              View Fleets →
-            </span>
+        {/* Card 6: Disqualified Audit */}
+        <div 
+          onClick={() => onSelectTab('disqualified')}
+          className="p-3.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white shadow-2xs transition cursor-pointer group"
+        >
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 font-mono">
+                6. Disqualified
+              </span>
+              <div className="text-xl font-bold font-mono text-rose-900 mt-1">
+                {isLoading && !batch ? '...' : disqualifiedCount}
+              </div>
+            </div>
+            <div className="p-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-100">
+              <XCircle className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 text-[11px] text-rose-700 font-medium">
+            Audited Drop-offs
           </div>
         </div>
 
