@@ -39,13 +39,45 @@ export const customerController = {
           take: limit,
           orderBy: { createdAt: 'desc' },
           include: {
-            vehicles: true,
+            vehicles: {
+              orderBy: { createdAt: 'desc' },
+            },
+            jobs: {
+              orderBy: { createdAt: 'desc' },
+              select: {
+                id: true,
+                jobCode: true,
+                totalCents: true,
+                status: true,
+                serviceAddress: true,
+                urgency: true,
+                createdAt: true,
+                vehicle: {
+                  select: {
+                    year: true,
+                    make: true,
+                    model: true,
+                    licensePlate: true,
+                    tireSize: true,
+                  },
+                },
+              },
+            },
           },
         }),
         prisma.customer.count({ where }),
       ]);
 
-      const paginated = createPaginatedResponse(customers, page, limit, totalCount);
+      const enriched = customers.map((c) => {
+        const totalSpendCents = (c.jobs || []).reduce((sum, j) => sum + (j.totalCents || 0), 0);
+        return {
+          ...c,
+          totalSpendCents,
+          jobsCount: c.jobs?.length || 0,
+        };
+      });
+
+      const paginated = createPaginatedResponse(enriched, page, limit, totalCount);
       return res.status(200).json(paginated);
     } catch (err: any) {
       return sendError(res, err.message);
@@ -161,20 +193,29 @@ export const customerController = {
       const customer = await prisma.customer.findUnique({
         where: { id },
         include: {
-          vehicles: true,
-          jobs: {
-            take: 10,
+          vehicles: {
             orderBy: { createdAt: 'desc' },
           },
+          jobs: {
+            orderBy: { createdAt: 'desc' },
+            include: {
+              vehicle: true,
+              serviceItems: true,
+            },
+          },
           invoices: {
-            take: 5,
             orderBy: { createdAt: 'desc' },
           },
         },
       });
 
       if (!customer) return sendError(res, 'Customer not found', 404);
-      return sendSuccess(res, customer);
+      const totalSpendCents = (customer.jobs || []).reduce((sum, j) => sum + (j.totalCents || 0), 0);
+      return sendSuccess(res, {
+        ...customer,
+        totalSpendCents,
+        jobsCount: customer.jobs?.length || 0,
+      });
     } catch (err: any) {
       return sendError(res, err.message);
     }
