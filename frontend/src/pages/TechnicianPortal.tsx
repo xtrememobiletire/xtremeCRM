@@ -82,14 +82,16 @@ export default function TechnicianPortal() {
   );
   const completedJobs = jobs.filter((j) => j.status === 'COMPLETED');
 
+  const requiredAmount = activeJob?.totalCents ? centsToDollars(activeJob.totalCents) : 0;
+
   // Pre-fill amount input if job already has charges
   useEffect(() => {
     if (activeJob && (activeJob.status === 'IN_PROGRESS' || activeJob.status === 'EN_ROUTE')) {
-      if (!amountInput && activeJob.totalCents && activeJob.totalCents > 0) {
-        setAmountInput(centsToDollars(activeJob.totalCents).toFixed(2));
+      if (!amountInput && requiredAmount > 0) {
+        setAmountInput(requiredAmount.toFixed(2));
       }
     }
-  }, [activeJob?.id, activeJob?.status]);
+  }, [activeJob?.id, activeJob?.status, requiredAmount]);
 
   const handleUpdateStatus = (jobId: string, nextStatus: string, cashAmountCents?: number) => {
     setUpdatingId(jobId);
@@ -133,6 +135,19 @@ export default function TechnicianPortal() {
       return;
     }
 
+    if (requiredAmount > 0) {
+      if (parsedAmount < requiredAmount) {
+        const errorMsg = `Amount collected (${formatCurrency(parsedAmount, currencySymbol)}) cannot be less than required invoice total (${formatCurrency(requiredAmount, currencySymbol)})`;
+        setValidationError(errorMsg);
+        toast.error(errorMsg);
+        return;
+      }
+      if (parsedAmount > requiredAmount) {
+        // If greater than required amount, write to default value
+        setAmountInput(requiredAmount.toFixed(2));
+      }
+    }
+
     if ((paymentMethod === 'POS' || paymentMethod === 'E_TRANSFER') && !receiptFile) {
       const label = paymentMethod === 'POS' ? 'POS terminal slip photo' : 'E-Transfer confirmation screenshot';
       setValidationError(`Mandatory proof missing: Please attach a ${label}`);
@@ -140,7 +155,8 @@ export default function TechnicianPortal() {
       return;
     }
 
-    const cents = Math.round(parsedAmount * 100);
+    const effectiveAmount = requiredAmount > 0 && parsedAmount > requiredAmount ? requiredAmount : parsedAmount;
+    const cents = Math.round(effectiveAmount * 100);
     const formData = new FormData();
     formData.append('status', 'COMPLETED');
     formData.append('paymentMethod', paymentMethod);
@@ -451,9 +467,23 @@ export default function TechnicianPortal() {
                       <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block">
                         2. {paymentMethod === 'CASH' ? 'Cash Amount Collected' : paymentMethod === 'POS' ? 'POS Terminal Charged Amount' : 'E-Transfer Amount Received'} <span className="text-emerald-600">*</span>
                       </label>
-                      <span className="text-[11px] text-slate-500 font-mono">
-                        Invoice Total: <strong>{formatCurrency(centsToDollars(activeJob.totalCents || 0), currencySymbol)}</strong>
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-slate-500 font-mono">
+                          Invoice Total: <strong>{formatCurrency(requiredAmount, currencySymbol)}</strong>
+                        </span>
+                        {requiredAmount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAmountInput(requiredAmount.toFixed(2));
+                              setValidationError(null);
+                            }}
+                            className="text-[10px] font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2 py-0.5 rounded-md transition cursor-pointer"
+                          >
+                            Reset to Default
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500 font-bold text-sm">
@@ -467,12 +497,46 @@ export default function TechnicianPortal() {
                         placeholder="0.00"
                         value={amountInput}
                         onChange={(e) => {
-                          setAmountInput(e.target.value);
-                          if (validationError) setValidationError(null);
+                          const val = e.target.value;
+                          const num = parseFloat(val);
+                          if (requiredAmount > 0 && !isNaN(num) && num > requiredAmount) {
+                            // If greater than required amount, write to default value
+                            setAmountInput(requiredAmount.toFixed(2));
+                            toast.info(`Amount cannot exceed invoice total. Reset to default ${formatCurrency(requiredAmount, currencySymbol)}`);
+                            setValidationError(null);
+                            return;
+                          }
+                          setAmountInput(val);
+                          if (requiredAmount > 0 && !isNaN(num) && num < requiredAmount) {
+                            setValidationError(`Amount collected cannot be less than required invoice total (${formatCurrency(requiredAmount, currencySymbol)})`);
+                          } else {
+                            setValidationError(null);
+                          }
                         }}
-                        className="w-full pl-8 pr-4 py-2.5 text-base font-bold font-mono text-slate-900 bg-white rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition placeholder:text-slate-300 shadow-2xs"
+                        onBlur={() => {
+                          const num = parseFloat(amountInput);
+                          if (requiredAmount > 0) {
+                            if (isNaN(num) || num > requiredAmount) {
+                              setAmountInput(requiredAmount.toFixed(2));
+                              setValidationError(null);
+                            } else if (num < requiredAmount) {
+                              setValidationError(`Amount collected cannot be less than required invoice total (${formatCurrency(requiredAmount, currencySymbol)})`);
+                            }
+                          }
+                        }}
+                        className={`w-full pl-8 pr-4 py-2.5 text-base font-bold font-mono text-slate-900 bg-white rounded-xl border outline-none transition placeholder:text-slate-300 shadow-2xs ${
+                          requiredAmount > 0 && amountInput && parseFloat(amountInput) < requiredAmount
+                            ? 'border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
+                            : 'border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                        }`}
                       />
                     </div>
+                    {requiredAmount > 0 && amountInput && parseFloat(amountInput) < requiredAmount && (
+                      <p className="text-xs font-bold text-rose-600 flex items-center gap-1 mt-1">
+                        <AlertCircle size={13} />
+                        <span>Amount collected cannot be less than required invoice total ({formatCurrency(requiredAmount, currencySymbol)})</span>
+                      </p>
+                    )}
                   </div>
 
                   {/* 3. Mandatory Receipt Proof Image */}

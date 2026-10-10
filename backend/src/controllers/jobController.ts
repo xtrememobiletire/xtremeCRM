@@ -463,7 +463,7 @@ export const jobController = {
       const job = await prisma.job.findUnique({ where: { id } });
       if (!job) return sendError(res, 'Job not found', 404);
 
-      const effectiveAmountCents = amountCents !== undefined
+      let effectiveAmountCents = amountCents !== undefined
         ? Math.round(Number(amountCents))
         : (cashAmountCents !== undefined 
           ? Math.round(Number(cashAmountCents)) 
@@ -481,6 +481,20 @@ export const jobController = {
 
         if (!isTrialJob && effectiveAmountCents <= 0 && (!job.totalCents || job.totalCents <= 0)) {
           return sendError(res, 'Payment amount collected on scene is required to complete this job', 400);
+        }
+
+        if (!isTrialJob && job.totalCents && job.totalCents > 0) {
+          if (effectiveAmountCents < job.totalCents) {
+            return sendError(
+              res,
+              `Collected amount ($${(effectiveAmountCents / 100).toFixed(2)}) cannot be less than required invoice total ($${(job.totalCents / 100).toFixed(2)})`,
+              400
+            );
+          }
+          if (effectiveAmountCents > job.totalCents) {
+            // If greater than required amount, write to default value
+            effectiveAmountCents = job.totalCents;
+          }
         }
 
         const uploadedReceiptUrl = req.file ? `/uploads/receipts/${req.file.filename}` : receiptUrl;
