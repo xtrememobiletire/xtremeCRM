@@ -4,13 +4,11 @@ import {
   Truck, 
   User, 
   MapPin, 
-  Phone, 
   FileText, 
   CheckCircle2, 
   AlertTriangle,
   ArrowRight,
   RotateCcw,
-  Globe,
   Clock,
   Wrench,
   Navigation,
@@ -20,6 +18,8 @@ import PageHeader from '../components/ui/PageHeader';
 import AddressAutocompleteInput, { type GeocodeLocation } from '../components/common/AddressAutocompleteInput';
 import MultiServiceSelector, { type SelectedServiceItem } from '../components/common/MultiServiceSelector';
 import { ArrivalWindowSelector, type ArrivalWindowData } from '../components/common/ArrivalWindowSelector';
+import CountrySiloSelector from '../components/common/CountrySiloSelector';
+import PhoneInputField from '../components/common/PhoneInputField';
 import { useTenant } from '../context/TenantContext';
 import { fleetService, type FleetDriverItem } from '../services/fleetService';
 import { jobService } from '../services/jobService';
@@ -27,6 +27,7 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import { formatAsYouType, validateAndNormalizePhone } from '../utils/phone';
 
 const COMMON_COMMERCIAL_TIRE_SIZES = ['11R22.5', '295/75R22.5', '275/65R18', '225/65R17'];
 
@@ -135,7 +136,7 @@ export default function FleetInbound() {
     const fd = registeredFleetDrivers.find((d) => d.id === driverId);
     if (fd) {
       setDriverName(fd.fullName || '');
-      setDriverPhone(fd.phone || '');
+      setDriverPhone(fd.phone ? formatAsYouType(fd.phone, formCountry) : '');
 
       if (fd.licensePlate) {
         const match = fleetVehicles.find((v) => v.licensePlate?.toLowerCase() === fd.licensePlate?.toLowerCase());
@@ -205,6 +206,13 @@ export default function FleetInbound() {
       toast.error('Fleet driver / operator name and contact phone are required');
       return;
     }
+
+    const phoneValidation = validateAndNormalizePhone(driverPhone, formCountry);
+    if (!phoneValidation.isValid) {
+      toast.error(phoneValidation.error || 'Please enter a valid driver phone number');
+      return;
+    }
+
     if (serviceItems.length === 0) {
       toast.error('Please add at least one commercial service item');
       return;
@@ -223,7 +231,7 @@ export default function FleetInbound() {
         countryCode: formCountry,
         fleetId: selectedFleetId,
         recipientName: driverName,
-        recipientPhone: driverPhone,
+        recipientPhone: phoneValidation.normalized,
         serviceAddress,
         serviceLatitude: serviceCoords.latitude ?? undefined,
         serviceLongitude: serviceCoords.longitude ?? undefined,
@@ -346,40 +354,16 @@ export default function FleetInbound() {
           className="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 shadow-xs space-y-5"
         >
           {/* Step 1: Regional Country Silo */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] font-mono flex items-center justify-center font-bold">1</span>
-                <Globe className="w-3.5 h-3.5 text-blue-600" />
-                <span>Operating Country / Currency Silo</span>
-              </span>
-              <span className="text-[11px] font-mono text-slate-400">Cross-Border Intake</span>
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { code: 'CA', label: '🇨🇦 Canada (CAD)' },
-                { code: 'US', label: '🇺🇸 United States (USD)' },
-                { code: 'UK', label: '🇬🇧 United Kingdom (GBP)' },
-              ].map((c) => (
-                <button
-                  key={c.code}
-                  type="button"
-                  onClick={() => {
-                    setFormCountry(c.code as any);
-                    setSelectedFleetId('');
-                    setSelectedFleetDriverId('');
-                  }}
-                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                    formCountry === c.code
-                      ? 'border-red-600 bg-red-50 text-red-700 shadow-2xs'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <span>{c.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          <CountrySiloSelector
+            country={formCountry}
+            onChange={(c) => {
+              setFormCountry(c);
+              setSelectedFleetId('');
+              setSelectedFleetDriverId('');
+            }}
+            stepNumber={1}
+            subtitle="Cross-Border Intake"
+          />
 
           {/* Step 2: Contracted Commercial Fleet Account */}
           <div>
@@ -475,21 +459,14 @@ export default function FleetInbound() {
           </div>
 
           {/* Step 5: Driver On-Scene Phone */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-              <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">5</span>
-              <Phone className="w-3.5 h-3.5 text-red-600" />
-              <span>Driver On-Scene Phone <span className="text-red-500">*</span></span>
-            </label>
-            <input
-              type="text"
-              value={driverPhone}
-              onChange={(e) => setDriverPhone(e.target.value)}
-              placeholder="+1 (555) 019-2834"
-              required
-              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
-            />
-          </div>
+          <PhoneInputField
+            value={driverPhone}
+            onChange={setDriverPhone}
+            countryCode={formCountry}
+            label="Driver On-Scene Phone"
+            stepNumber={5}
+            required
+          />
 
           {/* Step 6: Commercial Vehicle Unit / Plate */}
           <div>

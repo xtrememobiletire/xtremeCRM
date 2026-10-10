@@ -8,6 +8,7 @@ import {
   createPaginatedResponse,
 } from '../utils/index.js';
 import { geocodingService } from '../services/geocodingService.js';
+import { validateAndNormalizePhone } from '../utils/validators.js';
 
 export const fleetController = {
   async getFleets(req: Request, res: Response) {
@@ -195,8 +196,17 @@ export const fleetController = {
       }
 
       const resolvedContact = (contactPerson || contactName || fleetManager || 'Fleet Manager').trim();
-      const resolvedPhone = (phone || '').trim() || '+14165550100';
       const effectiveCountry = countryCode || country || (req as any).countryCode || 'CA';
+      let resolvedPhone = (phone || '').trim();
+      if (resolvedPhone) {
+        const phoneValidation = validateAndNormalizePhone(resolvedPhone, effectiveCountry);
+        if (!phoneValidation.isValid) {
+          return sendError(res, phoneValidation.error || 'Invalid fleet phone number', 400);
+        }
+        resolvedPhone = phoneValidation.normalized;
+      } else {
+        resolvedPhone = effectiveCountry === 'UK' ? '+442079460100' : '+14165550100';
+      }
 
       const code = (fleetCode || '').trim() || `XMT-${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -272,8 +282,19 @@ export const fleetController = {
       const data: any = {};
       if (fleetCode !== undefined) data.fleetCode = fleetCode;
       if (name || companyName) data.name = (name || companyName).trim();
-      if (contactPerson || contactName) data.contactPerson = (contactPerson || contactName).trim();
-      if (phone !== undefined) data.phone = phone.trim();
+      if (phone !== undefined) {
+        const cleanPhone = phone ? String(phone).trim() : '';
+        if (cleanPhone) {
+          const effectiveCountry = countryCode || (req as any).countryCode || 'CA';
+          const phoneValidation = validateAndNormalizePhone(cleanPhone, effectiveCountry);
+          if (!phoneValidation.isValid) {
+            return sendError(res, phoneValidation.error || 'Invalid fleet phone number', 400);
+          }
+          data.phone = phoneValidation.normalized;
+        } else {
+          data.phone = null;
+        }
+      }
       if (email !== undefined) data.email = email?.trim() || null;
       if (poaEmail !== undefined) data.poaEmail = poaEmail?.trim() || null;
       if (fleetManager !== undefined) data.fleetManager = fleetManager?.trim() || null;
@@ -335,11 +356,23 @@ export const fleetController = {
       const fleetId = String(req.params.id);
       const { fullName, phone, licensePlate } = req.body;
 
+      if (!phone) {
+        return sendError(res, 'Phone number is required for fleet driver', 400);
+      }
+
+      const fleet = await prisma.fleet.findUnique({ where: { id: fleetId } });
+      const effectiveCountry = fleet?.countryCode || (req as any).countryCode || 'CA';
+      const phoneValidation = validateAndNormalizePhone(phone, effectiveCountry);
+      if (!phoneValidation.isValid) {
+        return sendError(res, phoneValidation.error || 'Invalid driver phone number', 400);
+      }
+      const normalizedPhone = phoneValidation.normalized;
+
       const existing = await prisma.fleetDriver.findUnique({
         where: {
           fleetId_phone: {
             fleetId,
-            phone,
+            phone: normalizedPhone,
           },
         },
       });
@@ -351,7 +384,7 @@ export const fleetController = {
         data: {
           fleetId,
           fullName,
-          phone,
+          phone: normalizedPhone,
           licensePlate,
         },
       });

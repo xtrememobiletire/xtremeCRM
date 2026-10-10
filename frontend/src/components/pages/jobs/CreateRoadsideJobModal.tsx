@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Phone, 
   User, 
   Mail, 
   MapPin, 
@@ -11,9 +10,7 @@ import {
   FileText, 
   CheckCircle2, 
   Navigation,
-  Globe,
   Hash,
-  Loader2,
   Check,
   X
 } from 'lucide-react';
@@ -21,6 +18,8 @@ import Modal from '../../ui/Modal';
 import AddressAutocompleteInput, { type GeocodeLocation } from '../../common/AddressAutocompleteInput';
 import MultiServiceSelector, { type SelectedServiceItem } from '../../common/MultiServiceSelector';
 import { ArrivalWindowSelector, type ArrivalWindowData } from '../../common/ArrivalWindowSelector';
+import CountrySiloSelector from '../../common/CountrySiloSelector';
+import PhoneInputField from '../../common/PhoneInputField';
 import { useTenant } from '../../../context/TenantContext';
 import { useCreateJob } from '../../../hooks/useJobs';
 import { userService, type UserItem } from '../../../services/userService';
@@ -28,7 +27,7 @@ import { customerService } from '../../../services/customerService';
 import { useKeyboardShortcuts } from '../../../hooks/useKeyboardShortcuts';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { formatAsYouType, validateAndNormalizePhone } from '../../../utils/phone';
+import { validateAndNormalizePhone } from '../../../utils/phone';
 
 interface CreateRoadsideJobModalProps {
   isOpen: boolean;
@@ -314,88 +313,28 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
         className="space-y-5 max-h-[80vh] overflow-y-auto px-1 pr-2"
       >
         {/* Step 1: Regional Silo Country Selector */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <span className="w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] font-mono flex items-center justify-center font-bold">1</span>
-              <Globe className="w-3.5 h-3.5 text-blue-600" />
-              <span>Operating Country / Currency Silo</span>
-            </span>
-            <span className="text-[11px] font-mono text-slate-400">Cross-Border Intake</span>
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { code: 'CA', label: '🇨🇦 Canada (CAD)' },
-              { code: 'US', label: '🇺🇸 United States (USD)' },
-              { code: 'UK', label: '🇬🇧 United Kingdom (GBP)' },
-            ].map((c) => (
-              <button
-                key={c.code}
-                type="button"
-                onClick={() => setFormCountry(c.code as any)}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                  formCountry === c.code
-                    ? 'border-red-600 bg-red-50 text-red-700 shadow-2xs'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <span>{c.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <CountrySiloSelector
+          country={formCountry}
+          onChange={(c) => setFormCountry(c)}
+          stepNumber={1}
+          subtitle="Cross-Border Intake"
+        />
 
         {/* Step 2: Customer Phone Number with Dial Prefix & Auto-lookup */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">2</span>
-              <Phone className="w-3.5 h-3.5 text-red-600" />
-              <span>Caller Phone Number <span className="text-red-500">*</span></span>
-            </span>
-            <span className="text-[11px] font-mono text-slate-400">
-              Country Dial: <strong className="text-slate-700 font-bold">{formCountry === 'UK' ? '+44 (UK)' : formCountry === 'US' ? '+1 (US)' : '+1 (CA)'}</strong>
-            </span>
-          </label>
-          <div className={`relative flex rounded-xl border transition-all shadow-2xs overflow-hidden bg-white ${
-            customerPhone && !validateAndNormalizePhone(customerPhone, formCountry).isValid
-              ? 'border-red-400 focus-within:ring-2 focus-within:ring-red-500/20 focus-within:border-red-500'
-              : 'border-slate-200 focus-within:ring-2 focus-within:ring-red-500/20 focus-within:border-red-500'
-          }`}>
-            <span className="inline-flex items-center px-3 text-xs font-mono font-bold text-slate-600 bg-slate-50 border-r border-slate-200 select-none">
-              {formCountry === 'UK' ? '+44' : '+1'}
-            </span>
-            <input
-              type="tel"
-              value={customerPhone}
-              onChange={(e) => {
-                const formatted = formatAsYouType(e.target.value, formCountry);
-                setCustomerPhone(formatted);
-                setDismissedLookup(false);
-              }}
-              placeholder={formCountry === 'UK' ? '7123 456789' : '(416) 555-0199'}
-              required
-              autoFocus
-              className="w-full px-3.5 py-2.5 text-sm rounded-r-xl font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none bg-transparent"
-            />
-            {isSearching && (
-              <div className="flex items-center pr-3">
-                <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
-              </div>
-            )}
-          </div>
-          {customerPhone && !validateAndNormalizePhone(customerPhone, formCountry).isValid && (
-            <p className="text-[11px] text-red-600 font-medium mt-1 flex items-center gap-1">
-              <AlertTriangle size={12} className="shrink-0" />
-              <span>{validateAndNormalizePhone(customerPhone, formCountry).error}</span>
-            </p>
-          )}
-          {customerPhone && validateAndNormalizePhone(customerPhone, formCountry).isValid && (
-            <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
-              <Check size={12} className="shrink-0" />
-              <span>Verified format: {validateAndNormalizePhone(customerPhone, formCountry).normalized}</span>
-            </p>
-          )}
+          <PhoneInputField
+            value={customerPhone}
+            onChange={(formatted) => {
+              setCustomerPhone(formatted);
+              setDismissedLookup(false);
+            }}
+            countryCode={formCountry}
+            label="Caller Phone Number"
+            stepNumber={2}
+            required
+            autoFocus
+            isSearching={isSearching}
+          />
 
           {/* Existing Customer Match Dropdown */}
           {lookupResult && !dismissedLookup && (

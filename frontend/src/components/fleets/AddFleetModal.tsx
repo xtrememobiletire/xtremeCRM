@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
+import PhoneInputField from '../common/PhoneInputField';
 import { useCreateFleet } from '../../hooks/useFleets';
 import { toast } from 'sonner';
+import { validateAndNormalizePhone } from '../../utils/phone';
 
 import { useTenant } from '../../context/TenantContext';
 
@@ -35,6 +37,16 @@ export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
       return;
     }
 
+    let normalizedPhone: string | undefined = undefined;
+    if (phone.trim()) {
+      const phoneValidation = validateAndNormalizePhone(phone, country);
+      if (!phoneValidation.isValid) {
+        toast.error(phoneValidation.error || 'Please enter a valid fleet phone number');
+        return;
+      }
+      normalizedPhone = phoneValidation.normalized;
+    }
+
     try {
       await createFleetMutation.mutateAsync({
         fleetCode: fleetCode.trim() || undefined,
@@ -42,7 +54,7 @@ export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
         companyName: cleanCompanyName,
         contactPerson: contactName.trim() || 'Fleet Manager',
         contactName: contactName.trim() || 'Fleet Manager',
-        phone: phone.trim() || undefined,
+        phone: normalizedPhone,
         email: email.trim() || undefined,
         countryCode: country,
         paymentTerms,
@@ -93,28 +105,24 @@ export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="text-xs font-semibold text-slate-700">Contact Manager</label>
-            <input
-              type="text"
-              value={contactName}
-              onChange={(e) => setContactName(e.target.value)}
-              placeholder="Robert Chen"
-              className="input-base mt-1"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-slate-700">Phone</label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+14165550299"
-              className="input-base mt-1 font-mono"
-            />
-          </div>
+        <div>
+          <label className="text-xs font-semibold text-slate-700">Contact Manager</label>
+          <input
+            type="text"
+            value={contactName}
+            onChange={(e) => setContactName(e.target.value)}
+            placeholder="Robert Chen"
+            className="input-base mt-1"
+          />
         </div>
+
+        <PhoneInputField
+          value={phone}
+          onChange={setPhone}
+          countryCode={country}
+          label="Dispatch / Hotline Phone"
+          required={false}
+        />
 
         <div>
           <label className="text-xs font-semibold text-slate-700">Billing Email</label>

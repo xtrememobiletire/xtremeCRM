@@ -19,7 +19,7 @@ export const validateAndNormalizePhone = (
 
   if (normCountry === 'CA' || normCountry === 'US') {
     // North American Numbering Plan (NANP)
-    let nationalDigits = '';
+    let nationalDigits: string;
 
     if (digits.length === 10) {
       nationalDigits = digits;
@@ -70,7 +70,7 @@ export const validateAndNormalizePhone = (
       national: nationalDigits,
     };
   } else if (normCountry === 'UK' || normCountry === 'GB') {
-    let nationalDigits = '';
+    let nationalDigits: string;
 
     if (digits.length === 11 && digits.startsWith('0')) {
       nationalDigits = digits.slice(1);

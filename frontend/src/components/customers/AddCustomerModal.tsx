@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import Modal from '../ui/Modal';
+import PhoneInputField from '../common/PhoneInputField';
 import { useCreateCustomer } from '../../hooks/useCustomers';
 import { toast } from 'sonner';
-import { AlertTriangle, Check } from 'lucide-react';
-import { formatAsYouType, validateAndNormalizePhone } from '../../utils/phone';
+import { validateAndNormalizePhone } from '../../utils/phone';
 
 import { useTenant } from '../../context/TenantContext';
 
@@ -78,41 +78,13 @@ export default function AddCustomerModal({ isOpen, onClose }: AddCustomerModalPr
           />
         </div>
 
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-xs font-semibold text-slate-700">Phone Number *</label>
-            <span className="text-[10px] font-mono text-slate-400">Regional Dial: {country === 'UK' ? '+44 (UK)' : country === 'US' ? '+1 (US)' : '+1 (CA)'}</span>
-          </div>
-          <div className={`relative flex rounded-xl border transition-all shadow-2xs overflow-hidden bg-white ${
-            phone && !validateAndNormalizePhone(phone, country).isValid
-              ? 'border-red-400 focus-within:ring-2 focus-within:ring-red-500/20 focus-within:border-red-500'
-              : 'border-slate-200 focus-within:ring-2 focus-within:ring-red-500/20 focus-within:border-red-500'
-          }`}>
-            <span className="inline-flex items-center px-3 text-xs font-mono font-bold text-slate-600 bg-slate-50 border-r border-slate-200 select-none">
-              {country === 'UK' ? '+44' : '+1'}
-            </span>
-            <input
-              type="tel"
-              required
-              value={phone}
-              onChange={(e) => setPhone(formatAsYouType(e.target.value, country))}
-              placeholder={country === 'UK' ? '7123 456789' : '(416) 555-0182'}
-              className="w-full px-3.5 py-2 text-sm rounded-r-xl font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none bg-transparent"
-            />
-          </div>
-          {phone && !validateAndNormalizePhone(phone, country).isValid && (
-            <p className="text-[11px] text-red-600 font-medium mt-1 flex items-center gap-1">
-              <AlertTriangle size={12} className="shrink-0" />
-              <span>{validateAndNormalizePhone(phone, country).error}</span>
-            </p>
-          )}
-          {phone && validateAndNormalizePhone(phone, country).isValid && (
-            <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
-              <Check size={12} className="shrink-0" />
-              <span>Verified format: {validateAndNormalizePhone(phone, country).normalized}</span>
-            </p>
-          )}
-        </div>
+        <PhoneInputField
+          value={phone}
+          onChange={setPhone}
+          countryCode={country}
+          label="Phone Number"
+          required
+        />
 
         <div>
           <label className="text-xs font-semibold text-slate-700">Email Address</label>

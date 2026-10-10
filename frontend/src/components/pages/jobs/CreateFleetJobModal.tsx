@@ -3,7 +3,6 @@ import {
   Building2, 
   Truck, 
   User, 
-  Phone, 
   MapPin, 
   Wrench, 
   Clock, 
@@ -11,14 +10,14 @@ import {
   FileText, 
   CheckCircle2, 
   Navigation,
-  Globe,
-  UserCheck,
-  Check
+  UserCheck
 } from 'lucide-react';
 import Modal from '../../ui/Modal';
 import AddressAutocompleteInput, { type GeocodeLocation } from '../../common/AddressAutocompleteInput';
 import MultiServiceSelector, { type SelectedServiceItem } from '../../common/MultiServiceSelector';
 import { ArrivalWindowSelector, type ArrivalWindowData } from '../../common/ArrivalWindowSelector';
+import CountrySiloSelector from '../../common/CountrySiloSelector';
+import PhoneInputField from '../../common/PhoneInputField';
 import { useTenant } from '../../../context/TenantContext';
 import { useCreateJob } from '../../../hooks/useJobs';
 import { fleetService, type FleetDriverItem } from '../../../services/fleetService';
@@ -155,7 +154,7 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
     const fd = registeredFleetDrivers.find((d) => d.id === driverId);
     if (fd) {
       setDriverName(fd.fullName || '');
-      setDriverPhone(fd.phone || '');
+      setDriverPhone(fd.phone ? formatAsYouType(fd.phone, formCountry) : '');
 
       // If registered driver has an assigned vehicle / license plate, auto-fill it
       if (fd.licensePlate) {
@@ -344,40 +343,16 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
         className="space-y-5 max-h-[80vh] overflow-y-auto px-1 pr-2"
       >
         {/* Step 1: Regional Silo Country Selector */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <span className="w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] font-mono flex items-center justify-center font-bold">1</span>
-              <Globe className="w-3.5 h-3.5 text-blue-600" />
-              <span>Operating Country / Currency Silo</span>
-            </span>
-            <span className="text-[11px] font-mono text-slate-400">Cross-Border Fleet Dispatch</span>
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { code: 'CA', label: '🇨🇦 Canada (CAD)' },
-              { code: 'US', label: '🇺🇸 United States (USD)' },
-              { code: 'UK', label: '🇬🇧 United Kingdom (GBP)' },
-            ].map((c) => (
-              <button
-                key={c.code}
-                type="button"
-                onClick={() => {
-                  setFormCountry(c.code as any);
-                  setSelectedFleetId('');
-                  setSelectedFleetDriverId('');
-                }}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                  formCountry === c.code
-                    ? 'border-red-600 bg-red-50 text-red-700 shadow-2xs'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <span>{c.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <CountrySiloSelector
+          country={formCountry}
+          onChange={(c) => {
+            setFormCountry(c);
+            setSelectedFleetId('');
+            setSelectedFleetDriverId('');
+          }}
+          stepNumber={1}
+          subtitle="Cross-Border Fleet Dispatch"
+        />
 
         {/* Step 2: Contracted Commercial Fleet Account */}
         <div>
@@ -473,50 +448,14 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
         </div>
 
         {/* Step 5: Driver / Operator Phone */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">5</span>
-              <Phone className="w-3.5 h-3.5 text-red-600" />
-              <span>Driver On-Scene Phone <span className="text-red-500">*</span></span>
-            </span>
-            <span className="text-[11px] font-mono text-slate-400">
-              Country Dial: <strong className="text-slate-700 font-bold">{formCountry === 'UK' ? '+44 (UK)' : formCountry === 'US' ? '+1 (US)' : '+1 (CA)'}</strong>
-            </span>
-          </label>
-          <div className={`relative flex rounded-xl border transition-all shadow-2xs overflow-hidden bg-white ${
-            driverPhone && !validateAndNormalizePhone(driverPhone, formCountry).isValid
-              ? 'border-red-400 focus-within:ring-2 focus-within:ring-red-500/20 focus-within:border-red-500'
-              : 'border-slate-200 focus-within:ring-2 focus-within:ring-red-500/20 focus-within:border-red-500'
-          }`}>
-            <span className="inline-flex items-center px-3 text-xs font-mono font-bold text-slate-600 bg-slate-50 border-r border-slate-200 select-none">
-              {formCountry === 'UK' ? '+44' : '+1'}
-            </span>
-            <input
-              type="tel"
-              value={driverPhone}
-              onChange={(e) => {
-                const formatted = formatAsYouType(e.target.value, formCountry);
-                setDriverPhone(formatted);
-              }}
-              placeholder={formCountry === 'UK' ? '7123 456789' : '(416) 555-0199'}
-              required
-              className="w-full px-3.5 py-2.5 text-sm rounded-r-xl font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none bg-transparent"
-            />
-          </div>
-          {driverPhone && !validateAndNormalizePhone(driverPhone, formCountry).isValid && (
-            <p className="text-[11px] text-red-600 font-medium mt-1 flex items-center gap-1">
-              <AlertTriangle size={12} className="shrink-0" />
-              <span>{validateAndNormalizePhone(driverPhone, formCountry).error}</span>
-            </p>
-          )}
-          {driverPhone && validateAndNormalizePhone(driverPhone, formCountry).isValid && (
-            <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
-              <Check size={12} className="shrink-0" />
-              <span>Verified format: {validateAndNormalizePhone(driverPhone, formCountry).normalized}</span>
-            </p>
-          )}
-        </div>
+        <PhoneInputField
+          value={driverPhone}
+          onChange={setDriverPhone}
+          countryCode={formCountry}
+          label="Driver On-Scene Phone"
+          stepNumber={5}
+          required
+        />
 
         {/* Step 6: Commercial Vehicle Unit / Plate */}
         <div>
