@@ -39,7 +39,7 @@ export default function Inbound() {
   const [isTaxIncluded, setIsTaxIncluded] = useState(false);
 
   const [urgency, setUrgency] = useState<'URGENT' | 'STANDARD' | 'FUTURE'>('URGENT');
-  const [arrivalWindow, setArrivalWindow] = useState<ArrivalWindowData>({});
+  const [arrivalWindow, setArrivalWindow] = useState<ArrivalWindowData>({ mode: 'ETA', estimatedArrivalMinutes: 30 });
   const [notes, setNotes] = useState('');
   const [isProvisionAccount, setIsProvisionAccount] = useState(true);
 
@@ -124,6 +124,8 @@ export default function Inbound() {
       setVehicleMakeModel('');
       setTireSize('');
       setNotes('');
+      setArrivalWindow({ mode: 'ETA', estimatedArrivalMinutes: 30 });
+      setUrgency('URGENT');
       setServiceItems([
         {
           serviceId: 'TIRE_REPAIR',

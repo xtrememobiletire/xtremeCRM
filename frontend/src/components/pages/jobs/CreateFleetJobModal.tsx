@@ -102,7 +102,7 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
   const [isTaxIncluded, setIsTaxIncluded] = useState(false);
 
   // Arrival Window & Urgency
-  const [arrivalWindow, setArrivalWindow] = useState<ArrivalWindowData>({});
+  const [arrivalWindow, setArrivalWindow] = useState<ArrivalWindowData>({ mode: 'ETA', estimatedArrivalMinutes: 30 });
   const [urgency, setUrgency] = useState<'URGENT' | 'STANDARD' | 'FUTURE'>('URGENT');
 
   // Technician & Notes
@@ -203,7 +203,7 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
         quantity: 1,
       },
     ]);
-    setArrivalWindow({});
+    setArrivalWindow({ mode: 'ETA', estimatedArrivalMinutes: 30 });
     setUrgency('URGENT');
     setAssignedDriverId('');
     setNotes('');
@@ -630,38 +630,69 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
           </label>
           <ArrivalWindowSelector
             value={arrivalWindow}
-            onChange={setArrivalWindow}
+            onChange={(data) => {
+              setArrivalWindow(data);
+              if (data.mode === 'ETA') {
+                setUrgency('URGENT');
+              } else if (data.mode === 'WINDOW' && urgency === 'URGENT') {
+                const isFutureDate = data.appointmentDate && new Date(data.appointmentDate).toDateString() !== new Date().toDateString();
+                setUrgency(isFutureDate ? 'FUTURE' : 'STANDARD');
+              }
+            }}
           />
         </div>
 
         {/* Step 11: Dispatch Urgency Priority */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">11</span>
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-            <span>Fleet Urgency Level</span>
+          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">11</span>
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+              <span>Fleet Urgency Level</span>
+            </span>
+            {arrivalWindow.mode !== 'WINDOW' && (
+              <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                Locked to URGENT for Quick ETA
+              </span>
+            )}
           </label>
           <div className="grid grid-cols-3 gap-2">
             {[
               { id: 'URGENT', label: 'Urgent / Breakdown', desc: 'Highway dead stop', color: 'border-red-500 text-red-700 bg-red-50' },
               { id: 'STANDARD', label: 'Standard Yard Service', desc: 'Scheduled maintenance', color: 'border-blue-500 text-blue-700 bg-blue-50' },
               { id: 'FUTURE', label: 'Future Appointment', desc: 'Booked service', color: 'border-purple-500 text-purple-700 bg-purple-50' },
-            ].map((u) => (
-              <button
-                key={u.id}
-                type="button"
-                onClick={() => setUrgency(u.id as any)}
-                className={`p-2.5 rounded-xl border text-left transition ${
-                  urgency === u.id
-                    ? `${u.color} font-bold shadow-2xs`
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <div className="text-xs font-bold leading-tight">{u.label}</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">{u.desc}</div>
-              </button>
-            ))}
+            ].map((u) => {
+              const isUrgentEta = arrivalWindow.mode !== 'WINDOW';
+              const isDisabled = isUrgentEta && u.id !== 'URGENT';
+              return (
+                <button
+                  key={u.id}
+                  type="button"
+                  disabled={isDisabled}
+                  onClick={() => !isDisabled && setUrgency(u.id as any)}
+                  title={isDisabled ? 'Quick ETA enforces URGENT priority. Switch to Between Time above for Standard or Future.' : undefined}
+                  className={`p-2.5 rounded-xl border text-left transition ${
+                    isDisabled
+                      ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400 border-slate-200 select-none'
+                      : urgency === u.id
+                        ? `${u.color} font-bold shadow-2xs cursor-pointer`
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 cursor-pointer'
+                  }`}
+                >
+                  <div className="text-xs font-bold leading-tight">{u.label}</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">{u.desc}</div>
+                </button>
+              );
+            })}
           </div>
+          {arrivalWindow.mode !== 'WINDOW' && (
+            <p className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1">
+              <span>Quick ETA is active. For Standard or Future scheduling, switch to</span>
+              <span className="font-semibold text-blue-600">Between Time (Arrival Window)</span>
+              <span>above.</span>
+            </p>
+          )}
         </div>
 
         {/* Step 12: Assign Roadside Technician Directly (Optional) */}

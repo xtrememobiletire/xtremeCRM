@@ -338,7 +338,15 @@ export default function InboundIntakeForm({
           {setArrivalWindow ? (
             <ArrivalWindowSelector
               value={arrivalWindow}
-              onChange={setArrivalWindow}
+              onChange={(data) => {
+                setArrivalWindow(data);
+                if (data.mode === 'ETA') {
+                  setUrgency('URGENT');
+                } else if (data.mode === 'WINDOW' && urgency === 'URGENT') {
+                  const isFutureDate = data.appointmentDate && new Date(data.appointmentDate).toDateString() !== new Date().toDateString();
+                  setUrgency(isFutureDate ? 'FUTURE' : 'STANDARD');
+                }
+              }}
             />
           ) : (
             <div className="flex items-center gap-2">
@@ -355,29 +363,52 @@ export default function InboundIntakeForm({
 
         {/* Step 10: Dispatch Urgency */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 10 : 9}</span>
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-            <span>Dispatch Urgency Priority</span>
+          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 10 : 9}</span>
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+              <span>Dispatch Urgency Priority</span>
+            </span>
+            {arrivalWindow?.mode !== 'WINDOW' && (
+              <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                Locked to URGENT for Quick ETA
+              </span>
+            )}
           </label>
           <div className="grid grid-cols-3 gap-2">
-            {(['URGENT', 'STANDARD', 'FUTURE'] as const).map((level) => (
-              <button
-                key={level}
-                type="button"
-                onClick={() => setUrgency(level)}
-                className={`py-2.5 text-xs font-bold rounded-xl border transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                  urgency === level
-                    ? level === 'URGENT'
-                      ? 'bg-red-600 text-white border-red-600 shadow-2xs'
-                      : 'bg-slate-900 text-white border-slate-900 shadow-2xs'
-                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <span>{level}</span>
-              </button>
-            ))}
+            {(['URGENT', 'STANDARD', 'FUTURE'] as const).map((level) => {
+              const isUrgentEta = arrivalWindow?.mode !== 'WINDOW';
+              const isDisabled = isUrgentEta && level !== 'URGENT';
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  disabled={isDisabled}
+                  onClick={() => !isDisabled && setUrgency(level)}
+                  title={isDisabled ? 'Quick ETA enforces URGENT priority. Switch to Between Time above for Standard or Future.' : undefined}
+                  className={`py-2.5 text-xs font-bold rounded-xl border transition flex items-center justify-center gap-1.5 ${
+                    isDisabled
+                      ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400 border-slate-200 select-none'
+                      : urgency === level
+                        ? level === 'URGENT'
+                          ? 'bg-red-600 text-white border-red-600 shadow-2xs cursor-pointer'
+                          : 'bg-slate-900 text-white border-slate-900 shadow-2xs cursor-pointer'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 cursor-pointer'
+                  }`}
+                >
+                  <span>{level}</span>
+                </button>
+              );
+            })}
           </div>
+          {arrivalWindow?.mode !== 'WINDOW' && (
+            <p className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1">
+              <span>Quick ETA is active. For Standard or Future scheduling, switch to</span>
+              <span className="font-semibold text-blue-600">Between Time (Arrival Window)</span>
+              <span>above.</span>
+            </p>
+          )}
         </div>
 
         {/* Step 11: Problem Notes for Technician */}

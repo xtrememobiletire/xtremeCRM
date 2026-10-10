@@ -7,12 +7,14 @@ export interface ArrivalWindowData {
   estimatedArrivalMinutes?: number;
   appointmentDate?: string;    // ISO string
   displayLabel?: string;
+  mode?: 'ETA' | 'WINDOW';
 }
 
 interface ArrivalWindowSelectorProps {
   value?: ArrivalWindowData;
   onChange: (data: ArrivalWindowData) => void;
   className?: string;
+  onModeChange?: (mode: 'ETA' | 'WINDOW') => void;
 }
 
 const ETA_PRESETS = [
@@ -28,9 +30,18 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
   value,
   onChange,
   className = '',
+  onModeChange,
 }) => {
-  const [mode, setMode] = useState<'ETA' | 'WINDOW'>('ETA');
-  const [selectedEta, setSelectedEta] = useState<number>(30);
+  const [mode, setMode] = useState<'ETA' | 'WINDOW'>(
+    value?.mode || (value?.arrivalWindowStart && !value?.estimatedArrivalMinutes ? 'WINDOW' : 'ETA')
+  );
+  const [selectedEta, setSelectedEta] = useState<number>(value?.estimatedArrivalMinutes || 30);
+
+  useEffect(() => {
+    if (value?.mode && value.mode !== mode) {
+      setMode(value.mode);
+    }
+  }, [value?.mode]);
 
   // Scheduled window state
   const todayStr = new Date().toISOString().split('T')[0];
@@ -63,7 +74,9 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
       arrivalWindowStart: arrivalTime.toISOString(),
       arrivalWindowEnd: windowEnd.toISOString(),
       displayLabel: `ETA ~${minutes}m (${arrivalTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })})`,
+      mode: 'ETA',
     });
+    if (onModeChange) onModeChange('ETA');
   };
 
   // Sync state when Scheduled Window changes
@@ -96,7 +109,9 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
         appointmentDate: startDate.toISOString(),
         estimatedArrivalMinutes: undefined,
         displayLabel: `${dateStr === todayStr ? 'Today' : dateStr} (${label})`,
+        mode: 'WINDOW',
       });
+      if (onModeChange) onModeChange('WINDOW');
     } catch {
       // Fallback
     }
