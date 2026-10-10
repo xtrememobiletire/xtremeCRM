@@ -8,6 +8,7 @@ import {
   createPaginatedResponse,
 } from '../utils/index.js';
 import { geocodingService } from '../services/geocodingService.js';
+import { sseManager } from '../services/sseManager.js';
 
 export const fleetController = {
   async getFleets(req: Request, res: Response) {
@@ -236,6 +237,8 @@ export const fleetController = {
         },
       });
 
+      sseManager.broadcast(`sse:dispatch:${fleet.countryCode}`, 'fleet:created', fleet);
+
       return sendSuccess(res, fleet, 'Fleet created successfully', 201);
     } catch (err: any) {
       return sendError(res, err.message, 400);
@@ -310,6 +313,8 @@ export const fleetController = {
         where: { id },
         data,
       });
+
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'fleet:updated', updated);
 
       return sendSuccess(res, updated, 'Fleet updated successfully');
     } catch (err: any) {

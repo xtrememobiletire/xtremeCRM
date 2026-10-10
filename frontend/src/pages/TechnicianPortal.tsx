@@ -54,8 +54,8 @@ export default function TechnicianPortal() {
   const { data: jobsResponse, refetch } = useQuery({
     queryKey: ['technician-jobs', user?.id],
     queryFn: () => jobService.getJobs({ limit: 10, driverId: user?.id }),
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
+    staleTime: 1000 * 30,
+    refetchOnWindowFocus: true,
   });
 
   // Socket.io instant sync for driver jobs

@@ -142,10 +142,23 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     const s = io(socketUrl, {
       withCredentials: true,
       autoConnect: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
     });
 
-    s.on('connect', () => {
+    const handleWakeup = () => {
+      if (typeof document !== 'undefined' && (document.visibilityState === 'visible' || (typeof navigator !== 'undefined' && navigator.onLine))) {
+        if (!s.connected) {
+          s.connect();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleWakeup);
+    window.addEventListener('online', handleWakeup);
+
+    const syncSocketState = () => {
       setIsConnected(true);
       s.emit('dispatch:join', country);
       if (userRef.current) {
@@ -160,7 +173,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
           countryCode: country,
         });
       }
-    });
+    };
+
+    s.on('connect', syncSocketState);
+    s.on('reconnect', syncSocketState);
 
     s.on('disconnect', () => {
       setIsConnected(false);
@@ -291,6 +307,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     setSocket(s);
 
     return () => {
+      document.removeEventListener('visibilitychange', handleWakeup);
+      window.removeEventListener('online', handleWakeup);
       s.disconnect();
     };
   }, [country, user?.id]);

@@ -8,6 +8,7 @@ import {
   createPaginatedResponse,
   formatCurrency,
 } from '../utils/index.js';
+import { sseManager } from '../services/sseManager.js';
 
 export const invoiceController = {
   async getInvoices(req: Request, res: Response) {
@@ -186,6 +187,8 @@ export const invoiceController = {
         data: { invoiceId: invoice.id },
       });
 
+      sseManager.broadcast(`sse:dispatch:${invoice.countryCode}`, 'invoice:created', invoice);
+
       return sendSuccess(res, invoice, 'Invoice generated successfully', 201);
     } catch (err: any) {
       return sendError(res, err.message, 400);
@@ -265,6 +268,8 @@ export const invoiceController = {
         },
       });
 
+      sseManager.broadcast(`sse:dispatch:${invoice.countryCode}`, 'invoice:created', invoice);
+
       return sendSuccess(res, invoice, 'Invoice created successfully', 201);
     } catch (err: any) {
       return sendError(res, err.message, 400);
@@ -287,6 +292,8 @@ export const invoiceController = {
           items: true,
         },
       });
+
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'invoice:updated', updated);
 
       return sendSuccess(res, updated, 'Invoice status updated');
     } catch (err: any) {

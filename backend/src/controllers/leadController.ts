@@ -789,6 +789,9 @@ export const leadController = {
           timestamp: new Date().toISOString(),
         };
 
+        sseManager.broadcast(`sse:dispatch:${lead.countryCode}`, 'lead:transferred', transferPayload);
+        sseManager.broadcast(`sse:leads:${lead.countryCode}`, 'lead:transferred', transferPayload);
+
         io.to(`dispatch:${lead.countryCode}`).emit('call:transfer', transferPayload);
         io.to('role:DISPATCHER').emit('call:transfer', transferPayload);
         io.to('role:ADMIN').emit('call:transfer', transferPayload);
