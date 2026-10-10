@@ -232,16 +232,20 @@ export default function Jobs() {
         onClose={handleCloseCreate}
         prefillPhone={intakePhoneParam}
       />
-      <JobDetailModal
-        isOpen={!!selectedJob}
-        onClose={() => setSelectedJob(null)}
-        job={selectedJob}
-      />
-      <AssignDriverModal
-        isOpen={!!assignJob}
-        onClose={() => setAssignJob(null)}
-        job={assignJob}
-      />
+      {selectedJob && (
+        <JobDetailModal
+          isOpen={!!selectedJob}
+          onClose={() => setSelectedJob(null)}
+          job={selectedJob}
+        />
+      )}
+      {assignJob && (
+        <AssignDriverModal
+          isOpen={!!assignJob}
+          onClose={() => setAssignJob(null)}
+          job={assignJob}
+        />
+      )}
       {cogsJob && (
         <ExpenseStatingModal
           isOpen={!!cogsJob}

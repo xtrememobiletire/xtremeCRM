@@ -458,14 +458,16 @@ export const jobController = {
   async updateJobStatus(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
-      const { status, urgency, cashAmountCents, cashCollected } = req.body;
+      const { status, urgency, paymentMethod, amountCents, cashAmountCents, cashCollected, receiptUrl } = req.body;
 
       const job = await prisma.job.findUnique({ where: { id } });
       if (!job) return sendError(res, 'Job not found', 404);
 
-      const effectiveCashCents = cashAmountCents !== undefined 
-        ? Math.round(Number(cashAmountCents)) 
-        : (cashCollected !== undefined ? Math.round(Number(cashCollected) * 100) : 0);
+      const effectiveAmountCents = amountCents !== undefined
+        ? Math.round(Number(amountCents))
+        : (cashAmountCents !== undefined 
+          ? Math.round(Number(cashAmountCents)) 
+          : (cashCollected !== undefined ? Math.round(Number(cashCollected) * 100) : 0));
 
       const isTrialJob = Boolean(job.isTestService);
 
@@ -475,17 +477,32 @@ export const jobController = {
       };
       if (urgency) updateData.urgency = urgency;
       if (status === 'COMPLETED') {
-        if (!isTrialJob && effectiveCashCents <= 0 && (!job.totalCents || job.totalCents <= 0)) {
-          return sendError(res, 'Payment amount or cash collected on scene is required to complete this job', 400);
+        const chosenMethod = paymentMethod || job.paymentMethod || 'CASH';
+
+        if (!isTrialJob && effectiveAmountCents <= 0 && (!job.totalCents || job.totalCents <= 0)) {
+          return sendError(res, 'Payment amount collected on scene is required to complete this job', 400);
         }
+
+        const uploadedReceiptUrl = req.file ? `/uploads/receipts/${req.file.filename}` : receiptUrl;
+        if ((chosenMethod === 'POS' || chosenMethod === 'E_TRANSFER') && !uploadedReceiptUrl && !job.receiptUrl) {
+          return sendError(res, `Payment receipt proof photo is strictly mandatory when completing with ${chosenMethod.replace('_', ' ')}`, 400);
+        }
+
         updateData.completedAt = new Date();
-        if (effectiveCashCents > 0) {
-          updateData.paymentMethod = 'CASH';
-          updateData.cashCollectedCents = effectiveCashCents;
+        updateData.paymentMethod = chosenMethod;
+        if (uploadedReceiptUrl) {
+          updateData.receiptUrl = uploadedReceiptUrl;
+        }
+
+        if (chosenMethod === 'CASH') {
+          updateData.cashCollectedCents = effectiveAmountCents;
+        }
+
+        if (effectiveAmountCents > 0) {
           updateData.paymentStatus = 'PAID_PENDING_VERIFICATION';
           if (!job.totalCents || job.totalCents === 0) {
-            updateData.totalCents = effectiveCashCents;
-            updateData.subtotalCents = effectiveCashCents;
+            updateData.totalCents = effectiveAmountCents;
+            updateData.subtotalCents = effectiveAmountCents;
           }
         } else if (isTrialJob) {
           updateData.paymentStatus = 'VERIFIED_PAID';

@@ -61,6 +61,9 @@ export interface JobItem {
   notes?: string;
   recipientName?: string;
   recipientPhone?: string;
+  completedAt?: string;
+  cashCollectedCents?: number;
+  receiptUrl?: string;
 }
 
 export interface PaginationMeta {
@@ -146,8 +149,21 @@ export const jobService = {
     return res.data.data;
   },
 
-  async updateJobStatus(id: string, status: string, cashAmountCents?: number): Promise<JobItem> {
-    const res = await api.patch(`/jobs/${id}/status`, { status, cashAmountCents });
+  async updateJobStatus(
+    id: string,
+    statusOrPayload: string | FormData | { status: string; paymentMethod?: string; amountCents?: number; cashAmountCents?: number; receiptUrl?: string },
+    cashAmountCents?: number
+  ): Promise<JobItem> {
+    if (statusOrPayload instanceof FormData) {
+      const res = await api.patch(`/jobs/${id}/status`, statusOrPayload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data.data;
+    }
+    const payload = typeof statusOrPayload === 'string'
+      ? { status: statusOrPayload, cashAmountCents }
+      : statusOrPayload;
+    const res = await api.patch(`/jobs/${id}/status`, payload);
     return res.data.data;
   },
 

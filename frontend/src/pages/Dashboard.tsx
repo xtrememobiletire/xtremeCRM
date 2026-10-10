@@ -82,8 +82,8 @@ export default function Dashboard() {
       </div>
 
       <CreateRoadsideJobModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
-      <JobDetailModal isOpen={!!selectedJob} onClose={() => setSelectedJob(null)} job={selectedJob} />
-      <AssignDriverModal isOpen={!!assignJob} onClose={() => setAssignJob(null)} job={assignJob} />
+      {selectedJob && <JobDetailModal isOpen={!!selectedJob} onClose={() => setSelectedJob(null)} job={selectedJob} />}
+      {assignJob && <AssignDriverModal isOpen={!!assignJob} onClose={() => setAssignJob(null)} job={assignJob} />}
     </div>
   );
 }

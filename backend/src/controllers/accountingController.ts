@@ -298,11 +298,18 @@ export const accountingController = {
       const { jobId, materialCostCents, repairerFeeCents, otherExpenseCents, expenseNotes } = req.body;
       const accountantId = (req.user as any)?.id;
 
+      const existingJob = await prisma.job.findUnique({
+        where: { id: jobId },
+        select: { driverType: true },
+      });
+
+      const feeCents = Number(repairerFeeCents) || 0;
       const job = await prisma.job.update({
         where: { id: jobId },
         data: {
           materialCostCents: Number(materialCostCents) || 0,
-          repairerFeeCents: Number(repairerFeeCents) || 0,
+          repairerFeeCents: feeCents,
+          ...(existingJob?.driverType === 'EXTERNAL' ? { externalDriverFeeCents: feeCents } : {}),
           otherExpenseCents: Number(otherExpenseCents) || 0,
           expenseNotes,
           expenseStatedById: accountantId,

@@ -23,6 +23,7 @@ export default function ExpenseStatingModal({
 
   const [selectedJobId, setSelectedJobId] = useState<string>('');
   const [materialCost, setMaterialCost] = useState<string>('');
+  const [driverFee, setDriverFee] = useState<string>('');
   const [otherExpense, setOtherExpense] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -30,6 +31,7 @@ export default function ExpenseStatingModal({
 
   // Field focus refs for keyboard navigation
   const materialInputRef = useRef<HTMLInputElement>(null);
+  const driverFeeInputRef = useRef<HTMLInputElement>(null);
   const otherInputRef = useRef<HTMLInputElement>(null);
   const notesInputRef = useRef<HTMLInputElement>(null);
 
@@ -45,12 +47,14 @@ export default function ExpenseStatingModal({
     if (job) {
       setSelectedJobId(job.id);
       setMaterialCost(job.materialCostCents ? (job.materialCostCents / 100).toFixed(2) : '');
+      setDriverFee(job.repairerFeeCents ? (job.repairerFeeCents / 100).toFixed(2) : '');
       setOtherExpense(job.otherExpenseCents ? (job.otherExpenseCents / 100).toFixed(2) : '');
       setNotes(job.expenseNotes || '');
     } else if (completedJobs.length > 0 && !selectedJobId) {
       const first = completedJobs[0];
       setSelectedJobId(first.id);
       setMaterialCost(first.materialCostCents ? (first.materialCostCents / 100).toFixed(2) : '');
+      setDriverFee(first.repairerFeeCents ? (first.repairerFeeCents / 100).toFixed(2) : '');
       setOtherExpense(first.otherExpenseCents ? (first.otherExpenseCents / 100).toFixed(2) : '');
       setNotes(first.expenseNotes || '');
     }
@@ -65,7 +69,7 @@ export default function ExpenseStatingModal({
   // Live computations
   const revenueCents = activeJob?.revenueCents || 0;
   const tcCents = Math.round((parseFloat(materialCost) || 0) * 100);
-  const dcCents = activeJob?.repairerFeeCents || 0; // Technician labor payout auto-pulled from dispatch
+  const dcCents = Math.round((parseFloat(driverFee) || 0) * 100);
   const otherCents = Math.round((parseFloat(otherExpense) || 0) * 100);
   const totalCostCents = tcCents + dcCents + otherCents;
   const netProfitCents = revenueCents - totalCostCents;
@@ -76,6 +80,8 @@ export default function ExpenseStatingModal({
     if (e.altKey && e.key === 'ArrowDown') {
       e.preventDefault();
       if (document.activeElement === materialInputRef.current) {
+        driverFeeInputRef.current?.focus();
+      } else if (document.activeElement === driverFeeInputRef.current) {
         otherInputRef.current?.focus();
       } else if (document.activeElement === otherInputRef.current) {
         notesInputRef.current?.focus();
@@ -85,6 +91,8 @@ export default function ExpenseStatingModal({
       if (document.activeElement === notesInputRef.current) {
         otherInputRef.current?.focus();
       } else if (document.activeElement === otherInputRef.current) {
+        driverFeeInputRef.current?.focus();
+      } else if (document.activeElement === driverFeeInputRef.current) {
         materialInputRef.current?.focus();
       }
     } else if (e.altKey && e.key === 'Enter') {
@@ -113,7 +121,7 @@ export default function ExpenseStatingModal({
       });
 
       if (receiptFile) {
-        await accountingService.uploadReceipt(targetJobId, receiptFile);
+        await accountingService.uploadMaterialReceipt(targetJobId, receiptFile);
       }
 
       toast.success(`COGS expenses saved for ${activeJob?.jobNumber || 'Job'}`);
@@ -222,11 +230,39 @@ export default function ExpenseStatingModal({
           </p>
         </div>
 
-        {/* Sequential Field 2: Other Miscellaneous Direct Expenses */}
+        {/* Sequential Field 2: Technician / Driver Labor Fee (DC) */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              2. Other Direct Job Expenses ({jobCurrencySymbol})
+              2. Technician / Driver Labor Fee (DC) ({jobCurrencySymbol})
+            </label>
+            <span className="text-[10px] text-slate-400">Alt+↓ to other</span>
+          </div>
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-bold text-sm">
+              {jobCurrencySymbol}
+            </span>
+            <input
+              ref={driverFeeInputRef}
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={driverFee}
+              onChange={(e) => setDriverFee(e.target.value)}
+              className="w-full pl-8 pr-4 py-2.5 text-base font-bold font-mono text-slate-900 bg-white rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition shadow-2xs"
+            />
+          </div>
+          <p className="text-[11px] text-slate-500">
+            Direct roadside labor payout to assigned technician or subcontractor.
+          </p>
+        </div>
+
+        {/* Sequential Field 3: Other Miscellaneous Direct Expenses */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              3. Other Direct Job Expenses ({jobCurrencySymbol})
             </label>
             <span className="text-[10px] text-slate-400">Alt+↓ to notes</span>
           </div>
@@ -248,21 +284,6 @@ export default function ExpenseStatingModal({
           <p className="text-[11px] text-slate-500">
             Disposal fees, valve stems, roadside towing assist, or specialized hardware.
           </p>
-        </div>
-
-        {/* Locked Field: Technician Labor Compensation (Auto-pulled) */}
-        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Technician Labor Payout (Locked from Dispatch)
-            </span>
-            <span className="text-xs font-semibold text-slate-700">
-              Recorded Driver Compensation
-            </span>
-          </div>
-          <span className="font-mono font-bold text-sm text-slate-900">
-            {formatCurrency(centsToDollars(dcCents), jobCurrencySymbol)}
-          </span>
         </div>
 
         {/* Field 3: Audit Note */}

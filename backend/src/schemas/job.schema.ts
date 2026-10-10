@@ -109,8 +109,11 @@ export type CreateJobInput = z.infer<typeof CreateJobSchema>;
 export const UpdateJobStatusSchema = z.object({
   status: z.enum(['PENDING', 'UNVERIFIED_PUBLIC', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']),
   urgency: z.enum(['EMERGENCY', 'URGENT', 'STANDARD', 'FUTURE']).optional(),
+  paymentMethod: z.enum(['CASH', 'POS', 'E_TRANSFER', 'STRIPE', 'MOTO']).optional(),
+  amountCents: z.coerce.number().int().nonnegative().optional(),
   cashAmountCents: z.coerce.number().int().nonnegative().optional(),
   cashCollected: z.coerce.number().nonnegative().optional(),
+  receiptUrl: z.string().optional(),
 });
 
 export type UpdateJobStatusInput = z.infer<typeof UpdateJobStatusSchema>;

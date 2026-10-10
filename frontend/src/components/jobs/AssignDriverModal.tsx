@@ -266,11 +266,15 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
     }
   };
 
+  if (!isOpen || !job) {
+    return null;
+  }
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Dispatch Regional Technician • Job #${job.jobNumber || job.jobCode}`}
+      title={`Dispatch Regional Technician • Job #${job?.jobNumber || job?.jobCode || ''}`}
       maxWidth="max-w-5xl"
     >
       {/* 2-Column Dispatch Layout: Map Canvas + iPhone Style Drivers Sidebar */}
