@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Users, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { formatAsYouType, validateAndNormalizePhone } from '../../utils/phone';
 
 export interface FleetDriverItem {
   fullName: string;
@@ -11,24 +13,38 @@ interface FleetDriversSectionProps {
   drivers: FleetDriverItem[];
   onAddDriver: (driver: FleetDriverItem) => void;
   onRemoveDriver: (index: number) => void;
+  countryCode?: string;
 }
 
 export default function FleetDriversSection({
   drivers,
   onAddDriver,
   onRemoveDriver,
+  countryCode = 'CA',
 }: FleetDriversSectionProps) {
+  const normCountry = (countryCode || 'CA').toUpperCase();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
 
+  const phoneValidation = phone ? validateAndNormalizePhone(phone, normCountry) : null;
+
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !phone.trim()) return;
+    if (!fullName.trim() || !phone.trim()) {
+      toast.error('Driver name and phone number are required');
+      return;
+    }
+
+    const validation = validateAndNormalizePhone(phone, normCountry);
+    if (!validation.isValid) {
+      toast.error(validation.error || 'Please enter a valid driver phone number');
+      return;
+    }
 
     onAddDriver({
       fullName: fullName.trim(),
-      phone: phone.trim(),
+      phone: validation.normalized,
       licensePlate: licensePlate.trim().toUpperCase() || undefined,
     });
 
@@ -59,15 +75,33 @@ export default function FleetDriversSection({
             />
           </div>
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Driver Mobile Phone *</label>
-            <input
-              type="tel"
-              required
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+14165550201"
-              className="input-base font-mono"
-            />
+            <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
+              <span>Driver Mobile Phone *</span>
+              <span className="text-[10px] font-mono text-slate-400">Dial: {normCountry === 'UK' ? '+44 (UK)' : '+1 (' + normCountry + ')'}</span>
+            </label>
+            <div className={`relative flex rounded-xl border transition-all overflow-hidden bg-white ${
+              phone && phoneValidation && !phoneValidation.isValid
+                ? 'border-red-400 focus-within:ring-2 focus-within:ring-red-500/20'
+                : 'border-slate-200 focus-within:ring-2 focus-within:ring-red-500/20'
+            }`}>
+              <span className="inline-flex items-center px-2.5 text-xs font-mono font-bold text-slate-600 bg-slate-50 border-r border-slate-200 select-none">
+                {normCountry === 'UK' ? '+44' : '+1'}
+              </span>
+              <input
+                type="tel"
+                required
+                value={phone}
+                onChange={(e) => setPhone(formatAsYouType(e.target.value, normCountry))}
+                placeholder={normCountry === 'UK' ? '7123 456789' : '(416) 555-0201'}
+                className="w-full px-2.5 py-1.5 text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none bg-transparent"
+              />
+            </div>
+            {phone && phoneValidation && !phoneValidation.isValid && (
+              <p className="text-[10px] text-red-600 mt-0.5 font-medium">{phoneValidation.error}</p>
+            )}
+            {phone && phoneValidation && phoneValidation.isValid && (
+              <p className="text-[10px] text-emerald-600 mt-0.5 font-mono font-semibold">✓ {phoneValidation.normalized}</p>
+            )}
           </div>
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Assigned Vehicle Plate</label>
@@ -115,7 +149,7 @@ export default function FleetDriversSection({
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-mono text-[10px] uppercase">
                 <tr>
                   <th className="py-2 px-3">Driver Name</th>
-                  <th className="py-2 px-3">Phone</th>
+                  <th className="py-2 px-3">Phone (E.164 Normalized)</th>
                   <th className="py-2 px-3">Assigned Plate</th>
                   <th className="py-2 px-3 text-right">Action</th>
                 </tr>
@@ -124,7 +158,12 @@ export default function FleetDriversSection({
                 {drivers.map((d, idx) => (
                   <tr key={`${d.phone}-${idx}`} className="hover:bg-slate-50/60">
                     <td className="py-2 px-3 font-semibold text-slate-900">{d.fullName}</td>
-                    <td className="py-2 px-3 font-mono text-slate-700">{d.phone}</td>
+                    <td className="py-2 px-3 font-mono font-bold text-slate-800">
+                      <span>{formatAsYouType(d.phone, normCountry)}</span>
+                      <span className="ml-2 text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-normal">
+                        {d.phone}
+                      </span>
+                    </td>
                     <td className="py-2 px-3 font-mono font-bold text-slate-800">{d.licensePlate || '—'}</td>
                     <td className="py-2 px-3 text-right">
                       <button

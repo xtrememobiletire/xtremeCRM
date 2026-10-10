@@ -11,6 +11,7 @@ import {
 import { getIO } from '../config/socket.js';
 import { refillAgentQueueAtomic, checkAndCompleteBatches } from '../services/queueService.js';
 import { sseManager } from '../services/sseManager.js';
+import { validateAndNormalizePhone } from '../utils/validators.js';
 
 export const VA_LEAD_CAP = 1;
 
@@ -789,6 +790,9 @@ export const leadController = {
           timestamp: new Date().toISOString(),
         };
 
+        sseManager.broadcast(`sse:dispatch:${lead.countryCode}`, 'lead:transferred', transferPayload);
+        sseManager.broadcast(`sse:leads:${lead.countryCode}`, 'lead:transferred', transferPayload);
+
         io.to(`dispatch:${lead.countryCode}`).emit('call:transfer', transferPayload);
         io.to('role:DISPATCHER').emit('call:transfer', transferPayload);
         io.to('role:ADMIN').emit('call:transfer', transferPayload);
@@ -823,20 +827,31 @@ export const leadController = {
       // Create new Fleet linked to Lead and VA for commission (credited regardless of company source)
       const virtualAssistantId = lead.lastCalledByVaId || lead.assignedAgentId || lead.uploadedById || (req as any).user?.id;
 
+      // Extract extraData from ConvertFleetModal if provided
+      const extra = req.body.extraData || {};
+      const companyName = extra.companyName || lead.companyName;
+      const contactPerson = extra.contactPerson || lead.contactPerson;
+      const rawPhone = extra.phone || lead.phone;
+      let fleetPhone = rawPhone;
+      if (rawPhone) {
+        const phoneValidation = validateAndNormalizePhone(rawPhone, lead.countryCode);
+        if (phoneValidation.isValid) fleetPhone = phoneValidation.normalized;
+      }
+
       const fleet = await prisma.fleet.create({
         data: {
           fleetCode,
-          name: lead.companyName,
-          contactPerson: lead.contactPerson,
-          fleetManager: lead.fleetManager || req.body.fleetManager?.trim() || undefined,
-          ceoOwnerName: lead.ceoOwnerName || req.body.ceoOwnerName?.trim() || undefined,
-          phone: lead.phone,
-          altPhone: lead.altPhone || undefined,
-          email: lead.email,
-          poaEmail: lead.poaEmail || req.body.poaEmail?.trim() || undefined,
-          address: lead.address,
-          website: lead.website || undefined,
-          numberOfUnits: lead.numberOfUnits || (req.body.numberOfUnits ? Number(req.body.numberOfUnits) : undefined),
+          name: companyName,
+          contactPerson: contactPerson,
+          fleetManager: extra.fleetManager || lead.fleetManager || req.body.fleetManager?.trim() || undefined,
+          ceoOwnerName: extra.ceoOwnerName || lead.ceoOwnerName || req.body.ceoOwnerName?.trim() || undefined,
+          phone: fleetPhone,
+          altPhone: extra.altPhone || lead.altPhone || undefined,
+          email: extra.email || lead.email,
+          poaEmail: extra.poaEmail || lead.poaEmail || req.body.poaEmail?.trim() || undefined,
+          address: extra.address || lead.address,
+          website: extra.website || lead.website || undefined,
+          numberOfUnits: extra.numberOfUnits ? Number(extra.numberOfUnits) : (lead.numberOfUnits || (req.body.numberOfUnits ? Number(req.body.numberOfUnits) : undefined)),
           countryCode: lead.countryCode,
           status: 'APPROVED',
           discountPercent: req.body.discountPercent ? Number(req.body.discountPercent) : 0,
@@ -845,6 +860,76 @@ export const leadController = {
           virtualAssistantId,
         },
       });
+
+      // Enroll vehicles if provided
+      const vehicles = extra.vehicles || req.body.vehicles;
+      if (Array.isArray(vehicles) && vehicles.length > 0) {
+        for (const v of vehicles) {
+          if (!v.licensePlate) continue;
+          try {
+            await prisma.vehicle.upsert({
+              where: {
+                countryCode_licensePlate: {
+                  countryCode: lead.countryCode,
+                  licensePlate: v.licensePlate.trim().toUpperCase(),
+                },
+              },
+              update: {
+                fleetId: fleet.id,
+                make: v.make || 'Commercial',
+                model: v.model || 'Rig',
+                year: v.year ? Number(v.year) : new Date().getFullYear(),
+                tireSize: v.tireSize || '11R22.5',
+                vin: v.vin || undefined,
+              },
+              create: {
+                fleetId: fleet.id,
+                countryCode: lead.countryCode,
+                licensePlate: v.licensePlate.trim().toUpperCase(),
+                make: v.make || 'Commercial',
+                model: v.model || 'Rig',
+                year: v.year ? Number(v.year) : new Date().getFullYear(),
+                tireSize: v.tireSize || '11R22.5',
+                vin: v.vin || undefined,
+              },
+            });
+          } catch (e: any) {
+            console.error('Failed to enroll converted fleet vehicle:', e?.message);
+          }
+        }
+      }
+
+      // Enroll drivers if provided with normalized phone
+      const drivers = extra.drivers || req.body.drivers;
+      if (Array.isArray(drivers) && drivers.length > 0) {
+        for (const d of drivers) {
+          if (!d.fullName || !d.phone) continue;
+          const phoneValidation = validateAndNormalizePhone(d.phone, lead.countryCode);
+          if (!phoneValidation.isValid) continue;
+          try {
+            await prisma.fleetDriver.upsert({
+              where: {
+                fleetId_phone: {
+                  fleetId: fleet.id,
+                  phone: phoneValidation.normalized,
+                },
+              },
+              update: {
+                fullName: d.fullName.trim(),
+                licensePlate: d.licensePlate ? d.licensePlate.trim().toUpperCase() : undefined,
+              },
+              create: {
+                fleetId: fleet.id,
+                fullName: d.fullName.trim(),
+                phone: phoneValidation.normalized,
+                licensePlate: d.licensePlate ? d.licensePlate.trim().toUpperCase() : undefined,
+              },
+            });
+          } catch (e: any) {
+            console.error('Failed to enroll converted fleet driver:', e?.message);
+          }
+        }
+      }
 
       // Mark lead as CONVERTED
       const updatedLead = await prisma.lead.update({

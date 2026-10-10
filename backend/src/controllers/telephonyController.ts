@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { telnyxService } from '../services/telnyxService.js';
 import { sendSuccess, sendError, isValidPhone } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
+import { sseManager } from '../services/sseManager.js';
 
 export const telephonyController = {
   /**
@@ -114,6 +115,7 @@ export const telephonyController = {
         io.to(`dispatch:${region}`).emit('call:transfer', transferPayload);
         io.to('role:DISPATCHER').emit('call:transfer', transferPayload);
         io.to('role:ADMIN').emit('call:transfer', transferPayload);
+        sseManager.broadcast(`sse:dispatch:${region}`, 'lead:transferred', transferPayload);
       } catch {}
 
       return sendSuccess(res, {

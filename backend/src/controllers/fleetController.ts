@@ -9,6 +9,7 @@ import {
 } from '../utils/index.js';
 import { geocodingService } from '../services/geocodingService.js';
 import { validateAndNormalizePhone } from '../utils/validators.js';
+import { sseManager } from '../services/sseManager.js';
 
 export const fleetController = {
   async getFleets(req: Request, res: Response) {
@@ -246,6 +247,78 @@ export const fleetController = {
         },
       });
 
+      // Enroll initial vehicles if provided
+      const vehicles = req.body.vehicles;
+      if (Array.isArray(vehicles) && vehicles.length > 0) {
+        for (const v of vehicles) {
+          if (!v.licensePlate) continue;
+          try {
+            await prisma.vehicle.upsert({
+              where: {
+                countryCode_licensePlate: {
+                  countryCode: effectiveCountry,
+                  licensePlate: v.licensePlate.trim().toUpperCase(),
+                },
+              },
+              update: {
+                fleetId: fleet.id,
+                make: v.make || 'Commercial',
+                model: v.model || 'Rig',
+                year: v.year ? Number(v.year) : new Date().getFullYear(),
+                tireSize: v.tireSize || '11R22.5',
+                vin: v.vin || undefined,
+              },
+              create: {
+                fleetId: fleet.id,
+                countryCode: effectiveCountry,
+                licensePlate: v.licensePlate.trim().toUpperCase(),
+                make: v.make || 'Commercial',
+                model: v.model || 'Rig',
+                year: v.year ? Number(v.year) : new Date().getFullYear(),
+                tireSize: v.tireSize || '11R22.5',
+                vin: v.vin || undefined,
+              },
+            });
+          } catch (e: any) {
+            console.error('Failed to create fleet vehicle:', e?.message);
+          }
+        }
+      }
+
+      // Enroll initial drivers if provided with normalized E.164 phone
+      const drivers = req.body.drivers;
+      if (Array.isArray(drivers) && drivers.length > 0) {
+        for (const d of drivers) {
+          if (!d.fullName || !d.phone) continue;
+          const phoneValidation = validateAndNormalizePhone(d.phone, effectiveCountry);
+          if (!phoneValidation.isValid) continue;
+          try {
+            await prisma.fleetDriver.upsert({
+              where: {
+                fleetId_phone: {
+                  fleetId: fleet.id,
+                  phone: phoneValidation.normalized,
+                },
+              },
+              update: {
+                fullName: d.fullName.trim(),
+                licensePlate: d.licensePlate ? d.licensePlate.trim().toUpperCase() : undefined,
+              },
+              create: {
+                fleetId: fleet.id,
+                fullName: d.fullName.trim(),
+                phone: phoneValidation.normalized,
+                licensePlate: d.licensePlate ? d.licensePlate.trim().toUpperCase() : undefined,
+              },
+            });
+          } catch (e: any) {
+            console.error('Failed to create fleet driver:', e?.message);
+          }
+        }
+      }
+
+      sseManager.broadcast(`sse:dispatch:${fleet.countryCode}`, 'fleet:created', fleet);
+
       return sendSuccess(res, fleet, 'Fleet created successfully', 201);
     } catch (err: any) {
       return sendError(res, err.message, 400);
@@ -331,6 +404,8 @@ export const fleetController = {
         where: { id },
         data,
       });
+
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'fleet:updated', updated);
 
       return sendSuccess(res, updated, 'Fleet updated successfully');
     } catch (err: any) {

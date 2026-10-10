@@ -188,7 +188,7 @@ export default function ConvertFleetModal({
         {/* Tab Content Panes */}
         <div className="max-h-[60vh] overflow-y-auto pr-1">
           {activeTab === 'details' && (
-            <FleetInfoSection formData={formData} onChange={handleFieldChange} />
+            <FleetInfoSection formData={formData} onChange={handleFieldChange} countryCode={lead.countryCode} />
           )}
 
           {activeTab === 'vehicles' && (
@@ -204,6 +204,7 @@ export default function ConvertFleetModal({
               drivers={drivers}
               onAddDriver={handleAddDriver}
               onRemoveDriver={handleRemoveDriver}
+              countryCode={lead.countryCode}
             />
           )}
         </div>

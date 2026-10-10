@@ -9,6 +9,7 @@ import {
   validateAndNormalizePhone,
 } from '../utils/index.js';
 import { geocodingService } from '../services/geocodingService.js';
+import { sseManager } from '../services/sseManager.js';
 
 export const customerController = {
   async getCustomers(req: Request, res: Response) {
@@ -298,6 +299,8 @@ export const customerController = {
         },
       });
 
+      sseManager.broadcast(`sse:dispatch:${customer.countryCode}`, 'customer:created', customer);
+
       return sendSuccess(res, customer, 'Customer created successfully', 201);
     } catch (err: any) {
       return sendError(res, err.message, 400);
@@ -378,6 +381,8 @@ export const customerController = {
         },
       });
 
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'customer:updated', updated);
+
       return sendSuccess(res, updated, 'Customer updated successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
@@ -387,7 +392,11 @@ export const customerController = {
   async deleteCustomer(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
+      const existing = await prisma.customer.findUnique({ where: { id }, select: { countryCode: true } });
       await prisma.customer.delete({ where: { id } });
+      if (existing) {
+        sseManager.broadcast(`sse:dispatch:${existing.countryCode}`, 'customer:updated', { id, deleted: true });
+      }
       return sendSuccess(res, null, 'Customer deleted successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);

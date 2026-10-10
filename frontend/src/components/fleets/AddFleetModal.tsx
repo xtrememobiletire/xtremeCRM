@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
+import { Truck, Users, CheckCircle2, Building2 } from 'lucide-react';
 import Modal from '../ui/Modal';
-import PhoneInputField from '../common/PhoneInputField';
+import FleetInfoSection, { type FleetFormData } from './FleetInfoSection';
+import FleetVehiclesSection, { type FleetVehicleItem } from './FleetVehiclesSection';
+import FleetDriversSection, { type FleetDriverItem } from './FleetDriversSection';
+import CountrySiloSelector, { type SupportedCountry } from '../common/CountrySiloSelector';
 import { useCreateFleet } from '../../hooks/useFleets';
 import { toast } from 'sonner';
 import { validateAndNormalizePhone } from '../../utils/phone';
-
 import { useTenant } from '../../context/TenantContext';
 
 interface AddFleetModalProps {
@@ -12,61 +15,136 @@ interface AddFleetModalProps {
   onClose: () => void;
 }
 
+type TabType = 'details' | 'vehicles' | 'drivers';
+
 export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
-  const { country } = useTenant();
+  const { country: tenantCountry } = useTenant();
   const createFleetMutation = useCreateFleet();
-  const [fleetCode, setFleetCode] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [contactName, setContactName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [paymentTerms, setPaymentTerms] = useState('NET_30');
-  const [creditLimit, setCreditLimit] = useState('5000');
+
+  const [activeCountry, setActiveCountry] = useState<SupportedCountry>((tenantCountry as any) || 'CA');
+  const [activeTab, setActiveTab] = useState<TabType>('details');
+
+  const [formData, setFormData] = useState<FleetFormData>({
+    companyName: '',
+    contactPerson: '',
+    fleetManager: '',
+    ceoOwnerName: '',
+    phone: '',
+    altPhone: '',
+    email: '',
+    poaEmail: '',
+    address: '',
+    website: '',
+    numberOfUnits: '',
+    customFleetCode: '',
+    discountPercent: 0,
+    paymentTerms: 'NET_30',
+    creditLimit: '5000',
+  });
+
+  const [vehicles, setVehicles] = useState<FleetVehicleItem[]>([]);
+  const [drivers, setDrivers] = useState<FleetDriverItem[]>([]);
 
   useEffect(() => {
     if (isOpen) {
-      setFleetCode(`XMT-${Math.floor(1000 + Math.random() * 9000)}`);
+      setActiveCountry((tenantCountry as any) || 'CA');
+      setFormData({
+        companyName: '',
+        contactPerson: '',
+        fleetManager: '',
+        ceoOwnerName: '',
+        phone: '',
+        altPhone: '',
+        email: '',
+        poaEmail: '',
+        address: '',
+        website: '',
+        numberOfUnits: '',
+        customFleetCode: `XMT-${Math.floor(1000 + Math.random() * 9000)}`,
+        discountPercent: 0,
+        paymentTerms: 'NET_30',
+        creditLimit: '5000',
+      });
+      setVehicles([]);
+      setDrivers([]);
+      setActiveTab('details');
     }
-  }, [isOpen]);
+  }, [isOpen, tenantCountry]);
+
+  const handleFieldChange = (field: keyof FleetFormData, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleAddVehicle = (vehicle: FleetVehicleItem) => {
+    setVehicles((prev) => [...prev, vehicle]);
+  };
+
+  const handleRemoveVehicle = (index: number) => {
+    setVehicles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddDriver = (driver: FleetDriverItem) => {
+    setDrivers((prev) => [...prev, driver]);
+  };
+
+  const handleRemoveDriver = (index: number) => {
+    setDrivers((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanCompanyName = companyName.trim();
+    const cleanCompanyName = formData.companyName.trim();
     if (!cleanCompanyName) {
       toast.error('Company name is required');
+      setActiveTab('details');
       return;
     }
 
     let normalizedPhone: string | undefined = undefined;
-    if (phone.trim()) {
-      const phoneValidation = validateAndNormalizePhone(phone, country);
+    if (formData.phone.trim()) {
+      const phoneValidation = validateAndNormalizePhone(formData.phone, activeCountry);
       if (!phoneValidation.isValid) {
-        toast.error(phoneValidation.error || 'Please enter a valid fleet phone number');
+        toast.error(phoneValidation.error || 'Please enter a valid primary fleet phone number');
+        setActiveTab('details');
         return;
       }
       normalizedPhone = phoneValidation.normalized;
     }
 
+    let normalizedAltPhone: string | undefined = undefined;
+    if (formData.altPhone.trim()) {
+      const altValidation = validateAndNormalizePhone(formData.altPhone, activeCountry);
+      if (altValidation.isValid) {
+        normalizedAltPhone = altValidation.normalized;
+      }
+    }
+
     try {
       await createFleetMutation.mutateAsync({
-        fleetCode: fleetCode.trim() || undefined,
+        fleetCode: formData.customFleetCode.trim() || undefined,
         name: cleanCompanyName,
         companyName: cleanCompanyName,
-        contactPerson: contactName.trim() || 'Fleet Manager',
-        contactName: contactName.trim() || 'Fleet Manager',
+        contactPerson: formData.contactPerson.trim() || 'Fleet Manager',
+        contactName: formData.contactPerson.trim() || 'Fleet Manager',
+        fleetManager: formData.fleetManager.trim() || undefined,
+        ceoOwnerName: formData.ceoOwnerName.trim() || undefined,
         phone: normalizedPhone,
-        email: email.trim() || undefined,
-        countryCode: country,
-        paymentTerms,
-        creditLimitCents: creditLimit ? parseInt(creditLimit, 10) * 100 : undefined,
+        altPhone: normalizedAltPhone,
+        email: formData.email.trim() || undefined,
+        poaEmail: formData.poaEmail.trim() || undefined,
+        address: formData.address.trim() || undefined,
+        website: formData.website.trim() || undefined,
+        numberOfUnits: formData.numberOfUnits ? Number(formData.numberOfUnits) : undefined,
+        discountPercent: formData.discountPercent || 0,
+        paymentTerms: formData.paymentTerms || 'NET_30',
+        creditLimitCents: formData.creditLimit ? Number(formData.creditLimit) * 100 : undefined,
+        countryCode: activeCountry,
+        vehicles,
+        drivers,
       });
-      toast.success('Fleet account registered successfully');
+
+      toast.success(`Commercial Fleet "${cleanCompanyName}" registered with ${vehicles.length} vehicles and ${drivers.length} drivers`);
       onClose();
-      setFleetCode('');
-      setCompanyName('');
-      setContactName('');
-      setPhone('');
-      setEmail('');
     } catch (err: any) {
       const fieldErrors = err.response?.data?.errors;
       let errorMsg = err.response?.data?.message || err.response?.data?.error || 'Failed to create fleet account';
@@ -79,99 +157,131 @@ export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Register New Fleet Account" maxWidth="max-w-md">
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div>
-          <label className="text-xs font-semibold text-slate-700">Fleet ID / Code *</label>
-          <input
-            type="text"
-            required
-            value={fleetCode}
-            onChange={(e) => setFleetCode(e.target.value)}
-            placeholder="e.g. XMT-4501"
-            className="input-base mt-1 font-mono font-bold"
-          />
-        </div>
-
-        <div>
-          <label className="text-xs font-semibold text-slate-700">Company Name *</label>
-          <input
-            type="text"
-            required
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            placeholder="Apex Logistics Transport Inc."
-            className="input-base mt-1"
-          />
-        </div>
-
-        <div>
-          <label className="text-xs font-semibold text-slate-700">Contact Manager</label>
-          <input
-            type="text"
-            value={contactName}
-            onChange={(e) => setContactName(e.target.value)}
-            placeholder="Robert Chen"
-            className="input-base mt-1"
-          />
-        </div>
-
-        <PhoneInputField
-          value={phone}
-          onChange={setPhone}
-          countryCode={country}
-          label="Dispatch / Hotline Phone"
-          required={false}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`Register Contracted Fleet Account — ${formData.companyName || 'New Account'}`}
+      maxWidth="max-w-3xl"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Step 1: Operating Silo / Country */}
+        <CountrySiloSelector
+          country={activeCountry}
+          onChange={(c) => setActiveCountry(c)}
+          stepNumber={1}
+          label="Commercial Dispatch Silo"
+          subtitle="Operating Jurisdiction"
         />
 
-        <div>
-          <label className="text-xs font-semibold text-slate-700">Billing Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="ap@apexlogistics.com"
-            className="input-base mt-1"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="text-xs font-semibold text-slate-700">Payment Terms</label>
-            <select
-              value={paymentTerms}
-              onChange={(e) => setPaymentTerms(e.target.value)}
-              className="select-base mt-1"
-            >
-              <option value="DUE_ON_RECEIPT">Due on Receipt</option>
-              <option value="NET_15">Net 15 Days</option>
-              <option value="NET_30">Net 30 Days</option>
-              <option value="NET_60">Net 60 Days</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-slate-700">Credit Limit ($)</label>
-            <input
-              type="number"
-              value={creditLimit}
-              onChange={(e) => setCreditLimit(e.target.value)}
-              placeholder="5000"
-              className="input-base mt-1 font-mono"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-          <button type="button" onClick={onClose} className="btn-secondary px-3 py-1.5 text-xs">
-            Cancel
-          </button>
+        {/* Tab Navigation */}
+        <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
           <button
-            type="submit"
-            disabled={createFleetMutation.isPending}
-            className="btn-primary px-4 py-1.5 text-xs"
+            type="button"
+            onClick={() => setActiveTab('details')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              activeTab === 'details'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
           >
-            {createFleetMutation.isPending ? 'Registering...' : 'Save Fleet Account'}
+            <Building2 size={13} />
+            <span>1. Fleet Profile & Terms</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('vehicles')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              activeTab === 'vehicles'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Truck size={13} />
+            <span>2. Enrolled Vehicles</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                vehicles.length > 0 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'
+              }`}
+            >
+              {vehicles.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('drivers')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              activeTab === 'drivers'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Users size={13} />
+            <span>3. Fleet Drivers</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                drivers.length > 0 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'
+              }`}
+            >
+              {drivers.length}
+            </span>
+          </button>
+        </div>
+
+        {/* Tab Panes */}
+        <div className="max-h-[55vh] overflow-y-auto pr-1">
+          {activeTab === 'details' && (
+            <FleetInfoSection
+              formData={formData}
+              onChange={handleFieldChange}
+              countryCode={activeCountry}
+            />
+          )}
+
+          {activeTab === 'vehicles' && (
+            <FleetVehiclesSection
+              vehicles={vehicles}
+              onAddVehicle={handleAddVehicle}
+              onRemoveVehicle={handleRemoveVehicle}
+            />
+          )}
+
+          {activeTab === 'drivers' && (
+            <FleetDriversSection
+              drivers={drivers}
+              onAddDriver={handleAddDriver}
+              onRemoveDriver={handleRemoveDriver}
+              countryCode={activeCountry}
+            />
+          )}
+        </div>
+
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+          <div className="text-[11px] text-slate-500 flex items-center gap-2">
+            <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+              {formData.customFleetCode || 'XMT-????'}
+            </span>
+            <span>•</span>
+            <span className="font-semibold text-slate-700">{vehicles.length} Vehicles</span>
+            <span>•</span>
+            <span className="font-semibold text-slate-700">{drivers.length} Drivers</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onClose} className="btn-secondary px-3 py-1.5 text-xs">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={createFleetMutation.isPending}
+              className="btn-primary px-4 py-1.5 text-xs flex items-center gap-1.5"
+            >
+              <CheckCircle2 size={13} />
+              <span>{createFleetMutation.isPending ? 'Registering...' : 'Save Fleet Account'}</span>
+            </button>
+          </div>
         </div>
       </form>
     </Modal>

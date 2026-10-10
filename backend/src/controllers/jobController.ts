@@ -636,12 +636,17 @@ export const jobController = {
       try {
         const io = getIO();
         const statusPayload = {
+          id: updated.id,
           jobId: updated.id,
           jobCode: updated.jobCode,
           status: updated.status,
           countryCode: updated.countryCode,
           driverId: updated.driverId,
           driverName: (updated as any).driver?.fullName,
+          urgency: updated.urgency,
+          paymentMethod: updated.paymentMethod,
+          paymentStatus: updated.paymentStatus,
+          totalCents: updated.totalCents,
           updatedAt: updated.updatedAt ? updated.updatedAt.toISOString() : new Date().toISOString(),
         };
 
@@ -769,6 +774,17 @@ export const jobController = {
           driverId,
           driverName: driver.fullName,
         });
+        sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:driver_assigned', {
+          id: updated.id,
+          jobId: updated.id,
+          jobCode: updated.jobCode,
+          driverId,
+          driverName: driver.fullName,
+          status: updated.status,
+          countryCode: updated.countryCode,
+        });
+        sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:assigned', updated);
+        sseManager.broadcast(`sse:driver:${driverId}`, 'job:assigned', stripped);
       } catch {}
 
       return sendSuccess(res, updated, 'Driver assigned successfully');
@@ -937,8 +953,21 @@ export const jobController = {
   async deleteJob(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
+      const existing = await prisma.job.findUnique({ where: { id }, select: { countryCode: true, driverId: true } });
       await prisma.jobServiceItem.deleteMany({ where: { jobId: id } });
       await prisma.job.delete({ where: { id } });
+
+      if (existing) {
+        try {
+          const io = getIO();
+          io.to(`dispatch:${existing.countryCode}`).emit('job:deleted', { id });
+        } catch {}
+        sseManager.broadcast(`sse:dispatch:${existing.countryCode}`, 'job:deleted', { id, countryCode: existing.countryCode });
+        if (existing.driverId) {
+          sseManager.broadcast(`sse:driver:${existing.driverId}`, 'job:deleted', { id });
+        }
+      }
+
       return sendSuccess(res, null, 'Job deleted successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
@@ -1024,6 +1053,8 @@ export const jobController = {
       try {
         const io = getIO();
         io.to(`dispatch:${country}`).emit('job:triage_new', job);
+        sseManager.broadcast(`sse:dispatch:${country}`, 'booking:created', job);
+        sseManager.broadcast(`sse:dispatch:${country}`, 'job:created', job);
       } catch {}
 
       return sendSuccess(res, { id: job.id, jobCode: job.jobCode, status: job.status }, 'Booking received — our team will contact you shortly', 201);
