@@ -471,8 +471,9 @@ export const jobController = {
 
       const isTrialJob = Boolean(job.isTestService);
 
+      const mappedStatus = (status === 'ON_SCENE' || status === 'EN_ROUTE') ? 'IN_PROGRESS' : status;
       const updateData: any = {
-        status,
+        status: mappedStatus,
         updatedAt: new Date(),
       };
       if (urgency) updateData.urgency = urgency;

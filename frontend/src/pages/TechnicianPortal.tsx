@@ -19,7 +19,8 @@ import {
   CheckCircle2,
   Calendar,
   Car,
-  AlertCircle
+  AlertCircle,
+  ChevronDown
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { jobService, type JobItem } from '../services/jobService';
@@ -44,6 +45,7 @@ export default function TechnicianPortal() {
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [viewingReceiptUrl, setViewingReceiptUrl] = useState<string | null>(null);
+  const [driverSelectedStatus, setDriverSelectedStatus] = useState<string | null>(null);
 
   const { socket } = useSocket();
   const updateStatusMutation = useUpdateJobStatus();
@@ -78,15 +80,19 @@ export default function TechnicianPortal() {
 
   // Categorize jobs
   const activeJob = jobs.find(
-    (j) => j.status === 'ASSIGNED' || j.status === 'EN_ROUTE' || j.status === 'IN_PROGRESS' || j.status === 'PENDING'
+    (j) => j.status === 'ASSIGNED' || j.status === 'EN_ROUTE' || j.status === 'ON_SCENE' || j.status === 'IN_PROGRESS' || j.status === 'PENDING'
   );
   const completedJobs = jobs.filter((j) => j.status === 'COMPLETED');
 
   const requiredAmount = activeJob?.totalCents ? centsToDollars(activeJob.totalCents) : 0;
 
+  useEffect(() => {
+    setDriverSelectedStatus(null);
+  }, [activeJob?.id]);
+
   // Pre-fill amount input if job already has charges
   useEffect(() => {
-    if (activeJob && (activeJob.status === 'IN_PROGRESS' || activeJob.status === 'EN_ROUTE')) {
+    if (activeJob && (activeJob.status === 'IN_PROGRESS' || activeJob.status === 'EN_ROUTE' || activeJob.status === 'ON_SCENE')) {
       if (!amountInput && requiredAmount > 0) {
         setAmountInput(requiredAmount.toFixed(2));
       }
@@ -189,6 +195,76 @@ export default function TechnicianPortal() {
     );
   };
 
+  const currentStatus = driverSelectedStatus || activeJob?.status || 'PENDING';
+
+  const handleDropdownStatusChange = (newStatus: string) => {
+    if (!activeJob) return;
+
+    if (newStatus === currentStatus) return;
+
+    if (newStatus === 'COMPLETED') {
+      if (activeJob.status === 'ASSIGNED' || activeJob.status === 'PENDING') {
+        const errorMsg = 'Please accept the dispatch and record the collected payment before marking as completed';
+        setValidationError(errorMsg);
+        toast.error(errorMsg);
+        return;
+      }
+
+      const parsedAmount = parseFloat(amountInput);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        const errorMsg = 'Please enter the payment amount first before marking as Completed';
+        setValidationError(errorMsg);
+        toast.error(errorMsg);
+        const section = document.getElementById('payment-capture-section');
+        if (section) section.scrollIntoView({ behavior: 'smooth' });
+        const input = document.getElementById('driver-amount-input');
+        if (input) (input as HTMLInputElement).focus();
+        return;
+      }
+
+      if (requiredAmount > 0) {
+        if (parsedAmount < requiredAmount) {
+          const errorMsg = `Amount collected (${formatCurrency(parsedAmount, currencySymbol)}) cannot be less than required invoice total (${formatCurrency(requiredAmount, currencySymbol)})`;
+          setValidationError(errorMsg);
+          toast.error(errorMsg);
+          const section = document.getElementById('payment-capture-section');
+          if (section) section.scrollIntoView({ behavior: 'smooth' });
+          const input = document.getElementById('driver-amount-input');
+          if (input) (input as HTMLInputElement).focus();
+          return;
+        }
+        if (parsedAmount > requiredAmount) {
+          setAmountInput(requiredAmount.toFixed(2));
+        }
+      }
+
+      if ((paymentMethod === 'POS' || paymentMethod === 'E_TRANSFER') && !receiptFile) {
+        const label = paymentMethod === 'POS' ? 'POS terminal slip photo' : 'E-Transfer confirmation screenshot';
+        const errorMsg = `Mandatory proof missing: Please attach a ${label}`;
+        setValidationError(errorMsg);
+        toast.error(`Receipt proof photo is required for ${paymentMethod.replace('_', ' ')}`);
+        const section = document.getElementById('payment-capture-section');
+        if (section) section.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+
+      handleCompleteJob();
+      return;
+    }
+
+    if (newStatus === 'CANCELLED') {
+      const confirmed = window.confirm('Decline or cancel this active dispatch? Dispatcher will be notified.');
+      if (confirmed) {
+        handleUpdateStatus(activeJob.id, 'CANCELLED');
+        setDriverSelectedStatus(null);
+      }
+      return;
+    }
+
+    setDriverSelectedStatus(newStatus);
+    handleUpdateStatus(activeJob.id, newStatus);
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
       {/* Dashboard Header */}
@@ -215,9 +291,24 @@ export default function TechnicianPortal() {
               <span className="font-mono font-bold text-sm bg-slate-800 text-emerald-400 px-2.5 py-1 rounded-lg border border-slate-700/60">
                 #{activeJob.jobCode || activeJob.jobNumber}
               </span>
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">
-                {activeJob.status === 'ASSIGNED' ? 'Pending Acceptance' : 'In Progress'}
-              </span>
+              <div className="relative inline-flex items-center">
+                <select
+                  aria-label="Update Driver Status"
+                  value={currentStatus}
+                  disabled={updatingId === activeJob.id}
+                  onChange={(e) => handleDropdownStatusChange(e.target.value)}
+                  className="appearance-none text-xs font-bold pl-3 pr-8 py-1.5 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700 hover:border-emerald-500/50 focus:border-emerald-500 focus:outline-none transition cursor-pointer disabled:opacity-50"
+                >
+                  <option value="PENDING" className="bg-slate-900 text-slate-200">Pending</option>
+                  <option value="ASSIGNED" className="bg-slate-900 text-slate-200">Assigned</option>
+                  <option value="EN_ROUTE" className="bg-slate-900 text-slate-200">En Route</option>
+                  <option value="ON_SCENE" className="bg-slate-900 text-emerald-400 font-bold">Arrived on Location (On Scene)</option>
+                  <option value="IN_PROGRESS" className="bg-slate-900 text-cyan-400">In Progress</option>
+                  <option value="COMPLETED" className="bg-slate-900 text-emerald-400 font-bold">Completed</option>
+                  <option value="CANCELLED" className="bg-slate-900 text-rose-400">Cancelled</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 pointer-events-none" />
+              </div>
               {activeJob.urgency && (
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
                   {activeJob.urgency}
@@ -348,6 +439,48 @@ export default function TechnicianPortal() {
               )}
             </div>
 
+            {/* Driver Operational Status Bar */}
+            <div className="p-4 bg-slate-50/90 rounded-2xl border border-slate-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Operational Status</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-slate-800">Current:</span>
+                    <span className="text-xs font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      {currentStatus === 'ON_SCENE' ? 'Arrived on Location' : currentStatus.replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label htmlFor="driver-body-status-select" className="text-xs font-bold text-slate-700 shrink-0">
+                  Update Status:
+                </label>
+                <div className="relative">
+                  <select
+                    id="driver-body-status-select"
+                    value={currentStatus}
+                    disabled={updatingId === activeJob.id}
+                    onChange={(e) => handleDropdownStatusChange(e.target.value)}
+                    className="appearance-none bg-white text-slate-900 text-xs font-bold pl-3 pr-8 py-2 rounded-xl border border-slate-300 shadow-2xs hover:border-emerald-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition cursor-pointer disabled:opacity-50"
+                  >
+                    <option value="PENDING">Pending</option>
+                    <option value="ASSIGNED">Assigned</option>
+                    <option value="EN_ROUTE">En Route</option>
+                    <option value="ON_SCENE">Arrived on Location (On Scene)</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="CANCELLED">Cancelled</option>
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
             {/* 2-State Operational Action Flows */}
             {activeJob.status === 'ASSIGNED' || activeJob.status === 'PENDING' ? (
               /* State 1: Accept or Decline Job */
@@ -387,7 +520,7 @@ export default function TechnicianPortal() {
             ) : (
               /* State 2: Accepted / In-Progress - Complete Job with Payment Capture */
               <div className="pt-2 border-t border-slate-100 space-y-4">
-                <div className="bg-emerald-50/50 border border-emerald-200/80 rounded-2xl p-4 sm:p-5 space-y-4">
+                <div id="payment-capture-section" className="bg-emerald-50/50 border border-emerald-200/80 rounded-2xl p-4 sm:p-5 space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                     <div>
                       <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
@@ -490,6 +623,7 @@ export default function TechnicianPortal() {
                         {currencySymbol}
                       </span>
                       <input
+                        id="driver-amount-input"
                         type="number"
                         step="0.01"
                         min="0.01"

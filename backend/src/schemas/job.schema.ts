@@ -107,7 +107,16 @@ export const CreateJobSchema = z.object({
 export type CreateJobInput = z.infer<typeof CreateJobSchema>;
 
 export const UpdateJobStatusSchema = z.object({
-  status: z.enum(['PENDING', 'UNVERIFIED_PUBLIC', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']),
+  status: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const s = val.toUpperCase();
+        if (s === 'ON_SCENE' || s === 'EN_ROUTE') return 'IN_PROGRESS';
+      }
+      return val;
+    },
+    z.enum(['PENDING', 'UNVERIFIED_PUBLIC', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'])
+  ),
   urgency: z.enum(['EMERGENCY', 'URGENT', 'STANDARD', 'FUTURE']).optional(),
   paymentMethod: z.enum(['CASH', 'POS', 'E_TRANSFER', 'STRIPE', 'MOTO']).optional(),
   amountCents: z.coerce.number().int().nonnegative().optional(),
