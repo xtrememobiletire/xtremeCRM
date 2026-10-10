@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { UploadCloud, FileSpreadsheet, Download, Loader2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { UploadCloud, FileSpreadsheet, Download, Loader2, Layers } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { api } from '../../utils/api';
 import { toast } from 'sonner';
@@ -9,23 +9,47 @@ interface UploadSpreadsheetModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultCountry: string;
+  defaultBatchId?: string | null;
 }
 
 export default function UploadSpreadsheetModal({
   isOpen,
   onClose,
   defaultCountry,
+  defaultBatchId = null,
 }: UploadSpreadsheetModalProps) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [countryCode, setCountryCode] = useState(defaultCountry || 'CA');
+  const [destinationMode, setDestinationMode] = useState<'EXISTING' | 'NEW'>('EXISTING');
+  const [targetBatchId, setTargetBatchId] = useState<string>(defaultBatchId || '');
   const [batchName, setBatchName] = useState('');
   const [activationMode, setActivationMode] = useState<'IMMEDIATE' | 'SCHEDULED'>('IMMEDIATE');
   const [scheduledDate, setScheduledDate] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+
+  // Fetch existing batches so VA / Admin can select a specific campaign
+  const { data: batches = [] } = useQuery({
+    queryKey: ['batches-all-modal'],
+    queryFn: async () => {
+      const res = await api.get('/leads/batches');
+      return res.data?.data || [];
+    },
+    enabled: isOpen,
+  });
+
+  useEffect(() => {
+    if (defaultBatchId) {
+      setTargetBatchId(defaultBatchId);
+      setDestinationMode('EXISTING');
+    } else if (batches.length > 0 && !targetBatchId) {
+      setTargetBatchId(batches[0].id);
+      setCountryCode(batches[0].countryCode || defaultCountry || 'CA');
+    }
+  }, [defaultBatchId, batches, defaultCountry, targetBatchId]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -112,17 +136,27 @@ export default function UploadSpreadsheetModal({
       return;
     }
 
+    if (destinationMode === 'EXISTING' && !targetBatchId) {
+      toast.error('Please select an existing admin batch to upload into');
+      return;
+    }
+
     setIsUploading(true);
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
-      formData.append('countryCode', countryCode);
-      formData.append('activationMode', activationMode);
-      if (activationMode === 'SCHEDULED' && scheduledDate) {
-        formData.append('scheduledDate', new Date(scheduledDate).toISOString());
-      }
-      if (batchName.trim()) {
-        formData.append('batchName', batchName.trim());
+      if (destinationMode === 'EXISTING' && targetBatchId) {
+        formData.append('batchId', targetBatchId);
+        formData.append('countryCode', countryCode);
+      } else {
+        formData.append('countryCode', countryCode);
+        formData.append('activationMode', activationMode);
+        if (activationMode === 'SCHEDULED' && scheduledDate) {
+          formData.append('scheduledDate', new Date(scheduledDate).toISOString());
+        }
+        if (batchName.trim()) {
+          formData.append('batchName', batchName.trim());
+        }
       }
 
       const res = await api.post('/leads/upload', formData, {
@@ -138,6 +172,9 @@ export default function UploadSpreadsheetModal({
       queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
       queryClient.invalidateQueries({ queryKey: ['batches'] });
+      queryClient.invalidateQueries({ queryKey: ['batches-all-modal'] });
+      queryClient.invalidateQueries({ queryKey: ['available-batches-va'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
 
       setSelectedFile(null);
       setBatchName('');
@@ -152,79 +189,141 @@ export default function UploadSpreadsheetModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Import Leads Spreadsheet">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Country & Batch Metadata */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 font-mono">
-              Target Regional Silo
-            </label>
-            <select
-              value={countryCode}
-              onChange={(e) => setCountryCode(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
-            >
-              <option value="CA">Canada (CA - CAD)</option>
-              <option value="US">United States (US - USD)</option>
-              <option value="UK">United Kingdom (UK - GBP)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 font-mono">
-              Campaign Batch Name
-            </label>
-            <input
-              type="text"
-              value={batchName}
-              onChange={(e) => setBatchName(e.target.value)}
-              placeholder="e.g. Q4 Ontario Logistics Scraping"
-              className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
-            />
-          </div>
-        </div>
-
-        {/* Activation Mode Selector */}
-        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider font-mono">
-            Activation Mode
-          </label>
-          <div className="grid grid-cols-2 gap-2">
+        {/* Destination Mode Selector */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl border border-slate-200">
             <button
               type="button"
-              onClick={() => setActivationMode('IMMEDIATE')}
-              className={`py-2 px-3 rounded-xl border text-xs font-bold text-center transition cursor-pointer ${
-                activationMode === 'IMMEDIATE'
-                  ? 'border-emerald-500 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-500/20'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              onClick={() => setDestinationMode('EXISTING')}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                destinationMode === 'EXISTING'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              🟢 Start Immediately
+              <Layers size={13} className={destinationMode === 'EXISTING' ? 'text-red-600' : ''} />
+              <span>Add to Existing Admin Batch</span>
             </button>
             <button
               type="button"
-              onClick={() => setActivationMode('SCHEDULED')}
-              className={`py-2 px-3 rounded-xl border text-xs font-bold text-center transition cursor-pointer ${
-                activationMode === 'SCHEDULED'
-                  ? 'border-blue-500 bg-blue-50 text-blue-800 ring-2 ring-blue-500/20'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              onClick={() => setDestinationMode('NEW')}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                destinationMode === 'NEW'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              ⏱️ Schedule for Later
+              <span>+ Create New Batch</span>
             </button>
           </div>
 
-          {activationMode === 'SCHEDULED' && (
-            <div className="pt-2">
-              <label className="block text-xs font-semibold text-slate-600 mb-1">
-                Scheduled Release Date & Time
+          {destinationMode === 'EXISTING' ? (
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 font-mono">
+                Select Specific Admin Batch *
               </label>
-              <input
-                type="datetime-local"
-                value={scheduledDate}
-                onChange={(e) => setScheduledDate(e.target.value)}
-                className="w-full px-3 py-1.5 text-xs rounded-xl border border-blue-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
+              {batches.length === 0 ? (
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  No existing batches found. Please switch to &quot;Create New Batch&quot;.
+                </div>
+              ) : (
+                <select
+                  value={targetBatchId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setTargetBatchId(id);
+                    const b = batches.find((x: any) => x.id === id);
+                    if (b) setCountryCode(b.countryCode);
+                  }}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+                >
+                  <option value="">-- Choose Existing Admin Batch --</option>
+                  {batches.map((b: any) => (
+                    <option key={b.id} value={b.id}>
+                      [{b.countryCode}] {b.batchName} ({b.status} • {b.totalLeads} total leads)
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
+          ) : (
+            <>
+              {/* Country & Batch Metadata */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 font-mono">
+                    Target Regional Silo
+                  </label>
+                  <select
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+                  >
+                    <option value="CA">Canada (CA - CAD)</option>
+                    <option value="US">United States (US - USD)</option>
+                    <option value="UK">United Kingdom (UK - GBP)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 font-mono">
+                    Campaign Batch Name
+                  </label>
+                  <input
+                    type="text"
+                    value={batchName}
+                    onChange={(e) => setBatchName(e.target.value)}
+                    placeholder="e.g. Q4 Ontario Logistics Scraping"
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+                  />
+                </div>
+              </div>
+
+              {/* Activation Mode Selector */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider font-mono">
+                  Activation Mode
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActivationMode('IMMEDIATE')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold text-center transition cursor-pointer ${
+                      activationMode === 'IMMEDIATE'
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-500/20'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    🟢 Start Immediately
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActivationMode('SCHEDULED')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold text-center transition cursor-pointer ${
+                      activationMode === 'SCHEDULED'
+                        ? 'border-blue-500 bg-blue-50 text-blue-800 ring-2 ring-blue-500/20'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    ⏱️ Schedule for Later
+                  </button>
+                </div>
+
+                {activationMode === 'SCHEDULED' && (
+                  <div className="pt-2">
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      Scheduled Release Date & Time
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={scheduledDate}
+                      onChange={(e) => setScheduledDate(e.target.value)}
+                      className="w-full px-3 py-1.5 text-xs rounded-xl border border-blue-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
 

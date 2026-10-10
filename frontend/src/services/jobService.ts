@@ -20,6 +20,8 @@ export interface JobItem {
   arrivalWindowStart?: string;
   arrivalWindowEnd?: string;
   estimatedArrivalAt?: string;
+  driverEstimatedArrivalAt?: string;
+  driverEtaMinutes?: number;
   countryCode?: string;
   materialCostCents?: number;
   repairerFeeCents?: number;
@@ -111,6 +113,18 @@ export const jobService = {
     };
   },
 
+  async getPendingJobsCount(countryCode?: string): Promise<number> {
+    const res = await api.get('/jobs', {
+      params: {
+        status: 'PENDING',
+        isFleetJob: 'false',
+        countryCode: countryCode && countryCode !== 'ALL' ? countryCode : undefined,
+        limit: 1,
+      },
+    });
+    return res.data?.meta?.totalCount ?? res.data?.pagination?.total ?? 0;
+  },
+
   async getJobById(id: string): Promise<JobItem> {
     const res = await api.get(`/jobs/${id}`);
     const j = res.data.data;
@@ -137,8 +151,18 @@ export const jobService = {
     return res.data.data;
   },
 
-  async assignDriver(id: string, driverId: string, etaMinutes?: number): Promise<JobItem> {
-    const res = await api.patch(`/jobs/${id}/assign-driver`, { driverId, etaMinutes });
+  async assignDriver(
+    id: string, 
+    driverId: string, 
+    etaMinutes?: number,
+    driverEstimatedArrivalAt?: string
+  ): Promise<JobItem> {
+    const res = await api.patch(`/jobs/${id}/assign-driver`, { 
+      driverId, 
+      etaMinutes, 
+      driverEtaMinutes: etaMinutes,
+      driverEstimatedArrivalAt 
+    });
     return res.data.data;
   },
 

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Truck, Navigation, MapPin, Zap, Search, Edit2, X, Loader2, AlertCircle } from 'lucide-react';
+import { Truck, Navigation, MapPin, Zap, Search, Edit2, X, Loader2, AlertCircle, Clock } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { userService, type UserItem } from '../../services/userService';
@@ -8,6 +8,27 @@ import { useMapbox, MAPBOX_TOKEN, DEFAULT_MAP_CENTER } from '../../hooks/useMapb
 import { jobService } from '../../services/jobService';
 import mapboxgl from 'mapbox-gl';
 import { toast } from 'sonner';
+
+function formatPromisedTime(job: any): string {
+  if (job?.arrivalWindowStart && job?.arrivalWindowEnd) {
+    try {
+      const s = new Date(job.arrivalWindowStart);
+      const e = new Date(job.arrivalWindowEnd);
+      return `${s.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – ${e.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+    } catch {
+      return 'Scheduled Window';
+    }
+  }
+  if (job?.estimatedArrivalAt) {
+    try {
+      const d = new Date(job.estimatedArrivalAt);
+      return `Promised ~${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+    } catch {
+      return 'Promised ETA';
+    }
+  }
+  return 'Immediate / ASAP';
+}
 
 interface AssignDriverModalProps {
   isOpen: boolean;
@@ -224,8 +245,6 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
     }
   }, [map, isLoaded, currentLng, currentLat, selectedDriver, currentAddress]);
 
-  if (!job) return null;
-
   const handleAssign = async () => {
     if (!activeSelectedDriverId) {
       toast.error('Please select a driver to dispatch');
@@ -233,12 +252,14 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
     }
 
     try {
+      const driverEtaMins = selectedDriver?.etaMinutes || 20;
       await assignDriverMutation.mutateAsync({
         jobId: job.id,
         driverId: activeSelectedDriverId,
-        etaMinutes: selectedDriver?.etaMinutes || 20,
+        etaMinutes: driverEtaMins,
+        driverEstimatedArrivalAt: new Date(Date.now() + driverEtaMins * 60000).toISOString(),
       });
-      toast.success(`Technician ${selectedDriver?.fullName} dispatched (~${selectedDriver?.etaMinutes || 20} min ETA)`);
+      toast.success(`Technician ${selectedDriver?.fullName} dispatched (~${driverEtaMins} min travel ETA)`);
       onClose();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to dispatch driver');
@@ -385,6 +406,20 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
         <div className="lg:col-span-5 bg-slate-50/70 border border-slate-200/90 rounded-3xl p-4 flex flex-col h-full shadow-lg relative overflow-hidden backdrop-blur-sm">
           {/* iOS Style Sheet Grab Handle */}
           <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-3 shrink-0" />
+
+          {/* Customer SLA vs Dispatch Choice Header */}
+          <div className="mb-2.5 px-3 py-2 bg-blue-50/90 border border-blue-200/80 rounded-2xl flex items-center justify-between text-xs shrink-0">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-blue-600 shrink-0" />
+              <div>
+                <span className="text-[10px] uppercase font-bold text-blue-700 tracking-wider block">Customer Promised Time</span>
+                <span className="font-bold text-slate-900">{formatPromisedTime(job)}</span>
+              </div>
+            </div>
+            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              Free Dispatch
+            </span>
+          </div>
 
           {/* Header & Filter */}
           <div className="pb-3 border-b border-slate-200/60 shrink-0 space-y-2.5">

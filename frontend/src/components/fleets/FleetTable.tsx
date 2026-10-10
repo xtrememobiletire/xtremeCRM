@@ -4,6 +4,8 @@ import { useTenant } from '../../context/TenantContext';
 
 interface Fleet {
   id: string;
+  fleetCode?: string;
+  name?: string;
   companyName: string;
   contactName?: string;
   phone?: string;
@@ -30,6 +32,7 @@ export default function FleetTable({ fleets, onSelectFleet }: FleetTableProps) {
       <table className="w-full text-left border-collapse">
         <thead>
           <tr>
+            <th className="table-th">Fleet ID</th>
             <th className="table-th">Company Name</th>
             <th className="table-th">Primary Contact</th>
             <th className="table-th">Payment Terms</th>
@@ -46,9 +49,14 @@ export default function FleetTable({ fleets, onSelectFleet }: FleetTableProps) {
               className="hover:bg-slate-50/70 transition-colors cursor-pointer"
             >
               <td className="table-td">
+                <span className="inline-flex items-center px-2 py-0.5 rounded font-mono font-bold text-xs bg-slate-100 text-slate-800 border border-slate-200">
+                  {f.fleetCode || (f.id ? `XMT-${f.id.slice(0, 4).toUpperCase()}` : '—')}
+                </span>
+              </td>
+              <td className="table-td">
                 <div className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
-                  <Truck size={15} className="text-red-600" />
-                  <span>{f.companyName}</span>
+                  <Truck size={15} className="text-red-600 shrink-0" />
+                  <span>{f.companyName || f.name}</span>
                 </div>
               </td>
               <td className="table-td">

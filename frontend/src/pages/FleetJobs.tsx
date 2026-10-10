@@ -16,6 +16,7 @@ import FleetJobDetailModal from '../components/pages/jobs/FleetJobDetailModal';
 import AssignDriverModal from '../components/pages/jobs/AssignDriverModal';
 import CreateFleetJobModal from '../components/pages/jobs/CreateFleetJobModal';
 import EmptyState from '../components/ui/EmptyState';
+import Pagination from '../components/common/Pagination';
 import { jobService } from '../services/jobService';
 import { fleetService } from '../services/fleetService';
 import { useTenant } from '../context/TenantContext';
@@ -374,6 +375,12 @@ export default function FleetJobs() {
                 })}
               </tbody>
             </table>
+            <Pagination
+              currentPage={page}
+              totalPages={meta.totalPages}
+              totalCount={meta.total}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>

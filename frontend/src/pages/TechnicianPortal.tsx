@@ -7,7 +7,9 @@ import {
   Disc, 
   XCircle,
   ShieldCheck,
-  Check
+  Check,
+  Clock,
+  Zap
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { jobService, type JobItem } from '../services/jobService';
@@ -156,6 +158,39 @@ export default function TechnicianPortal() {
           </div>
 
           <div className="p-5 sm:p-6 space-y-6">
+            {/* Timing Commitment Bar (Customer Promised SLA vs Technician Drive ETA) */}
+            {(activeJob.arrivalWindowStart || activeJob.estimatedArrivalAt || (activeJob as any).driverEtaMinutes || (activeJob as any).driverEstimatedArrivalAt) && (
+              <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Customer Promised Window</span>
+                    <strong className="text-slate-900 font-bold text-xs">
+                      {activeJob.arrivalWindowStart && activeJob.arrivalWindowEnd
+                        ? `${new Date(activeJob.arrivalWindowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – ${new Date(activeJob.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+                        : activeJob.estimatedArrivalAt
+                        ? `Promised ~${new Date(activeJob.estimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+                        : 'ASAP Roadside Response'}
+                    </strong>
+                  </div>
+                </div>
+
+                {((activeJob as any).driverEtaMinutes || (activeJob as any).driverEstimatedArrivalAt) && (
+                  <div className="flex items-center gap-2 bg-emerald-50 px-3.5 py-1.5 rounded-xl border border-emerald-200">
+                    <Zap className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div>
+                      <span className="text-[9px] uppercase font-bold text-emerald-700 block leading-tight">Your Travel ETA</span>
+                      <strong className="text-emerald-900 font-bold font-mono text-xs">
+                        {(activeJob as any).driverEtaMinutes ? `~${(activeJob as any).driverEtaMinutes} MINS` : new Date((activeJob as any).driverEstimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                      </strong>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Customer & Location Block */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-4 bg-slate-50/70 rounded-xl border border-slate-200/80 space-y-2">

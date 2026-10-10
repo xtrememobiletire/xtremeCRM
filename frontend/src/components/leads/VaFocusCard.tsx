@@ -11,7 +11,8 @@ import {
   PhoneCall, 
   RotateCcw, 
   Sparkles, 
-  Calendar 
+  Calendar,
+  UploadCloud 
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -28,6 +29,7 @@ interface VaFocusCardProps {
   }) => void;
   isSubmitting: boolean;
   onRefreshQueue: () => void;
+  onOpenUpload?: () => void;
 }
 
 export default function VaFocusCard({
@@ -35,6 +37,7 @@ export default function VaFocusCard({
   onDisposition,
   isSubmitting,
   onRefreshQueue,
+  onOpenUpload,
 }: VaFocusCardProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
@@ -55,14 +58,27 @@ export default function VaFocusCard({
         <p className="text-xs sm:text-sm text-slate-500 mb-6">
           You currently hold 0 active leads. Fresh leads will be assigned immediately when an active day batch runs or when an Admin/GM distributes leads.
         </p>
-        <button
-          type="button"
-          onClick={onRefreshQueue}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition cursor-pointer"
-        >
-          <RotateCcw className="w-4 h-4" />
-          <span>Check for Leads Now</span>
-        </button>
+        <div className="flex items-center justify-center gap-2.5 flex-wrap">
+          <button
+            type="button"
+            onClick={onRefreshQueue}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Check for Leads Now</span>
+          </button>
+
+          {onOpenUpload && (
+            <button
+              type="button"
+              onClick={onOpenUpload}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-300 transition cursor-pointer shadow-2xs"
+            >
+              <UploadCloud className="w-4 h-4 text-slate-600" />
+              <span>Upload Spreadsheet</span>
+            </button>
+          )}
+        </div>
       </div>
     );
   }

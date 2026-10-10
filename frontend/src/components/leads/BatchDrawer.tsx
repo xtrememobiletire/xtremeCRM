@@ -7,7 +7,8 @@ import {
   Layers, 
   Users, 
   RefreshCw, 
-  Plus 
+  Plus,
+  CheckCircle2
 } from 'lucide-react';
 import { api } from '../../utils/api';
 import { toast } from 'sonner';
@@ -28,6 +29,7 @@ export default function BatchDrawer({
   const queryClient = useQueryClient();
   const [selectedCountry, setSelectedCountry] = useState<string>(country || 'CA');
   const [startingBatchId, setStartingBatchId] = useState<string | null>(null);
+  const [closingBatchId, setClosingBatchId] = useState<string | null>(null);
 
   // Sync prop country when drawer opens
   useEffect(() => {
@@ -79,9 +81,33 @@ export default function BatchDrawer({
     },
   });
 
+  // Close Batch Mutation
+  const closeBatchMutation = useMutation({
+    mutationFn: async (batchId: string) => {
+      const res = await api.post(`/leads/batches/${batchId}/close`);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data?.message || 'Batch marked as COMPLETED!');
+      queryClient.invalidateQueries({ queryKey: ['batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      setClosingBatchId(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.error || err.message || 'Failed to close batch');
+      setClosingBatchId(null);
+    },
+  });
+
   const handleStartBatch = (batchId: string) => {
     setStartingBatchId(batchId);
     startBatchMutation.mutate(batchId);
+  };
+
+  const handleCloseBatch = (batchId: string) => {
+    setClosingBatchId(batchId);
+    closeBatchMutation.mutate(batchId);
   };
 
   if (!isOpen) return null;
@@ -265,34 +291,53 @@ export default function BatchDrawer({
                       </div>
                     </div>
 
-                    {/* Action Button: 1-Click Start Batch Now */}
-                    {unassignedCount > 0 && (
-                      <button
-                        type="button"
-                        disabled={startingBatchId === batch.id || startBatchMutation.isPending}
-                        onClick={() => handleStartBatch(batch.id)}
-                        className={`w-full py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs ${
-                          isActive
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                            : 'bg-red-600 hover:bg-red-700 text-white'
-                        }`}
-                      >
-                        <Play size={14} />
-                        <span>
-                          {startingBatchId === batch.id
-                            ? 'Activating & Refilling VAs...'
-                            : isActive
-                            ? 'Distribute Remaining to VAs'
-                            : 'Start Batch Now (1-Lead Cap)'}
-                        </span>
-                      </button>
-                    )}
+                    {/* Action Buttons */}
+                    <div className="space-y-2">
+                      {unassignedCount > 0 && batch.status !== 'COMPLETED' && (
+                        <button
+                          type="button"
+                          disabled={startingBatchId === batch.id || startBatchMutation.isPending}
+                          onClick={() => handleStartBatch(batch.id)}
+                          className={`w-full py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs ${
+                            isActive
+                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                              : 'bg-red-600 hover:bg-red-700 text-white'
+                          }`}
+                        >
+                          <Play size={14} />
+                          <span>
+                            {startingBatchId === batch.id
+                              ? 'Activating & Refilling VAs...'
+                              : isActive
+                              ? 'Distribute Remaining to VAs'
+                              : 'Start Batch Now (1-Lead Cap)'}
+                          </span>
+                        </button>
+                      )}
 
-                    {unassignedCount === 0 && (
-                      <div className="text-center py-1 text-[11px] text-slate-500 font-medium">
-                        ✓ All leads in this batch have been worked or assigned
-                      </div>
-                    )}
+                      {/* Manual Close Batch button for non-completed batches */}
+                      {batch.status !== 'COMPLETED' && (
+                        <button
+                          type="button"
+                          disabled={closingBatchId === batch.id || closeBatchMutation.isPending}
+                          onClick={() => handleCloseBatch(batch.id)}
+                          className="w-full py-1.5 px-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
+                          title="Manually complete and archive this batch"
+                        >
+                          <CheckCircle2 size={13} className="text-slate-500" />
+                          <span>
+                            {closingBatchId === batch.id ? 'Closing Batch...' : 'Close / Complete Batch'}
+                          </span>
+                        </button>
+                      )}
+
+                      {batch.status === 'COMPLETED' && (
+                        <div className="text-center py-1 text-[11px] text-slate-500 font-medium flex items-center justify-center gap-1">
+                          <CheckCircle2 size={13} className="text-emerald-600" />
+                          <span>All leads in this batch have been worked or completed</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })

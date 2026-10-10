@@ -504,6 +504,8 @@ model Job {
   upfrontVerifiedAt   DateTime? @db.Timestamptz @map("upfront_verified_at") // Dispatcher confirms
 
   // Driver Assignment & Dispatch (Internal vs External Outsource)
+  driverEstimatedArrivalAt DateTime?               @db.Timestamptz @map("driver_estimated_arrival_at") // Actual technician driving ETA separate from customer promised window
+  driverEtaMinutes         Int?                    @map("driver_eta_minutes") // Recorded minutes at dispatch
   driverType             DriverType              @default(INTERNAL) @map("driver_type")
   externalCompanyName    String?                 @default("Xtreme Mobile Tire") @map("external_company_name")
   externalDriverPhone    String?                 @map("external_driver_phone")

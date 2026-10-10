@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 import { useCreateFleet } from '../../hooks/useFleets';
 import { toast } from 'sonner';
@@ -13,12 +13,19 @@ interface AddFleetModalProps {
 export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
   const { country } = useTenant();
   const createFleetMutation = useCreateFleet();
+  const [fleetCode, setFleetCode] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [contactName, setContactName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [paymentTerms, setPaymentTerms] = useState('NET_30');
   const [creditLimit, setCreditLimit] = useState('5000');
+
+  useEffect(() => {
+    if (isOpen) {
+      setFleetCode(`XMT-${Math.floor(1000 + Math.random() * 9000)}`);
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +37,7 @@ export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
 
     try {
       await createFleetMutation.mutateAsync({
+        fleetCode: fleetCode.trim() || undefined,
         name: cleanCompanyName,
         companyName: cleanCompanyName,
         contactPerson: contactName.trim() || 'Fleet Manager',
@@ -42,6 +50,7 @@ export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
       });
       toast.success('Fleet account registered successfully');
       onClose();
+      setFleetCode('');
       setCompanyName('');
       setContactName('');
       setPhone('');
@@ -60,6 +69,18 @@ export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Register New Fleet Account" maxWidth="max-w-md">
       <form onSubmit={handleSubmit} className="space-y-3">
+        <div>
+          <label className="text-xs font-semibold text-slate-700">Fleet ID / Code *</label>
+          <input
+            type="text"
+            required
+            value={fleetCode}
+            onChange={(e) => setFleetCode(e.target.value)}
+            placeholder="e.g. XMT-4501"
+            className="input-base mt-1 font-mono font-bold"
+          />
+        </div>
+
         <div>
           <label className="text-xs font-semibold text-slate-700">Company Name *</label>
           <input

@@ -610,7 +610,13 @@ export const jobController = {
   async assignDriver(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
-      const { driverId, etaMinutes, estimatedArrivalAt: customArrival } = req.body;
+      const { 
+        driverId, 
+        etaMinutes, 
+        estimatedArrivalAt: customArrival,
+        driverEtaMinutes: rawDriverEtaMinutes,
+        driverEstimatedArrivalAt: rawDriverEstimatedArrivalAt,
+      } = req.body;
 
       const [driver, job] = await Promise.all([
         prisma.user.findUnique({ where: { id: driverId } }),
@@ -625,10 +631,15 @@ export const jobController = {
         return sendError(res, `Cannot assign ${driver.countryCode} driver to ${job.countryCode} job`, 400);
       }
 
-      const estimatedArrivalAt = customArrival 
+      // Compute technician/driver-specific driving ETA:
+      // Keep customer promised SLA (job.estimatedArrivalAt, arrivalWindowStart, arrivalWindowEnd) untouched!
+      const effectiveDriverEtaMinutes = rawDriverEtaMinutes ?? etaMinutes;
+      const driverEstimatedArrivalAt = rawDriverEstimatedArrivalAt 
+        ? new Date(rawDriverEstimatedArrivalAt) 
+        : customArrival 
         ? new Date(customArrival) 
-        : etaMinutes 
-        ? new Date(Date.now() + Number(etaMinutes) * 60000) 
+        : effectiveDriverEtaMinutes 
+        ? new Date(Date.now() + Number(effectiveDriverEtaMinutes) * 60000) 
         : undefined;
 
       const updated = await prisma.job.update({
@@ -637,7 +648,10 @@ export const jobController = {
           driverId,
           status: 'ASSIGNED',
           assignedAt: new Date(),
-          estimatedArrivalAt,
+          driverEstimatedArrivalAt,
+          driverEtaMinutes: effectiveDriverEtaMinutes ? Number(effectiveDriverEtaMinutes) : undefined,
+          // Preserve customer promised arrival time; only fallback if job had no promised ETA set
+          estimatedArrivalAt: job.estimatedArrivalAt ?? driverEstimatedArrivalAt,
           updatedAt: new Date(),
         },
         include: {

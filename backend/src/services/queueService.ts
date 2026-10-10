@@ -151,7 +151,8 @@ export async function refillAgentQueueAtomic(
         WHERE l.assigned_agent_id IS NULL
           AND l.stage = 'VA_OUTREACH'::"LeadStage"
           AND l.status IN ('NEW'::"LeadStatus", 'CALLED'::"LeadStatus")
-          AND l.country_code = ${countryCode || 'CA'}::"CountryCode"
+          AND (${batchId || null}::text IS NULL OR l.batch_id = ${batchId || null})
+          AND (${batchId || null}::text IS NOT NULL OR l.country_code = ${countryCode || 'CA'}::"CountryCode")
           AND (
             l.batch_id IS NULL
             OR EXISTS (
@@ -162,13 +163,8 @@ export async function refillAgentQueueAtomic(
             )
           )
         ORDER BY
-          (CASE 
-            WHEN ${batchId || null}::text IS NOT NULL AND l.batch_id = ${batchId || null} THEN 0 
-            WHEN l.batch_id IS NOT NULL THEN 1 
-            ELSE 2 
-          END) ASC,
-          l.priority DESC,
-          l.created_at ASC
+          l.created_at DESC,
+          l.priority DESC
         LIMIT ${slotsNeeded}
         FOR UPDATE SKIP LOCKED
       `;

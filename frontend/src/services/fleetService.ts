@@ -41,6 +41,7 @@ export const fleetService = {
     const items = Array.isArray(raw.data) ? raw.data : (Array.isArray(raw) ? raw : []);
     const normalized = items.map((f: any) => ({
       ...f,
+      fleetCode: f.fleetCode || (f.id ? `XMT-${f.id.slice(0, 4).toUpperCase()}` : 'N/A'),
       companyName: f.companyName || f.name || 'Fleet Corp',
       paymentTerms: f.paymentTerms || 'NET_30',
     }));
@@ -52,6 +53,7 @@ export const fleetService = {
     const f = res.data.data;
     return {
       ...f,
+      fleetCode: f.fleetCode || (f.id ? `XMT-${f.id.slice(0, 4).toUpperCase()}` : 'N/A'),
       companyName: f.companyName || f.name || 'Fleet Corp',
       paymentTerms: f.paymentTerms || 'NET_30',
     };

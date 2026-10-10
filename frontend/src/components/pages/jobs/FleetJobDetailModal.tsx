@@ -10,7 +10,9 @@ import {
   User, 
   Printer, 
   Sparkles,
-  CreditCard
+  CreditCard,
+  Clock,
+  Zap
 } from 'lucide-react';
 import Modal from '../../ui/Modal';
 import StatusBadge from '../../ui/StatusBadge';
@@ -291,14 +293,41 @@ export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDe
             </div>
           </div>
 
-          {job.estimatedArrivalAt && (
-            <div className="text-right">
-              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">Estimated On-Scene</span>
-              <span className="font-mono font-bold text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                {formatDate(job.estimatedArrivalAt)}
-              </span>
-            </div>
-          )}
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
+            {job.arrivalWindowStart && job.arrivalWindowEnd ? (
+              <div className="text-right">
+                <span className="text-[10px] font-bold uppercase text-blue-700 tracking-wider flex items-center justify-end gap-1">
+                  <Clock size={11} />
+                  <span>Promised Window</span>
+                </span>
+                <span className="font-mono font-bold text-xs text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 block mt-0.5">
+                  {new Date(job.arrivalWindowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – {new Date(job.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                </span>
+              </div>
+            ) : job.estimatedArrivalAt ? (
+              <div className="text-right">
+                <span className="text-[10px] font-bold uppercase text-blue-700 tracking-wider flex items-center justify-end gap-1">
+                  <Clock size={11} />
+                  <span>Promised Arrival</span>
+                </span>
+                <span className="font-mono font-bold text-xs text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 block mt-0.5">
+                  {formatDate(job.estimatedArrivalAt)}
+                </span>
+              </div>
+            ) : null}
+
+            {(job.driverEtaMinutes || job.driverEstimatedArrivalAt) && (
+              <div className="text-right">
+                <span className="text-[10px] font-bold uppercase text-emerald-700 tracking-wider flex items-center justify-end gap-1">
+                  <Zap size={11} />
+                  <span>Technician ETA</span>
+                </span>
+                <span className="font-mono font-bold text-xs text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 block mt-0.5">
+                  {job.driverEtaMinutes ? `~${job.driverEtaMinutes}m Drive` : formatDate(job.driverEstimatedArrivalAt!)}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Commercial Line Items Table */}

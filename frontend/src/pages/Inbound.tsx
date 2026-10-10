@@ -1,13 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Sparkles } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import InboundIntakeForm from '../components/pages/inbound/InboundIntakeForm';
-import InboundCallStation, { type CallLogEntry } from '../components/pages/inbound/InboundCallStation';
 import { useTenant } from '../context/TenantContext';
 import { useSocket } from '../context/SocketContext';
 import { jobService } from '../services/jobService';
-import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
-import { REGIONAL_SIMULATION_DATA } from '../constants/simulation';
 import { toast } from 'sonner';
 import type { SelectedServiceItem } from '../components/common/MultiServiceSelector';
 import type { GeocodeLocation } from '../components/common/AddressAutocompleteInput';
@@ -15,14 +11,7 @@ import type { ArrivalWindowData } from '../components/common/ArrivalWindowSelect
 
 export default function Inbound() {
   const { country } = useTenant();
-  const { 
-    incomingCall, 
-    activeCall, 
-    answerCall, 
-    endCall, 
-    transferCallToDm, 
-    simulateIncomingCall 
-  } = useSocket();
+  const { incomingCall } = useSocket();
 
   // Intake Form State
   const [formCountry, setFormCountry] = useState<'CA' | 'US' | 'UK'>((country as any) || 'CA');
@@ -61,11 +50,7 @@ export default function Inbound() {
   const effectiveCurrency = formCountry === 'US' ? '$' : formCountry === 'UK' ? '£' : '$';
   const effectiveTaxRate = formCountry === 'CA' ? 0.13 : formCountry === 'UK' ? 0.20 : 0.08;
 
-  // Telephony & Call State
-  const [callDuration, setCallDuration] = useState(0);
-  const [isTransferring, setIsTransferring] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
-  const [callLogs, setCallLogs] = useState<CallLogEntry[]>([]);
 
   // Synchronize incoming caller into form when call pops
   useEffect(() => {
@@ -76,60 +61,6 @@ export default function Inbound() {
     }, 0);
     return () => clearTimeout(timer);
   }, [incomingCall]);
-
-  // Live call duration timer
-  useEffect(() => {
-    if (!activeCall) return;
-    const interval = setInterval(() => {
-      setCallDuration((prev) => prev + 1);
-    }, 1000);
-    return () => {
-      clearInterval(interval);
-      setCallDuration(0);
-    };
-  }, [activeCall]);
-
-  // Warm Transfer Call to Dispatcher Manager
-  const handleWarmTransferToDm = async () => {
-    if (!callerPhone) {
-      toast.error('Caller phone is required for warm transfer');
-      return;
-    }
-    setIsTransferring(true);
-    try {
-      const vehicleInfo = `${vehicleMakeModel || 'Vehicle'} | Tire: ${tireSize || 'Pending'}`;
-      const primaryService = serviceItems[0]?.serviceName || 'Roadside Tire Service';
-      const transferNotes = `Breakdown at: ${serviceAddress || 'Address Pending'}. Services: ${serviceItems.map(s => `${s.quantity}x ${s.serviceName}`).join(', ')}. Vehicle: ${vehicleInfo}. Notes: ${notes || 'Immediate dispatch required'}`;
-      
-      await transferCallToDm({
-        callerPhone,
-        callerName: callerName || 'Customer',
-        notes: transferNotes,
-        vehicleInfo,
-        transferType: 'INBOUND_MOTORIST',
-      });
-
-      setCallLogs((prev) => [
-        {
-          id: `log-${Date.now()}`,
-          phone: callerPhone,
-          callerName: callerName || 'Customer',
-          time: 'Just now',
-          service: primaryService,
-          disposition: 'Transferred to DM',
-          transferredToDm: true,
-        },
-        ...prev,
-      ]);
-
-      toast.success('Call transferred to Dispatcher Manager');
-      endCall();
-    } catch {
-      toast.error('Failed to initiate warm transfer');
-    } finally {
-      setIsTransferring(false);
-    }
-  };
 
   // Direct Book Job Ticket into Dispatch Queue
   const handleDirectBookJob = async () => {
@@ -185,20 +116,6 @@ export default function Inbound() {
         },
       });
 
-      const primaryService = serviceItems[0]?.serviceName || 'Roadside Service';
-      setCallLogs((prev) => [
-        {
-          id: `log-${Date.now()}`,
-          phone: callerPhone,
-          callerName: callerName || 'Customer',
-          time: 'Just now',
-          service: `${serviceItems.length} services (${primaryService})`,
-          disposition: 'Booked Direct',
-          transferredToDm: false,
-        },
-        ...prev,
-      ]);
-
       toast.success('Job ticket created & dispatched successfully');
       setCallerPhone('');
       setCallerName('');
@@ -216,7 +133,6 @@ export default function Inbound() {
           quantity: 1,
         },
       ]);
-      endCall();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to create dispatch ticket');
     } finally {
@@ -224,126 +140,49 @@ export default function Inbound() {
     }
   };
 
-  // Quick Dispositions
-  const handleQuickDisposition = (disp: string) => {
-    if (!callerPhone && !activeCall && !incomingCall) {
-      toast.info('No active call to disposition');
-      return;
-    }
-    setCallLogs((prev) => [
-      {
-        id: `log-${Date.now()}`,
-        phone: callerPhone || incomingCall?.from || activeCall?.from || 'Unknown',
-        callerName: callerName || 'Customer',
-        time: 'Just now',
-        service: serviceItems[0]?.serviceName || 'Call Ingestion',
-        disposition: disp,
-        transferredToDm: false,
-      },
-      ...prev,
-    ]);
-    toast.info(`Call logged: ${disp}`);
-    endCall();
-  };
-
-  const handleSimulateCall = () => {
-    const list = REGIONAL_SIMULATION_DATA[country] || REGIONAL_SIMULATION_DATA.CA;
-    const blueprint = list[Math.floor(Math.random() * list.length)];
-    simulateIncomingCall(blueprint.phone, `${blueprint.callerName} (${country})`);
-    setCallerPhone(blueprint.phone);
-    setCallerName(blueprint.callerName);
-    setServiceAddress(blueprint.serviceAddress);
-    setVehicleMakeModel(blueprint.vehicleMakeModel);
-    setTireSize(blueprint.tireSize);
-    toast.info(`Simulated incoming call for ${country}: ${blueprint.serviceAddress}`);
-  };
-
-  // Keyboard Shortcuts for Telephony
-  useKeyboardShortcuts({
-    'Alt+t': () => handleWarmTransferToDm(),
-    'Alt+w': () => handleQuickDisposition('Wrong Number'),
-    'Alt+p': () => handleQuickDisposition('Price Shopper'),
-    'Alt+s': () => handleQuickDisposition('Spam'),
-    'Escape': () => {
-      if (activeCall || incomingCall) endCall();
-    },
-  });
-
   return (
     <div className="space-y-4">
       <PageHeader
         title="Inbound Hotline"
         subtitle={`Live call intake & dispatch triage (${country})`}
-        actions={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSimulateCall}
-              className="btn-primary py-1.5 px-3 text-xs cursor-pointer flex items-center gap-1.5 shadow-2xs"
-            >
-              <Sparkles size={14} />
-              <span>Simulate Call</span>
-            </button>
-          </div>
-        }
       />
 
-      {/* Main Grid: Funnel Stepper Intake Form (Left 2 Cols) + Call Station (Right 1 Col) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
-        <div className="lg:col-span-2">
-          <InboundIntakeForm
-            countryCode={formCountry}
-            onCountryChange={setFormCountry}
-            callerPhone={callerPhone}
-            setCallerPhone={setCallerPhone}
-            callerName={callerName}
-            setCallerName={setCallerName}
-            leadSource={leadSource}
-            setLeadSource={setLeadSource}
-            serviceAddress={serviceAddress}
-            setServiceAddress={setServiceAddress}
-            onSelectLocation={(loc: GeocodeLocation) => {
-              setServiceCoords({ latitude: loc.latitude, longitude: loc.longitude });
-            }}
-            vehicleMakeModel={vehicleMakeModel}
-            setVehicleMakeModel={setVehicleMakeModel}
-            tireSize={tireSize}
-            setTireSize={setTireSize}
-            serviceItems={serviceItems}
-            setServiceItems={setServiceItems}
-            isTaxIncluded={isTaxIncluded}
-            setIsTaxIncluded={setIsTaxIncluded}
-            currencySymbol={effectiveCurrency}
-            taxRate={effectiveTaxRate}
-            urgency={urgency}
-            setUrgency={setUrgency}
-            arrivalWindow={arrivalWindow}
-            setArrivalWindow={setArrivalWindow}
-            notes={notes}
-            setNotes={setNotes}
-            isProvisionAccount={isProvisionAccount}
-            setIsProvisionAccount={setIsProvisionAccount}
-            isBooking={isBooking}
-            onSubmitBooking={handleDirectBookJob}
-          />
-        </div>
-
-        <div className="lg:col-span-1">
-          <InboundCallStation
-            incomingCall={incomingCall}
-            activeCall={activeCall}
-            callDuration={callDuration}
-            callerPhone={callerPhone}
-            callerName={callerName}
-            leadSource={leadSource}
-            isTransferring={isTransferring}
-            callLogs={callLogs}
-            onAnswerCall={answerCall}
-            onEndCall={endCall}
-            onWarmTransferToDm={handleWarmTransferToDm}
-            onQuickDisposition={handleQuickDisposition}
-          />
-        </div>
+      <div className="max-w-4xl mx-auto">
+        <InboundIntakeForm
+          countryCode={formCountry}
+          onCountryChange={setFormCountry}
+          callerPhone={callerPhone}
+          setCallerPhone={setCallerPhone}
+          callerName={callerName}
+          setCallerName={setCallerName}
+          leadSource={leadSource}
+          setLeadSource={setLeadSource}
+          serviceAddress={serviceAddress}
+          setServiceAddress={setServiceAddress}
+          onSelectLocation={(loc: GeocodeLocation) => {
+            setServiceCoords({ latitude: loc.latitude, longitude: loc.longitude });
+          }}
+          vehicleMakeModel={vehicleMakeModel}
+          setVehicleMakeModel={setVehicleMakeModel}
+          tireSize={tireSize}
+          setTireSize={setTireSize}
+          serviceItems={serviceItems}
+          setServiceItems={setServiceItems}
+          isTaxIncluded={isTaxIncluded}
+          setIsTaxIncluded={setIsTaxIncluded}
+          currencySymbol={effectiveCurrency}
+          taxRate={effectiveTaxRate}
+          urgency={urgency}
+          setUrgency={setUrgency}
+          arrivalWindow={arrivalWindow}
+          setArrivalWindow={setArrivalWindow}
+          notes={notes}
+          setNotes={setNotes}
+          isProvisionAccount={isProvisionAccount}
+          setIsProvisionAccount={setIsProvisionAccount}
+          isBooking={isBooking}
+          onSubmitBooking={handleDirectBookJob}
+        />
       </div>
     </div>
   );

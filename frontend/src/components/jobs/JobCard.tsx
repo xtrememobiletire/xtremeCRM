@@ -1,4 +1,4 @@
-import { MapPin, Phone, Car, UserCheck, Eye, MessageSquare } from 'lucide-react';
+import { MapPin, Phone, Car, UserCheck, Eye, MessageSquare, Clock, Zap } from 'lucide-react';
 import StatusBadge from '../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { useTenant } from '../../context/TenantContext';
@@ -68,6 +68,34 @@ export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps
           </div>
         )}
       </div>
+
+      {/* Timing Commitment & Driver ETA */}
+      {(job.arrivalWindowStart || job.estimatedArrivalAt || job.driverEstimatedArrivalAt || job.driverEtaMinutes) && (
+        <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[11px]">
+          {job.arrivalWindowStart && job.arrivalWindowEnd ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 font-semibold border border-blue-200" title="Customer Promised Window">
+              <Clock className="w-3 h-3 text-blue-600" />
+              <span>
+                Window: {new Date(job.arrivalWindowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – {new Date(job.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              </span>
+            </span>
+          ) : job.estimatedArrivalAt ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 font-semibold border border-blue-200" title="Customer Promised ETA">
+              <Clock className="w-3 h-3 text-blue-600" />
+              <span>Promised ~{new Date(job.estimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+            </span>
+          ) : null}
+
+          {(job.driverEstimatedArrivalAt || job.driverEtaMinutes) && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200" title="Technician Driving ETA">
+              <Zap className="w-3 h-3 text-emerald-600" />
+              <span>
+                Tech ETA: {job.driverEtaMinutes ? `~${job.driverEtaMinutes}m` : new Date(job.driverEstimatedArrivalAt!).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              </span>
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center justify-between pt-1">
         <div>

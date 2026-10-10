@@ -46,22 +46,27 @@ export default function JobListContainer({
 
   return (
     <div className="space-y-4">
-      <div className="hidden md:block">
+      <div className="hidden md:block bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
         <JobTable jobs={jobs} onViewJob={onViewJob} onAssignDriver={onAssignDriver} />
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          totalCount={pagination.total}
+          onPageChange={onPageChange}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:hidden">
         {jobs.map((j) => (
           <JobCard key={j.id} job={j} onViewJob={onViewJob} onAssignDriver={onAssignDriver} />
         ))}
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          totalCount={pagination.total}
+          onPageChange={onPageChange}
+        />
       </div>
-
-      <Pagination
-        currentPage={pagination.page}
-        totalPages={pagination.totalPages}
-        totalCount={pagination.total}
-        onPageChange={onPageChange}
-      />
     </div>
   );
 }

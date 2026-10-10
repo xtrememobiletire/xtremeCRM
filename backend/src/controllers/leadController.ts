@@ -20,8 +20,11 @@ export const leadController = {
    */
   async getBatches(req: Request, res: Response) {
     try {
-      const countryCode = (req.query.countryCode as any) || (req as any).countryCode;
-      const where: any = countryCode ? { countryCode } : {};
+      const countryCode = req.query.countryCode as string;
+      const status = req.query.status as any;
+      const where: any = {};
+      if (countryCode && countryCode !== 'ALL') where.countryCode = countryCode;
+      if (status && status !== 'ALL') where.status = status;
 
       const batches = await prisma.batch.findMany({
         where,
@@ -72,6 +75,58 @@ export const leadController = {
       );
 
       return sendSuccess(res, batchesWithMetrics, 'Batches retrieved successfully');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Get Active Batches within operating window for VA Campaign Batch Chooser
+   * Filters:
+   * - status = 'ACTIVE'
+   * - scheduledDate is null or <= new Date() (deadlines passed / active now, NEVER future)
+   * - unassignedLeads > 0
+   * - across all countries so VAs can select any open campaign
+   */
+  async getAvailableBatchesForVa(req: Request, res: Response) {
+    try {
+      const now = new Date();
+
+      const batches = await prisma.batch.findMany({
+        where: {
+          status: 'ACTIVE',
+          OR: [
+            { scheduledDate: null },
+            { scheduledDate: { lte: now } },
+          ],
+        },
+        orderBy: [{ scheduledDate: 'desc' }, { createdAt: 'desc' }],
+      });
+
+      const batchesWithCounts = await Promise.all(
+        batches.map(async (b) => {
+          const unassignedLeads = await prisma.lead.count({
+            where: {
+              batchId: b.id,
+              assignedAgentId: null,
+              status: 'NEW',
+              stage: 'VA_OUTREACH',
+            },
+          });
+          return {
+            id: b.id,
+            batchName: b.batchName,
+            countryCode: b.countryCode,
+            status: b.status,
+            scheduledDate: b.scheduledDate,
+            unassignedLeads,
+            totalLeads: b.totalLeads,
+          };
+        })
+      );
+
+      const available = batchesWithCounts.filter((b) => b.unassignedLeads > 0);
+      return sendSuccess(res, available, 'Available campaign batches retrieved successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }
@@ -215,7 +270,8 @@ export const leadController = {
       const { page, limit } = sanitizePaginationParams(pageParam, limitParam);
       const skip = calculateSkip(page, limit);
 
-      const countryCode = (req.query.countryCode as any) || (req as any).countryCode;
+      const countryCode = req.query.countryCode as string;
+      const batchId = req.query.batchId as string;
       const status = req.query.status as any;
       const disposition = req.query.disposition as any;
       const search = req.query.search as string;
@@ -225,52 +281,85 @@ export const leadController = {
       const priority = req.query.priority ? Number(req.query.priority) : undefined;
 
       const user = (req as any).user;
-      const where: any = {};
-      if (countryCode) where.countryCode = countryCode;
-      if (status) where.status = status;
-      if (disposition) where.disposition = disposition;
-      if (priority !== undefined) where.priority = priority;
+      const conditions: any[] = [];
 
-      // Pool filtering logic
-      if (pool === 'va') {
-        where.stage = 'VA_OUTREACH';
+      if (batchId) conditions.push({ batchId });
+      if (countryCode && countryCode !== 'ALL') conditions.push({ countryCode });
+      if (status) conditions.push({ status });
+      if (disposition) conditions.push({ disposition });
+      if (priority !== undefined) conditions.push({ priority });
+
+      // Clean Pool filtering logic
+      if (pool === 'all') {
+        // Master view: All leads (assigned and unassigned), strictly excluding Dispatcher Review leads
+        conditions.push({
+          stage: { not: 'DISPATCHER_REVIEW' },
+        });
+      } else if (pool === 'unassigned') {
+        conditions.push({
+          assignedAgentId: null,
+          status: 'NEW',
+          disposition: null,
+          stage: 'VA_OUTREACH',
+        });
+      } else if (pool === 'called') {
+        conditions.push({
+          OR: [
+            { assignedAgentId: { not: null } },
+            { status: { not: 'NEW' } },
+            { disposition: { not: null } },
+          ],
+          stage: { notIn: ['DISQUALIFIED', 'CONVERTED', 'DISPATCHER_REVIEW'] },
+        });
+      } else if (pool === 'disqualified') {
+        conditions.push({ stage: 'DISQUALIFIED' });
+      } else if (pool === 'converted') {
+        conditions.push({ stage: 'CONVERTED' });
+      } else if (pool === 'va') {
+        conditions.push({ stage: 'VA_OUTREACH' });
         if (user?.role === 'VIRTUAL_ASSISTANT') {
-          where.assignedAgentId = user.id;
+          conditions.push({ assignedAgentId: user.id });
         } else if (assignedAgentId) {
-          where.assignedAgentId = assignedAgentId;
+          conditions.push({ assignedAgentId });
         }
       } else if (pool === 'callbacks') {
-        where.stage = 'AGENT_CALLBACK';
+        conditions.push({ stage: 'AGENT_CALLBACK' });
       } else if (pool === 'dispatcher') {
-        where.stage = 'DISPATCHER_REVIEW';
-      } else if (pool === 'disqualified') {
-        where.stage = 'DISQUALIFIED';
+        conditions.push({ stage: 'DISPATCHER_REVIEW' });
       } else if (stage) {
-        where.stage = stage;
+        conditions.push({ stage });
       } else if (assignedAgentId) {
-        where.assignedAgentId = assignedAgentId;
+        conditions.push({ assignedAgentId });
       }
 
       if (search && search.trim()) {
         const query = search.trim();
-        where.OR = [
-          { companyName: { contains: query, mode: 'insensitive' } },
-          { contactPerson: { contains: query, mode: 'insensitive' } },
-          { fleetManager: { contains: query, mode: 'insensitive' } },
-          { ceoOwnerName: { contains: query, mode: 'insensitive' } },
-          { phone: { contains: query, mode: 'insensitive' } },
-          { altPhone: { contains: query, mode: 'insensitive' } },
-          { email: { contains: query, mode: 'insensitive' } },
-          { poaEmail: { contains: query, mode: 'insensitive' } },
-        ];
+        conditions.push({
+          OR: [
+            { companyName: { contains: query, mode: 'insensitive' } },
+            { contactPerson: { contains: query, mode: 'insensitive' } },
+            { fleetManager: { contains: query, mode: 'insensitive' } },
+            { ceoOwnerName: { contains: query, mode: 'insensitive' } },
+            { phone: { contains: query, mode: 'insensitive' } },
+            { altPhone: { contains: query, mode: 'insensitive' } },
+            { email: { contains: query, mode: 'insensitive' } },
+            { poaEmail: { contains: query, mode: 'insensitive' } },
+          ],
+        });
       }
 
-      // Dynamic sorting based on pool
+      const where: any = conditions.length > 0 ? { AND: conditions } : {};
+
+      // Dynamic sorting based on pool - Always prioritize latest leads (createdAt: 'desc')
       let orderBy: any[] = [{ createdAt: 'desc' }];
-      if (pool === 'callbacks') {
-        orderBy = [{ callbackDate: 'asc' }, { createdAt: 'desc' }];
+      if (pool === 'unassigned') {
+        orderBy = [{ createdAt: 'desc' }, { priority: 'desc' }];
+      } else if (pool === 'called' || pool === 'callbacks') {
+        orderBy = [{ updatedAt: 'desc' }, { callbackDate: 'asc' }];
       } else if (pool === 'va') {
-        orderBy = [{ priority: 'desc' }, { status: 'asc' }, { createdAt: 'desc' }];
+        orderBy = [{ createdAt: 'desc' }, { priority: 'desc' }];
+      } else if (pool === 'disqualified' || pool === 'converted') {
+        orderBy = [{ updatedAt: 'desc' }, { createdAt: 'desc' }];
       }
 
       const [leads, total] = await Promise.all([
@@ -280,6 +369,9 @@ export const leadController = {
           take: limit,
           orderBy,
           include: {
+            batch: {
+              select: { id: true, batchName: true, status: true, countryCode: true },
+            },
             uploadedBy: {
               select: { id: true, fullName: true, role: true },
             },
@@ -291,6 +383,9 @@ export const leadController = {
             },
             testServices: {
               select: { id: true, jobCode: true, status: true, appointmentDate: true },
+            },
+            resultingFleet: {
+              select: { id: true, fleetCode: true, name: true },
             },
           },
         }),
@@ -1136,26 +1231,48 @@ export const leadController = {
         return sendError(res, 'No valid lead rows found in file. Please ensure columns include Company, Contact, and Phone.', 400);
       }
 
-      // Create Batch record
-      const isScheduled = activationMode === 'SCHEDULED';
-      const batchStatus = isScheduled ? 'SCHEDULED' : 'ACTIVE';
-      const finalBatchName = batchName?.trim() || `Batch ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      // Check if attaching to an existing Batch record
+      let batch: any = null;
+      const targetBatchId = req.body.batchId as string;
+      if (targetBatchId) {
+        batch = await prisma.batch.findUnique({
+          where: { id: targetBatchId },
+        });
+        if (batch) {
+          await prisma.batch.update({
+            where: { id: batch.id },
+            data: {
+              totalLeads: { increment: leadsToCreate.length },
+            },
+          });
+        }
+      }
 
-      const batch = await prisma.batch.create({
-        data: {
-          batchName: finalBatchName,
-          countryCode: targetCountry as any,
-          uploadedById: vaUserId,
-          totalLeads: leadsToCreate.length,
-          scheduledDate,
-          status: batchStatus as any,
-        },
-      });
+      // Create new Batch record if none specified or not found
+      if (!batch) {
+        const isScheduled = activationMode === 'SCHEDULED';
+        const batchStatus = isScheduled ? 'SCHEDULED' : 'ACTIVE';
+        const finalBatchName = batchName?.trim() || `Batch ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+        batch = await prisma.batch.create({
+          data: {
+            batchName: finalBatchName,
+            countryCode: targetCountry as any,
+            uploadedById: vaUserId,
+            totalLeads: leadsToCreate.length,
+            scheduledDate,
+            status: batchStatus as any,
+          },
+        });
+      }
+
+      const effectiveCountry = batch.countryCode || targetCountry;
 
       // Link leads to batch
       const leadsWithBatch = leadsToCreate.map((l) => ({
         ...l,
         batchId: batch.id,
+        countryCode: effectiveCountry,
       }));
 
       const result = await prisma.lead.createMany({
@@ -1163,24 +1280,24 @@ export const leadController = {
       });
 
       // If active immediately, replenish online VAs to 1-lead cap
-      if (!isScheduled) {
+      if (batch.status === 'ACTIVE') {
         const activeVas = await prisma.user.findMany({
           where: {
             role: { in: ['VIRTUAL_ASSISTANT', 'CALL_AGENT'] },
-            countryCode: targetCountry as any,
+            countryCode: effectiveCountry as any,
             deletedAt: null,
           },
         });
 
         for (const va of activeVas) {
-          await refillAgentQueueAtomic(va.id, targetCountry, VA_LEAD_CAP);
+          await refillAgentQueueAtomic(va.id, effectiveCountry, VA_LEAD_CAP);
         }
       }
 
       sseManager.broadcast(`sse:leads:${targetCountry}`, 'lead:uploaded', {
         batchId: batch.id,
         importedCount: result.count,
-        status: batchStatus,
+        status: batch.status,
       });
       sseManager.broadcast(`sse:leads:${targetCountry}`, 'lead:stats_updated', { countryCode: targetCountry });
 
@@ -1191,7 +1308,7 @@ export const leadController = {
         importedCount: result.count,
         totalRows: rawRows.length,
         sheetUsed: chosenSheetName,
-      }, `Successfully imported ${result.count} leads into batch "${batch.batchName}" (${batchStatus})`);
+      }, `Successfully imported ${result.count} leads into batch "${batch.batchName}" (${batch.status})`);
     } catch (err: any) {
       return sendError(res, `Failed to process spreadsheet: ${err.message}`, 400);
     }
@@ -1278,6 +1395,46 @@ export const leadController = {
   },
 
   /**
+   * Close / Complete Campaign Batch Early (Admin / GM Control)
+   * Sets batch status to COMPLETED and notifies staff
+   */
+  async closeBatch(req: Request, res: Response) {
+    try {
+      const user = (req as any).user;
+      if (!['ADMIN', 'GENERAL_MANAGER'].includes(user?.role)) {
+        return sendError(res, 'Only Administrators and General Managers can close batches', 403);
+      }
+
+      const id = String(req.params.id);
+      const batch = await prisma.batch.findUnique({ where: { id } });
+      if (!batch) return sendError(res, 'Batch not found', 404);
+
+      const updated = await prisma.batch.update({
+        where: { id },
+        data: { status: 'COMPLETED' },
+      });
+
+      sseManager.broadcast(`sse:leads:${batch.countryCode}`, 'batch:completed', {
+        batchId: batch.id,
+        batchName: batch.batchName,
+      });
+      sseManager.broadcast(`sse:leads:${batch.countryCode}`, 'lead:stats_updated', { countryCode: batch.countryCode });
+
+      try {
+        const io = getIO();
+        io.to(`dispatch:${batch.countryCode}`).emit('batch:completed', {
+          batchId: batch.id,
+          batchName: batch.batchName,
+        });
+      } catch {}
+
+      return sendSuccess(res, updated, `Batch "${batch.batchName}" marked as COMPLETED`);
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
    * Get Active Queue for VA / Call Agent with 1-Lead Cap Auto-Replenishment
    */
   async getAgentQueue(req: Request, res: Response) {
@@ -1285,7 +1442,17 @@ export const leadController = {
       const agentId = (req as any).user?.id;
       if (!agentId) return sendError(res, 'Unauthorized', 401);
 
-      const countryCode = (req.query.countryCode as any) || (req as any).countryCode;
+      const batchId = (req.query.batchId as string) || undefined;
+      let countryCode = (req.query.countryCode as any) || (req as any).countryCode;
+
+      // If batchId is provided, resolve the batch to adopt its countryCode for the queue context
+      if (batchId) {
+        const targetBatch = await prisma.batch.findUnique({ where: { id: batchId } });
+        if (targetBatch?.countryCode) {
+          countryCode = targetBatch.countryCode;
+        }
+      }
+
       const MAX_ACTIVE = VA_LEAD_CAP; // 1-lead focus mode
 
       // 1. Fetch scheduled callbacks due
@@ -1299,10 +1466,11 @@ export const leadController = {
           ],
           ...(countryCode ? { countryCode } : {}),
         },
-        orderBy: [{ callbackDate: 'asc' }, { createdAt: 'asc' }],
+        orderBy: [{ callbackDate: 'asc' }, { createdAt: 'desc' }],
         take: 5,
         include: {
           uploadedBy: { select: { id: true, fullName: true, role: true } },
+          batch: { select: { id: true, batchName: true, countryCode: true } },
         },
       });
 
@@ -1314,10 +1482,11 @@ export const leadController = {
           status: { in: ['NEW', 'CALLED'] },
           OR: [{ disposition: null }],
         },
-        orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
+        orderBy: [{ createdAt: 'desc' }, { priority: 'desc' }],
         take: MAX_ACTIVE,
         include: {
           uploadedBy: { select: { id: true, fullName: true, role: true } },
+          batch: { select: { id: true, batchName: true, countryCode: true } },
         },
       });
 
@@ -1329,7 +1498,7 @@ export const leadController = {
 
       // 3. Synchronous atomic replenishment to 1-lead cap
       if (isProspectiveAgent && currentCount < MAX_ACTIVE) {
-        newlyAssignedCount = await refillAgentQueueAtomic(agentId, countryCode, MAX_ACTIVE);
+        newlyAssignedCount = await refillAgentQueueAtomic(agentId, countryCode, MAX_ACTIVE, batchId);
         if (newlyAssignedCount > 0) {
           activeLeads = await prisma.lead.findMany({
             where: {
@@ -1338,10 +1507,11 @@ export const leadController = {
               status: { in: ['NEW', 'CALLED'] },
               OR: [{ disposition: null }],
             },
-            orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
+            orderBy: [{ createdAt: 'desc' }, { priority: 'desc' }],
             take: MAX_ACTIVE,
             include: {
               uploadedBy: { select: { id: true, fullName: true, role: true } },
+              batch: { select: { id: true, batchName: true, countryCode: true } },
             },
           });
         }
@@ -1352,7 +1522,7 @@ export const leadController = {
           assignedAgentId: null,
           stage: 'VA_OUTREACH',
           status: 'NEW',
-          ...(countryCode ? { countryCode } : {}),
+          ...(batchId ? { batchId } : countryCode ? { countryCode } : {}),
         },
       });
 

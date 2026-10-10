@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Phone, Car, MapPin, Calculator, FileText, Printer, MessageSquare, DollarSign } from 'lucide-react';
+import { Phone, Car, MapPin, Calculator, FileText, Printer, MessageSquare, DollarSign, Clock, Zap } from 'lucide-react';
 import Modal from '../../ui/Modal';
 import StatusBadge from '../../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../../utils/currency';
@@ -227,6 +227,46 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
                 <span className="truncate">{job.serviceAddress || job.locationAddress}</span>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Timing & Dispatch Breakdown (Customer SLA vs Driver ETA) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 block">
+              Customer Promised Arrival (Intake SLA)
+            </span>
+            <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span>
+                {job.arrivalWindowStart && job.arrivalWindowEnd
+                  ? `Window: ${new Date(job.arrivalWindowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – ${new Date(job.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+                  : job.estimatedArrivalAt
+                  ? `Promised ETA: ~${new Date(job.estimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+                  : 'Standard Dispatch (ASAP)'}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">
+              Assigned Technician Travel ETA
+            </span>
+            <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>
+                {job.driverEtaMinutes || job.driverEstimatedArrivalAt ? (
+                  <span>
+                    {job.driver ? `${job.driver.fullName} • ` : ''}
+                    {job.driverEtaMinutes ? `~${job.driverEtaMinutes} mins away` : `Arrives ~${new Date(job.driverEstimatedArrivalAt!).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
+                  </span>
+                ) : job.driver ? (
+                  <span>{job.driver.fullName} (En route)</span>
+                ) : (
+                  <span className="text-slate-500 font-normal italic">Technician pending assignment</span>
+                )}
+              </span>
+            </div>
           </div>
         </div>
 

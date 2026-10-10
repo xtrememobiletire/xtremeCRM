@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, ChevronDown, ChevronUp, MapPin, UserCheck, MessageSquare } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, MapPin, UserCheck, MessageSquare, Clock, Zap } from 'lucide-react';
 import { formatCurrency, centsToDollars } from '../../../utils/currency';
 import { useTenant } from '../../../context/TenantContext';
 
@@ -111,9 +111,26 @@ export default function UrgentQueueAccordion({
                   </div>
 
                   <div className="flex flex-col justify-between gap-2 border-t sm:border-t-0 sm:border-l border-slate-200 pt-2 sm:pt-0 sm:pl-3">
-                    <div className="text-[11px] text-slate-500">
+                    <div className="text-[11px] text-slate-500 space-y-0.5">
                       <div>Status: <strong className="text-slate-800">{job.status}</strong></div>
                       <div>Contact: <strong className="text-slate-800">{job.recipientPhone || job.customer?.phone || 'N/A'}</strong></div>
+                      {job.arrivalWindowStart && job.arrivalWindowEnd ? (
+                        <div className="text-blue-700 font-semibold flex items-center gap-1">
+                          <Clock size={11} />
+                          <span>Window: {new Date(job.arrivalWindowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – {new Date(job.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                        </div>
+                      ) : job.estimatedArrivalAt ? (
+                        <div className="text-blue-700 font-semibold flex items-center gap-1">
+                          <Clock size={11} />
+                          <span>Promised: ~{new Date(job.estimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                        </div>
+                      ) : null}
+                      {(job.driverEtaMinutes || job.driverEstimatedArrivalAt) && (
+                        <div className="text-emerald-700 font-semibold flex items-center gap-1">
+                          <Zap size={11} />
+                          <span>Tech ETA: {job.driverEtaMinutes ? `~${job.driverEtaMinutes}m` : new Date(job.driverEstimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex gap-2">

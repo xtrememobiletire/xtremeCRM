@@ -8,17 +8,24 @@ const router = Router();
 
 /**
  * @route   GET /api/leads/stats
- * @desc    Get real-time pipeline count metrics & VA workloads (Admin / GM)
- * @access  Private (Admin, General Manager)
+ * @desc    Get real-time pipeline count metrics & VA workloads (Admin / GM / Dispatcher)
+ * @access  Private (Admin, General Manager, Dispatcher)
  */
-router.get('/stats', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.getLeadStats);
+router.get('/stats', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']), leadController.getLeadStats);
 
 /**
  * @route   GET /api/leads/batches
- * @desc    Get outbound batches with progress and lead counters (Admin / GM)
- * @access  Private (Admin, General Manager)
+ * @desc    Get outbound batches with progress and lead counters (Admin / GM / Dispatcher)
+ * @access  Private (Admin, General Manager, Dispatcher)
  */
-router.get('/batches', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.getBatches);
+router.get('/batches', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']), leadController.getBatches);
+
+/**
+ * @route   GET /api/leads/batches/available-for-va
+ * @desc    Get currently active batches within operating window with unassigned leads (for VA Campaign Batch Chooser)
+ * @access  Private (Staff / VA)
+ */
+router.get('/batches/available-for-va', authenticate, leadController.getAvailableBatchesForVa);
 
 /**
  * @route   POST /api/leads/upload
@@ -49,6 +56,7 @@ router.get('/agent-queue', authenticate, leadController.getAgentQueue);
  */
 router.post('/start-batch', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.startBatch);
 router.post('/batches/:id/start', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.startBatch);
+router.post('/batches/:id/close', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.closeBatch);
 
 /**
  * @route   GET /api/leads

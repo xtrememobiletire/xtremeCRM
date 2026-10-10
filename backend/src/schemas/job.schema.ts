@@ -118,7 +118,9 @@ export type UpdateJobStatusInput = z.infer<typeof UpdateJobStatusSchema>;
 export const AssignDriverSchema = z.object({
   driverId: z.string().uuid('Valid Driver UUID is required'),
   etaMinutes: z.coerce.number().optional(),
+  driverEtaMinutes: z.coerce.number().optional(),
   estimatedArrivalAt: z.string().optional(),
+  driverEstimatedArrivalAt: z.string().optional(),
 });
 
 export type AssignDriverInput = z.infer<typeof AssignDriverSchema>;

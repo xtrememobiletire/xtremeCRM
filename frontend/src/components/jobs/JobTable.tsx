@@ -1,4 +1,4 @@
-import { Eye, UserCheck, AlertCircle, MessageSquare } from 'lucide-react';
+import { Eye, UserCheck, AlertCircle, MessageSquare, Clock, Zap } from 'lucide-react';
 import StatusBadge from '../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
@@ -50,6 +50,17 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                   )}
                 </div>
                 <div className="text-[11px] text-slate-400">{formatDate(job.createdAt)}</div>
+                {job.arrivalWindowStart && job.arrivalWindowEnd ? (
+                  <div className="text-[10px] text-blue-700 font-semibold flex items-center gap-1 mt-0.5" title="Customer Promised Window">
+                    <Clock className="w-2.5 h-2.5 shrink-0" />
+                    <span>{new Date(job.arrivalWindowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – {new Date(job.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                  </div>
+                ) : job.estimatedArrivalAt ? (
+                  <div className="text-[10px] text-blue-700 font-semibold flex items-center gap-1 mt-0.5" title="Customer Promised ETA">
+                    <Clock className="w-2.5 h-2.5 shrink-0" />
+                    <span>Promised ~{new Date(job.estimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                  </div>
+                ) : null}
               </td>
               <td className="table-td">
                 {(job as any).isTestService && (job as any).lead?.companyName ? (
@@ -89,14 +100,24 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
               {!isDriver && (
                 <td className="table-td whitespace-nowrap">
                   {job.driver || job.assignedDriver ? (
-                    <div className="flex items-center gap-1.5 text-xs text-slate-800 font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      <span>
-                        {job.driver?.fullName || 
-                         job.assignedDriver?.fullName || 
-                         `${job.driver?.firstName || ''} ${job.driver?.lastName || ''}`.trim() || 
-                         'Assigned Technician'}
-                      </span>
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5 text-xs text-slate-800 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span>
+                          {job.driver?.fullName || 
+                           job.assignedDriver?.fullName || 
+                           `${job.driver?.firstName || ''} ${job.driver?.lastName || ''}`.trim() || 
+                           'Assigned Technician'}
+                        </span>
+                      </div>
+                      {(job.driverEtaMinutes || job.driverEstimatedArrivalAt) && (
+                        <div className="text-[10px] font-mono text-emerald-700 font-semibold flex items-center gap-1 pl-3" title="Technician Driving ETA">
+                          <Zap className="w-2.5 h-2.5 text-emerald-600" />
+                          <span>
+                            {job.driverEtaMinutes ? `Drive ETA: ~${job.driverEtaMinutes}m` : `Arrives ~${new Date(job.driverEstimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <button

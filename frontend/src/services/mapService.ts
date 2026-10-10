@@ -54,6 +54,10 @@ export interface MapJob {
   problemNotes?: string;
   appointmentDate?: string;
   estimatedArrivalAt?: string;
+  arrivalWindowStart?: string;
+  arrivalWindowEnd?: string;
+  driverEstimatedArrivalAt?: string;
+  driverEtaMinutes?: number;
   customer?: {
     id: string;
     fullName: string;

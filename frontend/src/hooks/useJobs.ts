@@ -89,11 +89,22 @@ export function useUpdateJobStatus() {
 export function useAssignDriver() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ jobId, driverId, etaMinutes }: { jobId: string; driverId: string; etaMinutes?: number }) =>
-      jobService.assignDriver(jobId, driverId, etaMinutes),
+    mutationFn: ({ 
+      jobId, 
+      driverId, 
+      etaMinutes,
+      driverEstimatedArrivalAt,
+    }: { 
+      jobId: string; 
+      driverId: string; 
+      etaMinutes?: number;
+      driverEstimatedArrivalAt?: string;
+    }) =>
+      jobService.assignDriver(jobId, driverId, etaMinutes, driverEstimatedArrivalAt),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['technician-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['dispatch-map-jobs'] });
     },
   });
 }

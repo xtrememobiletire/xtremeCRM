@@ -15,42 +15,45 @@ export default function Pagination({
   onPageChange,
   className = '',
 }: PaginationProps) {
-  if (totalPages <= 1) return null;
+  const safeTotalPages = Math.max(1, totalPages || 1);
 
   return (
-    <div className={`flex items-center justify-between px-4 py-3 bg-white border-t border-slate-100 rounded-b-xl ${className}`}>
-      <div className="text-xs text-slate-500">
+    <div className={`flex items-center justify-between px-4 py-3 bg-white border-t border-slate-200/90 rounded-b-xl select-none ${className}`}>
+      <div className="text-xs text-slate-500 font-medium">
         {totalCount !== undefined ? (
           <span>
-            Total <strong className="text-slate-800">{totalCount}</strong> records
+            Showing page <strong className="text-slate-800 font-bold">{currentPage}</strong> of{' '}
+            <strong className="text-slate-800 font-bold">{safeTotalPages}</strong> ({totalCount} total records)
           </span>
         ) : (
           <span>
-            Page <strong className="text-slate-800">{currentPage}</strong> of{' '}
-            <strong className="text-slate-800">{totalPages}</strong>
+            Page <strong className="text-slate-800 font-bold">{currentPage}</strong> of{' '}
+            <strong className="text-slate-800 font-bold">{safeTotalPages}</strong>
           </span>
         )}
       </div>
       <div className="flex items-center gap-1.5">
         <button
+          type="button"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage <= 1}
-          className="btn-secondary px-2 py-1 text-xs disabled:opacity-40"
+          className="btn-secondary px-2.5 py-1 text-xs disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer inline-flex items-center gap-1"
           aria-label="Previous Page"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Prev</span>
+          <span>Prev</span>
         </button>
-        <span className="px-2 py-1 text-xs font-semibold text-slate-700 bg-slate-50 rounded-md border border-slate-200">
-          {currentPage} / {totalPages}
+        <span className="px-2.5 py-1 text-xs font-bold text-slate-700 bg-slate-50 rounded-md border border-slate-200 font-mono">
+          {currentPage} / {safeTotalPages}
         </span>
         <button
+          type="button"
           onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage >= totalPages}
-          className="btn-secondary px-2 py-1 text-xs disabled:opacity-40"
+          disabled={currentPage >= safeTotalPages}
+          className="btn-secondary px-2.5 py-1 text-xs disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer inline-flex items-center gap-1"
           aria-label="Next Page"
         >
-          <span className="hidden sm:inline">Next</span>
+          <span>Next</span>
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </div>
