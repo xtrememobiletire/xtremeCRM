@@ -70,10 +70,15 @@ export const customerController = {
           phone: { contains: cleanDigits.slice(-10) },
         },
         include: {
-          vehicles: true,
+          vehicles: {
+            orderBy: { createdAt: 'desc' },
+          },
           jobs: {
             take: 3,
             orderBy: { createdAt: 'desc' },
+            include: {
+              vehicle: true,
+            },
           },
         },
       });

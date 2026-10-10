@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { 
   Phone, 
   User, 
@@ -10,12 +10,17 @@ import {
   FileText, 
   CheckCircle2, 
   Share2,
-  Globe
+  Globe,
+  Loader2,
+  Check,
+  X
 } from 'lucide-react';
 import { useKeyboardShortcuts } from '../../../hooks/useKeyboardShortcuts';
 import AddressAutocompleteInput, { type GeocodeLocation } from '../../common/AddressAutocompleteInput';
 import MultiServiceSelector, { type SelectedServiceItem } from '../../common/MultiServiceSelector';
 import { ArrivalWindowSelector, type ArrivalWindowData } from '../../common/ArrivalWindowSelector';
+import { customerService } from '../../../services/customerService';
+import { toast } from 'sonner';
 
 interface InboundIntakeFormProps {
   countryCode: string;
@@ -123,6 +128,63 @@ export default function InboundIntakeForm({
     onSubmitBooking();
   };
 
+  // Customer debounced lookup for repeat motorists
+  const [lookupResult, setLookupResult] = useState<any | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [dismissedLookup, setDismissedLookup] = useState(false);
+
+  useEffect(() => {
+    const digits = callerPhone.replace(/[^0-9]/g, '');
+    if (digits.length < 7) {
+      setLookupResult(null);
+      return;
+    }
+    if (dismissedLookup) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        setIsSearching(true);
+        const res = await customerService.lookupCustomer(callerPhone, countryCode);
+        if (res?.found && (res.customer || res.fleet)) {
+          setLookupResult(res);
+        } else {
+          setLookupResult(null);
+        }
+      } catch {
+        setLookupResult(null);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [callerPhone, countryCode, dismissedLookup]);
+
+  const cust = lookupResult?.customer;
+  const fleet = lookupResult?.fleet;
+  const latestVeh = cust?.jobs?.[0]?.vehicle || cust?.vehicles?.[0] || fleet?.vehicles?.[0];
+  const latestVehicleStr = latestVeh ? `${latestVeh.year || ''} ${latestVeh.make || ''} ${latestVeh.model || ''} (${latestVeh.tireSize || 'Std tire'})`.trim() : '';
+  const latestAddressStr = cust?.jobs?.[0]?.serviceAddress || cust?.address || fleet?.address || '';
+
+  const handleApplyCustomerDetails = () => {
+    if (!lookupResult) return;
+    const targetName = cust?.fullName || fleet?.contactPerson || fleet?.name || '';
+    if (targetName) setCallerName(targetName);
+
+    if (latestVeh) {
+      const vehMakeModel = latestVeh.make ? `${latestVeh.year || ''} ${latestVeh.make} ${latestVeh.model}`.trim() : '';
+      if (vehMakeModel) setVehicleMakeModel(vehMakeModel);
+      if (latestVeh.tireSize) setTireSize(latestVeh.tireSize);
+    }
+
+    if (latestAddressStr && !serviceAddress) {
+      setServiceAddress(latestAddressStr);
+    }
+
+    toast.success(`Loaded details for ${targetName || 'customer'} (service items unchanged)`);
+    setDismissedLookup(true);
+  };
+
   return (
     <form 
       ref={formRef}
@@ -181,22 +243,84 @@ export default function InboundIntakeForm({
           </div>
         )}
 
-        {/* Step 2: Caller Phone */}
+        {/* Step 2: Caller Phone with Country Dial Prefix & Auto-lookup */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 2 : 1}</span>
-            <Phone className="w-3.5 h-3.5 text-red-600" />
-            <span>Caller Phone Number <span className="text-red-500">*</span></span>
+          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 2 : 1}</span>
+              <Phone className="w-3.5 h-3.5 text-red-600" />
+              <span>Caller Phone Number <span className="text-red-500">*</span></span>
+            </span>
+            <span className="text-[11px] font-mono text-slate-400">
+              Country Dial: <strong className="text-slate-700 font-bold">{countryCode === 'UK' ? '+44 (UK)' : countryCode === 'US' ? '+1 (US)' : '+1 (CA)'}</strong>
+            </span>
           </label>
-          <input
-            type="text"
-            value={callerPhone}
-            onChange={(e) => setCallerPhone(e.target.value)}
-            placeholder="+1 (416) 555-0192"
-            className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
-            required
-            autoFocus
-          />
+          <div className="relative flex rounded-xl border border-slate-200 focus-within:ring-2 focus-within:ring-red-500/20 focus-within:border-red-500 transition-all shadow-2xs overflow-hidden bg-white">
+            <span className="inline-flex items-center px-3 text-xs font-mono font-bold text-slate-600 bg-slate-50 border-r border-slate-200 select-none">
+              {countryCode === 'UK' ? '+44' : '+1'}
+            </span>
+            <input
+              type="tel"
+              value={callerPhone}
+              onChange={(e) => {
+                setCallerPhone(e.target.value);
+                setDismissedLookup(false);
+              }}
+              placeholder={countryCode === 'UK' ? '7123 456789' : '(416) 555-0192'}
+              className="w-full px-3.5 py-2.5 text-sm rounded-r-xl font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none bg-transparent"
+              required
+              autoFocus
+            />
+            {isSearching && (
+              <div className="flex items-center pr-3">
+                <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+              </div>
+            )}
+          </div>
+
+          {/* Existing Customer Match Dropdown */}
+          {lookupResult && !dismissedLookup && (
+            <div className="mt-2.5 p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50/60 border border-emerald-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-start gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 shadow-2xs">
+                  <Check size={14} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-black text-slate-900 truncate">
+                      {cust?.fullName || fleet?.name || 'Valued Motorist'}
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wide">
+                      {fleet ? 'B2B Fleet Match' : 'Repeat Customer'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 mt-0.5 flex flex-wrap gap-x-2">
+                    {latestVehicleStr && <span><strong>Vehicle:</strong> {latestVehicleStr}</span>}
+                    {latestAddressStr && <span><strong>Last Loc:</strong> {latestAddressStr}</span>}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <button
+                  type="button"
+                  onClick={handleApplyCustomerDetails}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <CheckCircle2 size={13} />
+                  <span>Auto-fill Previous Details</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDismissedLookup(true)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 transition cursor-pointer"
+                  title="Dismiss (keep typing new details)"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Step 3: Customer Name */}

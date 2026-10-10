@@ -63,14 +63,14 @@ export const customerService = {
     return res.data.data;
   },
 
-  async lookupCustomer(phone: string): Promise<{
+  async lookupCustomer(phone: string, countryCode?: string): Promise<{
     found: boolean;
     isReturning: boolean;
     customer: any | null;
     fleet: any | null;
     driver: any | null;
   }> {
-    const res = await api.get('/customers/lookup', { params: { phone } });
+    const res = await api.get('/customers/lookup', { params: { phone, countryCode } });
     return res.data.data;
   },
 
