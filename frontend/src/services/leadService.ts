@@ -50,6 +50,7 @@ export interface Lead {
   assignedAgent?: { id: string; fullName: string; role: string } | null;
   assignedDispatcherId?: string | null;
   assignedDispatcher?: { id: string; fullName: string; role: string } | null;
+  dispatcherNotes?: string | null;
   vehicleTypes?: string | null;
   commonTireSizes?: string | null;
   testServices?: Array<{
@@ -58,6 +59,7 @@ export interface Lead {
     status: string;
     appointmentDate?: string;
     serviceAddress?: string;
+    driver?: { id: string; fullName: string; phone?: string } | null;
   }>;
   batch?: {
     id: string;
@@ -129,7 +131,7 @@ export const leadService = {
     return res.data.data;
   },
 
-  async advanceStage(id: string, data: { stage: LeadStage; assignedDispatcherId?: string; notes?: string; vehicleTypes?: string; commonTireSizes?: string }): Promise<Lead> {
+  async advanceStage(id: string, data: { stage: LeadStage; assignedDispatcherId?: string; notes?: string; dispatcherNotes?: string; vehicleTypes?: string; commonTireSizes?: string }): Promise<Lead> {
     const res = await api.post(`/leads/${id}/advance-stage`, data);
     return res.data.data;
   },

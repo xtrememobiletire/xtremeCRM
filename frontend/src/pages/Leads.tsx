@@ -16,7 +16,9 @@ import {
   UploadCloud,
   ChevronLeft,
   ChevronRight,
-  ArrowLeft
+  ArrowLeft,
+  ShieldCheck,
+  Edit3
 } from 'lucide-react';
 import Modal from '../components/ui/Modal';
 import LeadCommandCenter from '../components/leads/LeadCommandCenter';
@@ -35,9 +37,13 @@ import {
   type LeadStage, 
   type DisqualificationReason 
 } from '../services/leadService';
+import {
+  getAllowedPipelineTabs,
+  canPerformPipelineAction,
+  TAB_LABELS,
+  type LeadPoolTab
+} from '../config/pipelineAccessConfig';
 import { toast } from 'sonner';
-
-type LeadPoolTab = 'all' | 'unassigned' | 'called' | 'disqualified' | 'converted' | 'va' | 'callbacks' | 'dispatcher' | 'admin';
 
 const countryFlags: Record<string, string> = {
   CA: '🇨🇦',
@@ -55,14 +61,14 @@ export default function Leads() {
   const isDispatcher = user?.role === 'DISPATCHER';
   const isAdminOrGm = ['ADMIN', 'GENERAL_MANAGER'].includes(user?.role || '');
 
-  // Determine initial tab based on role
+  // Determine initial tab strictly along lifecycle
   const initialTab: LeadPoolTab = isVa
-    ? 'va'
+    ? 'unassigned'
     : isAgent
     ? 'callbacks'
     : isDispatcher
     ? 'dispatcher'
-    : 'all';
+    : 'unassigned';
 
   const [activeTab, setActiveTab] = useState<LeadPoolTab>(initialTab);
   const [currentPage, setCurrentPage] = useState(1);
@@ -92,6 +98,10 @@ export default function Leads() {
   // Fleet conversion modal state
   const [convertingLead, setConvertingLead] = useState<Lead | null>(null);
 
+  // Dispatcher Feasibility Notes modal state
+  const [editingNotesLead, setEditingNotesLead] = useState<Lead | null>(null);
+  const [dispatcherNotesText, setDispatcherNotesText] = useState('');
+
   // Auto-dialer toggle
   const [autoDialEnabled, setAutoDialEnabled] = useState(false);
 
@@ -103,14 +113,16 @@ export default function Leads() {
   const [vaInSession, setVaInSession] = useState(false);
 
   // Upper Management container view mode: 'BATCHES' | 'DRILLDOWN' | 'GLOBAL'
-  const [managementViewMode, setManagementViewMode] = useState<'BATCHES' | 'DRILLDOWN' | 'GLOBAL'>('BATCHES');
+  const [managementViewMode, setManagementViewMode] = useState<'BATCHES' | 'DRILLDOWN' | 'GLOBAL'>(
+    isDispatcher ? 'GLOBAL' : 'BATCHES'
+  );
   const [inspectedBatchId, setInspectedBatchId] = useState<string | null>(null);
 
   // 1. Available active batches for VA campaign selection (Zero country friction, never future batches)
   const { data: availableBatches = [], isLoading: isLoadingVaBatches, refetch: refetchBatches } = useQuery({
     queryKey: ['available-batches-va'],
     queryFn: () => leadService.getAvailableBatchesForVa(),
-    enabled: isVa || isAgent || activeTab === 'va',
+    enabled: isVa || isAgent,
     refetchInterval: 30000,
   });
 
@@ -127,7 +139,7 @@ export default function Leads() {
   const { data: queueResponse, isLoading: isLoadingQueue, refetch: refetchQueue } = useQuery({
     queryKey: ['agent-queue', country, selectedBatchId],
     queryFn: () => leadService.getAgentQueue(country, selectedBatchId || undefined),
-    enabled: (isVa || isAgent || activeTab === 'va') && vaInSession,
+    enabled: (isVa || isAgent) && vaInSession,
   });
 
   const queueData = queueResponse || {
@@ -149,7 +161,7 @@ export default function Leads() {
       page: currentPage,
       limit: pageSize,
     }),
-    enabled: activeTab !== 'va' && (managementViewMode === 'DRILLDOWN' || managementViewMode === 'GLOBAL' || !isAdminOrGm),
+    enabled: managementViewMode === 'DRILLDOWN' || managementViewMode === 'GLOBAL' || !isAdminOrGm,
   });
 
   const tabLeads: Lead[] = leadsResponse?.data || [];
@@ -160,10 +172,10 @@ export default function Leads() {
     totalPages: Math.max(1, Math.ceil((tabLeads.length || 1) / pageSize)),
   };
   const displayLeads: Lead[] = tabLeads;
-  const isLoading = activeTab === 'va' ? isLoadingQueue : isLoadingLeads;
+  const isLoading = (isVa || isAgent) && vaInSession ? isLoadingQueue : isLoadingLeads;
 
   const refetchAll = () => {
-    if (activeTab === 'va') {
+    if (isVa || isAgent) {
       refetchQueue();
       refetchBatches();
     } else {
@@ -231,6 +243,8 @@ export default function Leads() {
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
       queryClient.invalidateQueries({ queryKey: ['available-batches-va'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
 
       if (autoDialEnabled && isAgent) {
         setTimeout(async () => {
@@ -257,6 +271,8 @@ export default function Leads() {
       toast.success('Lead stage advanced!');
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to advance stage');
@@ -272,6 +288,8 @@ export default function Leads() {
       setDisqualificationText('');
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to disqualify lead');
@@ -285,6 +303,8 @@ export default function Leads() {
       setTestServiceLead(null);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to create trial service job');
@@ -297,6 +317,8 @@ export default function Leads() {
       toast.success(data?.message || 'Lead restored to active outreach pipeline!');
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to reactivate lead');
@@ -311,9 +333,24 @@ export default function Leads() {
       setConvertingLead(null);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['fleets'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to convert lead');
+    },
+  });
+
+  const updateDispatcherNotesMutation = useMutation({
+    mutationFn: ({ id, dispatcherNotes }: { id: string; dispatcherNotes: string }) =>
+      leadService.updateLead(id, { dispatcherNotes } as any),
+    onSuccess: () => {
+      toast.success('Dispatcher feasibility notes saved!');
+      setEditingNotesLead(null);
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to save feasibility notes');
     },
   });
 
@@ -338,7 +375,7 @@ export default function Leads() {
   return (
     <div className="space-y-5">
       {/* 1. VA / CALL AGENT WORKFLOW: ZERO FRICTION CAMPAIGN CHOOSER & 1-LEAD FOCUS CARD */}
-      {(isVa || isAgent || activeTab === 'va') && !isAdminOrGm && !isDispatcher ? (
+      {(isVa || isAgent) && !isAdminOrGm && !isDispatcher ? (
         !vaInSession ? (
           <VaBatchHub
             batches={availableBatches}
@@ -520,7 +557,7 @@ export default function Leads() {
             onInspectBatch={(batchId: string) => {
               setInspectedBatchId(batchId);
               setManagementViewMode('DRILLDOWN');
-              setActiveTab(isDispatcher ? 'dispatcher' : 'all');
+              setActiveTab(isDispatcher ? 'dispatcher' : 'unassigned');
               setCurrentPage(1);
             }}
             onOpenGlobalLedger={() => {
@@ -602,91 +639,37 @@ export default function Leads() {
                 setActiveTab(tab);
                 setCurrentPage(1);
               }}
-              onStartDistribution={() => distributeMutation.mutate()}
-              onOpenUpload={() => setIsUploadModalOpen(true)}
             />
 
-            {/* Upper Management Pool Tabs */}
+            {/* Upper Management Lifecycle Pipeline Tabs */}
             <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200 overflow-x-auto">
-              <button
-                type="button"
-                onClick={() => handleTabChange('all')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-                  activeTab === 'all'
-                    ? 'bg-red-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
-              >
-                <Layers size={13} />
-                <span>All Leads (Assigned & Unassigned)</span>
-              </button>
+              {getAllowedPipelineTabs(user?.role).map((tab) => {
+                const label = TAB_LABELS[tab] || tab;
+                const Icon = 
+                  tab === 'unassigned' ? Layers :
+                  tab === 'assigned' ? PhoneCall :
+                  tab === 'callbacks' ? Calendar :
+                  tab === 'dispatcher' ? Truck :
+                  tab === 'approval' ? ShieldCheck :
+                  tab === 'converted' ? ClipboardCheck :
+                  tab === 'disqualified' ? XCircle : Layers;
 
-              <button
-                type="button"
-                onClick={() => handleTabChange('unassigned')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-                  activeTab === 'unassigned'
-                    ? 'bg-red-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
-              >
-                <Layers size={13} />
-                <span>Unassigned Leads</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTabChange('called')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-                  activeTab === 'called'
-                    ? 'bg-red-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
-              >
-                <PhoneCall size={13} />
-                <span>Called / In-Progress</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTabChange('disqualified')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-                  activeTab === 'disqualified'
-                    ? 'bg-red-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
-              >
-                <XCircle size={13} />
-                <span>Disqualified Audit</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTabChange('converted')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-                  activeTab === 'converted'
-                    ? 'bg-red-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
-              >
-                <ClipboardCheck size={13} />
-                <span>Converted Fleets</span>
-              </button>
-
-              {isDispatcher && (
-                <button
-                  type="button"
-                  onClick={() => handleTabChange('dispatcher')}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-                    activeTab === 'dispatcher'
-                      ? 'bg-red-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                  }`}
-                >
-                  <Truck size={13} />
-                  <span>Dispatcher Review Queue</span>
-                </button>
-              )}
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => handleTabChange(tab)}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                      activeTab === tab
+                        ? 'bg-red-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                    }`}
+                  >
+                    <Icon size={13} />
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Search & Filters */}
@@ -720,17 +703,7 @@ export default function Leads() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  {activeTab === 'all' ? (
-                    <>
-                      <th className="py-3 px-4">Company & Fleet Scale</th>
-                      <th className="py-3 px-4">Decision Makers & Contacts</th>
-                      <th className="py-3 px-4">Phone & Communications</th>
-                      <th className="py-3 px-4">Assignment Status</th>
-                      <th className="py-3 px-4">Pipeline Stage & Outcome</th>
-                      <th className="py-3 px-4">Campaign Batch & Ingested</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
-                    </>
-                  ) : activeTab === 'unassigned' ? (
+                  {activeTab === 'unassigned' ? (
                     <>
                       <th className="py-3 px-4">Company & Units</th>
                       <th className="py-3 px-4">Campaign Batch</th>
@@ -739,21 +712,40 @@ export default function Leads() {
                       <th className="py-3 px-4">Priority & Ingested</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </>
-                  ) : activeTab === 'called' ? (
+                  ) : activeTab === 'assigned' ? (
                     <>
                       <th className="py-3 px-4">Company & Units</th>
                       <th className="py-3 px-4">Contact & Leadership</th>
                       <th className="py-3 px-4">Phone & Emails</th>
-                      <th className="py-3 px-4">Assigned VA / Staff</th>
-                      <th className="py-3 px-4">Call Outcome & Callback</th>
+                      <th className="py-3 px-4">Assigned VA / Caller</th>
+                      <th className="py-3 px-4">Outreach Outcome</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </>
-                  ) : activeTab === 'disqualified' ? (
+                  ) : activeTab === 'callbacks' ? (
                     <>
                       <th className="py-3 px-4">Company & Units</th>
-                      <th className="py-3 px-4">Contact & Phone</th>
-                      <th className="py-3 px-4">Disqualification Reason</th>
-                      <th className="py-3 px-4">Audit Notes & Date</th>
+                      <th className="py-3 px-4">Contact Person</th>
+                      <th className="py-3 px-4">Phone & Communications</th>
+                      <th className="py-3 px-4">Scheduled Callback Time</th>
+                      <th className="py-3 px-4">Assigned Agent</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </>
+                  ) : activeTab === 'dispatcher' ? (
+                    <>
+                      <th className="py-3 px-4">Company & Fleet Scale</th>
+                      <th className="py-3 px-4">Tires & Specs</th>
+                      <th className="py-3 px-4">Trial Work Order</th>
+                      <th className="py-3 px-4">Dispatcher Feasibility Notes</th>
+                      <th className="py-3 px-4">Assigned Staff</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </>
+                  ) : activeTab === 'approval' ? (
+                    <>
+                      <th className="py-3 px-4">Company & Fleet Scale</th>
+                      <th className="py-3 px-4">Leadership & Signing Authority</th>
+                      <th className="py-3 px-4">Trial Verification Proof</th>
+                      <th className="py-3 px-4">Tires & Unit Details</th>
+                      <th className="py-3 px-4">Onboarding Status</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </>
                   ) : activeTab === 'converted' ? (
@@ -765,13 +757,22 @@ export default function Leads() {
                       <th className="py-3 px-4">Conversion Date</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </>
-                  ) : (
+                  ) : activeTab === 'disqualified' ? (
                     <>
                       <th className="py-3 px-4">Company & Units</th>
-                      <th className="py-3 px-4">Contact & Leadership</th>
-                      <th className="py-3 px-4">Phone & Emails</th>
-                      <th className="py-3 px-4">Stage / Status</th>
-                      <th className="py-3 px-4">Attribution / Assigned</th>
+                      <th className="py-3 px-4">Contact & Phone</th>
+                      <th className="py-3 px-4">Disqualification Reason</th>
+                      <th className="py-3 px-4">Audit Notes & Date</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="py-3 px-4">Company & Fleet Scale</th>
+                      <th className="py-3 px-4">Decision Makers & Contacts</th>
+                      <th className="py-3 px-4">Phone & Communications</th>
+                      <th className="py-3 px-4">Assignment Status</th>
+                      <th className="py-3 px-4">Pipeline Stage & Outcome</th>
+                      <th className="py-3 px-4">Campaign Batch & Ingested</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </>
                   )}
@@ -850,6 +851,22 @@ export default function Leads() {
                             {lead.assignedAgent ? (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
                                 <span>Agent: {lead.assignedAgent.fullName}</span>
+                              </span>
+                            ) : lead.assignedDispatcher ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                                <span>Dispatcher: {lead.assignedDispatcher.fullName}</span>
+                              </span>
+                            ) : lead.stage === 'ADMIN_APPROVAL' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                                <span>GM Signoff Stage</span>
+                              </span>
+                            ) : lead.stage === 'CONVERTED' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                <span>Converted</span>
+                              </span>
+                            ) : lead.stage === 'DISQUALIFIED' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                                <span>Disqualified</span>
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
@@ -1086,8 +1103,8 @@ export default function Leads() {
                     );
                   }
 
-                  // TAB 2: CALLED / IN-PROGRESS LEADS
-                  if (activeTab === 'called') {
+                  // TAB 2: ASSIGNED / IN-PROGRESS OUTREACH
+                  if (activeTab === 'assigned') {
                     return (
                       <tr key={lead.id} className="hover:bg-slate-50/70 transition">
                         <td className="py-3.5 px-4">
@@ -1128,11 +1145,6 @@ export default function Leads() {
                           ) : (
                             <span className="text-slate-400">Unassigned Caller</span>
                           )}
-                          {lead.assignedDispatcher && (
-                            <div className="text-[10px] text-purple-700 font-semibold mt-0.5">
-                              Dispatcher: {lead.assignedDispatcher.fullName}
-                            </div>
-                          )}
                         </td>
 
                         <td className="py-3.5 px-4">
@@ -1144,13 +1156,6 @@ export default function Leads() {
                             ) : (
                               <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border bg-blue-50 text-blue-800 border-blue-200">
                                 In Calling Queue
-                              </span>
-                            )}
-
-                            {lead.callbackDate && (
-                              <span className="text-[10px] font-semibold text-blue-700 flex items-center gap-1">
-                                <Calendar size={10} />
-                                <span>{lead.callbackDay || 'Callback'}: {lead.callbackTime || new Date(lead.callbackDate).toLocaleDateString()}</span>
                               </span>
                             )}
                           </div>
@@ -1174,16 +1179,6 @@ export default function Leads() {
                             >
                               <ClipboardCheck size={13} />
                             </button>
-                            {isAdminOrGm && (
-                              <button
-                                type="button"
-                                onClick={() => setConvertingLead(lead)}
-                                className="px-2 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[10px] transition cursor-pointer"
-                                title="Convert to Active Contracted Fleet Account"
-                              >
-                                Convert Fleet
-                              </button>
-                            )}
                             <button
                               type="button"
                               onClick={() => handleWhatsAppChat(lead)}
@@ -1192,18 +1187,415 @@ export default function Leads() {
                             >
                               <MessageSquare size={13} />
                             </button>
+                            {canPerformPipelineAction(user?.role, 'DISQUALIFY_LEAD') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDisqualifyingLead(lead);
+                                  setDisqualificationCategory('NOT_INTERESTED');
+                                  setDisqualificationText('');
+                                }}
+                                className="p-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition cursor-pointer"
+                                title="Disqualify Lead"
+                              >
+                                <XCircle size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  // TAB: CALLBACKS (AGENT PRIORITY)
+                  if (activeTab === 'callbacks') {
+                    const isOverdue = lead.callbackDate && new Date(lead.callbackDate) <= new Date();
+                    return (
+                      <tr key={lead.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {lead.numberOfUnits ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                <Truck size={10} />
+                                <span>{lead.numberOfUnits} Units</span>
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 font-semibold text-slate-800">
+                          <div>{lead.contactPerson}</div>
+                          {(lead.fleetManager || lead.ceoOwnerName) && (
+                            <div className="text-[10px] text-slate-500 font-normal">
+                              {lead.fleetManager && <span>FM: {lead.fleetManager}</span>}
+                              {lead.fleetManager && lead.ceoOwnerName && <span> • </span>}
+                              {lead.ceoOwnerName && <span>CEO: {lead.ceoOwnerName}</span>}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="font-mono font-bold text-slate-800">{lead.phone}</div>
+                          {lead.email && <div className="text-[11px] text-slate-500 truncate max-w-[170px]">{lead.email}</div>}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="flex flex-col gap-1 items-start">
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              isOverdue 
+                                ? 'bg-rose-50 text-rose-800 border-rose-200 animate-pulse' 
+                                : 'bg-blue-50 text-blue-800 border-blue-200'
+                            }`}>
+                              <Calendar size={10} />
+                              <span>{lead.callbackDay || 'Due'}: {lead.callbackTime || (lead.callbackDate ? new Date(lead.callbackDate).toLocaleDateString() : 'Scheduled')}</span>
+                            </span>
+                            {isOverdue && (
+                              <span className="text-[9px] font-bold text-rose-600 uppercase tracking-wider">
+                                Overdue Callback
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-slate-600 text-[11px]">
+                          {lead.assignedAgent ? (
+                            <span className="font-bold text-slate-800">Agent: {lead.assignedAgent.fullName}</span>
+                          ) : (
+                            <span className="text-amber-700 font-medium">Unassigned (Open Pool)</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleCallLead(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="Dial Callback"
+                            >
+                              <PhoneCall size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDispositionLead(lead)}
+                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
+                              title="Log Call Outcome"
+                            >
+                              <ClipboardCheck size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleWhatsAppChat(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="WhatsApp Chat"
+                            >
+                              <MessageSquare size={13} />
+                            </button>
+                            {canPerformPipelineAction(user?.role, 'DISQUALIFY_LEAD') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDisqualifyingLead(lead);
+                                  setDisqualificationCategory('NOT_INTERESTED');
+                                  setDisqualificationText('');
+                                }}
+                                className="p-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition cursor-pointer"
+                                title="Disqualify Lead"
+                              >
+                                <XCircle size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  // TAB: DISPATCHER REVIEW QUEUE
+                  if (activeTab === 'dispatcher') {
+                    const latestTrial = lead.testServices && lead.testServices.length > 0 ? lead.testServices[0] : null;
+                    return (
+                      <tr key={lead.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          <div className="text-[11px] text-slate-600 mt-0.5">
+                            {lead.contactPerson} • <span className="font-mono text-slate-800 font-semibold">{lead.phone}</span>
+                          </div>
+                          {lead.numberOfUnits && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 mt-1">
+                              <Truck size={10} />
+                              <span>{lead.numberOfUnits} Units</span>
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="space-y-1">
+                            {lead.commonTireSizes ? (
+                              <div className="font-mono font-bold text-slate-800 text-[11px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded inline-block">
+                                {lead.commonTireSizes}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-400">Tires pending</span>
+                            )}
+                            {lead.vehicleTypes && (
+                              <div className="text-[10px] text-slate-500 font-medium">
+                                {lead.vehicleTypes}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          {latestTrial ? (
+                            <div className="flex flex-col gap-1 items-start">
+                              <span className="font-mono font-bold text-[10px] text-purple-900 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
+                                {latestTrial.jobCode}
+                              </span>
+                              <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                                latestTrial.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                                latestTrial.status === 'ASSIGNED' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                                'bg-amber-100 text-amber-800 border border-amber-300'
+                              }`}>
+                                {latestTrial.status}
+                              </span>
+                              {latestTrial.driver && (
+                                <div className="text-[10px] text-slate-500">
+                                  Tech: <span className="font-semibold text-slate-700">{latestTrial.driver.fullName}</span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 italic">No trial work order</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          {lead.dispatcherNotes ? (
+                            <div className="max-w-[200px]">
+                              <p className="text-[11px] text-slate-700 line-clamp-2 italic" title={lead.dispatcherNotes}>
+                                &quot;{lead.dispatcherNotes}&quot;
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingNotesLead(lead);
+                                  setDispatcherNotesText(lead.dispatcherNotes || '');
+                                }}
+                                className="text-[10px] text-purple-700 hover:underline font-bold mt-0.5 cursor-pointer"
+                              >
+                                Edit note
+                              </button>
+                            </div>
+                          ) : (
                             <button
                               type="button"
                               onClick={() => {
-                                setDisqualifyingLead(lead);
-                                setDisqualificationCategory('NOT_INTERESTED');
-                                setDisqualificationText('');
+                                setEditingNotesLead(lead);
+                                setDispatcherNotesText('');
                               }}
-                              className="p-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition cursor-pointer"
-                              title="Disqualify Lead"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 hover:bg-purple-50 text-slate-600 hover:text-purple-700 text-[10px] font-bold border border-slate-200 transition cursor-pointer"
                             >
-                              <XCircle size={13} />
+                              <Edit3 size={10} />
+                              <span>Add Feasibility Note</span>
                             </button>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-slate-600 text-[11px]">
+                          {lead.assignedDispatcher ? (
+                            <span className="font-bold text-purple-900 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md text-[10px]">
+                              {lead.assignedDispatcher.fullName}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">Unassigned Dispatcher</span>
+                          )}
+                          <div className="text-[10px] text-slate-400 mt-1">
+                            From: {lead.uploadedBy?.fullName || 'VA Outreach'}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => handleCallLead(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="Dial Lead"
+                            >
+                              <PhoneCall size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDispositionLead(lead)}
+                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
+                              title="Log Call Outcome"
+                            >
+                              <ClipboardCheck size={13} />
+                            </button>
+
+                            {canPerformPipelineAction(user?.role, 'BOOK_TRIAL_JOB') && (
+                              <button
+                                type="button"
+                                onClick={() => setTestServiceLead(lead)}
+                                className="px-2 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                                title="Book Feasibility Trial Service Job"
+                              >
+                                <Wrench size={11} />
+                                <span>Trial Job</span>
+                              </button>
+                            )}
+
+                            {canPerformPipelineAction(user?.role, 'ADVANCE_TO_GM_SIGNOFF') && (
+                              <button
+                                type="button"
+                                onClick={() => advanceStageMutation.mutate({ id: lead.id, stage: 'ADMIN_APPROVAL' })}
+                                className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                                title="Feasibility verified: Advance to GM Signoff"
+                              >
+                                <ShieldCheck size={11} />
+                                <span>GM Signoff</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleWhatsAppChat(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="WhatsApp Chat"
+                            >
+                              <MessageSquare size={13} />
+                            </button>
+
+                            {canPerformPipelineAction(user?.role, 'DISQUALIFY_LEAD') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDisqualifyingLead(lead);
+                                  setDisqualificationCategory('OUT_OF_SERVICE_AREA');
+                                  setDisqualificationText('');
+                                }}
+                                className="p-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition cursor-pointer"
+                                title="Disqualify Lead (e.g. Infeasible, Out of Service Area)"
+                              >
+                                <XCircle size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  // TAB: GM / ADMIN APPROVAL
+                  if (activeTab === 'approval') {
+                    const latestTrial = lead.testServices && lead.testServices.length > 0 ? lead.testServices[0] : null;
+                    return (
+                      <tr key={lead.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                            Ingested: {new Date(lead.createdAt).toLocaleDateString()}
+                          </div>
+                          {lead.numberOfUnits && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 mt-1">
+                              <Truck size={10} />
+                              <span>{lead.numberOfUnits} Units</span>
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 font-semibold text-slate-800">
+                          <div>{lead.contactPerson}</div>
+                          {lead.poaEmail && (
+                            <div className="text-[10px] text-amber-700 font-semibold truncate max-w-[170px]" title="POA Billing Email">
+                              POA: {lead.poaEmail}
+                            </div>
+                          )}
+                          <div className="font-mono text-slate-700 text-xs mt-0.5">{lead.phone}</div>
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          {latestTrial ? (
+                            <div className="flex flex-col gap-1 items-start">
+                              <span className="font-mono font-bold text-[10px] text-emerald-900 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                                Trial: {latestTrial.jobCode}
+                              </span>
+                              <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase ${
+                                latestTrial.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {latestTrial.status}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                              Direct Feasibility Verified
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="font-mono font-bold text-slate-800 text-[11px]">
+                            {lead.commonTireSizes || 'Standard Fleet Sizes'}
+                          </div>
+                          {lead.dispatcherNotes && (
+                            <p className="text-[10px] text-slate-600 line-clamp-1 italic mt-0.5">
+                              Note: {lead.dispatcherNotes}
+                            </p>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-900 border border-purple-200 flex items-center gap-1 w-max">
+                            <ShieldCheck size={11} />
+                            <span>Awaiting Onboarding</span>
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {canPerformPipelineAction(user?.role, 'CONVERT_FLEET') && (
+                              <button
+                                type="button"
+                                onClick={() => setConvertingLead(lead)}
+                                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1 shadow-xs"
+                                title="Execute contract & convert to active B2B Fleet"
+                              >
+                                <ClipboardCheck size={13} />
+                                <span>Convert Fleet</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleCallLead(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="Dial Lead"
+                            >
+                              <PhoneCall size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleWhatsAppChat(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="WhatsApp Chat"
+                            >
+                              <MessageSquare size={13} />
+                            </button>
+                            {canPerformPipelineAction(user?.role, 'DISQUALIFY_LEAD') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDisqualifyingLead(lead);
+                                  setDisqualificationCategory('NOT_INTERESTED');
+                                  setDisqualificationText('');
+                                }}
+                                className="p-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition cursor-pointer"
+                                title="Disqualify Lead"
+                              >
+                                <XCircle size={13} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1661,6 +2053,54 @@ export default function Leads() {
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs cursor-pointer shadow-xs"
               >
                 {disqualifyMutation.isPending ? 'Logging...' : 'Confirm Disqualification'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Dispatcher Feasibility Notes Modal */}
+      {editingNotesLead && (
+        <Modal
+          isOpen={!!editingNotesLead}
+          onClose={() => setEditingNotesLead(null)}
+          title={`Dispatcher Feasibility Assessment — ${editingNotesLead.companyName}`}
+          maxWidth="max-w-md"
+        >
+          <div className="space-y-3.5 text-xs">
+            <p className="text-slate-500">
+              Record logistical constraints, route coverage notes, fleet tire specs, or dispatch requirements before trial service or GM signoff.
+            </p>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Feasibility & Operational Notes</label>
+              <textarea
+                rows={4}
+                placeholder="E.g., Requires 22.5 commercial drive tires, located in north corridor zone 2, dock access available after 4 PM..."
+                value={dispatcherNotesText}
+                onChange={(e) => setDispatcherNotesText(e.target.value)}
+                className="input-field resize-none"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingNotesLead(null)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={updateDispatcherNotesMutation.isPending}
+                onClick={() => {
+                  updateDispatcherNotesMutation.mutate({
+                    id: editingNotesLead.id,
+                    dispatcherNotes: dispatcherNotesText,
+                  });
+                }}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs cursor-pointer shadow-xs"
+              >
+                {updateDispatcherNotesMutation.isPending ? 'Saving...' : 'Save Feasibility Notes'}
               </button>
             </div>
           </div>
