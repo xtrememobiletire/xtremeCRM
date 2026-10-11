@@ -1,6 +1,7 @@
 import { Truck } from 'lucide-react';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { useTenant } from '../../context/TenantContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface Fleet {
   id: string;
@@ -8,8 +9,10 @@ interface Fleet {
   name?: string;
   companyName: string;
   contactName?: string;
+  contactPerson?: string;
   phone?: string;
   email?: string;
+  password?: string;
   paymentTerms: string;
   creditLimitCents?: number;
   outstandingBalanceCents?: number;
@@ -24,6 +27,8 @@ interface FleetTableProps {
 
 export default function FleetTable({ fleets, onSelectFleet }: FleetTableProps) {
   const { currencySymbol } = useTenant();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER' || user?.role?.toUpperCase().includes('ADMIN');
 
   if (!fleets || fleets.length === 0) return null;
 
@@ -34,6 +39,8 @@ export default function FleetTable({ fleets, onSelectFleet }: FleetTableProps) {
           <tr>
             <th className="table-th">Fleet ID</th>
             <th className="table-th">Company Name</th>
+            <th className="table-th">Email</th>
+            {isAdmin && <th className="table-th">Password</th>}
             <th className="table-th">Primary Contact</th>
             <th className="table-th">Payment Terms</th>
             <th className="table-th">Enrolled Vehicles</th>
@@ -60,8 +67,28 @@ export default function FleetTable({ fleets, onSelectFleet }: FleetTableProps) {
                 </div>
               </td>
               <td className="table-td">
-                <div className="text-xs font-semibold text-slate-800">{f.contactName || 'Corporate'}</div>
-                <div className="text-[11px] font-mono text-slate-500">{f.phone || f.email}</div>
+                {f.email ? (
+                  <span className="text-xs text-slate-700 font-medium">
+                    {f.email}
+                  </span>
+                ) : (
+                  <span className="text-slate-400 text-xs">—</span>
+                )}
+              </td>
+              {isAdmin && (
+                <td className="table-td" onClick={(e) => e.stopPropagation()}>
+                  {f.password ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-xs bg-slate-100 text-slate-900 border border-slate-200 font-semibold select-all">
+                      {f.password}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400 text-xs italic">—</span>
+                  )}
+                </td>
+              )}
+              <td className="table-td">
+                <div className="text-xs font-semibold text-slate-800">{f.contactName || f.contactPerson || 'Corporate'}</div>
+                <div className="text-[11px] font-mono text-slate-500">{f.phone || '—'}</div>
               </td>
               <td className="table-td">
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">

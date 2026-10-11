@@ -8,6 +8,7 @@ export interface FleetFormData {
   phone: string;
   altPhone: string;
   email: string;
+  password?: string;
   poaEmail: string;
   address: string;
   website: string;
@@ -146,7 +147,7 @@ export default function FleetInfoSection({ formData, onChange, countryCode = 'CA
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Official / Billing Email</label>
             <input
@@ -155,6 +156,16 @@ export default function FleetInfoSection({ formData, onChange, countryCode = 'CA
               onChange={(e) => onChange('email', e.target.value)}
               placeholder="dispatch@company.com"
               className="input-base"
+            />
+          </div>
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Fleet Manager Password</label>
+            <input
+              type="text"
+              value={formData.password || ''}
+              onChange={(e) => onChange('password', e.target.value)}
+              placeholder="Set manager password..."
+              className="input-base font-mono"
             />
           </div>
           <div>

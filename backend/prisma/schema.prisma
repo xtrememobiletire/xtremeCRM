@@ -299,6 +299,7 @@ model Fleet {
   altPhone            String?     @map("alt_phone")
   ceoOwnerName        String?     @map("ceo_owner_name")
   email               String?     // Billing/contact email
+  password            String?     // Fleet manager portal login password (viewable by admin)
   poaEmail            String?     @map("poa_email") // Power of Attorney (Signing / Billing Authority)
   fleetManager        String?     @map("fleet_manager")
   website             String?
