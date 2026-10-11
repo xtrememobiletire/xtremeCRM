@@ -1,6 +1,8 @@
 import { NavLink } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
+import { jobService } from '../../services/jobService';
 import { 
   BarChart3, 
   Wrench, 
@@ -13,7 +15,8 @@ import {
   LogOut,
   History,
   PhoneIncoming,
-  PhoneOutgoing
+  PhoneOutgoing,
+  Globe
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,9 +27,13 @@ interface SidebarProps {
 
 const baseNavItems = [
   { icon: BarChart3, label: 'Dashboard', path: '/dashboard' },
+  { icon: Wrench, label: 'Jobs', path: '/jobs' },
+  { icon: Truck, label: 'Fleet Jobs', path: '/fleet-jobs' },
+  { icon: Globe, label: 'Bookings', path: '/bookings' },
+  { icon: PhoneIncoming, label: 'Roadside Intake', path: '/inbound' },
+  { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
   { icon: PhoneOutgoing, label: 'Leads', path: '/leads' },
   { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
-  { icon: Wrench, label: 'Jobs', path: '/jobs' },
   { icon: Truck, label: 'Fleets', path: '/fleets' },
   { icon: Users, label: 'Customers', path: '/customers' },
   { icon: DollarSign, label: 'Accounting', path: '/accounting' },
@@ -43,6 +50,14 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
   const isAgent = user?.role === 'CALL_AGENT';
   const isVa = user?.role === 'VIRTUAL_ASSISTANT';
 
+  // Live pending jobs count for sidebar badge
+  const { data: pendingJobsCount = 0 } = useQuery({
+    queryKey: ['pending-jobs-count', country],
+    queryFn: () => jobService.getPendingJobsCount(country),
+    refetchInterval: 15000,
+    enabled: !isFleetManager && !isMember && !isDriver && !isVa,
+  });
+
   const navItems = isFleetManager
     ? [{ icon: Truck, label: 'Fleet Portal', path: '/fleet-dashboard' }]
     : isMember
@@ -58,9 +73,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       ]
     : isDispatcher
     ? [
+        { icon: Wrench, label: 'Jobs', path: '/jobs' },
+        { icon: Truck, label: 'Fleet Jobs', path: '/fleet-jobs' },
+        { icon: Globe, label: 'Bookings', path: '/bookings' },
+        { icon: PhoneIncoming, label: 'Roadside Intake', path: '/inbound' },
+        { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
         { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
         { icon: PhoneOutgoing, label: 'Leads', path: '/leads' },
-        { icon: Wrench, label: 'Jobs', path: '/jobs' },
         { icon: Truck, label: 'Fleets', path: '/fleets' },
         { icon: Users, label: 'Customers', path: '/customers' },
       ]
@@ -70,8 +89,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       ]
     : isAgent
     ? [
+        { icon: PhoneIncoming, label: 'Roadside Intake', path: '/inbound' },
+        { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
         { icon: PhoneOutgoing, label: 'Leads Queue', path: '/leads' },
-        { icon: PhoneIncoming, label: 'Inbound', path: '/inbound' },
       ]
     : baseNavItems;
 
@@ -128,7 +148,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                 onClick={() => { if (isOpen) onClose(); }}
                 title={isCollapsed ? item.label : undefined}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-xl text-xs sm:text-sm transition-all duration-150 ${
+                  `relative flex items-center gap-3 rounded-xl text-xs sm:text-sm transition-all duration-150 ${
                     isCollapsed 
                       ? 'md:justify-center md:px-0 md:py-2.5 px-3.5 py-2.5' 
                       : 'px-3.5 py-2.5'
@@ -140,8 +160,22 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                 }
               >
                 <Icon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                {(!isCollapsed || isOpen) && (
-                  <span className="truncate tracking-tight">{item.label}</span>
+                {(!isCollapsed || isOpen) ? (
+                  <>
+                    <span className="truncate tracking-tight flex-1">{item.label}</span>
+                    {item.path === '/jobs' && pendingJobsCount > 0 && (
+                      <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs">
+                        {pendingJobsCount}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  item.path === '/jobs' && pendingJobsCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    </span>
+                  )
                 )}
               </NavLink>
             );

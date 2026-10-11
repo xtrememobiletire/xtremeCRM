@@ -150,6 +150,12 @@ enum DisqualificationReason {
   OTHER                    // Operational or custom rejection reason
 }
 
+enum BatchStatus {
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+}
+
 enum AssignmentMethod {
   MANUAL
   ROUND_ROBIN
@@ -204,6 +210,12 @@ model User {
   workingDays     String? @map("working_days")     // e.g. "7 Days a Week"
   workingHours    String? @map("working_hours")    // e.g. "9:00 AM – 8:00 PM"
   approvedByName  String? @map("approved_by_name") // e.g. "Harry King"
+
+  // Geolocation & Driver Base Tracking (Future-proof live tracking & dispatch origin)
+  latitude              Float?
+  longitude             Float?
+  lastLocationUpdatedAt DateTime? @db.Timestamptz @map("last_location_updated_at")
+  heading               Float?
 
   createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
   updatedAt DateTime @updatedAt @db.Timestamptz @map("updated_at")
@@ -481,6 +493,8 @@ model Job {
   serviceLongitude   Float?    @map("service_longitude")
   estimatedArrivalAt DateTime? @db.Timestamptz @map("estimated_arrival_at") // ponytail: replaces stale etaMinutes — UI computes live countdown
   appointmentDate    DateTime? @db.Timestamptz @map("appointment_date") // Scheduled booking date/time
+  arrivalWindowStart DateTime? @db.Timestamptz @map("arrival_window_start") // Contractual arrival window start (e.g. 6:00 PM)
+  arrivalWindowEnd   DateTime? @db.Timestamptz @map("arrival_window_end")   // Contractual arrival window end (e.g. 7:00 PM)
   assignedAt         DateTime? @db.Timestamptz @map("assigned_at")
   completedAt        DateTime? @db.Timestamptz @map("completed_at")
 
@@ -490,6 +504,8 @@ model Job {
   upfrontVerifiedAt   DateTime? @db.Timestamptz @map("upfront_verified_at") // Dispatcher confirms
 
   // Driver Assignment & Dispatch (Internal vs External Outsource)
+  driverEstimatedArrivalAt DateTime?               @db.Timestamptz @map("driver_estimated_arrival_at") // Actual technician driving ETA separate from customer promised window
+  driverEtaMinutes         Int?                    @map("driver_eta_minutes") // Recorded minutes at dispatch
   driverType             DriverType              @default(INTERNAL) @map("driver_type")
   externalCompanyName    String?                 @default("Xtreme Mobile Tire") @map("external_company_name")
   externalDriverPhone    String?                 @map("external_driver_phone")
@@ -558,6 +574,7 @@ model Job {
   @@index([paymentStatus])
   @@index([completedAt])
   @@index([appointmentDate])
+  @@index([arrivalWindowStart, arrivalWindowEnd])
   @@index([createdById])
   @@index([countryCode, paymentStatus])
   @@map("jobs")
@@ -620,11 +637,12 @@ model Batch {
   uploadedBy    User        @relation("UploadedBatches", fields: [uploadedById], references: [id])
   totalLeads    Int         @default(0) @map("total_leads")
   scheduledDate DateTime?   @default(now()) @db.Timestamptz @map("scheduled_date")
+  status        BatchStatus @default(ACTIVE)
   leads         Lead[]
   createdAt     DateTime    @default(now()) @db.Timestamptz @map("created_at")
   updatedAt     DateTime    @updatedAt @db.Timestamptz @map("updated_at")
 
-  @@index([countryCode, scheduledDate])
+  @@index([countryCode, status, scheduledDate])
   @@index([uploadedById])
   @@map("batches")
 }
@@ -691,6 +709,7 @@ model Lead {
   estimatedFleetSize Int?              @map("estimated_fleet_size") // Total truck/van count (e.g. 15 vehicles)
   vehicleTypes       String?           @map("vehicle_types")        // Vehicle categories (e.g. "Box Trucks, Cargo Vans, 18-Wheelers")
   commonTireSizes    String?           @map("common_tire_sizes")     // Core tire specifications (e.g. "11R22.5, 235/65R17")
+  dispatcherNotes    String?           @db.Text @map("dispatcher_notes") // Feasibility, depot, & technician trial notes
 
   // Prospective Fleet Test Services (Trial roadside work orders prior to full contract)
   testServices       Job[]             @relation("LeadTestServices")

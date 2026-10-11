@@ -6,8 +6,10 @@ import {
   sanitizePaginationParams,
   calculateSkip,
   createPaginatedResponse,
+  validateAndNormalizePhone,
 } from '../utils/index.js';
 import { geocodingService } from '../services/geocodingService.js';
+import { sseManager } from '../services/sseManager.js';
 
 export const customerController = {
   async getCustomers(req: Request, res: Response) {
@@ -39,13 +41,45 @@ export const customerController = {
           take: limit,
           orderBy: { createdAt: 'desc' },
           include: {
-            vehicles: true,
+            vehicles: {
+              orderBy: { createdAt: 'desc' },
+            },
+            jobs: {
+              orderBy: { createdAt: 'desc' },
+              select: {
+                id: true,
+                jobCode: true,
+                totalCents: true,
+                status: true,
+                serviceAddress: true,
+                urgency: true,
+                createdAt: true,
+                vehicle: {
+                  select: {
+                    year: true,
+                    make: true,
+                    model: true,
+                    licensePlate: true,
+                    tireSize: true,
+                  },
+                },
+              },
+            },
           },
         }),
         prisma.customer.count({ where }),
       ]);
 
-      const paginated = createPaginatedResponse(customers, page, limit, totalCount);
+      const enriched = customers.map((c) => {
+        const totalSpendCents = (c.jobs || []).reduce((sum, j) => sum + (j.totalCents || 0), 0);
+        return {
+          ...c,
+          totalSpendCents,
+          jobsCount: c.jobs?.length || 0,
+        };
+      });
+
+      const paginated = createPaginatedResponse(enriched, page, limit, totalCount);
       return res.status(200).json(paginated);
     } catch (err: any) {
       return sendError(res, err.message);
@@ -62,18 +96,30 @@ export const customerController = {
       }
 
       const cleanDigits = phone.replace(/[^0-9]/g, '');
+      const national10 = cleanDigits.slice(-10);
+      const phoneValidation = validateAndNormalizePhone(phone, countryCode);
+      const normalizedPhone = phoneValidation.isValid ? phoneValidation.normalized : '';
 
       // 1. Check Customer
       const customer = await prisma.customer.findFirst({
         where: {
           countryCode,
-          phone: { contains: cleanDigits.slice(-10) },
+          OR: [
+            ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
+            { phone: { contains: national10 } },
+            { phone: { endsWith: national10 } },
+          ],
         },
         include: {
-          vehicles: true,
+          vehicles: {
+            orderBy: { createdAt: 'desc' },
+          },
           jobs: {
             take: 3,
             orderBy: { createdAt: 'desc' },
+            include: {
+              vehicle: true,
+            },
           },
         },
       });
@@ -81,7 +127,11 @@ export const customerController = {
       // 2. Check FleetDriver
       const fleetDriver = await prisma.fleetDriver.findFirst({
         where: {
-          phone: { contains: cleanDigits.slice(-10) },
+          OR: [
+            ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
+            { phone: { contains: national10 } },
+            { phone: { endsWith: national10 } },
+          ],
         },
         include: {
           fleet: {
@@ -96,7 +146,11 @@ export const customerController = {
       const fleetDirect = await prisma.fleet.findFirst({
         where: {
           countryCode,
-          phone: { contains: cleanDigits.slice(-10) },
+          OR: [
+            ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
+            { phone: { contains: national10 } },
+            { phone: { endsWith: national10 } },
+          ],
         },
         include: {
           vehicles: true,
@@ -156,20 +210,29 @@ export const customerController = {
       const customer = await prisma.customer.findUnique({
         where: { id },
         include: {
-          vehicles: true,
-          jobs: {
-            take: 10,
+          vehicles: {
             orderBy: { createdAt: 'desc' },
           },
+          jobs: {
+            orderBy: { createdAt: 'desc' },
+            include: {
+              vehicle: true,
+              serviceItems: true,
+            },
+          },
           invoices: {
-            take: 5,
             orderBy: { createdAt: 'desc' },
           },
         },
       });
 
       if (!customer) return sendError(res, 'Customer not found', 404);
-      return sendSuccess(res, customer);
+      const totalSpendCents = (customer.jobs || []).reduce((sum, j) => sum + (j.totalCents || 0), 0);
+      return sendSuccess(res, {
+        ...customer,
+        totalSpendCents,
+        jobsCount: customer.jobs?.length || 0,
+      });
     } catch (err: any) {
       return sendError(res, err.message);
     }
@@ -179,20 +242,29 @@ export const customerController = {
     try {
       const { fullName, phone, altPhone, email, address, countryCode, customerType, membershipTier } = req.body;
       const resolvedName = (fullName || req.body.name || '').trim();
-      const cleanPhone = (phone || '').trim();
+      const rawPhone = (phone || '').trim();
       const effectiveCountry = countryCode || (req as any).countryCode || 'CA';
 
-      if (!resolvedName || !cleanPhone) {
+      if (!resolvedName || !rawPhone) {
         return sendError(res, 'Full name and phone number are required', 400);
       }
 
-      // Check unique [countryCode, phone]
-      const existing = await prisma.customer.findUnique({
+      const phoneValidation = validateAndNormalizePhone(rawPhone, effectiveCountry);
+      if (!phoneValidation.isValid) {
+        return sendError(res, phoneValidation.error || 'Invalid phone number format', 400);
+      }
+      const cleanPhone = phoneValidation.normalized;
+      const national10 = phoneValidation.national;
+
+      // Check unique [countryCode, phone] or national digits match
+      const existing = await prisma.customer.findFirst({
         where: {
-          countryCode_phone: {
-            countryCode: effectiveCountry,
-            phone: cleanPhone,
-          },
+          countryCode: effectiveCountry,
+          OR: [
+            { phone: cleanPhone },
+            { phone: { endsWith: national10 } },
+            { phone: national10 },
+          ],
         },
       });
       if (existing) {
@@ -227,6 +299,8 @@ export const customerController = {
         },
       });
 
+      sseManager.broadcast(`sse:dispatch:${customer.countryCode}`, 'customer:created', customer);
+
       return sendSuccess(res, customer, 'Customer created successfully', 201);
     } catch (err: any) {
       return sendError(res, err.message, 400);
@@ -251,7 +325,30 @@ export const customerController = {
 
       const data: any = {};
       if (fullName || name) data.fullName = (fullName || name).trim();
-      if (phone) data.phone = phone.trim();
+      if (phone) {
+        const existingCust = await prisma.customer.findUnique({ where: { id }, select: { countryCode: true } });
+        if (!existingCust) return sendError(res, 'Customer not found', 404);
+        const targetCountry = countryCode || existingCust.countryCode || 'CA';
+        const phoneValidation = validateAndNormalizePhone(phone, targetCountry);
+        if (!phoneValidation.isValid) {
+          return sendError(res, phoneValidation.error || 'Invalid phone number format', 400);
+        }
+        data.phone = phoneValidation.normalized;
+
+        const collision = await prisma.customer.findFirst({
+          where: {
+            id: { not: id },
+            countryCode: targetCountry as any,
+            OR: [
+              { phone: data.phone },
+              { phone: { endsWith: phoneValidation.national } },
+            ],
+          },
+        });
+        if (collision) {
+          return sendError(res, 'Another customer with this phone number already exists', 409);
+        }
+      }
       if (altPhone !== undefined) data.altPhone = altPhone?.trim() || null;
       if (email !== undefined) data.email = email?.trim() || null;
       if (countryCode) data.countryCode = countryCode;
@@ -284,6 +381,8 @@ export const customerController = {
         },
       });
 
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'customer:updated', updated);
+
       return sendSuccess(res, updated, 'Customer updated successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
@@ -293,7 +392,11 @@ export const customerController = {
   async deleteCustomer(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
+      const existing = await prisma.customer.findUnique({ where: { id }, select: { countryCode: true } });
       await prisma.customer.delete({ where: { id } });
+      if (existing) {
+        sseManager.broadcast(`sse:dispatch:${existing.countryCode}`, 'customer:updated', { id, deleted: true });
+      }
       return sendSuccess(res, null, 'Customer deleted successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);

@@ -1,30 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Building2, 
   PhoneCall, 
   MessageSquare, 
-  Plus, 
   Search, 
   RefreshCw, 
   Truck, 
   ClipboardCheck, 
-  Play, 
   Calendar, 
   Zap, 
   Wrench, 
   XCircle, 
-  Share2, 
   Layers,
-  UploadCloud
+  UploadCloud,
+  ChevronLeft,
+  ChevronRight,
+  ArrowLeft,
+  ShieldCheck,
+  Edit3
 } from 'lucide-react';
-import PageHeader from '../components/ui/PageHeader';
 import Modal from '../components/ui/Modal';
 import LeadCommandCenter from '../components/leads/LeadCommandCenter';
 import UploadSpreadsheetModal from '../components/leads/UploadSpreadsheetModal';
 import ConvertFleetModal from '../components/leads/ConvertFleetModal';
 import DispositionModal from '../components/leads/DispositionModal';
 import TrialServiceModal from '../components/leads/TrialServiceModal';
+import VaFocusCard from '../components/leads/VaFocusCard';
+import ManagementBatchDashboard from '../components/leads/ManagementBatchDashboard';
+import VaBatchHub from '../components/leads/VaBatchHub';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -33,9 +37,19 @@ import {
   type LeadStage, 
   type DisqualificationReason 
 } from '../services/leadService';
+import {
+  getAllowedPipelineTabs,
+  canPerformPipelineAction,
+  TAB_LABELS,
+  type LeadPoolTab
+} from '../config/pipelineAccessConfig';
 import { toast } from 'sonner';
 
-type LeadPoolTab = 'va' | 'callbacks' | 'dispatcher' | 'admin' | 'disqualified';
+const countryFlags: Record<string, string> = {
+  CA: '🇨🇦',
+  US: '🇺🇸',
+  UK: '🇬🇧',
+};
 
 export default function Leads() {
   const { country } = useTenant();
@@ -47,16 +61,28 @@ export default function Leads() {
   const isDispatcher = user?.role === 'DISPATCHER';
   const isAdminOrGm = ['ADMIN', 'GENERAL_MANAGER'].includes(user?.role || '');
 
-  // Determine initial tab based on role
+  // Determine initial tab strictly along lifecycle
   const initialTab: LeadPoolTab = isVa
-    ? 'va'
+    ? 'unassigned'
     : isAgent
     ? 'callbacks'
     : isDispatcher
     ? 'dispatcher'
-    : 'admin';
+    : 'unassigned';
 
   const [activeTab, setActiveTab] = useState<LeadPoolTab>(initialTab);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  const handleTabChange = (tab: LeadPoolTab) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+  };
+
+  // Reset page when region changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [country]);
 
   // Modals & form states
   const [selectedDispositionLead, setSelectedDispositionLead] = useState<Lead | null>(null);
@@ -72,83 +98,121 @@ export default function Leads() {
   // Fleet conversion modal state
   const [convertingLead, setConvertingLead] = useState<Lead | null>(null);
 
+  // Dispatcher Feasibility Notes modal state
+  const [editingNotesLead, setEditingNotesLead] = useState<Lead | null>(null);
+  const [dispatcherNotesText, setDispatcherNotesText] = useState('');
+
   // Auto-dialer toggle
   const [autoDialEnabled, setAutoDialEnabled] = useState(false);
 
   // Filters & search
   const [search, setSearch] = useState('');
-  const [stageFilter, setStageFilter] = useState<string>('');
-  const [isPushModalOpen, setIsPushModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  // Manual push form
-  const [formData, setFormData] = useState({
-    companyName: '',
-    contactPerson: '',
-    fleetManager: '',
-    ceoOwnerName: '',
-    phone: '',
-    altPhone: '',
-    email: '',
-    poaEmail: '',
-    address: '',
-    website: '',
-    numberOfUnits: '',
-    notes: '',
-    priority: 1,
-    countryCode: country,
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const [vaInSession, setVaInSession] = useState(false);
+
+  // Upper Management container view mode: 'BATCHES' | 'DRILLDOWN' | 'GLOBAL'
+  const [managementViewMode, setManagementViewMode] = useState<'BATCHES' | 'DRILLDOWN' | 'GLOBAL'>(
+    isDispatcher ? 'GLOBAL' : 'BATCHES'
+  );
+  const [inspectedBatchId, setInspectedBatchId] = useState<string | null>(null);
+
+  // 1. Available active batches for VA campaign selection (Zero country friction, never future batches)
+  const { data: availableBatches = [], isLoading: isLoadingVaBatches, refetch: refetchBatches } = useQuery({
+    queryKey: ['available-batches-va'],
+    queryFn: () => leadService.getAvailableBatchesForVa(),
+    enabled: isVa || isAgent,
+    refetchInterval: 30000,
   });
 
-  // 1. Agent / VA 5-cap queue
+  // 2. Batches query for Upper Management
+  const { data: managementBatches = [], isLoading: isLoadingBatches, refetch: refetchBatchesMgmt } = useQuery({
+    queryKey: ['management-batches'],
+    queryFn: () => leadService.getBatches(),
+    enabled: isAdminOrGm || isDispatcher,
+  });
+
+  const inspectedBatch = managementBatches.find((b: any) => b.id === inspectedBatchId) || null;
+
+  // 3. Agent / VA 1-cap focus queue (refills synchronously on disposition)
   const { data: queueResponse, isLoading: isLoadingQueue, refetch: refetchQueue } = useQuery({
-    queryKey: ['agent-queue', country],
-    queryFn: () => leadService.getAgentQueue(country),
-    enabled: activeTab === 'va',
+    queryKey: ['agent-queue', country, selectedBatchId],
+    queryFn: () => leadService.getAgentQueue(country, selectedBatchId || undefined),
+    enabled: (isVa || isAgent) && vaInSession,
   });
 
   const queueData = queueResponse || {
     leads: [],
     scheduledCallbacks: [],
     activeCount: 0,
-    maxCapacity: 5,
+    maxCapacity: 1,
     unassignedPoolCount: 0,
   };
 
-  // 2. Tab-specific leads query
+  // 4. Tab-specific leads query with server-side pagination (scoped to batch when in drilldown)
   const { data: leadsResponse, isLoading: isLoadingLeads, refetch: refetchLeads } = useQuery({
-    queryKey: ['leads', country, activeTab, stageFilter, search],
+    queryKey: ['leads', country, activeTab, search, currentPage, pageSize, inspectedBatchId, managementViewMode],
     queryFn: () => leadService.getLeads({
-      countryCode: country,
+      countryCode: managementViewMode === 'GLOBAL' ? undefined : (inspectedBatch?.countryCode || country),
+      batchId: inspectedBatchId || undefined,
       pool: activeTab,
-      stage: stageFilter || undefined,
       search: search || undefined,
-      limit: 50,
+      page: currentPage,
+      limit: pageSize,
     }),
-    enabled: activeTab !== 'va',
+    enabled: managementViewMode === 'DRILLDOWN' || managementViewMode === 'GLOBAL' || !isAdminOrGm,
   });
 
   const tabLeads: Lead[] = leadsResponse?.data || [];
-  const displayLeads: Lead[] = activeTab === 'va' ? queueData.leads : tabLeads;
-  const isLoading = activeTab === 'va' ? isLoadingQueue : isLoadingLeads;
+  const pagination = leadsResponse?.pagination || {
+    total: tabLeads.length,
+    page: currentPage,
+    limit: pageSize,
+    totalPages: Math.max(1, Math.ceil((tabLeads.length || 1) / pageSize)),
+  };
+  const displayLeads: Lead[] = tabLeads;
+  const isLoading = (isVa || isAgent) && vaInSession ? isLoadingQueue : isLoadingLeads;
 
   const refetchAll = () => {
-    if (activeTab === 'va') refetchQueue();
-    else refetchLeads();
+    if (isVa || isAgent) {
+      refetchQueue();
+      refetchBatches();
+    } else {
+      refetchLeads();
+      refetchBatchesMgmt();
+    }
   };
 
-  // Mutations
-  const startBatchMutation = useMutation({
-    mutationFn: () => leadService.startBatch(country),
+  const startBatchByIdMutation = useMutation({
+    mutationFn: (id: string) => leadService.startBatchById(id),
     onSuccess: (data: any) => {
-      toast.success(data?.message || 'Campaign batch started! 5 leads assigned.');
-      queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      toast.success(data?.message || 'Batch activated successfully!');
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['available-batches-va'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Failed to start campaign batch');
+      toast.error(err?.response?.data?.message || 'Failed to start batch');
     },
   });
 
+  const closeBatchMutation = useMutation({
+    mutationFn: (id: string) => leadService.closeBatch(id),
+    onSuccess: (data: any) => {
+      toast.success(data?.message || 'Batch marked as COMPLETED');
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['available-batches-va'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to close batch');
+    },
+  });
+
+  // Mutations
   const distributeMutation = useMutation({
     mutationFn: () => leadService.distributeLeads({ countryCode: country }),
     onSuccess: (data: any) => {
@@ -174,10 +238,13 @@ export default function Leads() {
       callbackData?: any; 
     }) => leadService.setDisposition(id, disposition, notes, callbackData),
     onSuccess: async () => {
-      toast.success('Call outcome recorded! 5-cap slot auto-replenished via pg-boss.');
+      toast.success('Call outcome recorded! 1-cap slot auto-replenished.');
       setSelectedDispositionLead(null);
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['available-batches-va'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
 
       if (autoDialEnabled && isAgent) {
         setTimeout(async () => {
@@ -204,6 +271,8 @@ export default function Leads() {
       toast.success('Lead stage advanced!');
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to advance stage');
@@ -219,6 +288,8 @@ export default function Leads() {
       setDisqualificationText('');
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to disqualify lead');
@@ -232,6 +303,8 @@ export default function Leads() {
       setTestServiceLead(null);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to create trial service job');
@@ -244,6 +317,8 @@ export default function Leads() {
       toast.success(data?.message || 'Lead restored to active outreach pipeline!');
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to reactivate lead');
@@ -258,37 +333,24 @@ export default function Leads() {
       setConvertingLead(null);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['fleets'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to convert lead');
     },
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data: Partial<Lead>) => leadService.createLead(data),
+  const updateDispatcherNotesMutation = useMutation({
+    mutationFn: ({ id, dispatcherNotes }: { id: string; dispatcherNotes: string }) =>
+      leadService.updateLead(id, { dispatcherNotes } as any),
     onSuccess: () => {
-      toast.success('Fleet lead pushed successfully!');
-      setIsPushModalOpen(false);
-      setFormData({
-        companyName: '',
-        contactPerson: '',
-        fleetManager: '',
-        ceoOwnerName: '',
-        phone: '',
-        altPhone: '',
-        email: '',
-        poaEmail: '',
-        address: '',
-        website: '',
-        numberOfUnits: '',
-        notes: '',
-        priority: 1,
-        countryCode: country,
-      });
+      toast.success('Dispatcher feasibility notes saved!');
+      setEditingNotesLead(null);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Failed to push lead');
+      toast.error(err?.response?.data?.message || 'Failed to save feasibility notes');
     },
   });
 
@@ -310,247 +372,319 @@ export default function Leads() {
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.companyName || !formData.phone) {
-      toast.error('Please enter Company Name and Phone');
-      return;
-    }
-    createMutation.mutate({
-      ...formData,
-      numberOfUnits: formData.numberOfUnits ? Number(formData.numberOfUnits) : undefined,
-      countryCode: country as any,
-    });
-  };
-
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Outbound B2B Fleet Sales & Lead Pools"
-        subtitle={`Role-based lead pools for ${country} Region: 5-Cap VA Outreach, Callbacks, Dispatcher Feasibility, and Master Pipeline.`}
-        actions={
-          <div className="flex items-center gap-2 flex-wrap">
-            {isAdminOrGm && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => distributeMutation.mutate()}
-                  disabled={distributeMutation.isPending}
-                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-50"
-                  title="Evenly distribute unassigned leads to VAs up to 5 cap"
-                >
-                  <Share2 size={13} />
-                  <span>{distributeMutation.isPending ? 'Distributing...' : 'Distribute to VAs'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => startBatchMutation.mutate()}
-                  disabled={startBatchMutation.isPending}
-                  className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-50"
-                  title="Assign 5 leads to active outbound callers"
-                >
-                  <Play size={13} fill="currentColor" />
-                  <span>{startBatchMutation.isPending ? 'Starting...' : 'Start Campaign Batch'}</span>
-                </button>
-              </>
-            )}
-
-            {activeTab === 'va' && (
-              <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer select-none">
-                <Zap size={13} className={autoDialEnabled ? 'text-amber-500 fill-amber-500' : 'text-slate-400'} />
-                <span>Auto-Dialer</span>
-                <input
-                  type="checkbox"
-                  checked={autoDialEnabled}
-                  onChange={(e) => setAutoDialEnabled(e.target.checked)}
-                  className="rounded text-red-600 focus:ring-red-500 ml-0.5 cursor-pointer"
-                />
-              </label>
-            )}
-
-            <button
-              type="button"
-              onClick={refetchAll}
-              className="btn-secondary px-2.5 py-1.5 cursor-pointer"
-              title="Refresh queue"
-            >
-              <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsUploadModalOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-              title="Upload leads spreadsheet (.xlsx, .xls, .csv)"
-            >
-              <UploadCloud size={14} className="text-slate-600" />
-              <span>Upload Spreadsheet</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsPushModalOpen(true)}
-              className="btn-primary cursor-pointer flex items-center gap-1.5 text-xs py-1.5"
-            >
-              <Plus size={14} />
-              <span>Push Single Lead</span>
-            </button>
-          </div>
-        }
-      />
-
-      {/* Real-time Command Center for Admin / GM */}
-      <LeadCommandCenter
-        country={country}
-        isAdminOrGm={isAdminOrGm}
-        onSelectTab={setActiveTab}
-        onStartDistribution={() => distributeMutation.mutate()}
-        onOpenUpload={() => setIsUploadModalOpen(true)}
-      />
-
-      {/* Role-Based Lead Pool Navigation Tabs */}
-      <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200 overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => setActiveTab('va')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-            activeTab === 'va'
-              ? 'bg-red-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-          }`}
-        >
-          <Zap size={13} />
-          <span>VA Outbound (5 Cap)</span>
-          {activeTab === 'va' && queueData.activeCount > 0 && (
-            <span className="bg-red-700 text-white px-1.5 py-0.2 rounded-full text-[10px]">
-              {queueData.activeCount}/5
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('callbacks')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-            activeTab === 'callbacks'
-              ? 'bg-red-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-          }`}
-        >
-          <Calendar size={13} />
-          <span>Agent Callbacks</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('dispatcher')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-            activeTab === 'dispatcher'
-              ? 'bg-red-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-          }`}
-        >
-          <Truck size={13} />
-          <span>Dispatcher Feasibility</span>
-        </button>
-
-        {isAdminOrGm && (
-          <button
-            type="button"
-            onClick={() => setActiveTab('admin')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-              activeTab === 'admin'
-                ? 'bg-red-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
-          >
-            <Layers size={13} />
-            <span>Master Pipeline</span>
-          </button>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('disqualified')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-            activeTab === 'disqualified'
-              ? 'bg-red-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-          }`}
-        >
-          <XCircle size={13} />
-          <span>Disqualification Audit</span>
-        </button>
-      </div>
-
-      {/* VA 5-Cap Banner (Only shown in 'va' pool) */}
-      {activeTab === 'va' && (
-        <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-md flex flex-wrap items-center justify-between gap-4 border border-slate-800">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-400 bg-red-950/80 px-2.5 py-0.5 rounded-full border border-red-800">
-                5-Cap Dynamic Replenishment
-              </span>
-              <span className="text-xs text-slate-300">
-                Active Slot Load: <strong className="text-white font-bold">{queueData.activeCount} / 5</strong>
-              </span>
-            </div>
-            <div className="text-xs text-slate-300">
-              {queueData.unassignedPoolCount > 0 ? (
-                <span>
-                  🚀 <strong className="text-emerald-400 font-bold">{queueData.unassignedPoolCount} unassigned cold leads</strong> waiting in queue. As you log call outcomes, fresh leads replenish your cap instantly via pg-boss!
-                </span>
-              ) : (
-                <span className="text-slate-400">
-                  Unassigned pool is fully distributed. New uploaded leads will feed in automatically.
-                </span>
-              )}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => refetchQueue()}
-            className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
-          >
-            <RefreshCw size={12} className={isLoadingQueue ? 'animate-spin' : ''} />
-            <span>Sync Queue</span>
-          </button>
-        </div>
-      )}
-
-      {/* Search & Filters */}
-      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-        <div className="relative flex-1 min-w-[240px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search company, contact, phone, email, units..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-red-500"
+      {/* 1. VA / CALL AGENT WORKFLOW: ZERO FRICTION CAMPAIGN CHOOSER & 1-LEAD FOCUS CARD */}
+      {(isVa || isAgent) && !isAdminOrGm && !isDispatcher ? (
+        !vaInSession ? (
+          <VaBatchHub
+            batches={availableBatches}
+            isLoading={isLoadingVaBatches}
+            onSelectBatch={(batchId) => {
+              setSelectedBatchId(batchId);
+              setVaInSession(true);
+            }}
+            onRefresh={refetchBatches}
+            onOpenUpload={() => setIsUploadModalOpen(true)}
           />
-        </div>
+        ) : (
+          <div className="space-y-4">
+            {/* VA Session Header: Switch Campaign + Active Slot status */}
+            <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-md flex flex-wrap items-center justify-between gap-4 border border-slate-800">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVaInSession(false);
+                    setSelectedBatchId(null);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                >
+                  <ArrowLeft size={13} />
+                  <span>Switch Campaign</span>
+                </button>
 
-        {activeTab === 'admin' && (
-          <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
-            <span className="text-slate-500 font-bold text-[11px] uppercase mr-1">Stage:</span>
-            {['', 'VA_OUTREACH', 'AGENT_CALLBACK', 'DISPATCHER_REVIEW', 'ADMIN_APPROVAL', 'CONVERTED'].map((stg) => (
-              <button
-                key={stg}
-                type="button"
-                onClick={() => setStageFilter(stg)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                  stageFilter === stg
-                    ? 'bg-red-600 text-white shadow-2xs'
-                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
-                }`}
-              >
-                {stg === '' ? 'All Stages' : stg.replace('_', ' ')}
-              </button>
-            ))}
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-400 bg-red-950/80 px-2.5 py-0.5 rounded-full border border-red-800">
+                      1-Cap Focus Replenishment
+                    </span>
+                    <span className="text-xs text-slate-300">
+                      Active Campaign:{' '}
+                      <strong className="text-white font-bold">
+                        {selectedBatchId
+                          ? availableBatches.find((b) => b.id === selectedBatchId)?.batchName || 'Selected Campaign'
+                          : 'All Active Campaigns (Auto FIFO)'}
+                      </strong>
+                    </span>
+                    <span className="text-xs text-slate-300 ml-2">
+                      Active Slot Load: <strong className="text-white font-bold">{queueData.activeCount} / 1</strong>
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    {queueData.unassignedPoolCount > 0 ? (
+                      <span>
+                        🚀 <strong className="text-emerald-400 font-bold">{queueData.unassignedPoolCount} unassigned cold leads</strong> waiting in queue. Next lead replenishes instantly upon call outcome!
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">
+                        No unassigned leads remaining in this campaign. Click &quot;Switch Campaign&quot; to pick another active batch.
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {/* Quick Campaign Switch Dropdown */}
+                <div className="flex items-center gap-1.5">
+                  <Layers size={13} className="text-slate-400" />
+                  <select
+                    value={selectedBatchId || ''}
+                    onChange={(e) => setSelectedBatchId(e.target.value || null)}
+                    className="bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold rounded-xl px-3 py-1.5 outline-none focus:ring-1 focus:ring-red-500 cursor-pointer max-w-[280px]"
+                  >
+                    <option value="">All Active Campaigns (Auto FIFO)</option>
+                    {availableBatches.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        [{b.countryCode}] {b.batchName} ({b.unassignedLeads} leads left)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Auto-Dialer Toggle for Call Agents / VAs */}
+                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-bold text-slate-300 cursor-pointer select-none">
+                  <Zap size={13} className={autoDialEnabled ? 'text-amber-400 fill-amber-400' : 'text-slate-400'} />
+                  <span>Auto-Dial</span>
+                  <input
+                    type="checkbox"
+                    checked={autoDialEnabled}
+                    onChange={(e) => setAutoDialEnabled(e.target.checked)}
+                    className="rounded text-red-600 focus:ring-red-500 ml-0.5 cursor-pointer"
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => setIsUploadModalOpen(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  title="Upload leads spreadsheet to an existing batch"
+                >
+                  <UploadCloud size={12} className="text-slate-400" />
+                  <span>Upload Leads</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    refetchQueue();
+                    refetchBatches();
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+                  title="Sync Queue"
+                >
+                  <RefreshCw size={12} className={isLoadingQueue ? 'animate-spin' : ''} />
+                  <span>Sync Queue</span>
+                </button>
+              </div>
+            </div>
+
+            {/* VA Single-Lead Focus Card */}
+            <VaFocusCard
+              lead={queueData.leads[0]}
+              onDisposition={(params) => dispositionMutation.mutate(params)}
+              isSubmitting={dispositionMutation.isPending}
+              onRefreshQueue={() => {
+                refetchQueue();
+                refetchBatches();
+              }}
+              onOpenUpload={() => setIsUploadModalOpen(true)}
+            />
+
+            {/* Scheduled Callbacks Due (Priority Queue) */}
+            {queueData.scheduledCallbacks && queueData.scheduledCallbacks.length > 0 && (
+              <div className="max-w-2xl mx-auto bg-white border border-blue-200 rounded-3xl p-5 shadow-xs">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                    <Calendar size={14} className="text-blue-600" /> Scheduled Callbacks Due ({queueData.scheduledCallbacks.length})
+                  </span>
+                  <span className="text-[10px] text-blue-600 font-mono font-bold uppercase tracking-wider bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                    Priority Outreach
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {queueData.scheduledCallbacks.map((cb: any) => (
+                    <div key={cb.id} className="flex items-center justify-between bg-blue-50/50 hover:bg-blue-50 rounded-2xl p-3 border border-blue-100 text-xs transition">
+                      <div>
+                        <div className="font-bold text-slate-900">{cb.companyName}</div>
+                        <div className="text-[11px] text-slate-600 mt-0.5">
+                          {cb.contactPerson} • <span className="font-mono font-semibold text-slate-800">{cb.phone}</span>
+                          {cb.callbackTime && <span className="text-blue-700 ml-1.5 font-bold">({cb.callbackTime})</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleCallLead(cb)}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-2xs"
+                        >
+                          <PhoneCall size={12} />
+                          <span>Dial</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDispositionLead(cb)}
+                          className="p-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl transition"
+                          title="Log Outcome"
+                        >
+                          <ClipboardCheck size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        )
+      ) : (
+        /* 2. UPPER MANAGEMENT WORKFLOW: BATCH CONTAINERS DASHBOARD OR DRILLDOWN / GLOBAL LEDGER */
+        managementViewMode === 'BATCHES' ? (
+          <ManagementBatchDashboard
+            batches={managementBatches}
+            isLoading={isLoadingBatches}
+            onInspectBatch={(batchId: string) => {
+              setInspectedBatchId(batchId);
+              setManagementViewMode('DRILLDOWN');
+              setActiveTab(isDispatcher ? 'dispatcher' : 'unassigned');
+              setCurrentPage(1);
+            }}
+            onOpenGlobalLedger={() => {
+              setInspectedBatchId(null);
+              setManagementViewMode('GLOBAL');
+              setActiveTab(isDispatcher ? 'dispatcher' : 'all');
+              setCurrentPage(1);
+            }}
+            onStartBatch={(id) => startBatchByIdMutation.mutate(id)}
+            onCloseBatch={(id) => closeBatchMutation.mutate(id)}
+            onDistributeBatch={isAdminOrGm ? () => distributeMutation.mutate() : undefined}
+            onOpenUpload={() => setIsUploadModalOpen(true)}
+            onRefresh={refetchBatchesMgmt}
+            isAdmin={isAdminOrGm}
+          />
+        ) : (
+          <div className="space-y-4">
+            {/* Breadcrumb Navigation & Batch Metadata Strip */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setManagementViewMode('BATCHES');
+                    setInspectedBatchId(null);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
+                >
+                  <ArrowLeft size={13} />
+                  <span>Back to Batches Dashboard</span>
+                </button>
+                <div className="h-5 w-px bg-slate-200" />
+                <div>
+                  {managementViewMode === 'DRILLDOWN' && inspectedBatch ? (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-base">{countryFlags[inspectedBatch.countryCode] || '🌐'}</span>
+                      <span className="font-bold text-slate-900 text-sm">{inspectedBatch.batchName}</span>
+                      <span className="text-xs text-slate-500 font-mono">({inspectedBatch.countryCode})</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        inspectedBatch.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' :
+                        inspectedBatch.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-800' :
+                        'bg-slate-100 text-slate-700'
+                      }`}>
+                        {inspectedBatch.status}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        • {inspectedBatch.totalLeads} total leads ({inspectedBatch.unassignedLeads} unassigned)
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">🌐</span>
+                      <span className="font-bold text-slate-900 text-sm">Global Master Ledger</span>
+                      <span className="text-xs text-slate-500">(All Batches & Regions)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={refetchAll}
+                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+                  title="Refresh Leads"
+                >
+                  <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
+                </button>
+              </div>
+            </div>
+
+            {/* Batch-Specific Metrics Cards (or Global if inspecting all) */}
+            <LeadCommandCenter
+              country={inspectedBatch?.countryCode || country}
+              batch={managementViewMode === 'DRILLDOWN' ? inspectedBatch : null}
+              isAdminOrGm={isAdminOrGm}
+              isDispatcher={isDispatcher}
+              onSelectTab={(tab) => {
+                setActiveTab(tab);
+                setCurrentPage(1);
+              }}
+            />
+
+            {/* Upper Management Lifecycle Pipeline Tabs */}
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200 overflow-x-auto">
+              {getAllowedPipelineTabs(user?.role).map((tab) => {
+                const label = TAB_LABELS[tab] || tab;
+                const Icon = 
+                  tab === 'unassigned' ? Layers :
+                  tab === 'assigned' ? PhoneCall :
+                  tab === 'callbacks' ? Calendar :
+                  tab === 'dispatcher' ? Truck :
+                  tab === 'approval' ? ShieldCheck :
+                  tab === 'converted' ? ClipboardCheck :
+                  tab === 'disqualified' ? XCircle : Layers;
+
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => handleTabChange(tab)}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                      activeTab === tab
+                        ? 'bg-red-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                    }`}
+                  >
+                    <Icon size={13} />
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search & Filters */}
+            <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+              <div className="relative flex-1 min-w-[240px]">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search company, contact, phone, email, units..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-red-500"
+                />
+              </div>
+            </div>
 
       {/* Main Leads Table */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
@@ -561,9 +695,7 @@ export default function Leads() {
             <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
             <h4 className="text-sm font-bold text-slate-700">No leads found in this pool</h4>
             <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-              {activeTab === 'va'
-                ? 'Your active 5-cap queue is empty. Click Sync Queue above or wait for auto-distribution.'
-                : 'No leads match the selected filter in this region.'}
+              No leads match the selected filter in this region.
             </p>
           </div>
         ) : (
@@ -571,12 +703,79 @@ export default function Leads() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-4">Company & Units</th>
-                  <th className="py-3 px-4">Contact & Leadership</th>
-                  <th className="py-3 px-4">Phone & Emails</th>
-                  <th className="py-3 px-4">Stage / Status</th>
-                  <th className="py-3 px-4">Attribution / Assigned</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  {activeTab === 'unassigned' ? (
+                    <>
+                      <th className="py-3 px-4">Company & Units</th>
+                      <th className="py-3 px-4">Campaign Batch</th>
+                      <th className="py-3 px-4">Contact Person</th>
+                      <th className="py-3 px-4">Phone & Emails</th>
+                      <th className="py-3 px-4">Priority & Ingested</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </>
+                  ) : activeTab === 'assigned' ? (
+                    <>
+                      <th className="py-3 px-4">Company & Units</th>
+                      <th className="py-3 px-4">Contact & Leadership</th>
+                      <th className="py-3 px-4">Phone & Emails</th>
+                      <th className="py-3 px-4">Assigned VA / Caller</th>
+                      <th className="py-3 px-4">Outreach Outcome</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </>
+                  ) : activeTab === 'callbacks' ? (
+                    <>
+                      <th className="py-3 px-4">Company & Units</th>
+                      <th className="py-3 px-4">Contact Person</th>
+                      <th className="py-3 px-4">Phone & Communications</th>
+                      <th className="py-3 px-4">Scheduled Callback Time</th>
+                      <th className="py-3 px-4">Assigned Agent</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </>
+                  ) : activeTab === 'dispatcher' ? (
+                    <>
+                      <th className="py-3 px-4">Company & Fleet Scale</th>
+                      <th className="py-3 px-4">Tires & Specs</th>
+                      <th className="py-3 px-4">Trial Work Order</th>
+                      <th className="py-3 px-4">Dispatcher Feasibility Notes</th>
+                      <th className="py-3 px-4">Assigned Staff</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </>
+                  ) : activeTab === 'approval' ? (
+                    <>
+                      <th className="py-3 px-4">Company & Fleet Scale</th>
+                      <th className="py-3 px-4">Leadership & Signing Authority</th>
+                      <th className="py-3 px-4">Trial Verification Proof</th>
+                      <th className="py-3 px-4">Tires & Unit Details</th>
+                      <th className="py-3 px-4">Onboarding Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </>
+                  ) : activeTab === 'converted' ? (
+                    <>
+                      <th className="py-3 px-4">Company & Fleet Code</th>
+                      <th className="py-3 px-4">Fleet Units Onboarded</th>
+                      <th className="py-3 px-4">Contact & Leadership</th>
+                      <th className="py-3 px-4">Phone & Emails</th>
+                      <th className="py-3 px-4">Conversion Date</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </>
+                  ) : activeTab === 'disqualified' ? (
+                    <>
+                      <th className="py-3 px-4">Company & Units</th>
+                      <th className="py-3 px-4">Contact & Phone</th>
+                      <th className="py-3 px-4">Disqualification Reason</th>
+                      <th className="py-3 px-4">Audit Notes & Date</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="py-3 px-4">Company & Fleet Scale</th>
+                      <th className="py-3 px-4">Decision Makers & Contacts</th>
+                      <th className="py-3 px-4">Phone & Communications</th>
+                      <th className="py-3 px-4">Assignment Status</th>
+                      <th className="py-3 px-4">Pipeline Stage & Outcome</th>
+                      <th className="py-3 px-4">Campaign Batch & Ingested</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -584,6 +783,935 @@ export default function Leads() {
                   const isConverted = lead.stage === 'CONVERTED';
                   const isDisqualified = lead.stage === 'DISQUALIFIED';
 
+                  // TAB: ALL LEADS (MASTER LEDGER - ASSIGNED & UNASSIGNED)
+                  if (activeTab === 'all') {
+                    return (
+                      <tr key={lead.id} className="hover:bg-slate-50/70 transition">
+                        {/* 1. Company & Fleet Scale */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm">{countryFlags[lead.countryCode] || '🌐'}</span>
+                            <span className="font-bold text-slate-900 text-sm">{lead.companyName}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            {lead.numberOfUnits ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                                <Truck size={10} />
+                                <span>{lead.numberOfUnits} Units</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400">Scale pending</span>
+                            )}
+                            {lead.website && (
+                              <a
+                                href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[10px] text-blue-600 hover:underline font-medium"
+                              >
+                                Web
+                              </a>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 2. Decision Makers & Leadership */}
+                        <td className="py-3.5 px-4 font-semibold text-slate-800">
+                          <div className="text-slate-900">{lead.contactPerson}</div>
+                          {(lead.fleetManager || lead.ceoOwnerName) && (
+                            <div className="text-[10px] text-slate-500 font-normal mt-0.5">
+                              {lead.fleetManager && <span>FM: {lead.fleetManager}</span>}
+                              {lead.fleetManager && lead.ceoOwnerName && <span> • </span>}
+                              {lead.ceoOwnerName && <span>CEO: {lead.ceoOwnerName}</span>}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* 3. Phone & Communications */}
+                        <td className="py-3.5 px-4">
+                          <div className="font-mono font-bold text-slate-800">{lead.phone}</div>
+                          {lead.altPhone && (
+                            <div className="text-[10px] text-slate-500 font-mono">Alt: {lead.altPhone}</div>
+                          )}
+                          {lead.email && (
+                            <div className="text-[11px] text-slate-500 truncate max-w-[170px]" title={lead.email}>
+                              {lead.email}
+                            </div>
+                          )}
+                          {lead.poaEmail && (
+                            <div className="text-[10px] text-amber-700 font-semibold truncate max-w-[170px]" title="POA Billing Email">
+                              POA: {lead.poaEmail}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* 4. Assignment Status (Assigned vs Unassigned) */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex flex-col gap-1 items-start">
+                            {lead.assignedAgent ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                                <span>Agent: {lead.assignedAgent.fullName}</span>
+                              </span>
+                            ) : lead.assignedDispatcher ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                                <span>Dispatcher: {lead.assignedDispatcher.fullName}</span>
+                              </span>
+                            ) : lead.stage === 'ADMIN_APPROVAL' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                                <span>GM Signoff Stage</span>
+                              </span>
+                            ) : lead.stage === 'CONVERTED' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                <span>Converted</span>
+                              </span>
+                            ) : lead.stage === 'DISQUALIFIED' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                                <span>Disqualified</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                                <span>Unassigned (Cold Pool)</span>
+                              </span>
+                            )}
+                            <span className="text-[10px] text-slate-400">
+                              Uploaded by: {lead.uploadedBy?.fullName || 'System'}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* 5. Pipeline Stage & Outcome */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex flex-col gap-1 items-start">
+                            <span
+                              className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                                isConverted
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                  : isDisqualified
+                                  ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                  : lead.stage === 'AGENT_CALLBACK'
+                                  ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                  : lead.stage === 'ADMIN_APPROVAL'
+                                  ? 'bg-purple-50 text-purple-800 border-purple-200'
+                                  : 'bg-slate-100 text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              {lead.stage?.replace(/_/g, ' ')}
+                            </span>
+
+                            {lead.disposition && (
+                              <span className="text-[10px] font-semibold text-slate-600">
+                                Outcome: {lead.disposition.replace(/_/g, ' ')}
+                              </span>
+                            )}
+
+                            {lead.callbackDate && (
+                              <span className="text-[10px] font-semibold text-blue-700 flex items-center gap-1">
+                                <Calendar size={10} />
+                                <span>{lead.callbackDay || 'Callback'}: {lead.callbackTime || new Date(lead.callbackDate).toLocaleDateString()}</span>
+                              </span>
+                            )}
+
+                            {isDisqualified && lead.disqualificationReason && (
+                              <span className="text-[10px] text-rose-600 font-semibold">
+                                {lead.disqualificationReason.replace(/_/g, ' ')}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 6. Campaign Batch & Ingested */}
+                        <td className="py-3.5 px-4 text-slate-600 text-[11px]">
+                          <div className="font-semibold text-slate-800 truncate max-w-[140px]" title={lead.batch?.batchName || 'General'}>
+                            {lead.batch?.batchName || 'General Batch'}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                            {new Date(lead.createdAt).toLocaleDateString()}
+                          </div>
+                        </td>
+
+                        {/* 7. Actions */}
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleCallLead(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="Dial Lead"
+                            >
+                              <PhoneCall size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDispositionLead(lead)}
+                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
+                              title="Log Call Outcome"
+                            >
+                              <ClipboardCheck size={13} />
+                            </button>
+                            {isAdminOrGm && !isConverted && (
+                              <button
+                                type="button"
+                                onClick={() => setConvertingLead(lead)}
+                                className="px-2 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[10px] transition cursor-pointer"
+                                title="Convert to Active Contracted Fleet Account"
+                              >
+                                Convert Fleet
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleWhatsAppChat(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="WhatsApp Chat"
+                            >
+                              <MessageSquare size={13} />
+                            </button>
+                            {!isDisqualified && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDisqualifyingLead(lead);
+                                  setDisqualificationCategory('NOT_INTERESTED');
+                                  setDisqualificationText('');
+                                }}
+                                className="p-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition cursor-pointer"
+                                title="Disqualify Lead"
+                              >
+                                <XCircle size={13} />
+                              </button>
+                            )}
+                            {isDisqualified && (
+                              <button
+                                type="button"
+                                onClick={() => reactivateMutation.mutate(lead.id)}
+                                disabled={reactivateMutation.isPending}
+                                className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                                title="Reactivate Lead"
+                              >
+                                <RefreshCw size={13} className={reactivateMutation.isPending ? 'animate-spin' : ''} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  // TAB 1: UNASSIGNED LEADS
+                  if (activeTab === 'unassigned') {
+                    return (
+                      <tr key={lead.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {lead.numberOfUnits ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                <Truck size={10} />
+                                <span>{lead.numberOfUnits} Units</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400">NOU pending</span>
+                            )}
+                            {lead.website && (
+                              <a
+                                href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[10px] text-blue-600 hover:underline"
+                              >
+                                Web
+                              </a>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          {lead.batch?.batchName ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                              <Layers size={11} className="text-slate-500" />
+                              <span className="truncate max-w-[170px]">{lead.batch.batchName}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 font-medium">Direct Ingestion</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 font-semibold text-slate-800">
+                          <div>{lead.contactPerson}</div>
+                          {(lead.fleetManager || lead.ceoOwnerName) && (
+                            <div className="text-[10px] text-slate-500 font-normal">
+                              {lead.fleetManager && <span>FM: {lead.fleetManager}</span>}
+                              {lead.fleetManager && lead.ceoOwnerName && <span> • </span>}
+                              {lead.ceoOwnerName && <span>CEO: {lead.ceoOwnerName}</span>}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="font-mono font-bold text-slate-800">{lead.phone}</div>
+                          {lead.altPhone && (
+                            <div className="text-[10px] text-slate-500 font-mono">Alt: {lead.altPhone}</div>
+                          )}
+                          {lead.email && <div className="text-[11px] text-slate-500 truncate max-w-[170px]">{lead.email}</div>}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-slate-600 text-[11px]">
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              P{lead.priority}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {new Date(lead.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-emerald-700 font-semibold mt-1">Ready for VA</div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleCallLead(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="Dial Lead"
+                            >
+                              <PhoneCall size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDispositionLead(lead)}
+                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
+                              title="Log Call Outcome"
+                            >
+                              <ClipboardCheck size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDisqualifyingLead(lead);
+                                setDisqualificationCategory('NOT_INTERESTED');
+                                setDisqualificationText('');
+                              }}
+                              className="p-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition cursor-pointer"
+                              title="Disqualify Lead"
+                            >
+                              <XCircle size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  // TAB 2: ASSIGNED / IN-PROGRESS OUTREACH
+                  if (activeTab === 'assigned') {
+                    return (
+                      <tr key={lead.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {lead.numberOfUnits ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                <Truck size={10} />
+                                <span>{lead.numberOfUnits} Units</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400">NOU pending</span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 font-semibold text-slate-800">
+                          <div>{lead.contactPerson}</div>
+                          {(lead.fleetManager || lead.ceoOwnerName) && (
+                            <div className="text-[10px] text-slate-500 font-normal">
+                              {lead.fleetManager && <span>FM: {lead.fleetManager}</span>}
+                              {lead.fleetManager && lead.ceoOwnerName && <span> • </span>}
+                              {lead.ceoOwnerName && <span>CEO: {lead.ceoOwnerName}</span>}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="font-mono font-bold text-slate-800">{lead.phone}</div>
+                          {lead.email && <div className="text-[11px] text-slate-500 truncate max-w-[170px]">{lead.email}</div>}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-slate-600 text-[11px]">
+                          {lead.assignedAgent ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-800 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-lg">
+                              VA: {lead.assignedAgent.fullName}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">Unassigned Caller</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="flex flex-col gap-1 items-start">
+                            {lead.disposition ? (
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-200">
+                                {lead.disposition.replace(/_/g, ' ')}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border bg-blue-50 text-blue-800 border-blue-200">
+                                In Calling Queue
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleCallLead(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="Dial Lead"
+                            >
+                              <PhoneCall size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDispositionLead(lead)}
+                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
+                              title="Log Call Outcome"
+                            >
+                              <ClipboardCheck size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleWhatsAppChat(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="WhatsApp Chat"
+                            >
+                              <MessageSquare size={13} />
+                            </button>
+                            {canPerformPipelineAction(user?.role, 'DISQUALIFY_LEAD') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDisqualifyingLead(lead);
+                                  setDisqualificationCategory('NOT_INTERESTED');
+                                  setDisqualificationText('');
+                                }}
+                                className="p-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition cursor-pointer"
+                                title="Disqualify Lead"
+                              >
+                                <XCircle size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  // TAB: CALLBACKS (AGENT PRIORITY)
+                  if (activeTab === 'callbacks') {
+                    const isOverdue = lead.callbackDate && new Date(lead.callbackDate) <= new Date();
+                    return (
+                      <tr key={lead.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {lead.numberOfUnits ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                <Truck size={10} />
+                                <span>{lead.numberOfUnits} Units</span>
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 font-semibold text-slate-800">
+                          <div>{lead.contactPerson}</div>
+                          {(lead.fleetManager || lead.ceoOwnerName) && (
+                            <div className="text-[10px] text-slate-500 font-normal">
+                              {lead.fleetManager && <span>FM: {lead.fleetManager}</span>}
+                              {lead.fleetManager && lead.ceoOwnerName && <span> • </span>}
+                              {lead.ceoOwnerName && <span>CEO: {lead.ceoOwnerName}</span>}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="font-mono font-bold text-slate-800">{lead.phone}</div>
+                          {lead.email && <div className="text-[11px] text-slate-500 truncate max-w-[170px]">{lead.email}</div>}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="flex flex-col gap-1 items-start">
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              isOverdue 
+                                ? 'bg-rose-50 text-rose-800 border-rose-200 animate-pulse' 
+                                : 'bg-blue-50 text-blue-800 border-blue-200'
+                            }`}>
+                              <Calendar size={10} />
+                              <span>{lead.callbackDay || 'Due'}: {lead.callbackTime || (lead.callbackDate ? new Date(lead.callbackDate).toLocaleDateString() : 'Scheduled')}</span>
+                            </span>
+                            {isOverdue && (
+                              <span className="text-[9px] font-bold text-rose-600 uppercase tracking-wider">
+                                Overdue Callback
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-slate-600 text-[11px]">
+                          {lead.assignedAgent ? (
+                            <span className="font-bold text-slate-800">Agent: {lead.assignedAgent.fullName}</span>
+                          ) : (
+                            <span className="text-amber-700 font-medium">Unassigned (Open Pool)</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleCallLead(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="Dial Callback"
+                            >
+                              <PhoneCall size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDispositionLead(lead)}
+                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
+                              title="Log Call Outcome"
+                            >
+                              <ClipboardCheck size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleWhatsAppChat(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="WhatsApp Chat"
+                            >
+                              <MessageSquare size={13} />
+                            </button>
+                            {canPerformPipelineAction(user?.role, 'DISQUALIFY_LEAD') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDisqualifyingLead(lead);
+                                  setDisqualificationCategory('NOT_INTERESTED');
+                                  setDisqualificationText('');
+                                }}
+                                className="p-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition cursor-pointer"
+                                title="Disqualify Lead"
+                              >
+                                <XCircle size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  // TAB: DISPATCHER REVIEW QUEUE
+                  if (activeTab === 'dispatcher') {
+                    const latestTrial = lead.testServices && lead.testServices.length > 0 ? lead.testServices[0] : null;
+                    return (
+                      <tr key={lead.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          <div className="text-[11px] text-slate-600 mt-0.5">
+                            {lead.contactPerson} • <span className="font-mono text-slate-800 font-semibold">{lead.phone}</span>
+                          </div>
+                          {lead.numberOfUnits && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 mt-1">
+                              <Truck size={10} />
+                              <span>{lead.numberOfUnits} Units</span>
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="space-y-1">
+                            {lead.commonTireSizes ? (
+                              <div className="font-mono font-bold text-slate-800 text-[11px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded inline-block">
+                                {lead.commonTireSizes}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-400">Tires pending</span>
+                            )}
+                            {lead.vehicleTypes && (
+                              <div className="text-[10px] text-slate-500 font-medium">
+                                {lead.vehicleTypes}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          {latestTrial ? (
+                            <div className="flex flex-col gap-1 items-start">
+                              <span className="font-mono font-bold text-[10px] text-purple-900 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
+                                {latestTrial.jobCode}
+                              </span>
+                              <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                                latestTrial.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                                latestTrial.status === 'ASSIGNED' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                                'bg-amber-100 text-amber-800 border border-amber-300'
+                              }`}>
+                                {latestTrial.status}
+                              </span>
+                              {latestTrial.driver && (
+                                <div className="text-[10px] text-slate-500">
+                                  Tech: <span className="font-semibold text-slate-700">{latestTrial.driver.fullName}</span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 italic">No trial work order</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          {lead.dispatcherNotes ? (
+                            <div className="max-w-[200px]">
+                              <p className="text-[11px] text-slate-700 line-clamp-2 italic" title={lead.dispatcherNotes}>
+                                &quot;{lead.dispatcherNotes}&quot;
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingNotesLead(lead);
+                                  setDispatcherNotesText(lead.dispatcherNotes || '');
+                                }}
+                                className="text-[10px] text-purple-700 hover:underline font-bold mt-0.5 cursor-pointer"
+                              >
+                                Edit note
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingNotesLead(lead);
+                                setDispatcherNotesText('');
+                              }}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 hover:bg-purple-50 text-slate-600 hover:text-purple-700 text-[10px] font-bold border border-slate-200 transition cursor-pointer"
+                            >
+                              <Edit3 size={10} />
+                              <span>Add Feasibility Note</span>
+                            </button>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-slate-600 text-[11px]">
+                          {lead.assignedDispatcher ? (
+                            <span className="font-bold text-purple-900 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md text-[10px]">
+                              {lead.assignedDispatcher.fullName}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">Unassigned Dispatcher</span>
+                          )}
+                          <div className="text-[10px] text-slate-400 mt-1">
+                            From: {lead.uploadedBy?.fullName || 'VA Outreach'}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => handleCallLead(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="Dial Lead"
+                            >
+                              <PhoneCall size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDispositionLead(lead)}
+                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
+                              title="Log Call Outcome"
+                            >
+                              <ClipboardCheck size={13} />
+                            </button>
+
+                            {canPerformPipelineAction(user?.role, 'BOOK_TRIAL_JOB') && (
+                              <button
+                                type="button"
+                                onClick={() => setTestServiceLead(lead)}
+                                className="px-2 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                                title="Book Feasibility Trial Service Job"
+                              >
+                                <Wrench size={11} />
+                                <span>Trial Job</span>
+                              </button>
+                            )}
+
+                            {canPerformPipelineAction(user?.role, 'ADVANCE_TO_GM_SIGNOFF') && (
+                              <button
+                                type="button"
+                                onClick={() => advanceStageMutation.mutate({ id: lead.id, stage: 'ADMIN_APPROVAL' })}
+                                className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                                title="Feasibility verified: Advance to GM Signoff"
+                              >
+                                <ShieldCheck size={11} />
+                                <span>GM Signoff</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleWhatsAppChat(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="WhatsApp Chat"
+                            >
+                              <MessageSquare size={13} />
+                            </button>
+
+                            {canPerformPipelineAction(user?.role, 'DISQUALIFY_LEAD') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDisqualifyingLead(lead);
+                                  setDisqualificationCategory('OUT_OF_SERVICE_AREA');
+                                  setDisqualificationText('');
+                                }}
+                                className="p-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition cursor-pointer"
+                                title="Disqualify Lead (e.g. Infeasible, Out of Service Area)"
+                              >
+                                <XCircle size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  // TAB: GM / ADMIN APPROVAL
+                  if (activeTab === 'approval') {
+                    const latestTrial = lead.testServices && lead.testServices.length > 0 ? lead.testServices[0] : null;
+                    return (
+                      <tr key={lead.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                            Ingested: {new Date(lead.createdAt).toLocaleDateString()}
+                          </div>
+                          {lead.numberOfUnits && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 mt-1">
+                              <Truck size={10} />
+                              <span>{lead.numberOfUnits} Units</span>
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 font-semibold text-slate-800">
+                          <div>{lead.contactPerson}</div>
+                          {lead.poaEmail && (
+                            <div className="text-[10px] text-amber-700 font-semibold truncate max-w-[170px]" title="POA Billing Email">
+                              POA: {lead.poaEmail}
+                            </div>
+                          )}
+                          <div className="font-mono text-slate-700 text-xs mt-0.5">{lead.phone}</div>
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          {latestTrial ? (
+                            <div className="flex flex-col gap-1 items-start">
+                              <span className="font-mono font-bold text-[10px] text-emerald-900 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                                Trial: {latestTrial.jobCode}
+                              </span>
+                              <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase ${
+                                latestTrial.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {latestTrial.status}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                              Direct Feasibility Verified
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="font-mono font-bold text-slate-800 text-[11px]">
+                            {lead.commonTireSizes || 'Standard Fleet Sizes'}
+                          </div>
+                          {lead.dispatcherNotes && (
+                            <p className="text-[10px] text-slate-600 line-clamp-1 italic mt-0.5">
+                              Note: {lead.dispatcherNotes}
+                            </p>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-900 border border-purple-200 flex items-center gap-1 w-max">
+                            <ShieldCheck size={11} />
+                            <span>Awaiting Onboarding</span>
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {canPerformPipelineAction(user?.role, 'CONVERT_FLEET') && (
+                              <button
+                                type="button"
+                                onClick={() => setConvertingLead(lead)}
+                                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1 shadow-xs"
+                                title="Execute contract & convert to active B2B Fleet"
+                              >
+                                <ClipboardCheck size={13} />
+                                <span>Convert Fleet</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleCallLead(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="Dial Lead"
+                            >
+                              <PhoneCall size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleWhatsAppChat(lead)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                              title="WhatsApp Chat"
+                            >
+                              <MessageSquare size={13} />
+                            </button>
+                            {canPerformPipelineAction(user?.role, 'DISQUALIFY_LEAD') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDisqualifyingLead(lead);
+                                  setDisqualificationCategory('NOT_INTERESTED');
+                                  setDisqualificationText('');
+                                }}
+                                className="p-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition cursor-pointer"
+                                title="Disqualify Lead"
+                              >
+                                <XCircle size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  // TAB 3: DISQUALIFIED AUDIT
+                  if (activeTab === 'disqualified') {
+                    return (
+                      <tr key={lead.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          {lead.numberOfUnits && (
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              {lead.numberOfUnits} Units
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 font-semibold text-slate-800">
+                          <div>{lead.contactPerson}</div>
+                          <div className="font-mono text-xs text-slate-600 mt-0.5">{lead.phone}</div>
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border bg-rose-50 text-rose-800 border-rose-200">
+                            {lead.disqualificationReason ? lead.disqualificationReason.replace(/_/g, ' ') : 'NOT INTERESTED'}
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-slate-600 text-[11px]">
+                          {lead.disqualifiedNotes ? (
+                            <p className="text-slate-700 italic max-w-xs">{lead.disqualifiedNotes}</p>
+                          ) : (
+                            <span className="text-slate-400">No audit notes</span>
+                          )}
+                          <div className="text-[10px] text-slate-400 font-mono mt-1">
+                            Logged: {new Date(lead.updatedAt).toLocaleDateString()}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => reactivateMutation.mutate(lead.id)}
+                            disabled={reactivateMutation.isPending}
+                            className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] transition cursor-pointer inline-flex items-center gap-1 shadow-xs disabled:opacity-50"
+                            title="Reactivate lead back into unassigned pool"
+                          >
+                            <RefreshCw size={11} className={reactivateMutation.isPending ? 'animate-spin' : ''} />
+                            <span>Reactivate Lead</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  // TAB 4: CONVERTED FLEETS
+                  if (activeTab === 'converted') {
+                    return (
+                      <tr key={lead.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          {lead.resultingFleet?.fleetCode ? (
+                            <span className="inline-flex items-center gap-1 font-mono font-bold text-emerald-800 bg-emerald-100/70 border border-emerald-300 px-2 py-0.5 rounded-lg text-[10px] mt-0.5">
+                              Fleet: {lead.resultingFleet.fleetCode}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-emerald-700 font-semibold">Converted</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                            <Truck size={12} className="text-slate-600" />
+                            <span>{lead.numberOfUnits || 0} Units Onboarded</span>
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 font-semibold text-slate-800">
+                          <div>{lead.contactPerson}</div>
+                          {lead.fleetManager && (
+                            <div className="text-[10px] text-slate-500">FM: {lead.fleetManager}</div>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="font-mono font-bold text-slate-800">{lead.phone}</div>
+                          {lead.email && <div className="text-[11px] text-slate-500 truncate max-w-[170px]">{lead.email}</div>}
+                          {lead.poaEmail && (
+                            <div className="text-[10px] text-amber-700 font-semibold truncate max-w-[170px]">
+                              POA: {lead.poaEmail}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-slate-600 text-[11px]">
+                          <div className="font-mono font-semibold text-slate-700">
+                            {new Date(lead.updatedAt).toLocaleDateString()}
+                          </div>
+                          <div className="text-[10px] text-slate-400">Won Agreement</div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          <a
+                            href={`/fleets?search=${encodeURIComponent(lead.resultingFleet?.fleetCode || lead.companyName)}`}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[10px] transition"
+                          >
+                            <span>View Fleet Profile</span>
+                          </a>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  // Default Fallback Table Row for Legacy / Staff Tabs
                   return (
                     <tr key={lead.id} className="hover:bg-slate-50/70 transition">
                       {/* Column 1: Company & Units */}
@@ -656,6 +1784,12 @@ export default function Leads() {
                             {lead.stage?.replace('_', ' ')}
                           </span>
 
+                          {isConverted && lead.resultingFleet?.fleetCode && (
+                            <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100/70 border border-emerald-300 px-1.5 py-0.5 rounded">
+                              Fleet: {lead.resultingFleet.fleetCode}
+                            </span>
+                          )}
+
                           {lead.callbackDate && (
                             <span className="text-[10px] font-medium text-blue-700 flex items-center gap-1">
                               <Calendar size={10} />
@@ -685,7 +1819,6 @@ export default function Leads() {
                       {/* Column 6: Actions */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* Dial Button */}
                           <button
                             type="button"
                             onClick={() => handleCallLead(lead)}
@@ -695,7 +1828,6 @@ export default function Leads() {
                             <PhoneCall size={13} />
                           </button>
 
-                          {/* Log Outcome / Disposition */}
                           <button
                             type="button"
                             onClick={() => setSelectedDispositionLead(lead)}
@@ -705,7 +1837,6 @@ export default function Leads() {
                             <ClipboardCheck size={13} />
                           </button>
 
-                          {/* Admin / GM Feasibility Trial Action */}
                           {isAdminOrGm && !isConverted && !isDisqualified && (
                             <>
                               <button
@@ -729,7 +1860,6 @@ export default function Leads() {
                             </>
                           )}
 
-                          {/* Admin Conversion Action */}
                           {isAdminOrGm && !isConverted && !isDisqualified && (
                             <button
                               type="button"
@@ -741,7 +1871,6 @@ export default function Leads() {
                             </button>
                           )}
 
-                          {/* WhatsApp Pitch */}
                           <button
                             type="button"
                             onClick={() => handleWhatsAppChat(lead)}
@@ -751,7 +1880,6 @@ export default function Leads() {
                             <MessageSquare size={13} />
                           </button>
 
-                          {/* Disqualify Button */}
                           {!isDisqualified && !isConverted && (
                             <button
                               type="button"
@@ -767,7 +1895,6 @@ export default function Leads() {
                             </button>
                           )}
 
-                          {/* Reactivate Disqualified Lead */}
                           {isDisqualified && (isAdminOrGm || isAgent || isVa) && (
                             <button
                               type="button"
@@ -790,6 +1917,68 @@ export default function Leads() {
           </div>
         )}
       </div>
+
+      {/* Server-Side Pagination Bar */}
+      {pagination.total > 0 && (
+        <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-2xs">
+          <div className="text-slate-600 flex items-center gap-2">
+            <span>
+              Showing <strong className="font-mono text-slate-900">{(pagination.page - 1) * pagination.limit + 1}</strong> to{' '}
+              <strong className="font-mono text-slate-900">{Math.min(pagination.page * pagination.limit, pagination.total)}</strong> of{' '}
+              <strong className="font-mono text-slate-900">{pagination.total}</strong> records
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Page Size Selector */}
+            <div className="flex items-center gap-1.5 text-slate-600">
+              <span className="text-[11px] font-medium">Per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer"
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+
+            {/* Previous & Next Page Navigation */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage <= 1 || isLoading}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-1"
+              >
+                <ChevronLeft size={13} />
+                <span>Prev</span>
+              </button>
+
+              <span className="px-2.5 py-1 text-slate-700 font-mono font-bold text-xs">
+                Page {currentPage} of {pagination.totalPages}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.min(pagination.totalPages, prev + 1))}
+                disabled={currentPage >= pagination.totalPages || isLoading}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-1"
+              >
+                <span>Next</span>
+                <ChevronRight size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+          </div>
+        )
+      )}
 
       {/* Trial Service Booking Modal (Admin & GM Exclusive) */}
       <TrialServiceModal
@@ -870,6 +2059,54 @@ export default function Leads() {
         </Modal>
       )}
 
+      {/* Dispatcher Feasibility Notes Modal */}
+      {editingNotesLead && (
+        <Modal
+          isOpen={!!editingNotesLead}
+          onClose={() => setEditingNotesLead(null)}
+          title={`Dispatcher Feasibility Assessment — ${editingNotesLead.companyName}`}
+          maxWidth="max-w-md"
+        >
+          <div className="space-y-3.5 text-xs">
+            <p className="text-slate-500">
+              Record logistical constraints, route coverage notes, fleet tire specs, or dispatch requirements before trial service or GM signoff.
+            </p>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Feasibility & Operational Notes</label>
+              <textarea
+                rows={4}
+                placeholder="E.g., Requires 22.5 commercial drive tires, located in north corridor zone 2, dock access available after 4 PM..."
+                value={dispatcherNotesText}
+                onChange={(e) => setDispatcherNotesText(e.target.value)}
+                className="input-field resize-none"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingNotesLead(null)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={updateDispatcherNotesMutation.isPending}
+                onClick={() => {
+                  updateDispatcherNotesMutation.mutate({
+                    id: editingNotesLead.id,
+                    dispatcherNotes: dispatcherNotesText,
+                  });
+                }}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs cursor-pointer shadow-xs"
+              >
+                {updateDispatcherNotesMutation.isPending ? 'Saving...' : 'Save Feasibility Notes'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {/* Fleet Account Conversion Modal */}
       <ConvertFleetModal
         lead={convertingLead}
@@ -881,166 +2118,14 @@ export default function Leads() {
             customFleetCode: params.customFleetCode,
             extraData: {
               discountPercent: params.discountPercent,
+              ...params.extraData,
             },
           });
         }}
         isPending={convertMutation.isPending}
       />
 
-      {/* Push Lead Modal */}
-      <Modal
-        isOpen={isPushModalOpen}
-        onClose={() => setIsPushModalOpen(false)}
-        title="Push Fleet Prospect to Outbound Queue"
-        maxWidth="max-w-lg"
-      >
-        <form onSubmit={handleFormSubmit} className="space-y-3 text-xs">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Company Name *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Metro Freight Logistics"
-                value={formData.companyName}
-                onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                className="input-field"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Number of Units (NOU)</label>
-              <input
-                type="number"
-                placeholder="e.g. 25"
-                value={formData.numberOfUnits}
-                onChange={(e) => setFormData({ ...formData, numberOfUnits: e.target.value })}
-                className="input-field"
-              />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Fleet Manager</label>
-              <input
-                type="text"
-                placeholder="e.g. Robert Vance"
-                value={formData.fleetManager}
-                onChange={(e) => setFormData({ ...formData, fleetManager: e.target.value, contactPerson: e.target.value || formData.contactPerson })}
-                className="input-field"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">CEO / Owner Name</label>
-              <input
-                type="text"
-                placeholder="e.g. David Vance"
-                value={formData.ceoOwnerName}
-                onChange={(e) => setFormData({ ...formData, ceoOwnerName: e.target.value })}
-                className="input-field"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Contact Phone *</label>
-              <input
-                type="text"
-                required
-                placeholder="+1 (416) 555-0144"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="input-field font-mono"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Alt Phone</label>
-              <input
-                type="text"
-                placeholder="+1 (416) 555-0145"
-                value={formData.altPhone}
-                onChange={(e) => setFormData({ ...formData, altPhone: e.target.value })}
-                className="input-field font-mono"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Official Email</label>
-              <input
-                type="email"
-                placeholder="dispatch@metrofreight.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="input-field"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">POA Email (Billing)</label>
-              <input
-                type="email"
-                placeholder="accounting@metrofreight.com"
-                value={formData.poaEmail}
-                onChange={(e) => setFormData({ ...formData, poaEmail: e.target.value })}
-                className="input-field"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Depot Address</label>
-              <input
-                type="text"
-                placeholder="e.g. 5000 Dixie Rd, Mississauga, ON"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="input-field"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Website URL</label>
-              <input
-                type="text"
-                placeholder="e.g. metrofreight.com"
-                value={formData.website}
-                onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                className="input-field"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">Prospect Notes</label>
-            <textarea
-              rows={2}
-              placeholder="e.g. Operating 20 dry vans with 11R22.5 tires."
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="input-field resize-none"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setIsPushModalOpen(false)}
-              className="btn-secondary"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={createMutation.isPending}
-              className="btn-primary"
-            >
-              {createMutation.isPending ? 'Pushing...' : 'Push to Outbound Queue'}
-            </button>
-          </div>
-        </form>
-      </Modal>
 
       {/* Call Disposition Modal */}
       <DispositionModal
@@ -1063,6 +2148,7 @@ export default function Leads() {
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         defaultCountry={country}
+        defaultBatchId={selectedBatchId || inspectedBatchId}
       />
     </div>
   );

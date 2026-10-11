@@ -26,7 +26,7 @@ export default function TopNav({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const isAgentOrAdmin = ['CALL_AGENT', 'ADMIN', 'GENERAL_MANAGER'].includes(user?.role || '');
-  const canSwitchCountry = ['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER', 'ACCOUNTANT'].includes(user?.role || '');
+  const canSwitchCountry = ['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER', 'ACCOUNTANT', 'CALL_AGENT', 'VIRTUAL_ASSISTANT'].includes(user?.role || '');
 
   return (
     <>

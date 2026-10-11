@@ -8,6 +8,8 @@ import {
   createPaginatedResponse,
 } from '../utils/index.js';
 import { geocodingService } from '../services/geocodingService.js';
+import { validateAndNormalizePhone } from '../utils/validators.js';
+import { sseManager } from '../services/sseManager.js';
 
 export const fleetController = {
   async getFleets(req: Request, res: Response) {
@@ -40,6 +42,10 @@ export const fleetController = {
           take: limit,
           orderBy: { createdAt: 'desc' },
           include: {
+            vehicles: true,
+            drivers: {
+              where: { isActive: true },
+            },
             _count: {
               select: {
                 vehicles: true,
@@ -191,8 +197,17 @@ export const fleetController = {
       }
 
       const resolvedContact = (contactPerson || contactName || fleetManager || 'Fleet Manager').trim();
-      const resolvedPhone = (phone || '').trim() || '+14165550100';
       const effectiveCountry = countryCode || country || (req as any).countryCode || 'CA';
+      let resolvedPhone = (phone || '').trim();
+      if (resolvedPhone) {
+        const phoneValidation = validateAndNormalizePhone(resolvedPhone, effectiveCountry);
+        if (!phoneValidation.isValid) {
+          return sendError(res, phoneValidation.error || 'Invalid fleet phone number', 400);
+        }
+        resolvedPhone = phoneValidation.normalized;
+      } else {
+        resolvedPhone = effectiveCountry === 'UK' ? '+442079460100' : '+14165550100';
+      }
 
       const code = (fleetCode || '').trim() || `XMT-${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -225,12 +240,85 @@ export const fleetController = {
           longitude,
           countryCode: effectiveCountry,
           status: status || 'APPROVED',
+          numberOfUnits: req.body.numberOfUnits ? Number(req.body.numberOfUnits) : null,
           discountPercent: req.body.discountPercent ? Number(req.body.discountPercent) : 0,
           contractSignedAt: new Date(),
           virtualAssistantId: virtualAssistantId || null,
           managerUserId: managerUserId || null,
         },
       });
+
+      // Enroll initial vehicles if provided
+      const vehicles = req.body.vehicles;
+      if (Array.isArray(vehicles) && vehicles.length > 0) {
+        for (const v of vehicles) {
+          if (!v.licensePlate) continue;
+          try {
+            await prisma.vehicle.upsert({
+              where: {
+                countryCode_licensePlate: {
+                  countryCode: effectiveCountry,
+                  licensePlate: v.licensePlate.trim().toUpperCase(),
+                },
+              },
+              update: {
+                fleetId: fleet.id,
+                make: v.make || 'Commercial',
+                model: v.model || 'Rig',
+                year: v.year ? Number(v.year) : new Date().getFullYear(),
+                tireSize: v.tireSize || '11R22.5',
+                vin: v.vin || undefined,
+              },
+              create: {
+                fleetId: fleet.id,
+                countryCode: effectiveCountry,
+                licensePlate: v.licensePlate.trim().toUpperCase(),
+                make: v.make || 'Commercial',
+                model: v.model || 'Rig',
+                year: v.year ? Number(v.year) : new Date().getFullYear(),
+                tireSize: v.tireSize || '11R22.5',
+                vin: v.vin || undefined,
+              },
+            });
+          } catch (e: any) {
+            console.error('Failed to create fleet vehicle:', e?.message);
+          }
+        }
+      }
+
+      // Enroll initial drivers if provided with normalized E.164 phone
+      const drivers = req.body.drivers;
+      if (Array.isArray(drivers) && drivers.length > 0) {
+        for (const d of drivers) {
+          if (!d.fullName || !d.phone) continue;
+          const phoneValidation = validateAndNormalizePhone(d.phone, effectiveCountry);
+          if (!phoneValidation.isValid) continue;
+          try {
+            await prisma.fleetDriver.upsert({
+              where: {
+                fleetId_phone: {
+                  fleetId: fleet.id,
+                  phone: phoneValidation.normalized,
+                },
+              },
+              update: {
+                fullName: d.fullName.trim(),
+                licensePlate: d.licensePlate ? d.licensePlate.trim().toUpperCase() : undefined,
+              },
+              create: {
+                fleetId: fleet.id,
+                fullName: d.fullName.trim(),
+                phone: phoneValidation.normalized,
+                licensePlate: d.licensePlate ? d.licensePlate.trim().toUpperCase() : undefined,
+              },
+            });
+          } catch (e: any) {
+            console.error('Failed to create fleet driver:', e?.message);
+          }
+        }
+      }
+
+      sseManager.broadcast(`sse:dispatch:${fleet.countryCode}`, 'fleet:created', fleet);
 
       return sendSuccess(res, fleet, 'Fleet created successfully', 201);
     } catch (err: any) {
@@ -268,8 +356,19 @@ export const fleetController = {
       const data: any = {};
       if (fleetCode !== undefined) data.fleetCode = fleetCode;
       if (name || companyName) data.name = (name || companyName).trim();
-      if (contactPerson || contactName) data.contactPerson = (contactPerson || contactName).trim();
-      if (phone !== undefined) data.phone = phone.trim();
+      if (phone !== undefined) {
+        const cleanPhone = phone ? String(phone).trim() : '';
+        if (cleanPhone) {
+          const effectiveCountry = countryCode || (req as any).countryCode || 'CA';
+          const phoneValidation = validateAndNormalizePhone(cleanPhone, effectiveCountry);
+          if (!phoneValidation.isValid) {
+            return sendError(res, phoneValidation.error || 'Invalid fleet phone number', 400);
+          }
+          data.phone = phoneValidation.normalized;
+        } else {
+          data.phone = null;
+        }
+      }
       if (email !== undefined) data.email = email?.trim() || null;
       if (poaEmail !== undefined) data.poaEmail = poaEmail?.trim() || null;
       if (fleetManager !== undefined) data.fleetManager = fleetManager?.trim() || null;
@@ -284,6 +383,12 @@ export const fleetController = {
       if (businessType !== undefined) data.businessType = businessType?.trim() || null;
       if (assignedDid !== undefined) data.assignedDid = assignedDid?.trim() || null;
       if (managerUserId !== undefined) data.managerUserId = managerUserId || null;
+      if (req.body.numberOfUnits !== undefined) {
+        data.numberOfUnits = req.body.numberOfUnits ? Number(req.body.numberOfUnits) : null;
+      }
+      if (req.body.discountPercent !== undefined) {
+        data.discountPercent = Number(req.body.discountPercent) || 0;
+      }
 
       if (address !== undefined) {
         data.address = address?.trim() || null;
@@ -306,6 +411,8 @@ export const fleetController = {
         where: { id },
         data,
       });
+
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'fleet:updated', updated);
 
       return sendSuccess(res, updated, 'Fleet updated successfully');
     } catch (err: any) {
@@ -331,11 +438,23 @@ export const fleetController = {
       const fleetId = String(req.params.id);
       const { fullName, phone, licensePlate } = req.body;
 
+      if (!phone) {
+        return sendError(res, 'Phone number is required for fleet driver', 400);
+      }
+
+      const fleet = await prisma.fleet.findUnique({ where: { id: fleetId } });
+      const effectiveCountry = fleet?.countryCode || (req as any).countryCode || 'CA';
+      const phoneValidation = validateAndNormalizePhone(phone, effectiveCountry);
+      if (!phoneValidation.isValid) {
+        return sendError(res, phoneValidation.error || 'Invalid driver phone number', 400);
+      }
+      const normalizedPhone = phoneValidation.normalized;
+
       const existing = await prisma.fleetDriver.findUnique({
         where: {
           fleetId_phone: {
             fleetId,
-            phone,
+            phone: normalizedPhone,
           },
         },
       });
@@ -347,7 +466,7 @@ export const fleetController = {
         data: {
           fleetId,
           fullName,
-          phone,
+          phone: normalizedPhone,
           licensePlate,
         },
       });

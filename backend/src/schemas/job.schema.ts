@@ -13,9 +13,14 @@ export const PaginationQuerySchema = z.object({
   driverId: z.string().optional(),
   fleetId: z.string().optional(),
   customerId: z.string().optional(),
+  isFleetJob: z.preprocess(
+    (val) => (val === undefined ? undefined : String(val)),
+    z.enum(['true', 'false', '1', '0'])
+  ).optional(),
+  source: z.string().optional(),
   sortBy: z.enum(['createdAt', 'updatedAt', 'scheduledFor']).optional().default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
-});
+}).passthrough();
 
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema>;
 
@@ -42,6 +47,9 @@ export const CreateJobSchema = z.object({
   source: z.enum(['DIRECT_CALL', 'WHATSAPP', 'WEBSITE', 'LANDING_PAGE_SELF_BOOK', 'FLEET_PORTAL', 'MEMBER_PORTAL']).optional().default('DIRECT_CALL'),
   scheduledFor: z.string().optional(),
   appointmentDate: z.string().optional(),
+  arrivalWindowStart: z.string().optional(),
+  arrivalWindowEnd: z.string().optional(),
+  estimatedArrivalMinutes: z.coerce.number().optional(),
   services: z.array(z.string()).optional(),
   lineItems: z.array(
     z.object({
@@ -99,16 +107,60 @@ export const CreateJobSchema = z.object({
 export type CreateJobInput = z.infer<typeof CreateJobSchema>;
 
 export const UpdateJobStatusSchema = z.object({
-  status: z.enum(['PENDING', 'UNVERIFIED_PUBLIC', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']),
+  status: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const s = val.toUpperCase();
+        if (s === 'ON_SCENE' || s === 'EN_ROUTE') return 'IN_PROGRESS';
+      }
+      return val;
+    },
+    z.enum(['PENDING', 'UNVERIFIED_PUBLIC', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'])
+  ),
   urgency: z.enum(['EMERGENCY', 'URGENT', 'STANDARD', 'FUTURE']).optional(),
+  paymentMethod: z.enum(['CASH', 'POS', 'E_TRANSFER', 'STRIPE', 'MOTO']).optional(),
+  amountCents: z.coerce.number().int().nonnegative().optional(),
   cashAmountCents: z.coerce.number().int().nonnegative().optional(),
   cashCollected: z.coerce.number().nonnegative().optional(),
+  receiptUrl: z.string().optional(),
 });
 
 export type UpdateJobStatusInput = z.infer<typeof UpdateJobStatusSchema>;
 
 export const AssignDriverSchema = z.object({
   driverId: z.string().uuid('Valid Driver UUID is required'),
+  etaMinutes: z.coerce.number().optional(),
+  driverEtaMinutes: z.coerce.number().optional(),
+  estimatedArrivalAt: z.string().optional(),
+  driverEstimatedArrivalAt: z.string().optional(),
 });
 
 export type AssignDriverInput = z.infer<typeof AssignDriverSchema>;
+
+export const VerifyBookingAddressSchema = z.object({
+  serviceAddress: z.string().min(1, 'Service address is required'),
+  serviceLatitude: z.coerce.number().optional().nullable(),
+  serviceLongitude: z.coerce.number().optional().nullable(),
+  recipientName: z.string().optional(),
+  recipientPhone: z.string().optional(),
+  problemNotes: z.string().optional(),
+  urgency: z.string().optional(),
+  paymentMethod: z.string().optional(),
+  vehicleMake: z.string().optional(),
+  vehicleModel: z.string().optional(),
+  vehicleYear: z.coerce.number().optional().nullable(),
+  tireSize: z.string().optional(),
+  licensePlate: z.string().optional(),
+  selectedServices: z.array(z.string()).optional(),
+  serviceItems: z.array(
+    z.object({
+      serviceName: z.string(),
+      category: z.string().optional(),
+      unitPriceCents: z.coerce.number().optional(),
+      quantity: z.coerce.number().default(1),
+    })
+  ).optional(),
+});
+
+export type VerifyBookingAddressInput = z.infer<typeof VerifyBookingAddressSchema>;
+

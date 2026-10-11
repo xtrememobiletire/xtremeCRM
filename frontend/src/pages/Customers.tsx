@@ -3,6 +3,7 @@ import { Users, Plus, Search } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import CustomerTable from '../components/customers/CustomerTable';
 import AddCustomerModal from '../components/customers/AddCustomerModal';
+import CustomerDetailModal from '../components/customers/CustomerDetailModal';
 import Pagination from '../components/common/Pagination';
 import EmptyState from '../components/ui/EmptyState';
 import { TableSkeleton } from '../components/common/Skeleton';
@@ -12,6 +13,7 @@ export default function Customers() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
 
   const { data: customerResponse, isLoading } = useCustomers({
     page,
@@ -81,7 +83,10 @@ export default function Customers() {
         />
       ) : (
         <div className="space-y-4">
-          <CustomerTable customers={customers} />
+          <CustomerTable 
+            customers={customers} 
+            onSelectCustomer={(c) => setSelectedCustomer(c)} 
+          />
           <Pagination
             currentPage={pagination.page}
             totalPages={pagination.totalPages}
@@ -92,6 +97,12 @@ export default function Customers() {
       )}
 
       <AddCustomerModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+      
+      <CustomerDetailModal
+        customer={selectedCustomer}
+        isOpen={Boolean(selectedCustomer)}
+        onClose={() => setSelectedCustomer(null)}
+      />
     </div>
   );
 }

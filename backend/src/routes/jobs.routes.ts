@@ -7,9 +7,11 @@ import {
   CreateJobSchema,
   UpdateJobStatusSchema,
   AssignDriverSchema,
+  VerifyBookingAddressSchema,
   idParamSchema,
 } from '../schemas/index.js';
 import { tenantScope } from '../middleware/tenantScope.js';
+import { upload } from '../config/multer.js';
 
 const router = Router();
 
@@ -70,6 +72,7 @@ router.post(
  */
 router.patch(
   '/:id/status',
+  upload.single('receipt'),
   validateRequest({
     params: idParamSchema,
     body: UpdateJobStatusSchema,
@@ -89,6 +92,20 @@ router.patch(
     body: AssignDriverSchema,
   }),
   jobController.assignDriver
+);
+
+/**
+ * @route   PATCH /api/jobs/:id/verify-booking
+ * @desc    Verify website booking address with Mapbox geocoding & release to PENDING
+ * @access  Private (Admin, General Manager, Dispatcher)
+ */
+router.patch(
+  '/:id/verify-booking',
+  validateRequest({
+    params: idParamSchema,
+    body: VerifyBookingAddressSchema,
+  }),
+  jobController.verifyBookingAddress
 );
 
 /**

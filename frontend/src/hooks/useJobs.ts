@@ -10,6 +10,7 @@ export function useJobs(params?: {
   urgency?: string;
   countryCode?: string;
   driverId?: string;
+  isFleetJob?: boolean | string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }) {
@@ -41,30 +42,52 @@ export function useCreateJob() {
 export function useUpdateJobStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status, cashAmountCents }: { id: string; status: string; cashAmountCents?: number }) =>
-      jobService.updateJobStatus(id, status, cashAmountCents),
-    onMutate: async ({ id, status }) => {
+    mutationFn: ({ 
+      id, 
+      status, 
+      cashAmountCents,
+      formData,
+      payload
+    }: { 
+      id: string; 
+      status?: string; 
+      cashAmountCents?: number;
+      formData?: FormData;
+      payload?: any;
+    }) => {
+      if (formData) {
+        return jobService.updateJobStatus(id, formData);
+      }
+      if (payload) {
+        return jobService.updateJobStatus(id, payload);
+      }
+      return jobService.updateJobStatus(id, status || 'COMPLETED', cashAmountCents);
+    },
+    onMutate: async ({ id, status, formData, payload }) => {
+      const nextStatus = status || (payload?.status as string) || (formData?.get('status') as string);
       await queryClient.cancelQueries({ queryKey: ['technician-jobs'] });
       await queryClient.cancelQueries({ queryKey: ['jobs'] });
 
       const prevTech = queryClient.getQueriesData({ queryKey: ['technician-jobs'] });
       const prevJobs = queryClient.getQueriesData({ queryKey: ['jobs'] });
 
-      queryClient.setQueriesData({ queryKey: ['technician-jobs'] }, (old: any) => {
-        if (!old || !old.data) return old;
-        return {
-          ...old,
-          data: old.data.map((j: any) => (j.id === id ? { ...j, status } : j)),
-        };
-      });
+      if (nextStatus) {
+        queryClient.setQueriesData({ queryKey: ['technician-jobs'] }, (old: any) => {
+          if (!old || !old.data) return old;
+          return {
+            ...old,
+            data: old.data.map((j: any) => (j.id === id ? { ...j, status: nextStatus } : j)),
+          };
+        });
 
-      queryClient.setQueriesData({ queryKey: ['jobs'] }, (old: any) => {
-        if (!old || !old.data) return old;
-        return {
-          ...old,
-          data: old.data.map((j: any) => (j.id === id ? { ...j, status } : j)),
-        };
-      });
+        queryClient.setQueriesData({ queryKey: ['jobs'] }, (old: any) => {
+          if (!old || !old.data) return old;
+          return {
+            ...old,
+            data: old.data.map((j: any) => (j.id === id ? { ...j, status: nextStatus } : j)),
+          };
+        });
+      }
 
       return { prevTech, prevJobs };
     },
@@ -88,11 +111,22 @@ export function useUpdateJobStatus() {
 export function useAssignDriver() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ jobId, driverId }: { jobId: string; driverId: string }) =>
-      jobService.assignDriver(jobId, driverId),
+    mutationFn: ({ 
+      jobId, 
+      driverId, 
+      etaMinutes,
+      driverEstimatedArrivalAt,
+    }: { 
+      jobId: string; 
+      driverId: string; 
+      etaMinutes?: number;
+      driverEstimatedArrivalAt?: string;
+    }) =>
+      jobService.assignDriver(jobId, driverId, etaMinutes, driverEstimatedArrivalAt),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['technician-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['dispatch-map-jobs'] });
     },
   });
 }

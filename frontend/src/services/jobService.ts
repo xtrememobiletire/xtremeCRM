@@ -16,6 +16,13 @@ export interface JobItem {
   paymentMethod?: string;
   createdAt: string;
   scheduledFor?: string;
+  appointmentDate?: string;
+  arrivalWindowStart?: string;
+  arrivalWindowEnd?: string;
+  estimatedArrivalAt?: string;
+  driverEstimatedArrivalAt?: string;
+  driverEtaMinutes?: number;
+  countryCode?: string;
   materialCostCents?: number;
   repairerFeeCents?: number;
   otherExpenseCents?: number;
@@ -54,6 +61,9 @@ export interface JobItem {
   notes?: string;
   recipientName?: string;
   recipientPhone?: string;
+  completedAt?: string;
+  cashCollectedCents?: number;
+  receiptUrl?: string;
 }
 
 export interface PaginationMeta {
@@ -78,6 +88,9 @@ export const jobService = {
     urgency?: string;
     countryCode?: string;
     driverId?: string;
+    fleetId?: string;
+    isFleetJob?: boolean | string;
+    source?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
   }): Promise<JobsResponse> {
@@ -103,6 +116,18 @@ export const jobService = {
     };
   },
 
+  async getPendingJobsCount(countryCode?: string): Promise<number> {
+    const res = await api.get('/jobs', {
+      params: {
+        status: 'PENDING',
+        isFleetJob: 'false',
+        countryCode: countryCode && countryCode !== 'ALL' ? countryCode : undefined,
+        limit: 1,
+      },
+    });
+    return res.data?.meta?.totalCount ?? res.data?.pagination?.total ?? 0;
+  },
+
   async getJobById(id: string): Promise<JobItem> {
     const res = await api.get(`/jobs/${id}`);
     const j = res.data.data;
@@ -124,13 +149,56 @@ export const jobService = {
     return res.data.data;
   },
 
-  async updateJobStatus(id: string, status: string, cashAmountCents?: number): Promise<JobItem> {
-    const res = await api.patch(`/jobs/${id}/status`, { status, cashAmountCents });
+  async updateJobStatus(
+    id: string,
+    statusOrPayload: string | FormData | { status: string; paymentMethod?: string; amountCents?: number; cashAmountCents?: number; receiptUrl?: string },
+    cashAmountCents?: number
+  ): Promise<JobItem> {
+    if (statusOrPayload instanceof FormData) {
+      const res = await api.patch(`/jobs/${id}/status`, statusOrPayload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data.data;
+    }
+    const payload = typeof statusOrPayload === 'string'
+      ? { status: statusOrPayload, cashAmountCents }
+      : statusOrPayload;
+    const res = await api.patch(`/jobs/${id}/status`, payload);
     return res.data.data;
   },
 
-  async assignDriver(id: string, driverId: string): Promise<JobItem> {
-    const res = await api.patch(`/jobs/${id}/assign-driver`, { driverId });
+  async assignDriver(
+    id: string, 
+    driverId: string, 
+    etaMinutes?: number,
+    driverEstimatedArrivalAt?: string
+  ): Promise<JobItem> {
+    const res = await api.patch(`/jobs/${id}/assign-driver`, { 
+      driverId, 
+      etaMinutes, 
+      driverEtaMinutes: etaMinutes,
+      driverEstimatedArrivalAt 
+    });
+    return res.data.data;
+  },
+
+  async verifyBookingAddress(id: string, payload: {
+    serviceAddress: string;
+    serviceLatitude?: number | null;
+    serviceLongitude?: number | null;
+    recipientName?: string;
+    recipientPhone?: string;
+    problemNotes?: string;
+    urgency?: string;
+    paymentMethod?: string;
+    vehicleMake?: string;
+    vehicleModel?: string;
+    vehicleYear?: number;
+    tireSize?: string;
+    licensePlate?: string;
+    serviceItems?: any[];
+  }): Promise<JobItem> {
+    const res = await api.patch(`/jobs/${id}/verify-booking`, payload);
     return res.data.data;
   },
 

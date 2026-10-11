@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import Modal from '../ui/Modal';
+import PhoneInputField from '../common/PhoneInputField';
 import { useCreateCustomer } from '../../hooks/useCustomers';
 import { toast } from 'sonner';
+import { validateAndNormalizePhone } from '../../utils/phone';
 
 import { useTenant } from '../../context/TenantContext';
 
@@ -30,10 +32,16 @@ export default function AddCustomerModal({ isOpen, onClose }: AddCustomerModalPr
       return;
     }
 
+    const phoneValidation = validateAndNormalizePhone(cleanPhone, country);
+    if (!phoneValidation.isValid) {
+      toast.error(phoneValidation.error || 'Please enter a valid phone number');
+      return;
+    }
+
     try {
       await createCustomerMutation.mutateAsync({
         fullName: cleanName,
-        phone: cleanPhone,
+        phone: phoneValidation.normalized,
         email: cleanEmail || undefined,
         notes: cleanNotes || undefined,
         countryCode: country,
@@ -70,17 +78,13 @@ export default function AddCustomerModal({ isOpen, onClose }: AddCustomerModalPr
           />
         </div>
 
-        <div>
-          <label className="text-xs font-semibold text-slate-700">Phone Number *</label>
-          <input
-            type="tel"
-            required
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+1 (416) 555-0182"
-            className="input-base mt-1 font-mono"
-          />
-        </div>
+        <PhoneInputField
+          value={phone}
+          onChange={setPhone}
+          countryCode={country}
+          label="Phone Number"
+          required
+        />
 
         <div>
           <label className="text-xs font-semibold text-slate-700">Email Address</label>

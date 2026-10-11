@@ -5,7 +5,7 @@ import PageHeader from '../components/ui/PageHeader';
 import JobFilters from '../components/pages/jobs/JobFilters';
 import JobListContainer from '../components/pages/jobs/JobListContainer';
 import DriverActiveOrderCard from '../components/jobs/DriverActiveOrderCard';
-import CreateJobModal from '../components/pages/jobs/CreateJobModal';
+import CreateRoadsideJobModal from '../components/pages/jobs/CreateRoadsideJobModal';
 import JobDetailModal from '../components/pages/jobs/JobDetailModal';
 import AssignDriverModal from '../components/pages/jobs/AssignDriverModal';
 import ExpenseStatingModal from '../components/accounting/ExpenseStatingModal';
@@ -41,7 +41,8 @@ export default function Jobs() {
     urgency: urgency || undefined,
     search: search || undefined,
     driverId: isDriver ? user?.id : undefined,
-    countryCode: selectedCountry === 'ALL' ? undefined : selectedCountry,
+    countryCode: selectedCountry,
+    isFleetJob: 'false',
   });
 
   if (isAccountant) {
@@ -49,10 +50,14 @@ export default function Jobs() {
   }
 
   const rawJobs = jobsResponse?.data || [];
+  // Strict retail roadside isolation: never display commercial fleets, trial runs, or unverified bookings on /jobs
+  const retailJobs = rawJobs.filter(
+    (j: any) => !j.fleetId && !j.isTestService && j.status !== 'UNVERIFIED_PUBLIC'
+  );
   // Strict driver isolation: only show jobs where driverId matches current user ID
   const jobs = isDriver && user?.id
-    ? rawJobs.filter((j: any) => j.driverId === user.id || j.driver?.id === user.id)
-    : rawJobs;
+    ? retailJobs.filter((j: any) => j.driverId === user.id || j.driver?.id === user.id)
+    : retailJobs;
 
   // For driver, only show fresh/active orders (not completed, not cancelled)
   const activeJobs = isDriver
@@ -222,21 +227,25 @@ export default function Jobs() {
         </>
       )}
 
-      <CreateJobModal
+      <CreateRoadsideJobModal
         isOpen={isCreateOpen}
         onClose={handleCloseCreate}
         prefillPhone={intakePhoneParam}
       />
-      <JobDetailModal
-        isOpen={!!selectedJob}
-        onClose={() => setSelectedJob(null)}
-        job={selectedJob}
-      />
-      <AssignDriverModal
-        isOpen={!!assignJob}
-        onClose={() => setAssignJob(null)}
-        job={assignJob}
-      />
+      {selectedJob && (
+        <JobDetailModal
+          isOpen={!!selectedJob}
+          onClose={() => setSelectedJob(null)}
+          job={selectedJob}
+        />
+      )}
+      {assignJob && (
+        <AssignDriverModal
+          isOpen={!!assignJob}
+          onClose={() => setAssignJob(null)}
+          job={assignJob}
+        />
+      )}
       {cogsJob && (
         <ExpenseStatingModal
           isOpen={!!cogsJob}

@@ -39,5 +39,8 @@ export const userQuerySchema = z.object({
     'FLEET_MANAGER',
     'CUSTOMER_MEMBER',
   ]).optional(),
-  countryCode: z.enum(['CA', 'US', 'UK']).optional(),
+  countryCode: z.preprocess(
+    (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+    z.enum(['CA', 'US', 'UK', 'ALL']).optional()
+  ),
 });

@@ -53,17 +53,17 @@ export default function MainLayout() {
     }
   }, [location.pathname, isAgentActive, user?.id, user?.role, country, socket, setAgentMode]);
 
-  // Strict role containment: CALL_AGENT only allowed on /inbound and /leads
+  // Strict role containment: CALL_AGENT allowed on /inbound, /inbound-fleet, and /leads
   if (user?.role === 'CALL_AGENT') {
-    const agentAllowed = ['/inbound', '/leads'];
+    const agentAllowed = ['/inbound', '/inbound-fleet', '/leads'];
     if (!agentAllowed.includes(location.pathname)) {
       return <Navigate to="/leads" replace />;
     }
   }
 
-  // Strict role containment: VIRTUAL_ASSISTANT only allowed on /leads
+  // Strict role containment: VIRTUAL_ASSISTANT allowed on /leads and /inbound-fleet
   if (user?.role === 'VIRTUAL_ASSISTANT') {
-    const vaAllowed = ['/leads'];
+    const vaAllowed = ['/leads', '/inbound-fleet'];
     if (!vaAllowed.includes(location.pathname)) {
       return <Navigate to="/leads" replace />;
     }

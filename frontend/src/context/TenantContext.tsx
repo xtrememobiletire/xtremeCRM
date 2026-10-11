@@ -20,7 +20,7 @@ interface TenantContextType {
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
-const NON_SWITCHING_ROLES = ['DRIVER', 'CALL_AGENT', 'FLEET_MANAGER', 'CUSTOMER_MEMBER', 'VIRTUAL_ASSISTANT'];
+const NON_SWITCHING_ROLES = ['DRIVER', 'FLEET_MANAGER', 'CUSTOMER_MEMBER'];
 
 export function TenantProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();

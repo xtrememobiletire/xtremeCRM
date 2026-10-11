@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
@@ -10,24 +10,29 @@ import MainLayout from './components/layout/MainLayout';
 import { RouteErrorBoundary } from './components/common/RouteErrorBoundary';
 import { useSSE } from './hooks/useSSE';
 
-// Lazy Loaded Pages
-const Landing = lazy(() => import('./pages/Landing'));
-const Login = lazy(() => import('./pages/Login'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Jobs = lazy(() => import('./pages/Jobs'));
-const Dispatch = lazy(() => import('./pages/Dispatch'));
-const Customers = lazy(() => import('./pages/Customers'));
-const Fleets = lazy(() => import('./pages/Fleets'));
-const Vehicles = lazy(() => import('./pages/Vehicles'));
-const Accounting = lazy(() => import('./pages/Accounting'));
-const FleetDashboard = lazy(() => import('./pages/FleetDashboard'));
-const MemberDashboard = lazy(() => import('./pages/MemberDashboard'));
-const TechnicianPortal = lazy(() => import('./pages/TechnicianPortal'));
-const History = lazy(() => import('./pages/History'));
-const Leads = lazy(() => import('./pages/Leads'));
-const Inbound = lazy(() => import('./pages/Inbound'));
-const CustomerMapView = lazy(() => import('./pages/customers/CustomerMapView'));
-const JobMapView = lazy(() => import('./pages/jobs/JobMapView'));
+import { lazyWithRetry } from './utils/lazyWithRetry';
+
+// Lazy Loaded Pages with Auto-Retry
+const Landing = lazyWithRetry(() => import('./pages/Landing'));
+const Login = lazyWithRetry(() => import('./pages/Login'));
+const Dashboard = lazyWithRetry(() => import('./pages/Dashboard'));
+const Jobs = lazyWithRetry(() => import('./pages/Jobs'));
+const Dispatch = lazyWithRetry(() => import('./pages/Dispatch'));
+const Customers = lazyWithRetry(() => import('./pages/Customers'));
+const Fleets = lazyWithRetry(() => import('./pages/Fleets'));
+const Vehicles = lazyWithRetry(() => import('./pages/Vehicles'));
+const Accounting = lazyWithRetry(() => import('./pages/Accounting'));
+const FleetDashboard = lazyWithRetry(() => import('./pages/FleetDashboard'));
+const MemberDashboard = lazyWithRetry(() => import('./pages/MemberDashboard'));
+const TechnicianPortal = lazyWithRetry(() => import('./pages/TechnicianPortal'));
+const History = lazyWithRetry(() => import('./pages/History'));
+const Leads = lazyWithRetry(() => import('./pages/Leads'));
+const Inbound = lazyWithRetry(() => import('./pages/Inbound'));
+const CustomerMapView = lazyWithRetry(() => import('./pages/customers/CustomerMapView'));
+const JobMapView = lazyWithRetry(() => import('./pages/jobs/JobMapView'));
+const FleetJobs = lazyWithRetry(() => import('./pages/FleetJobs'));
+const Bookings = lazyWithRetry(() => import('./pages/Bookings'));
+const FleetInbound = lazyWithRetry(() => import('./pages/FleetInbound'));
 
 function getRoleHome(role?: string) {
   switch (role) {
@@ -44,7 +49,7 @@ function getRoleHome(role?: string) {
     case 'ACCOUNTANT':
       return '/accounting';
     case 'DISPATCHER':
-      return '/dispatch';
+      return '/jobs';
     default:
       return '/dashboard';
   }
@@ -161,6 +166,8 @@ function AppRoutes() {
           <Route path="/leads" element={<RoleRoute allowedRoles={['VIRTUAL_ASSISTANT', 'CALL_AGENT', 'DISPATCHER']}><Leads /></RoleRoute>} />
           <Route path="/outbound" element={<Navigate to="/leads" replace />} />
           <Route path="/jobs" element={<RoleRoute allowedRoles={['DISPATCHER']}><Jobs /></RoleRoute>} />
+          <Route path="/fleet-jobs" element={<RoleRoute allowedRoles={['DISPATCHER']}><FleetJobs /></RoleRoute>} />
+          <Route path="/bookings" element={<RoleRoute allowedRoles={['DISPATCHER']}><Bookings /></RoleRoute>} />
           <Route path="/jobs/map" element={<RoleRoute allowedRoles={['DISPATCHER']}><JobMapView /></RoleRoute>} />
           <Route path="/dispatch" element={<RoleRoute allowedRoles={['DISPATCHER']}><Dispatch /></RoleRoute>} />
           <Route path="/customers" element={<RoleRoute allowedRoles={['DISPATCHER']}><Customers /></RoleRoute>} />
@@ -169,6 +176,7 @@ function AppRoutes() {
           <Route path="/vehicles" element={<RoleRoute allowedRoles={['DISPATCHER']}><Vehicles /></RoleRoute>} />
           <Route path="/accounting" element={<RoleRoute allowedRoles={['ACCOUNTANT']}><Accounting /></RoleRoute>} />
           <Route path="/inbound" element={<RoleRoute allowedRoles={['CALL_AGENT', 'DISPATCHER']}><Inbound /></RoleRoute>} />
+          <Route path="/inbound-fleet" element={<RoleRoute allowedRoles={['CALL_AGENT', 'DISPATCHER']}><FleetInbound /></RoleRoute>} />
           <Route path="/technician" element={<RoleRoute allowedRoles={['DRIVER']}><TechnicianPortal /></RoleRoute>} />
           <Route path="/history" element={<RoleRoute allowedRoles={['DRIVER']}><History /></RoleRoute>} />
           <Route path="/member-dashboard" element={<RoleRoute allowedRoles={['CUSTOMER_MEMBER']}><MemberDashboard /></RoleRoute>} />

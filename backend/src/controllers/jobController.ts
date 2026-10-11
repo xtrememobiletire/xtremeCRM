@@ -7,6 +7,8 @@ import {
   sanitizePaginationParams,
   calculateSkip,
   createPaginatedResponse,
+  validateAndNormalizePhone,
+  normalizePhoneNumber,
 } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
 import { geocodingService } from '../services/geocodingService.js';
@@ -25,6 +27,24 @@ const stripDriverFinancials = (job: any) => {
     ...rest
   } = job;
   return rest;
+};
+
+const normalizeUrgency = (u?: string | null): 'URGENT' | 'STANDARD' | 'FUTURE' => {
+  if (!u) return 'STANDARD';
+  const upper = String(u).toUpperCase();
+  if (['CRITICAL', 'HIGH', 'EMERGENCY', 'URGENT'].includes(upper)) return 'URGENT';
+  if (['LOW', 'FUTURE', 'SCHEDULED'].includes(upper)) return 'FUTURE';
+  return 'STANDARD';
+};
+
+const validPaymentMethod = (pm?: string | null): 'E_TRANSFER' | 'POS' | 'CASH' | 'MOTO' | 'STRIPE' | null => {
+  if (!pm) return null;
+  const upper = String(pm).toUpperCase();
+  if (upper === 'CREDIT_CARD' || upper === 'PHONE') return 'MOTO';
+  if (['E_TRANSFER', 'POS', 'CASH', 'MOTO', 'STRIPE'].includes(upper)) {
+    return upper as any;
+  }
+  return null;
 };
 
 export const jobController = {
@@ -67,14 +87,41 @@ export const jobController = {
 
       if (fleetId && userRole !== 'FLEET_MANAGER') where.fleetId = fleetId;
       if (customerId && userRole !== 'CUSTOMER_MEMBER') where.customerId = customerId;
+      const isFleetJob = req.query.isFleetJob;
+      const source = req.query.source as any;
+
+      if (source) where.source = source;
+
+      const andConditions: any[] = [];
+      if (isFleetJob === 'true' || isFleetJob === '1') {
+        andConditions.push({
+          OR: [
+            { fleetId: { not: null } },
+            { isTestService: true },
+          ],
+        });
+      } else if (isFleetJob === 'false' || isFleetJob === '0') {
+        andConditions.push({
+          fleetId: null,
+          isTestService: false,
+          ...(status ? {} : { status: { not: 'UNVERIFIED_PUBLIC' } }),
+        });
+      }
+
       if (search) {
-        where.OR = [
-          { jobCode: { contains: search, mode: 'insensitive' } },
-          { serviceAddress: { contains: search, mode: 'insensitive' } },
-          { recipientName: { contains: search, mode: 'insensitive' } },
-          { recipientPhone: { contains: search } },
-          { problemNotes: { contains: search, mode: 'insensitive' } },
-        ];
+        andConditions.push({
+          OR: [
+            { jobCode: { contains: search, mode: 'insensitive' } },
+            { serviceAddress: { contains: search, mode: 'insensitive' } },
+            { recipientName: { contains: search, mode: 'insensitive' } },
+            { recipientPhone: { contains: search } },
+            { problemNotes: { contains: search, mode: 'insensitive' } },
+          ],
+        });
+      }
+
+      if (andConditions.length > 0) {
+        where.AND = andConditions;
       }
 
       const sortBy = (req.query.sortBy as string) || 'createdAt';
@@ -190,24 +237,75 @@ export const jobController = {
 
       // 1. Auto-resolve or create Customer if nested details provided
       let customerId = data.customerId;
-      const phone = data.customer?.phone || data.customerPhone || data.recipientPhone || data.phone;
+      const rawPhone = data.customer?.phone || data.customerPhone || data.recipientPhone || data.phone;
       const name = data.customer?.name || data.customer?.fullName || data.customerName || data.recipientName || data.name;
-      if (!customerId && phone) {
-        const cleanPhone = String(phone).trim();
-        let cust = await prisma.customer.findFirst({
-          where: { phone: cleanPhone, countryCode: country },
-        });
-        if (!cust) {
-          cust = await prisma.customer.create({
-            data: {
-              fullName: name || 'Valued Customer',
-              phone: cleanPhone,
-              email: data.customer?.email || data.email,
-              countryCode: country,
-            },
-          });
+      let normalizedContactPhone = '';
+
+      if (rawPhone) {
+        const phoneValidation = validateAndNormalizePhone(String(rawPhone), country);
+        if (!phoneValidation.isValid) {
+          return sendError(res, phoneValidation.error || 'Invalid customer phone number format', 400);
         }
-        customerId = cust.id;
+        normalizedContactPhone = phoneValidation.normalized;
+        const national10 = phoneValidation.national;
+
+        if (!customerId) {
+          // Smart lookup: Match existing customer by normalized E.164 OR by last 10 national digits
+          const matchingCustomers = await prisma.customer.findMany({
+            where: {
+              countryCode: country as any,
+              OR: [
+                { phone: normalizedContactPhone },
+                { phone: { endsWith: national10 } },
+                { phone: national10 },
+              ],
+            },
+            orderBy: { createdAt: 'asc' }, // oldest primary profile
+          });
+
+          let cust = matchingCustomers[0] || null;
+
+          if (cust) {
+            // Reconcile and merge duplicates if more than one profile matches this phone
+            if (matchingCustomers.length > 1) {
+              const duplicateIds = matchingCustomers.slice(1).map((c) => c.id);
+              await prisma.job.updateMany({
+                where: { customerId: { in: duplicateIds } },
+                data: { customerId: cust.id },
+              });
+              await prisma.vehicle.updateMany({
+                where: { customerId: { in: duplicateIds } },
+                data: { customerId: cust.id },
+              });
+              await prisma.invoice.updateMany({
+                where: { customerId: { in: duplicateIds } },
+                data: { customerId: cust.id },
+              });
+              await prisma.customer.deleteMany({
+                where: { id: { in: duplicateIds } },
+              });
+            }
+
+            // Keep primary customer normalized to standard E.164
+            if (cust.phone !== normalizedContactPhone) {
+              cust = await prisma.customer.update({
+                where: { id: cust.id },
+                data: { phone: normalizedContactPhone },
+              });
+            }
+          } else {
+            // Create brand new customer with standardized E.164 phone
+            cust = await prisma.customer.create({
+              data: {
+                fullName: name || 'Valued Customer',
+                phone: normalizedContactPhone,
+                email: data.customer?.email || data.email,
+                countryCode: country as any,
+              },
+            });
+          }
+          customerId = cust.id;
+        }
       }
 
       // 2. Auto-provision Customer Member Account if requested (PRD FR-1.3)
@@ -357,19 +455,32 @@ export const jobController = {
           serviceLatitude,
           serviceLongitude,
           recipientName: data.recipientName || data.customer?.name || data.customer?.fullName || data.customerName || name,
-          recipientPhone: data.recipientPhone || data.customer?.phone || data.customerPhone || phone,
+          recipientPhone: normalizedContactPhone || (data.recipientPhone ? normalizePhoneNumber(data.recipientPhone, country) : undefined),
           problemNotes: data.problemNotes || data.notes,
-          urgency: data.urgency || 'STANDARD',
+          urgency: normalizeUrgency(data.urgency),
           source: data.source || 'DIRECT_CALL',
           disposition: (data.disposition as any) || 'BOOKED',
-          appointmentDate: data.appointmentDate ? new Date(data.appointmentDate) : data.scheduledFor ? new Date(data.scheduledFor) : undefined,
+          appointmentDate: data.appointmentDate 
+            ? new Date(data.appointmentDate) 
+            : data.arrivalWindowStart 
+              ? new Date(data.arrivalWindowStart) 
+              : data.scheduledFor 
+                ? new Date(data.scheduledFor) 
+                : undefined,
+          arrivalWindowStart: data.arrivalWindowStart ? new Date(data.arrivalWindowStart) : undefined,
+          arrivalWindowEnd: data.arrivalWindowEnd ? new Date(data.arrivalWindowEnd) : undefined,
+          estimatedArrivalAt: data.estimatedArrivalAt 
+            ? new Date(data.estimatedArrivalAt) 
+            : data.estimatedArrivalMinutes 
+              ? new Date(Date.now() + Number(data.estimatedArrivalMinutes) * 60000) 
+              : undefined,
           subtotalCents,
           taxRateBps,
           taxAmountCents,
           totalCents,
           itPlatformFeeCents,
           repairerFeeCents,
-          paymentMethod: data.paymentMethod,
+          paymentMethod: validPaymentMethod(data.paymentMethod),
           paymentStatus: 'UNPAID',
           status: data.source === 'LANDING_PAGE_SELF_BOOK' ? 'UNVERIFIED_PUBLIC' : 'PENDING',
           serviceItems: {
@@ -400,34 +511,66 @@ export const jobController = {
   async updateJobStatus(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
-      const { status, urgency, cashAmountCents, cashCollected } = req.body;
+      const { status, urgency, paymentMethod, amountCents, cashAmountCents, cashCollected, receiptUrl } = req.body;
 
       const job = await prisma.job.findUnique({ where: { id } });
       if (!job) return sendError(res, 'Job not found', 404);
 
-      const effectiveCashCents = cashAmountCents !== undefined 
-        ? Math.round(Number(cashAmountCents)) 
-        : (cashCollected !== undefined ? Math.round(Number(cashCollected) * 100) : 0);
+      let effectiveAmountCents = amountCents !== undefined
+        ? Math.round(Number(amountCents))
+        : (cashAmountCents !== undefined 
+          ? Math.round(Number(cashAmountCents)) 
+          : (cashCollected !== undefined ? Math.round(Number(cashCollected) * 100) : 0));
 
       const isTrialJob = Boolean(job.isTestService);
 
+      const mappedStatus = (status === 'ON_SCENE' || status === 'EN_ROUTE') ? 'IN_PROGRESS' : status;
       const updateData: any = {
-        status,
+        status: mappedStatus,
         updatedAt: new Date(),
       };
       if (urgency) updateData.urgency = urgency;
       if (status === 'COMPLETED') {
-        if (!isTrialJob && effectiveCashCents <= 0 && (!job.totalCents || job.totalCents <= 0)) {
-          return sendError(res, 'Payment amount or cash collected on scene is required to complete this job', 400);
+        const chosenMethod = paymentMethod || job.paymentMethod || 'CASH';
+
+        if (!isTrialJob && effectiveAmountCents <= 0 && (!job.totalCents || job.totalCents <= 0)) {
+          return sendError(res, 'Payment amount collected on scene is required to complete this job', 400);
         }
+
+        if (!isTrialJob && job.totalCents && job.totalCents > 0) {
+          if (effectiveAmountCents < job.totalCents) {
+            return sendError(
+              res,
+              `Collected amount ($${(effectiveAmountCents / 100).toFixed(2)}) cannot be less than required invoice total ($${(job.totalCents / 100).toFixed(2)})`,
+              400
+            );
+          }
+          if (effectiveAmountCents > job.totalCents) {
+            // If greater than required amount, write to default value
+            effectiveAmountCents = job.totalCents;
+          }
+        }
+
+        const uploadedReceiptUrl = req.file ? `/uploads/receipts/${req.file.filename}` : receiptUrl;
+        if ((chosenMethod === 'POS' || chosenMethod === 'E_TRANSFER') && !uploadedReceiptUrl && !job.receiptUrl) {
+          return sendError(res, `Payment receipt proof photo is strictly mandatory when completing with ${chosenMethod.replace('_', ' ')}`, 400);
+        }
+
         updateData.completedAt = new Date();
-        if (effectiveCashCents > 0) {
-          updateData.paymentMethod = 'CASH';
-          updateData.cashCollectedCents = effectiveCashCents;
+        updateData.paymentMethod = chosenMethod;
+        if (uploadedReceiptUrl) {
+          updateData.receiptUrl = uploadedReceiptUrl;
+        }
+
+        if (chosenMethod === 'CASH') {
+          updateData.cashCollectedCents = effectiveAmountCents;
+        }
+
+        if (effectiveAmountCents > 0) {
           updateData.paymentStatus = 'PAID_PENDING_VERIFICATION';
           if (!job.totalCents || job.totalCents === 0) {
-            updateData.totalCents = effectiveCashCents;
-            updateData.subtotalCents = effectiveCashCents;
+            updateData.totalCents = effectiveAmountCents;
+            updateData.subtotalCents = effectiveAmountCents;
           }
         } else if (isTrialJob) {
           updateData.paymentStatus = 'VERIFIED_PAID';
@@ -493,12 +636,17 @@ export const jobController = {
       try {
         const io = getIO();
         const statusPayload = {
+          id: updated.id,
           jobId: updated.id,
           jobCode: updated.jobCode,
           status: updated.status,
           countryCode: updated.countryCode,
           driverId: updated.driverId,
           driverName: (updated as any).driver?.fullName,
+          urgency: updated.urgency,
+          paymentMethod: updated.paymentMethod,
+          paymentStatus: updated.paymentStatus,
+          totalCents: updated.totalCents,
           updatedAt: updated.updatedAt ? updated.updatedAt.toISOString() : new Date().toISOString(),
         };
 
@@ -552,10 +700,37 @@ export const jobController = {
   async assignDriver(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
-      const { driverId } = req.body;
+      const { 
+        driverId, 
+        etaMinutes, 
+        estimatedArrivalAt: customArrival,
+        driverEtaMinutes: rawDriverEtaMinutes,
+        driverEstimatedArrivalAt: rawDriverEstimatedArrivalAt,
+      } = req.body;
 
-      const driver = await prisma.user.findUnique({ where: { id: driverId } });
+      const [driver, job] = await Promise.all([
+        prisma.user.findUnique({ where: { id: driverId } }),
+        prisma.job.findUnique({ where: { id } }),
+      ]);
+
       if (!driver) return sendError(res, 'Driver not found', 404);
+      if (!job) return sendError(res, 'Job not found', 404);
+
+      // Strict regional silo: region based jobs should only have region based drivers
+      if (driver.countryCode !== job.countryCode) {
+        return sendError(res, `Cannot assign ${driver.countryCode} driver to ${job.countryCode} job`, 400);
+      }
+
+      // Compute technician/driver-specific driving ETA:
+      // Keep customer promised SLA (job.estimatedArrivalAt, arrivalWindowStart, arrivalWindowEnd) untouched!
+      const effectiveDriverEtaMinutes = rawDriverEtaMinutes ?? etaMinutes;
+      const driverEstimatedArrivalAt = rawDriverEstimatedArrivalAt 
+        ? new Date(rawDriverEstimatedArrivalAt) 
+        : customArrival 
+        ? new Date(customArrival) 
+        : effectiveDriverEtaMinutes 
+        ? new Date(Date.now() + Number(effectiveDriverEtaMinutes) * 60000) 
+        : undefined;
 
       const updated = await prisma.job.update({
         where: { id },
@@ -563,6 +738,10 @@ export const jobController = {
           driverId,
           status: 'ASSIGNED',
           assignedAt: new Date(),
+          driverEstimatedArrivalAt,
+          driverEtaMinutes: effectiveDriverEtaMinutes ? Number(effectiveDriverEtaMinutes) : undefined,
+          // Preserve customer promised arrival time; only fallback if job had no promised ETA set
+          estimatedArrivalAt: job.estimatedArrivalAt ?? driverEstimatedArrivalAt,
           updatedAt: new Date(),
         },
         include: {
@@ -595,9 +774,134 @@ export const jobController = {
           driverId,
           driverName: driver.fullName,
         });
+        sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:driver_assigned', {
+          id: updated.id,
+          jobId: updated.id,
+          jobCode: updated.jobCode,
+          driverId,
+          driverName: driver.fullName,
+          status: updated.status,
+          countryCode: updated.countryCode,
+        });
+        sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:assigned', updated);
+        sseManager.broadcast(`sse:driver:${driverId}`, 'job:assigned', stripped);
       } catch {}
 
       return sendSuccess(res, updated, 'Driver assigned successfully');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  async verifyBookingAddress(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const {
+        serviceAddress,
+        serviceLatitude,
+        serviceLongitude,
+        recipientName,
+        recipientPhone,
+        problemNotes,
+        urgency,
+        paymentMethod,
+        vehicleMake,
+        vehicleModel,
+        vehicleYear,
+        tireSize,
+        licensePlate,
+        serviceItems: incomingServiceItems,
+      } = req.body;
+
+      const job = await prisma.job.findUnique({
+        where: { id },
+        include: { vehicle: true, serviceItems: true },
+      });
+      if (!job) return sendError(res, 'Job not found', 404);
+
+      const updateData: any = {
+        updatedAt: new Date(),
+      };
+      if (job.status === 'UNVERIFIED_PUBLIC') {
+        updateData.status = 'PENDING';
+      }
+      if (serviceAddress) updateData.serviceAddress = serviceAddress;
+      if (serviceLatitude !== undefined && serviceLatitude !== null) updateData.serviceLatitude = Number(serviceLatitude);
+      if (serviceLongitude !== undefined && serviceLongitude !== null) updateData.serviceLongitude = Number(serviceLongitude);
+      if (recipientName) updateData.recipientName = recipientName;
+      if (recipientPhone) {
+        const pVal = validateAndNormalizePhone(recipientPhone, job.countryCode);
+        updateData.recipientPhone = pVal.isValid ? pVal.normalized : recipientPhone;
+      }
+      if (problemNotes) updateData.problemNotes = problemNotes;
+      if (urgency) updateData.urgency = normalizeUrgency(urgency);
+      if (paymentMethod !== undefined) updateData.paymentMethod = validPaymentMethod(paymentMethod);
+
+      // Update or create vehicle specs (Crucial for mobile tire vans to stock the right tire)
+      if (vehicleMake || vehicleModel || vehicleYear || tireSize || licensePlate) {
+        if (job.vehicleId) {
+          await prisma.vehicle.update({
+            where: { id: job.vehicleId },
+            data: {
+              ...(vehicleMake ? { make: vehicleMake } : {}),
+              ...(vehicleModel ? { model: vehicleModel } : {}),
+              ...(vehicleYear ? { year: Number(vehicleYear) } : {}),
+              ...(tireSize ? { tireSize } : {}),
+              ...(licensePlate ? { licensePlate } : {}),
+            },
+          });
+        } else {
+          const newVeh = await prisma.vehicle.create({
+            data: {
+              countryCode: job.countryCode,
+              make: vehicleMake || 'Standard',
+              model: vehicleModel || 'Vehicle',
+              year: Number(vehicleYear) || new Date().getFullYear(),
+              tireSize: tireSize || '225/65R17',
+              licensePlate: licensePlate || undefined,
+            },
+          });
+          updateData.vehicleId = newVeh.id;
+        }
+      }
+
+      // Update service items and recalculate totals if services provided
+      if (incomingServiceItems && Array.isArray(incomingServiceItems) && incomingServiceItems.length > 0) {
+        await prisma.jobServiceItem.deleteMany({ where: { jobId: id } });
+        const itemsToCreate = incomingServiceItems.map((item: any) => ({
+          jobId: id,
+          serviceName: item.serviceName,
+          category: item.category || 'TIRE_SERVICE',
+          unitPriceCents: Number(item.unitPriceCents) || 5000,
+          quantity: Number(item.quantity) || 1,
+        }));
+        await prisma.jobServiceItem.createMany({ data: itemsToCreate });
+        const subtotal = itemsToCreate.reduce((s: number, i: any) => s + i.unitPriceCents * i.quantity, 0);
+        const taxRateBps = job.countryCode === 'CA' ? 1300 : job.countryCode === 'UK' ? 2000 : 800;
+        const taxAmount = Math.round((subtotal * taxRateBps) / 10000);
+        updateData.subtotalCents = subtotal;
+        updateData.taxRateBps = taxRateBps;
+        updateData.taxAmountCents = taxAmount;
+        updateData.totalCents = subtotal + taxAmount;
+      }
+
+      const updated = await prisma.job.update({
+        where: { id },
+        data: updateData,
+        include: {
+          customer: true,
+          vehicle: true,
+          serviceItems: true,
+        },
+      });
+
+      try {
+        const io = getIO();
+        io.to(`dispatch:${updated.countryCode}`).emit('job:verified', updated);
+        sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:verified', updated);
+      } catch {}
+
+      return sendSuccess(res, updated, 'Booking address verified successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }
@@ -633,9 +937,10 @@ export const jobController = {
         io.to(`dispatch:${updated.countryCode}`).emit('job:status_updated', updated);
         sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:status_updated', updated);
         if (updated.driverId) {
-          io.to(`driver:${updated.driverId}`).emit('job:status_updated', updated);
-          io.to(`user:${updated.driverId}`).emit('job:status_updated', updated);
-          sseManager.broadcast(`sse:driver:${updated.driverId}`, 'job:status_updated', updated);
+          const strippedForDriver = stripDriverFinancials(updated);
+          io.to(`driver:${updated.driverId}`).emit('job:status_updated', strippedForDriver);
+          io.to(`user:${updated.driverId}`).emit('job:status_updated', strippedForDriver);
+          sseManager.broadcast(`sse:driver:${updated.driverId}`, 'job:status_updated', strippedForDriver);
         }
       } catch {}
 
@@ -648,8 +953,21 @@ export const jobController = {
   async deleteJob(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
+      const existing = await prisma.job.findUnique({ where: { id }, select: { countryCode: true, driverId: true } });
       await prisma.jobServiceItem.deleteMany({ where: { jobId: id } });
       await prisma.job.delete({ where: { id } });
+
+      if (existing) {
+        try {
+          const io = getIO();
+          io.to(`dispatch:${existing.countryCode}`).emit('job:deleted', { id });
+        } catch {}
+        sseManager.broadcast(`sse:dispatch:${existing.countryCode}`, 'job:deleted', { id, countryCode: existing.countryCode });
+        if (existing.driverId) {
+          sseManager.broadcast(`sse:driver:${existing.driverId}`, 'job:deleted', { id });
+        }
+      }
+
       return sendSuccess(res, null, 'Job deleted successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
@@ -714,8 +1032,8 @@ export const jobController = {
           recipientName: data.recipientName || data.customer?.name,
           recipientPhone: data.recipientPhone || data.customer?.phone,
           problemNotes: data.problemNotes || data.notes,
-          urgency: data.urgency || 'STANDARD',
-          source: 'LANDING_PAGE_SELF_BOOK',
+          urgency: normalizeUrgency(data.urgency),
+          source: data.source || 'WEBSITE',
           disposition: 'BOOKED',
           createdById: defaultUser.id,
           vehicleId: veh.id,
@@ -724,7 +1042,7 @@ export const jobController = {
           taxAmountCents,
           totalCents,
           itPlatformFeeCents,
-          paymentMethod: data.paymentMethod,
+          paymentMethod: validPaymentMethod(data.paymentMethod),
           paymentStatus: 'UNPAID',
           status: 'UNVERIFIED_PUBLIC',
           serviceItems: { create: serviceItemsCreate },
@@ -735,6 +1053,8 @@ export const jobController = {
       try {
         const io = getIO();
         io.to(`dispatch:${country}`).emit('job:triage_new', job);
+        sseManager.broadcast(`sse:dispatch:${country}`, 'booking:created', job);
+        sseManager.broadcast(`sse:dispatch:${country}`, 'job:created', job);
       } catch {}
 
       return sendSuccess(res, { id: job.id, jobCode: job.jobCode, status: job.status }, 'Booking received — our team will contact you shortly', 201);

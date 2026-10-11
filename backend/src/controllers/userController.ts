@@ -23,7 +23,7 @@ export const userController = {
 
       const where: any = { deletedAt: null };
       if (role) where.role = role;
-      if (countryCode) where.countryCode = countryCode;
+      if (countryCode && countryCode !== 'ALL') where.countryCode = countryCode;
       if (search) {
         where.OR = [
           { fullName: { contains: search, mode: 'insensitive' } },
@@ -45,6 +45,10 @@ export const userController = {
             role: true,
             countryCode: true,
             phone: true,
+            address: true,
+            assignedVehicle: true,
+            latitude: true,
+            longitude: true,
             isAgentActive: true,
             createdAt: true,
           },

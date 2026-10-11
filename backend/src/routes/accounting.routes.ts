@@ -124,7 +124,7 @@ router.post(
  * @access  Private (ADMIN, ACCOUNTANT)
  */
 router.post(
-  '/material-receipt/:id',
+  ['/material-receipt/:id', '/jobs/:id/material-receipt'],
   validateRequest({ params: idParamSchema }),
   upload.single('materialReceipt'),
   accountingController.uploadMaterialReceipt

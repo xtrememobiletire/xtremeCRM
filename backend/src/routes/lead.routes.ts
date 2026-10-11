@@ -8,10 +8,24 @@ const router = Router();
 
 /**
  * @route   GET /api/leads/stats
- * @desc    Get real-time pipeline count metrics & VA workloads (Admin / GM)
- * @access  Private (Admin, General Manager)
+ * @desc    Get real-time pipeline count metrics & VA workloads (Admin / GM / Dispatcher)
+ * @access  Private (Admin, General Manager, Dispatcher)
  */
-router.get('/stats', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.getLeadStats);
+router.get('/stats', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']), leadController.getLeadStats);
+
+/**
+ * @route   GET /api/leads/batches
+ * @desc    Get outbound batches with progress and lead counters (Admin / GM / Dispatcher)
+ * @access  Private (Admin, General Manager, Dispatcher)
+ */
+router.get('/batches', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']), leadController.getBatches);
+
+/**
+ * @route   GET /api/leads/batches/available-for-va
+ * @desc    Get currently active batches within operating window with unassigned leads (for VA Campaign Batch Chooser)
+ * @access  Private (Staff / VA)
+ */
+router.get('/batches/available-for-va', authenticate, leadController.getAvailableBatchesForVa);
 
 /**
  * @route   POST /api/leads/upload
@@ -29,17 +43,20 @@ router.post('/distribute', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER'])
 
 /**
  * @route   GET /api/leads/agent-queue
- * @desc    Get active calling queue for Call Agent / VA with 5-cap auto-fill
+ * @desc    Get active calling queue for Call Agent / VA with 1-lead cap auto-replenishment
  * @access  Private
  */
 router.get('/agent-queue', authenticate, leadController.getAgentQueue);
 
 /**
  * @route   POST /api/leads/start-batch
- * @desc    Start campaign batch and assign 5 leads to active agents (Admin / GM)
+ * @route   POST /api/leads/batches/:id/start
+ * @desc    Start campaign batch and assign 1 lead to each active agent (Admin / GM)
  * @access  Private (Admin, General Manager)
  */
 router.post('/start-batch', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.startBatch);
+router.post('/batches/:id/start', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.startBatch);
+router.post('/batches/:id/close', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.closeBatch);
 
 /**
  * @route   GET /api/leads
@@ -100,9 +117,9 @@ router.post('/:id/reactivate', authenticate, authorize(['ADMIN', 'GENERAL_MANAGE
 /**
  * @route   POST /api/leads/:id/test-service
  * @desc    Create trial / test service work order for prospective fleet lead
- * @access  Private (Admin, GM only)
+ * @access  Private (Admin, GM, Dispatcher)
  */
-router.post('/:id/test-service', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.createTestServiceJob);
+router.post('/:id/test-service', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']), leadController.createTestServiceJob);
 
 /**
  * @route   POST /api/leads/:id/transfer

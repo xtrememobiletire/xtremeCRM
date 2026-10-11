@@ -284,12 +284,29 @@ export default function Dispatch() {
 
                       <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400 border-t border-slate-100/80">
                         <span>
-                          {job.vehicle
-                            ? `${job.vehicle.year || ''} ${job.vehicle.make || ''} ${job.vehicle.model || ''}`
-                            : 'Vehicle on file'}
+                          {job.arrivalWindowStart && job.arrivalWindowEnd ? (
+                            <span className="text-blue-700 font-semibold">
+                              Window: {new Date(job.arrivalWindowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}–{new Date(job.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                            </span>
+                          ) : job.estimatedArrivalAt ? (
+                            <span className="text-blue-700 font-semibold">
+                              Promised ~{new Date(job.estimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                            </span>
+                          ) : (
+                            job.vehicle
+                              ? `${job.vehicle.year || ''} ${job.vehicle.make || ''} ${job.vehicle.model || ''}`
+                              : 'Vehicle on file'
+                          )}
                         </span>
                         {job.driver ? (
-                          <span className="text-emerald-600 font-semibold">🧑‍🔧 {job.driver.fullName}</span>
+                          <span className="text-emerald-600 font-semibold">
+                            🧑‍🔧 {job.driver.fullName}
+                            {(job.driverEtaMinutes || job.driverEstimatedArrivalAt) && (
+                              <span className="font-mono text-emerald-800 ml-1">
+                                (~{job.driverEtaMinutes || 20}m)
+                              </span>
+                            )}
+                          </span>
                         ) : (
                           <span className="text-amber-500 font-medium">Unassigned</span>
                         )}

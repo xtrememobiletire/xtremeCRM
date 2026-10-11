@@ -50,6 +50,7 @@ export interface Lead {
   assignedAgent?: { id: string; fullName: string; role: string } | null;
   assignedDispatcherId?: string | null;
   assignedDispatcher?: { id: string; fullName: string; role: string } | null;
+  dispatcherNotes?: string | null;
   vehicleTypes?: string | null;
   commonTireSizes?: string | null;
   testServices?: Array<{
@@ -58,18 +59,51 @@ export interface Lead {
     status: string;
     appointmentDate?: string;
     serviceAddress?: string;
+    driver?: { id: string; fullName: string; phone?: string } | null;
   }>;
+  batch?: {
+    id: string;
+    batchName: string;
+    status?: string;
+    countryCode?: string;
+  } | null;
+  resultingFleet?: {
+    id: string;
+    fleetCode: string;
+    name?: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PaginatedLeadsResponse {
+  data: Lead[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export interface AvailableBatch {
+  id: string;
+  batchName: string;
+  countryCode: 'CA' | 'US' | 'UK';
+  status: string;
+  scheduledDate: string | null;
+  unassignedLeads: number;
+  totalLeads: number;
 }
 
 export interface LeadFilters {
   page?: number;
   limit?: number;
   countryCode?: string;
+  batchId?: string;
   status?: string;
   stage?: LeadStage | string;
-  pool?: 'va' | 'callbacks' | 'dispatcher' | 'admin' | 'disqualified' | string;
+  pool?: 'all' | 'unassigned' | 'called' | 'disqualified' | 'converted' | 'va' | 'callbacks' | 'dispatcher' | 'admin' | string;
   disposition?: string;
   search?: string;
   assignedAgentId?: string;
@@ -77,7 +111,7 @@ export interface LeadFilters {
 }
 
 export const leadService = {
-  async getLeads(filters: LeadFilters = {}) {
+  async getLeads(filters: LeadFilters = {}): Promise<PaginatedLeadsResponse> {
     const res = await api.get('/leads', { params: filters });
     return res.data.data;
   },
@@ -97,7 +131,7 @@ export const leadService = {
     return res.data.data;
   },
 
-  async advanceStage(id: string, data: { stage: LeadStage; assignedDispatcherId?: string; notes?: string; vehicleTypes?: string; commonTireSizes?: string }): Promise<Lead> {
+  async advanceStage(id: string, data: { stage: LeadStage; assignedDispatcherId?: string; notes?: string; dispatcherNotes?: string; vehicleTypes?: string; commonTireSizes?: string }): Promise<Lead> {
     const res = await api.post(`/leads/${id}/advance-stage`, data);
     return res.data.data;
   },
@@ -139,13 +173,33 @@ export const leadService = {
     return res.data.data;
   },
 
-  async getAgentQueue(countryCode?: string) {
-    const res = await api.get('/leads/agent-queue', { params: { countryCode } });
+  async getAvailableBatchesForVa(): Promise<AvailableBatch[]> {
+    const res = await api.get('/leads/batches/available-for-va');
+    return res.data.data;
+  },
+
+  async getAgentQueue(countryCode?: string, batchId?: string) {
+    const res = await api.get('/leads/agent-queue', { params: { countryCode, batchId } });
+    return res.data.data;
+  },
+
+  async getBatches(countryCode?: string, status?: string) {
+    const res = await api.get('/leads/batches', { params: { countryCode, status } });
     return res.data.data;
   },
 
   async startBatch(countryCode?: string) {
     const res = await api.post('/leads/start-batch', { countryCode });
+    return res.data.data;
+  },
+
+  async startBatchById(batchId: string) {
+    const res = await api.post(`/leads/batches/${batchId}/start`);
+    return res.data.data;
+  },
+
+  async closeBatch(batchId: string) {
+    const res = await api.post(`/leads/batches/${batchId}/close`);
     return res.data.data;
   },
 

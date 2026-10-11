@@ -30,16 +30,18 @@ class SSEManager {
 
   private startKeepalive() {
     if (this.keepaliveTimer) clearInterval(this.keepaliveTimer);
-    // Mandated 20-second :keepalive heartbeat to prevent proxy timeout
+    // Mandated 15-second heartbeat (:keepalive comment + named ping event) to prevent proxy timeout
     this.keepaliveTimer = setInterval(() => {
+      const now = Date.now();
       this.clients.forEach((client) => {
         try {
           client.res.write(':keepalive\n\n');
+          client.res.write(`event: ping\ndata: {"time":${now}}\n\n`);
         } catch (err) {
           this.removeClient(client.id);
         }
       });
-    }, 20000);
+    }, 15000);
   }
 
   public addClient(res: Response, countryCode: string, userId: string, role: string, lastEventId?: string): string {
