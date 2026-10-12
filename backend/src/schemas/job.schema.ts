@@ -108,14 +108,19 @@ export type CreateJobInput = z.infer<typeof CreateJobSchema>;
 
 export const UpdateJobStatusSchema = z.object({
   status: z.preprocess(
-    (val) => {
-      if (typeof val === 'string') {
-        const s = val.toUpperCase();
-        if (s === 'ON_SCENE' || s === 'EN_ROUTE') return 'IN_PROGRESS';
-      }
-      return val;
-    },
-    z.enum(['PENDING', 'UNVERIFIED_PUBLIC', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'])
+    (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+    z.enum([
+      'PENDING',
+      'UNVERIFIED_PUBLIC',
+      'ASSIGNED',
+      'ACCEPTED',
+      'EN_ROUTE',
+      'ON_SCENE',
+      'ARRIVED',
+      'IN_PROGRESS',
+      'COMPLETED',
+      'CANCELLED',
+    ])
   ),
   urgency: z.enum(['EMERGENCY', 'URGENT', 'STANDARD', 'FUTURE']).optional(),
   paymentMethod: z.enum(['CASH', 'POS', 'E_TRANSFER', 'STRIPE', 'MOTO']).optional(),

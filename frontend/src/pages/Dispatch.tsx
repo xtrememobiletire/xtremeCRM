@@ -81,7 +81,7 @@ export default function Dispatch() {
       statusFilter === 'ALL'
         ? true
         : statusFilter === 'ACTIVE'
-        ? job.status === 'ASSIGNED' || job.status === 'IN_PROGRESS' || job.status === 'PENDING'
+        ? ['ASSIGNED', 'IN_PROGRESS', 'PENDING', 'EN_ROUTE', 'ON_SCENE', 'ARRIVED'].includes(job.status)
         : job.status === statusFilter;
 
     const term = search.toLowerCase().trim();
@@ -98,7 +98,7 @@ export default function Dispatch() {
   });
 
   const activeJobsCount = jobs.filter(
-    (j) => j.status === 'ASSIGNED' || j.status === 'IN_PROGRESS' || j.status === 'PENDING'
+    (j) => ['ASSIGNED', 'IN_PROGRESS', 'PENDING', 'EN_ROUTE', 'ON_SCENE', 'ARRIVED'].includes(j.status)
   ).length;
   const urgentCount = jobs.filter((j) => j.urgency === 'URGENT' && j.status !== 'COMPLETED').length;
 
@@ -262,14 +262,18 @@ export default function Dispatch() {
                           className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                             job.status === 'COMPLETED'
                               ? 'bg-slate-100 text-slate-600'
+                              : job.status === 'ON_SCENE' || job.status === 'ARRIVED'
+                              ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                              : job.status === 'EN_ROUTE'
+                              ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
                               : job.status === 'IN_PROGRESS'
-                              ? 'bg-emerald-100 text-emerald-700'
+                              ? 'bg-cyan-100 text-cyan-700 border border-cyan-200'
                               : job.status === 'ASSIGNED'
                               ? 'bg-blue-100 text-blue-700'
                               : 'bg-amber-100 text-amber-700'
                           }`}
                         >
-                          {job.status.replace('_', ' ')}
+                          {job.status === 'ON_SCENE' || job.status === 'ARRIVED' ? 'Arrived' : job.status.replace('_', ' ')}
                         </span>
                       </div>
 

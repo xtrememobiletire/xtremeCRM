@@ -15,6 +15,7 @@ import { geocodingService } from '../services/geocodingService.js';
 import { sseManager } from '../services/sseManager.js';
 
 const stripDriverFinancials = (job: any) => {
+  const isAudited = Boolean(job.auditedById || job.expenseStatedById);
   const {
     materialCostCents,
     itPlatformFeeCents,
@@ -26,7 +27,11 @@ const stripDriverFinancials = (job: any) => {
     invoice,
     ...rest
   } = job;
-  return rest;
+  return {
+    ...rest,
+    isAudited,
+    expenseStatedById: isAudited ? (job.expenseStatedById || 'audited') : null,
+  };
 };
 
 const normalizeUrgency = (u?: string | null): 'URGENT' | 'STANDARD' | 'FUTURE' => {
@@ -167,11 +172,15 @@ export const jobController = {
 
       const isDriver = (req.user as any)?.role === 'DRIVER';
       const jobs = rawJobs.map((j) => {
+        const effectiveStatus = (j.dispositionNotes && ['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(j.dispositionNotes) && (j.status === 'IN_PROGRESS' || j.status === 'ASSIGNED'))
+          ? (j.dispositionNotes === 'ARRIVED' ? 'ON_SCENE' : (j.dispositionNotes === 'ACCEPTED' ? 'ASSIGNED' : j.dispositionNotes))
+          : j.status;
+        const jobWithStatus = { ...j, status: effectiveStatus, rawStatus: j.status };
         if (isDriver) {
           // PRD NFR-4: Driver financial isolation
-          return stripDriverFinancials(j);
+          return stripDriverFinancials(jobWithStatus);
         }
-        return j;
+        return jobWithStatus;
       });
 
       const paginated = createPaginatedResponse(jobs, page, limit, totalCount);
@@ -217,10 +226,14 @@ export const jobController = {
       });
 
       if (!job) return sendError(res, 'Job not found', 404);
+      const effectiveStatus = (job.dispositionNotes && ['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(job.dispositionNotes) && (job.status === 'IN_PROGRESS' || job.status === 'ASSIGNED'))
+        ? (job.dispositionNotes === 'ARRIVED' ? 'ON_SCENE' : (job.dispositionNotes === 'ACCEPTED' ? 'ASSIGNED' : job.dispositionNotes))
+        : job.status;
+      const jobWithStatus = { ...job, status: effectiveStatus, rawStatus: job.status };
       if ((req.user as any)?.role === 'DRIVER') {
-        return sendSuccess(res, stripDriverFinancials(job));
+        return sendSuccess(res, stripDriverFinancials(jobWithStatus));
       }
-      return sendSuccess(res, job);
+      return sendSuccess(res, jobWithStatus);
     } catch (err: any) {
       return sendError(res, err.message);
     }
@@ -524,11 +537,20 @@ export const jobController = {
 
       const isTrialJob = Boolean(job.isTestService);
 
-      const mappedStatus = (status === 'ON_SCENE' || status === 'EN_ROUTE') ? 'IN_PROGRESS' : status;
+      const rawStatus = String(status).toUpperCase();
+      const mappedStatus = (rawStatus === 'ON_SCENE' || rawStatus === 'EN_ROUTE' || rawStatus === 'ARRIVED') 
+        ? 'IN_PROGRESS' 
+        : (rawStatus === 'ACCEPTED' ? 'ASSIGNED' : rawStatus);
+
       const updateData: any = {
         status: mappedStatus,
         updatedAt: new Date(),
       };
+      if (['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(rawStatus)) {
+        updateData.dispositionNotes = rawStatus === 'ARRIVED' ? 'ON_SCENE' : rawStatus;
+      } else if (rawStatus === 'COMPLETED' || rawStatus === 'CANCELLED') {
+        updateData.dispositionNotes = rawStatus;
+      }
       if (urgency) updateData.urgency = urgency;
       if (status === 'COMPLETED') {
         const chosenMethod = paymentMethod || job.paymentMethod || 'CASH';
@@ -635,11 +657,18 @@ export const jobController = {
 
       try {
         const io = getIO();
+        const effectiveStatus = (updated.dispositionNotes && ['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(updated.dispositionNotes) && (updated.status === 'IN_PROGRESS' || updated.status === 'ASSIGNED'))
+          ? (updated.dispositionNotes === 'ARRIVED' ? 'ON_SCENE' : (updated.dispositionNotes === 'ACCEPTED' ? 'ASSIGNED' : updated.dispositionNotes))
+          : updated.status;
+
         const statusPayload = {
           id: updated.id,
           jobId: updated.id,
           jobCode: updated.jobCode,
-          status: updated.status,
+          status: effectiveStatus,
+          rawStatus: updated.status,
+          technicianStatus: effectiveStatus,
+          dispositionNotes: updated.dispositionNotes,
           countryCode: updated.countryCode,
           driverId: updated.driverId,
           driverName: (updated as any).driver?.fullName,
@@ -687,11 +716,12 @@ export const jobController = {
         }
       } catch {}
 
-      if ((req.user as any)?.role === 'DRIVER') {
-        return sendSuccess(res, stripDriverFinancials(updated), 'Job status updated successfully');
-      }
+      const updatedWithStatus = { ...updated, status: (updated.dispositionNotes && ['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(updated.dispositionNotes) && (updated.status === 'IN_PROGRESS' || updated.status === 'ASSIGNED')) ? (updated.dispositionNotes === 'ARRIVED' ? 'ON_SCENE' : (updated.dispositionNotes === 'ACCEPTED' ? 'ASSIGNED' : updated.dispositionNotes)) : updated.status, rawStatus: updated.status };
 
-      return sendSuccess(res, updated, 'Job status updated successfully');
+      if ((req.user as any)?.role === 'DRIVER') {
+        return sendSuccess(res, stripDriverFinancials(updatedWithStatus), 'Job status updated successfully');
+      }
+      return sendSuccess(res, updatedWithStatus, 'Job status updated successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }

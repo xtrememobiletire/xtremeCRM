@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   MapPin, 
   Phone, 
@@ -6,7 +7,6 @@ import {
   CheckCircle, 
   Disc, 
   XCircle,
-  ShieldCheck,
   Check,
   Clock,
   Zap,
@@ -15,24 +15,108 @@ import {
   Smartphone,
   Camera,
   Image as ImageIcon,
-  Eye,
   CheckCircle2,
-  Calendar,
-  Car,
   AlertCircle,
-  ChevronDown
+  ChevronDown,
+  ArrowRight,
+  History as HistoryIcon,
+  Calendar,
+  Copy,
+  ExternalLink,
+  Navigation,
+  Map,
+  Layers,
+  Car
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { jobService, type JobItem } from '../services/jobService';
 import { useAuth } from '../context/AuthContext';
 import { useTenant } from '../context/TenantContext';
 import { formatCurrency, centsToDollars } from '../utils/currency';
-import { formatDate } from '../utils/date';
 import { toast } from 'sonner';
 import JobChatModal from '../components/dispatch/JobChatModal';
 import { useUpdateJobStatus } from '../hooks/useJobs';
 import { useSocket } from '../context/SocketContext';
 import TechnicianMap from '../components/maps/TechnicianMap';
+
+// Classify jobs into Urgent Roadside vs Scheduled Appointment
+const isScheduledJob = (job: any): boolean => {
+  if (job.urgency === 'FUTURE' || job.urgency === 'SCHEDULED' || job.urgency === 'LOW') return true;
+  if (job.urgency === 'URGENT' || job.urgency === 'EMERGENCY' || job.urgency === 'HIGH') return false;
+  if (job.arrivalWindowEnd) return true;
+  return false;
+};
+
+// 1. Urgent sorting: based on ETA set on the job (nearest ETA first)
+const getUrgentSortTime = (job: any): number => {
+  if (job.driverEstimatedArrivalAt) {
+    const t = new Date(job.driverEstimatedArrivalAt).getTime();
+    if (!isNaN(t)) return t;
+  }
+  if (job.driverEtaMinutes && (job.assignedAt || job.createdAt)) {
+    const base = new Date(job.assignedAt || job.createdAt).getTime();
+    if (!isNaN(base)) return base + job.driverEtaMinutes * 60 * 1000;
+  }
+  if (job.estimatedArrivalAt) {
+    const t = new Date(job.estimatedArrivalAt).getTime();
+    if (!isNaN(t)) return t;
+  }
+  if (job.driverEtaMinutes) {
+    return job.driverEtaMinutes * 60 * 1000;
+  }
+  const fallback = new Date(job.assignedAt || job.createdAt || 0).getTime();
+  return isNaN(fallback) ? 0 : fallback;
+};
+
+// 2. Scheduled sorting: based on end time of arrival (arrivalWindowEnd from schema)
+const getScheduledSortTime = (job: any): number => {
+  if (job.arrivalWindowEnd) {
+    const t = new Date(job.arrivalWindowEnd).getTime();
+    if (!isNaN(t)) return t;
+  }
+  if (job.arrivalWindowStart) {
+    const t = new Date(job.arrivalWindowStart).getTime();
+    if (!isNaN(t)) return t;
+  }
+  if (job.appointmentDate) {
+    const t = new Date(job.appointmentDate).getTime();
+    if (!isNaN(t)) return t;
+  }
+  const fallback = new Date(job.assignedAt || job.createdAt || 0).getTime();
+  return isNaN(fallback) ? 0 : fallback;
+};
+
+const formatUrgentEta = (job: any): string => {
+  if (job.driverEtaMinutes) {
+    return `ETA ~${job.driverEtaMinutes}m`;
+  }
+  if (job.driverEstimatedArrivalAt) {
+    const d = new Date(job.driverEstimatedArrivalAt);
+    return `ETA ~${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  }
+  if (job.estimatedArrivalAt) {
+    const d = new Date(job.estimatedArrivalAt);
+    return `ETA ~${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  }
+  return 'Immediate ETA';
+};
+
+const formatScheduledWindow = (job: any): string => {
+  if (job.arrivalWindowStart && job.arrivalWindowEnd) {
+    const s = new Date(job.arrivalWindowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const e = new Date(job.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    return `${s} – ${e}`;
+  }
+  if (job.arrivalWindowEnd) {
+    const e = new Date(job.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    return `Ends ~${e}`;
+  }
+  if (job.appointmentDate) {
+    const d = new Date(job.appointmentDate);
+    return `Appt: ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  }
+  return 'Scheduled Window';
+};
 
 export default function TechnicianPortal() {
   const { user } = useAuth();
@@ -43,9 +127,29 @@ export default function TechnicianPortal() {
   const [amountInput, setAmountInput] = useState('');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [viewingReceiptUrl, setViewingReceiptUrl] = useState<string | null>(null);
   const [driverSelectedStatus, setDriverSelectedStatus] = useState<string | null>(null);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
+  const [queueTab, setQueueTab] = useState<'ALL' | 'URGENT' | 'SCHEDULED'>('ALL');
+
+  const handleCopyAddress = (addr: string) => {
+    if (!addr) return;
+    navigator.clipboard.writeText(addr);
+    setCopiedAddress(true);
+    toast.success('Address copied to clipboard!');
+    setTimeout(() => setCopiedAddress(false), 2000);
+  };
+
+  const getGoogleMapsUrl = (job: any): string => {
+    const address = job?.serviceAddress || job?.locationAddress || '';
+    if (job?.serviceLatitude && job?.serviceLongitude) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${job.serviceLatitude},${job.serviceLongitude}`;
+    }
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  };
 
   const { socket } = useSocket();
   const updateStatusMutation = useUpdateJobStatus();
@@ -53,7 +157,7 @@ export default function TechnicianPortal() {
   // Fetch driver assigned jobs - strictly scoped to this driver without country restriction or background polling
   const { data: jobsResponse, refetch } = useQuery({
     queryKey: ['technician-jobs', user?.id],
-    queryFn: () => jobService.getJobs({ limit: 10, driverId: user?.id }),
+    queryFn: () => jobService.getJobs({ limit: 50, driverId: user?.id }),
     staleTime: 1000 * 30,
     refetchOnWindowFocus: true,
   });
@@ -78,16 +182,47 @@ export default function TechnicianPortal() {
     ? rawJobs.filter((j: any) => j.driverId === user.id || j.driver?.id === user.id)
     : rawJobs;
 
-  // Categorize jobs
-  const activeJob = jobs.find(
-    (j) => j.status === 'ASSIGNED' || j.status === 'EN_ROUTE' || j.status === 'ON_SCENE' || j.status === 'IN_PROGRESS' || j.status === 'PENDING'
-  );
-  const completedJobs = jobs.filter((j) => j.status === 'COMPLETED');
+  // Active jobs split into Urgent Roadside Dispatches and Scheduled Appointments
+  const urgentJobs = useMemo(() => {
+    const activeStatuses = ['ASSIGNED', 'EN_ROUTE', 'ON_SCENE', 'IN_PROGRESS', 'PENDING'];
+    return jobs
+      .filter((j: any) => activeStatuses.includes(j.status) && !isScheduledJob(j))
+      .sort((a: any, b: any) => getUrgentSortTime(a) - getUrgentSortTime(b));
+  }, [jobs]);
+
+  const scheduledJobs = useMemo(() => {
+    const activeStatuses = ['ASSIGNED', 'EN_ROUTE', 'ON_SCENE', 'IN_PROGRESS', 'PENDING'];
+    return jobs
+      .filter((j: any) => activeStatuses.includes(j.status) && isScheduledJob(j))
+      .sort((a: any, b: any) => getScheduledSortTime(a) - getScheduledSortTime(b));
+  }, [jobs]);
+
+  const allActiveJobs = useMemo(() => {
+    return [...urgentJobs, ...scheduledJobs];
+  }, [urgentJobs, scheduledJobs]);
+
+  const filteredQueueJobs = useMemo(() => {
+    if (queueTab === 'URGENT') return urgentJobs;
+    if (queueTab === 'SCHEDULED') return scheduledJobs;
+    return allActiveJobs;
+  }, [queueTab, urgentJobs, scheduledJobs, allActiveJobs]);
+
+  const activeJob = useMemo(() => {
+    if (!allActiveJobs.length) return null;
+    if (selectedJobId) {
+      const found = allActiveJobs.find((j: any) => j.id === selectedJobId);
+      if (found) return found;
+    }
+    return urgentJobs[0] || scheduledJobs[0] || allActiveJobs[0];
+  }, [allActiveJobs, urgentJobs, scheduledJobs, selectedJobId]);
 
   const requiredAmount = activeJob?.totalCents ? centsToDollars(activeJob.totalCents) : 0;
 
   useEffect(() => {
     setDriverSelectedStatus(null);
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    setValidationError(null);
   }, [activeJob?.id]);
 
   // Pre-fill amount input if job already has charges
@@ -97,23 +232,51 @@ export default function TechnicianPortal() {
         setAmountInput(requiredAmount.toFixed(2));
       }
     }
-  }, [activeJob?.id, activeJob?.status, requiredAmount]);
+  }, [activeJob?.id, activeJob?.status, requiredAmount, amountInput]);
+
+  const currentStage = useMemo<'ASSIGNED' | 'ACCEPTED' | 'EN_ROUTE' | 'ON_SCENE' | 'COMPLETED'>(() => {
+    if (driverSelectedStatus) {
+      if (driverSelectedStatus === 'ARRIVED') return 'ON_SCENE';
+      if (['ASSIGNED', 'ACCEPTED', 'EN_ROUTE', 'ON_SCENE', 'COMPLETED'].includes(driverSelectedStatus)) {
+        return driverSelectedStatus as any;
+      }
+    }
+    const disp = activeJob?.dispositionNotes;
+    if (disp === 'ACCEPTED' || disp === 'EN_ROUTE' || disp === 'ON_SCENE' || disp === 'ARRIVED') {
+      return disp === 'ARRIVED' ? 'ON_SCENE' : (disp as any);
+    }
+    if ((activeJob as any)?.effectiveStatus) {
+      const eff = (activeJob as any).effectiveStatus;
+      if (eff === 'ACCEPTED' || eff === 'EN_ROUTE' || eff === 'ON_SCENE' || eff === 'ARRIVED') {
+        return eff === 'ARRIVED' ? 'ON_SCENE' : (eff as any);
+      }
+    }
+    if (activeJob?.status === 'COMPLETED') return 'COMPLETED';
+    if (activeJob?.status === 'IN_PROGRESS') return 'ON_SCENE';
+    return 'ASSIGNED';
+  }, [driverSelectedStatus, activeJob]);
+
+  const currentStatus = currentStage;
 
   const handleUpdateStatus = (jobId: string, nextStatus: string, cashAmountCents?: number) => {
     setUpdatingId(jobId);
+    setDriverSelectedStatus(nextStatus);
     updateStatusMutation.mutate(
       { id: jobId, status: nextStatus, cashAmountCents },
       {
         onSuccess: () => {
-          toast.success(`Job marked as ${nextStatus.replace('_', ' ').toLowerCase()}`);
+          setDriverSelectedStatus(nextStatus);
+          toast.success(`Job stage updated: ${nextStatus.replace('_', ' ').toLowerCase()}`);
           if (nextStatus === 'COMPLETED') {
             setAmountInput('');
             setReceiptFile(null);
             setReceiptPreview(null);
             setValidationError(null);
+            setDriverSelectedStatus(null);
           }
         },
         onError: (err: any) => {
+          setDriverSelectedStatus(null);
           toast.error(err?.response?.data?.message || 'Failed to update job status');
         },
         onSettled: () => {
@@ -194,8 +357,6 @@ export default function TechnicianPortal() {
       }
     );
   };
-
-  const currentStatus = driverSelectedStatus || activeJob?.status || 'PENDING';
 
   const handleDropdownStatusChange = (newStatus: string) => {
     if (!activeJob) return;
@@ -282,32 +443,458 @@ export default function TechnicianPortal() {
         </button>
       </div>
 
+      {/* Single Unified Container for all Assigned Dispatches */}
+      {allActiveJobs.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+          {/* Container Header with Queue Tab / Filter Switcher */}
+          <div className="p-3.5 sm:p-4 bg-slate-50/90 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <Layers className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <span>Assigned Work Orders</span>
+                  <span className="text-[11px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    {allActiveJobs.length} {allActiveJobs.length === 1 ? 'Job' : 'Jobs'}
+                  </span>
+                </h2>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  {allActiveJobs.length > 1 ? 'Tap any job card to select and manage' : 'Current active roadside dispatch assignment'}
+                </p>
+              </div>
+            </div>
+
+            {/* Mobile-friendly Tabs / Filter Pills inside this same container */}
+            {urgentJobs.length > 0 && scheduledJobs.length > 0 && (
+              <div className="flex items-center gap-1 p-1 bg-slate-200/70 rounded-xl self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setQueueTab('ALL')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    queueTab === 'ALL'
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  All ({allActiveJobs.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQueueTab('URGENT')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                    queueTab === 'URGENT'
+                      ? 'bg-amber-500 text-white shadow-2xs'
+                      : 'text-amber-800 hover:text-amber-950'
+                  }`}
+                >
+                  <Zap className="w-3 h-3" />
+                  <span>Urgent ({urgentJobs.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQueueTab('SCHEDULED')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                    queueTab === 'SCHEDULED'
+                      ? 'bg-blue-600 text-white shadow-2xs'
+                      : 'text-blue-800 hover:text-blue-950'
+                  }`}
+                >
+                  <Calendar className="w-3 h-3" />
+                  <span>Scheduled ({scheduledJobs.length})</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Body of the single container: Table form & List form */}
+          {filteredQueueJobs.length > 0 ? (
+            <div>
+              {/* Desktop & Tablet: Clean Table form */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/70 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                      <th className="py-2.5 px-3 w-12 text-center">#</th>
+                      <th className="py-2.5 px-3">Job Code</th>
+                      <th className="py-2.5 px-3">Type</th>
+                      <th className="py-2.5 px-3">Customer & Location</th>
+                      <th className="py-2.5 px-3">Vehicle & Spec</th>
+                      <th className="py-2.5 px-3">Timing / ETA</th>
+                      <th className="py-2.5 px-3">Status</th>
+                      <th className="py-2.5 px-3 text-right">Fee & Collection</th>
+                      <th className="py-2.5 px-3 text-center w-24">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredQueueJobs.map((job: any, idx: number) => {
+                      const isSelected = activeJob?.id === job.id;
+                      const isUrgent = !isScheduledJob(job);
+                      const timingDisplay = isUrgent ? formatUrgentEta(job) : formatScheduledWindow(job);
+                      const earning = formatCurrency(centsToDollars(job.repairerFeeCents || 4500), currencySymbol);
+                      const seqNum = idx + 1;
+
+                      return (
+                        <tr
+                          key={job.id}
+                          onClick={() => setSelectedJobId(job.id)}
+                          className={`transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-50/70 font-medium'
+                              : 'hover:bg-slate-50/80'
+                          }`}
+                        >
+                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-black ${
+                                idx === 0
+                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  : isSelected
+                                  ? 'bg-emerald-100 text-emerald-800 font-bold border border-emerald-300'
+                                  : 'bg-slate-100 text-slate-600 font-bold'
+                              }`}
+                            >
+                              {seqNum}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-mono font-bold text-xs bg-slate-100 text-slate-900 px-2 py-0.5 rounded border border-slate-200">
+                                #{job.jobCode || job.jobNumber}
+                              </span>
+                              {idx === 0 && (
+                                <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                                  {isUrgent ? 'Nearest ETA' : 'Earliest Window'}
+                                </span>
+                              )}
+                              {isSelected && (
+                                <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-300">
+                                  Active
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            {isUrgent ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                <Zap className="w-3 h-3 text-amber-600" />
+                                <span>Urgent Roadside</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                                <Calendar className="w-3 h-3 text-blue-600" />
+                                <span>Scheduled Appt</span>
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-3 min-w-[200px] max-w-xs">
+                            <div className="font-bold text-slate-900 truncate">
+                              {job.customer?.fullName || job.recipientName || 'Customer'}
+                            </div>
+                            {(job.customer?.phone || job.recipientPhone) && (
+                              <div className="text-[11px] mt-0.5">
+                                <a
+                                  href={`tel:${job.customer?.phone || job.recipientPhone}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-emerald-700 hover:text-emerald-800 font-semibold inline-flex items-center gap-1 hover:underline"
+                                >
+                                  <Phone size={10} className="shrink-0 text-emerald-600" />
+                                  <span>{job.customer?.phone || job.recipientPhone}</span>
+                                </a>
+                              </div>
+                            )}
+                            <div className="text-[11px] text-slate-500 truncate flex items-center gap-1 mt-0.5">
+                              <MapPin size={11} className="text-red-500 shrink-0" />
+                              <span className="truncate">{job.serviceAddress || job.locationAddress || 'Roadside Location'}</span>
+                            </div>
+                            {job.problemNotes && (
+                              <div className="text-[10px] text-amber-800 bg-amber-50/90 px-1.5 py-0.5 rounded border border-amber-200/70 truncate flex items-center gap-1 mt-1" title={job.problemNotes}>
+                                <AlertCircle size={10} className="text-amber-600 shrink-0" />
+                                <span className="truncate">Notes: {job.problemNotes}</span>
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-3 min-w-[150px]">
+                            <div className="font-semibold text-slate-900 flex items-center gap-1 truncate">
+                              <Car size={12} className="text-slate-500 shrink-0" />
+                              <span className="truncate">
+                                {job.vehicle ? `${job.vehicle.year || ''} ${job.vehicle.make || ''} ${job.vehicle.model || ''}`.trim() || 'Vehicle on file' : 'Vehicle on file'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                              {job.vehicle?.licensePlate && (
+                                <span className="font-mono text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 border border-slate-300 text-slate-800">
+                                  {job.vehicle.licensePlate}
+                                </span>
+                              )}
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">
+                                <Disc size={10} className="text-emerald-600 shrink-0" />
+                                <span>{job.vehicle?.tireSize || 'Check size'}</span>
+                              </span>
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <div
+                              className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded border ${
+                                isUrgent
+                                  ? 'text-amber-800 bg-amber-50 border-amber-200'
+                                  : 'text-blue-800 bg-blue-50 border-blue-200'
+                              }`}
+                            >
+                              <Clock size={11} className={isUrgent ? 'text-amber-600' : 'text-blue-600'} />
+                              <span>{timingDisplay}</span>
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span
+                              className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                                job.status === 'EN_ROUTE'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : job.status === 'ON_SCENE'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : job.status === 'IN_PROGRESS'
+                                  ? 'bg-cyan-100 text-cyan-800'
+                                  : 'bg-slate-100 text-slate-700'
+                              }`}
+                            >
+                              {job.status.replace('_', ' ')}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3 text-right whitespace-nowrap">
+                            <div className="font-mono font-bold text-emerald-700 text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/80 inline-block">
+                              Fee: {earning}
+                            </div>
+                            <div className="text-[10px] mt-0.5">
+                              {job.totalCents && job.totalCents > 0 ? (
+                                <span className="text-blue-700 font-semibold bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 inline-flex items-center gap-1">
+                                  <Banknote size={10} />
+                                  <span>Collect: {formatCurrency(centsToDollars(job.totalCents), currencySymbol)}</span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-500 font-medium bg-slate-100 px-1.5 py-0.5 rounded">
+                                  Prepaid / Account
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                            {isSelected ? (
+                              <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg bg-emerald-600 text-white shadow-2xs">
+                                Active
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedJobId(job.id);
+                                }}
+                                className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+                              >
+                                Select
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Phone: Clean Vertical Numbered List */}
+              <div className="sm:hidden divide-y divide-slate-100">
+                {filteredQueueJobs.map((job: any, idx: number) => {
+                  const isSelected = activeJob?.id === job.id;
+                  const isUrgent = !isScheduledJob(job);
+                  const timingDisplay = isUrgent ? formatUrgentEta(job) : formatScheduledWindow(job);
+                  const earning = formatCurrency(centsToDollars(job.repairerFeeCents || 4500), currencySymbol);
+                  const seqNum = idx + 1;
+
+                  return (
+                    <div
+                      key={job.id}
+                      onClick={() => setSelectedJobId(job.id)}
+                      className={`p-3 space-y-2 transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50/70 border-l-4 border-l-emerald-500'
+                          : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-black shrink-0 ${
+                              idx === 0
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : isSelected
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {seqNum}
+                          </span>
+                          <span className="font-mono font-bold text-xs bg-slate-100 text-slate-900 px-2 py-0.5 rounded border border-slate-200">
+                            #{job.jobCode || job.jobNumber}
+                          </span>
+                          {idx === 0 && (
+                            <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                              #1 Priority
+                            </span>
+                          )}
+                          {isSelected && (
+                            <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-300">
+                              Active
+                            </span>
+                          )}
+                        </div>
+                        <span
+                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
+                            job.status === 'EN_ROUTE'
+                              ? 'bg-amber-100 text-amber-800'
+                              : job.status === 'ON_SCENE'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : job.status === 'IN_PROGRESS'
+                              ? 'bg-cyan-100 text-cyan-800'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          {job.status.replace('_', ' ')}
+                        </span>
+                      </div>
+
+                      <div className="pl-7 space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-bold text-slate-900 truncate">
+                            {job.customer?.fullName || job.recipientName || 'Customer'}
+                          </p>
+                          {(job.customer?.phone || job.recipientPhone) && (
+                            <a
+                              href={`tel:${job.customer?.phone || job.recipientPhone}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-flex items-center gap-1 shrink-0 hover:bg-emerald-100"
+                            >
+                              <Phone size={10} className="text-emerald-600" />
+                              <span>{job.customer?.phone || job.recipientPhone}</span>
+                            </a>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate flex items-center gap-1">
+                          <MapPin size={11} className="text-red-500 shrink-0" />
+                          <span className="truncate">{job.serviceAddress || job.locationAddress || 'Roadside Location'}</span>
+                        </p>
+                      </div>
+
+                      {/* Vehicle & Tire Spec Row */}
+                      <div className="pl-7 flex items-center gap-1.5 flex-wrap text-xs pt-0.5">
+                        <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                          <Car size={11} className="text-slate-600 shrink-0" />
+                          <span className="truncate">
+                            {job.vehicle ? `${job.vehicle.year || ''} ${job.vehicle.make || ''} ${job.vehicle.model || ''}`.trim() || 'Vehicle on file' : 'Vehicle on file'}
+                          </span>
+                          {job.vehicle?.licensePlate && (
+                            <span className="font-mono text-[10px] font-bold px-1 rounded bg-white border border-slate-300 text-slate-800">
+                              {job.vehicle.licensePlate}
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
+                          <Disc size={10} className="text-emerald-600 shrink-0" />
+                          <span>{job.vehicle?.tireSize || 'Check size'}</span>
+                        </span>
+                      </div>
+
+                      {/* Roadside Problem Notes if present */}
+                      {job.problemNotes && (
+                        <div className="ml-7 p-1.5 bg-amber-50 rounded-lg border border-amber-200/70 text-[10px] text-amber-900 flex items-start gap-1">
+                          <AlertCircle size={11} className="text-amber-600 shrink-0 mt-0.5" />
+                          <span className="line-clamp-2">
+                            <strong className="font-bold text-amber-950">Notes:</strong> {job.problemNotes}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="pl-7 flex flex-wrap items-center justify-between gap-2 text-xs pt-1.5 border-t border-slate-100">
+                        <div
+                          className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded border ${
+                            isUrgent ? 'text-amber-800 bg-amber-50 border-amber-200' : 'text-blue-800 bg-blue-50 border-blue-200'
+                          }`}
+                        >
+                          <Clock size={11} className={isUrgent ? 'text-amber-600' : 'text-blue-600'} />
+                          <span>{timingDisplay}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {job.totalCents && job.totalCents > 0 ? (
+                            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 inline-flex items-center gap-1">
+                              <Banknote size={10} />
+                              <span>Collect: {formatCurrency(centsToDollars(job.totalCents), currencySymbol)}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                              Prepaid
+                            </span>
+                          )}
+                          <div className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/80">
+                            Fee: {earning}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 text-center text-xs text-slate-400">
+              No assignments found for this filter tab.
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Primary Active Job Card - Modern High-End Styling */}
       {activeJob ? (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all">
           {/* Card Top Banner - Luxury Slate-900 Header with Emerald Accents */}
           <div className="bg-slate-900 px-5 py-4 text-white flex flex-wrap items-center justify-between gap-3 border-b border-slate-800">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <span className="font-mono font-bold text-sm bg-slate-800 text-emerald-400 px-2.5 py-1 rounded-lg border border-slate-700/60">
                 #{activeJob.jobCode || activeJob.jobNumber}
               </span>
-              <div className="relative inline-flex items-center">
-                <select
-                  aria-label="Update Driver Status"
-                  value={currentStatus}
-                  disabled={updatingId === activeJob.id}
-                  onChange={(e) => handleDropdownStatusChange(e.target.value)}
-                  className="appearance-none text-xs font-bold pl-3 pr-8 py-1.5 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700 hover:border-emerald-500/50 focus:border-emerald-500 focus:outline-none transition cursor-pointer disabled:opacity-50"
-                >
-                  <option value="PENDING" className="bg-slate-900 text-slate-200">Pending</option>
-                  <option value="ASSIGNED" className="bg-slate-900 text-slate-200">Assigned</option>
-                  <option value="EN_ROUTE" className="bg-slate-900 text-slate-200">En Route</option>
-                  <option value="ON_SCENE" className="bg-slate-900 text-emerald-400 font-bold">Arrived on Location (On Scene)</option>
-                  <option value="IN_PROGRESS" className="bg-slate-900 text-cyan-400">In Progress</option>
-                  <option value="COMPLETED" className="bg-slate-900 text-emerald-400 font-bold">Completed</option>
-                  <option value="CANCELLED" className="bg-slate-900 text-rose-400">Cancelled</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 pointer-events-none" />
+              <div className="bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                <span className="text-[10px] uppercase font-bold text-emerald-400">Job Earning</span>
+                <span className="text-xs font-black text-emerald-300 font-mono">
+                  {formatCurrency(centsToDollars(activeJob.repairerFeeCents || 4500), currencySymbol)}
+                </span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold tracking-wide">
+                <span className={`w-2 h-2 rounded-full ${
+                  currentStage === 'ASSIGNED' ? 'bg-amber-400 animate-ping' :
+                  currentStage === 'ACCEPTED' ? 'bg-blue-400 animate-pulse' :
+                  currentStage === 'EN_ROUTE' ? 'bg-indigo-400 animate-pulse' :
+                  currentStage === 'ON_SCENE' ? 'bg-purple-400 animate-pulse' : 'bg-emerald-400'
+                }`} />
+                <span className={
+                  currentStage === 'ASSIGNED' ? 'text-amber-300' :
+                  currentStage === 'ACCEPTED' ? 'text-blue-300' :
+                  currentStage === 'EN_ROUTE' ? 'text-indigo-300' :
+                  currentStage === 'ON_SCENE' ? 'text-purple-300' : 'text-emerald-300'
+                }>
+                  {currentStage === 'ASSIGNED' ? 'Stage: Assigned' :
+                   currentStage === 'ACCEPTED' ? 'Stage: Accepted' :
+                   currentStage === 'EN_ROUTE' ? 'Stage: En Route' :
+                   currentStage === 'ON_SCENE' ? 'Stage: Arrived' : 'Completed'}
+                </span>
               </div>
               {activeJob.urgency && (
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
@@ -380,23 +967,54 @@ export default function TechnicianPortal() {
                 </div>
               </div>
 
-              <div className="p-4 bg-slate-50/70 rounded-xl border border-slate-200/80 space-y-2">
+              <div className="p-4 bg-slate-50/70 rounded-xl border border-slate-200/80 space-y-3">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                  Breakdown Location & GPS Telemetry
+                  Breakdown Location & Navigation
                 </span>
-                <p className="text-xs font-semibold text-slate-800 flex items-start gap-1.5">
+                <p className="text-xs font-bold text-slate-900 flex items-start gap-1.5">
                   <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>{activeJob.serviceAddress || activeJob.locationAddress || 'Address on file'}</span>
+                  <span className="break-words">{activeJob.serviceAddress || activeJob.locationAddress || 'Address on file'}</span>
                 </p>
-                <div className="pt-2">
-                  <TechnicianMap
-                    address={activeJob.serviceAddress || activeJob.locationAddress || ''}
-                    latitude={(activeJob as any).serviceLatitude}
-                    longitude={(activeJob as any).serviceLongitude}
-                    customerName={activeJob.customer?.fullName || activeJob.recipientName}
-                    jobCode={activeJob.jobCode}
-                    height="240px"
-                  />
+
+                {/* Mobile-First Navigation Actions: Direct Google Maps link, Copy Address string, View Map Popup */}
+                <div className="pt-1 flex flex-wrap items-center gap-2">
+                  <a
+                    href={getGoogleMapsUrl(activeJob)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition shadow-xs cursor-pointer"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Open in Google Maps</span>
+                    <ExternalLink className="w-3 h-3 text-emerald-200" />
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => handleCopyAddress(activeJob.serviceAddress || activeJob.locationAddress || '')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 shadow-2xs transition cursor-pointer"
+                  >
+                    {copiedAddress ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="text-emerald-700 font-bold">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Copy Address</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowMapModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
+                  >
+                    <Map className="w-3.5 h-3.5 text-blue-600" />
+                    <span>View Map (Popup)</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -420,114 +1038,349 @@ export default function TechnicianPortal() {
                   </p>
                 </div>
 
-                {/* Tire Spec Highlight */}
-                <div className="flex items-center gap-2.5 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs">
-                  <Disc className="w-4 h-4 text-emerald-600" />
-                  <div>
-                    <span className="text-[9px] font-bold uppercase text-slate-400 block leading-none">Required Tire Spec</span>
-                    <strong className="text-sm font-black text-slate-900">
-                      {activeJob.vehicle?.tireSize || 'Check on scene'}
-                    </strong>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Tire Spec Highlight */}
+                  <div className="flex items-center gap-2.5 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs">
+                    <Disc className="w-4 h-4 text-emerald-600" />
+                    <div>
+                      <span className="text-[9px] font-bold uppercase text-slate-400 block leading-none">Required Tire Spec</span>
+                      <strong className="text-sm font-black text-slate-900">
+                        {activeJob.vehicle?.tireSize || 'Check on scene'}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* Customer Payment Collection Pill */}
+                  <div className="flex items-center gap-2.5 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs">
+                    <Banknote className="w-4 h-4 text-blue-600" />
+                    <div>
+                      <span className="text-[9px] font-bold uppercase text-slate-400 block leading-none">Customer Payment</span>
+                      <strong className="text-sm font-black text-slate-900">
+                        {activeJob.totalCents && activeJob.totalCents > 0
+                          ? `Collect: ${formatCurrency(centsToDollars(activeJob.totalCents), currencySymbol)}`
+                          : 'Prepaid / Fleet Account'}
+                      </strong>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {activeJob.problemNotes && (
-                <div className="pt-2 border-t border-slate-200/60 text-xs text-slate-700 font-medium">
-                  <strong className="text-slate-900">Roadside Notes:</strong> {activeJob.problemNotes}
+                <div className="p-2.5 bg-amber-50/90 rounded-lg border border-amber-200/80 text-xs text-amber-900 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="text-amber-950 font-bold">Roadside & Safety Notes:</strong>{' '}
+                    <span>{activeJob.problemNotes}</span>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Driver Operational Status Bar */}
-            <div className="p-4 bg-slate-50/90 rounded-2xl border border-slate-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                  <Zap className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Operational Status</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-slate-800">Current:</span>
-                    <span className="text-xs font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
-                      {currentStatus === 'ON_SCENE' ? 'Arrived on Location' : currentStatus.replace('_', ' ')}
+            {/* 4-Step Progressive Workflow Stepper */}
+            <div className="bg-slate-50/90 rounded-2xl p-4 border border-slate-200/90 shadow-2xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <Zap className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Driver Operational Workflow</span>
+                    <span className="text-xs font-black text-slate-800">
+                      {currentStage === 'ASSIGNED' ? 'Step 1 of 4: Awaiting Driver Acceptance' :
+                       currentStage === 'ACCEPTED' ? 'Step 2 of 4: Accepted • Ready to Travel' :
+                       currentStage === 'EN_ROUTE' ? 'Step 3 of 4: Driving to Customer Location' :
+                       currentStage === 'ON_SCENE' ? 'Step 4 of 4: Arrived on Scene • Payment & Completion' : 'Work Order Completed'}
                     </span>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[11px] font-extrabold uppercase px-2.5 py-1 rounded-lg border ${
+                    currentStage === 'ASSIGNED' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                    currentStage === 'ACCEPTED' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                    currentStage === 'EN_ROUTE' ? 'bg-indigo-100 text-indigo-800 border-indigo-200' :
+                    currentStage === 'ON_SCENE' ? 'bg-purple-100 text-purple-800 border-purple-200' :
+                    'bg-emerald-100 text-emerald-800 border-emerald-200'
+                  }`}>
+                    {currentStage === 'ASSIGNED' ? '1. Assigned' :
+                     currentStage === 'ACCEPTED' ? '2. Accepted' :
+                     currentStage === 'EN_ROUTE' ? '3. En Route' :
+                     currentStage === 'ON_SCENE' ? '4. Arrived' : 'Completed'}
+                  </span>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <label htmlFor="driver-body-status-select" className="text-xs font-bold text-slate-700 shrink-0">
-                  Update Status:
-                </label>
-                <div className="relative">
-                  <select
-                    id="driver-body-status-select"
-                    value={currentStatus}
-                    disabled={updatingId === activeJob.id}
-                    onChange={(e) => handleDropdownStatusChange(e.target.value)}
-                    className="appearance-none bg-white text-slate-900 text-xs font-bold pl-3 pr-8 py-2 rounded-xl border border-slate-300 shadow-2xs hover:border-emerald-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition cursor-pointer disabled:opacity-50"
-                  >
-                    <option value="PENDING">Pending</option>
-                    <option value="ASSIGNED">Assigned</option>
-                    <option value="EN_ROUTE">En Route</option>
-                    <option value="ON_SCENE">Arrived on Location (On Scene)</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="CANCELLED">Cancelled</option>
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+              {/* Stepper Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                {[
+                  { step: 1, key: 'ASSIGNED', label: '1. Accept', desc: 'Confirm Job' },
+                  { step: 2, key: 'ACCEPTED', label: '2. En Route', desc: 'Start Travel' },
+                  { step: 3, key: 'EN_ROUTE', label: '3. Arrived', desc: 'On Location' },
+                  { step: 4, key: 'ON_SCENE', label: '4. Complete', desc: 'Settle Payment' },
+                ].map((s) => {
+                  const stepIdx = currentStage === 'ASSIGNED' ? 1 :
+                                  currentStage === 'ACCEPTED' ? 2 :
+                                  currentStage === 'EN_ROUTE' ? 3 :
+                                  currentStage === 'ON_SCENE' ? 4 : 5;
+                  const isPast = stepIdx > s.step;
+                  const isCurrent = stepIdx === s.step;
+
+                  return (
+                    <div
+                      key={s.key}
+                      className={`relative rounded-xl p-2.5 border text-center transition-all ${
+                        isCurrent
+                          ? 'bg-white border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
+                          : isPast
+                          ? 'bg-emerald-50/70 border-emerald-200 text-emerald-800'
+                          : 'bg-white/60 border-slate-200/80 text-slate-400'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center mb-1">
+                        {isPast ? (
+                          <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">
+                            ✓
+                          </span>
+                        ) : isCurrent ? (
+                          <span className="w-5 h-5 rounded-full bg-slate-900 text-emerald-400 border border-emerald-500 flex items-center justify-center text-[10px] font-black animate-pulse">
+                            {s.step}
+                          </span>
+                        ) : (
+                          <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-[10px] font-bold">
+                            {s.step}
+                          </span>
+                        )}
+                      </div>
+                      <span className={`text-[11px] font-bold block truncate ${
+                        isCurrent ? 'text-slate-900' : isPast ? 'text-emerald-700' : 'text-slate-400'
+                      }`}>
+                        {s.label}
+                      </span>
+                      <span className="text-[9px] text-slate-400 block truncate">
+                        {s.desc}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* 2-State Operational Action Flows */}
-            {activeJob.status === 'ASSIGNED' || activeJob.status === 'PENDING' ? (
-              /* State 1: Accept or Decline Job */
-              <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-2 text-slate-600 text-xs">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Review details and accept order to begin roadside response.</span>
+            {/* Single Smart Progressive Action Section */}
+            {currentStage === 'ASSIGNED' && (
+              /* Stage 1: Accept Dispatch */
+              <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-5 border border-slate-700/80 shadow-lg space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/60 pb-3.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="relative flex h-3 w-3 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
+                    <div>
+                      <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-400">
+                        Step 1 • Dispatch Assigned
+                      </h4>
+                      <p className="text-[11px] text-slate-300">
+                        Order #{activeJob.jobCode || activeJob.jobNumber} assigned to your queue. Tap to accept this job.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-emerald-500/15 border border-emerald-500/30 px-3 py-1.5 rounded-xl self-start sm:self-auto flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] uppercase font-bold text-emerald-400">Guaranteed Fee:</span>
+                    <span className="text-sm font-black text-emerald-300 font-mono">
+                      {formatCurrency(centsToDollars(activeJob.repairerFeeCents || 4500), currencySymbol)}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-3 w-full sm:w-auto">
+                {/* Single Progressive Action Button (Step 1) */}
+                <button
+                  type="button"
+                  disabled={updatingId === activeJob.id}
+                  onClick={() => handleUpdateStatus(activeJob.id, 'ACCEPTED')}
+                  className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-sm inline-flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-500/25 active:scale-[0.99] transition cursor-pointer disabled:opacity-50 tracking-wide"
+                >
+                  {updatingId === activeJob.id ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Accepting Job...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5 text-emerald-200" />
+                      <span>1. Accept Job</span>
+                      <ArrowRight className="w-4 h-4 text-emerald-200" />
+                    </>
+                  )}
+                </button>
+
+                <div className="flex justify-end pt-1">
                   <button
                     type="button"
                     disabled={updatingId === activeJob.id}
                     onClick={() => {
-                      const confirmed = window.confirm('Decline this dispatch? Dispatcher will be notified.');
-                      if (confirmed) {
+                      if (window.confirm('Are you sure you want to decline this dispatch? The dispatcher will be notified immediately.')) {
                         handleUpdateStatus(activeJob.id, 'CANCELLED');
                       }
                     }}
-                    className="flex-1 sm:flex-none py-2.5 px-4 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                    className="text-xs text-slate-400 hover:text-rose-400 transition inline-flex items-center gap-1 cursor-pointer"
                   >
-                    <XCircle className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Decline</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={updatingId === activeJob.id}
-                    onClick={() => handleUpdateStatus(activeJob.id, 'IN_PROGRESS')}
-                    className="flex-1 sm:flex-none py-2.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center justify-center gap-2 transition shadow-xs cursor-pointer disabled:opacity-50"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>{updatingId === activeJob.id ? 'Accepting...' : 'Accept Job'}</span>
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Decline Dispatch</span>
                   </button>
                 </div>
               </div>
-            ) : (
-              /* State 2: Accepted / In-Progress - Complete Job with Payment Capture */
+            )}
+
+            {currentStage === 'ACCEPTED' && (
+              /* Stage 2: Start Route (En Route) */
+              <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-5 border border-slate-700/80 shadow-lg space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/60 pb-3.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="relative flex h-3 w-3 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                    </span>
+                    <div>
+                      <h4 className="text-xs font-extrabold uppercase tracking-wider text-blue-400">
+                        Step 2 • Job Accepted • Ready to Drive
+                      </h4>
+                      <p className="text-[11px] text-slate-300">
+                        Order #{activeJob.jobCode || activeJob.jobNumber} is locked. Tap below when you begin driving to the customer location.
+                      </p>
+                    </div>
+                  </div>
+
+                  <a
+                    href={getGoogleMapsUrl(activeJob)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 px-3.5 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition self-start sm:self-auto"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Launch GPS Route</span>
+                  </a>
+                </div>
+
+                {/* Single Progressive Action Button (Step 2) */}
+                <button
+                  type="button"
+                  disabled={updatingId === activeJob.id}
+                  onClick={() => handleUpdateStatus(activeJob.id, 'EN_ROUTE')}
+                  className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-sm inline-flex items-center justify-center gap-2.5 shadow-lg shadow-blue-500/25 active:scale-[0.99] transition cursor-pointer disabled:opacity-50 tracking-wide"
+                >
+                  {updatingId === activeJob.id ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Updating to En Route...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Car className="w-5 h-5 text-blue-200" />
+                      <span>2. Start Route (En Route)</span>
+                      <ArrowRight className="w-4 h-4 text-blue-200" />
+                    </>
+                  )}
+                </button>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    disabled={updatingId === activeJob.id}
+                    onClick={() => {
+                      if (window.confirm('Cancel this dispatch? Dispatcher will be notified.')) {
+                        handleUpdateStatus(activeJob.id, 'CANCELLED');
+                      }
+                    }}
+                    className="text-xs text-slate-400 hover:text-rose-400 transition inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Cancel Dispatch</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {currentStage === 'EN_ROUTE' && (
+              /* Stage 3: Arrived on Scene */
+              <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-5 border border-slate-700/80 shadow-lg space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/60 pb-3.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="relative flex h-3 w-3 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                    </span>
+                    <div>
+                      <h4 className="text-xs font-extrabold uppercase tracking-wider text-indigo-400">
+                        Step 3 • Traveling to Customer
+                      </h4>
+                      <p className="text-[11px] text-slate-300">
+                        En route to destination. Tap below as soon as you reach the customer location to mark Arrived.
+                      </p>
+                    </div>
+                  </div>
+
+                  <a
+                    href={getGoogleMapsUrl(activeJob)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 text-indigo-300 px-3.5 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition self-start sm:self-auto"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Navigate GPS</span>
+                  </a>
+                </div>
+
+                {/* Single Progressive Action Button (Step 3) */}
+                <button
+                  type="button"
+                  disabled={updatingId === activeJob.id}
+                  onClick={() => handleUpdateStatus(activeJob.id, 'ON_SCENE')}
+                  className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 hover:from-purple-700 hover:to-indigo-800 text-white font-extrabold text-sm inline-flex items-center justify-center gap-2.5 shadow-lg shadow-purple-500/25 active:scale-[0.99] transition cursor-pointer disabled:opacity-50 tracking-wide"
+                >
+                  {updatingId === activeJob.id ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Confirming Arrival...</span>
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="w-5 h-5 text-purple-200" />
+                      <span>3. Arrived on Scene</span>
+                      <ArrowRight className="w-4 h-4 text-purple-200" />
+                    </>
+                  )}
+                </button>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    disabled={updatingId === activeJob.id}
+                    onClick={() => {
+                      if (window.confirm('Cancel this dispatch? Dispatcher will be notified.')) {
+                        handleUpdateStatus(activeJob.id, 'CANCELLED');
+                      }
+                    }}
+                    className="text-xs text-slate-400 hover:text-rose-400 transition inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Cancel Dispatch</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {(currentStage === 'ON_SCENE' || currentStage === 'COMPLETED') && (
+              /* Stage 4: Arrived - Payment Collection & Complete Work Order */
               <div className="pt-2 border-t border-slate-100 space-y-4">
                 <div id="payment-capture-section" className="bg-emerald-50/50 border border-emerald-200/80 rounded-2xl p-4 sm:p-5 space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                     <div>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                        Roadside Payment Capture & Settlement
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>Step 4 • Roadside Payment Capture & Work Order Completion</span>
                       </h4>
                       <p className="text-[11px] text-slate-500">
-                        Select customer payment method, enter amount, and attach required proof slip.
+                        Customer service arrived. Record payment collected and tap below to complete work order.
                       </p>
                     </div>
                     {validationError && (
@@ -634,7 +1487,6 @@ export default function TechnicianPortal() {
                           const val = e.target.value;
                           const num = parseFloat(val);
                           if (requiredAmount > 0 && !isNaN(num) && num > requiredAmount) {
-                            // If greater than required amount, write to default value
                             setAmountInput(requiredAmount.toFixed(2));
                             toast.info(`Amount cannot exceed invoice total. Reset to default ${formatCurrency(requiredAmount, currencySymbol)}`);
                             setValidationError(null);
@@ -734,20 +1586,30 @@ export default function TechnicianPortal() {
                     )}
                   </div>
 
-                  {/* Submission Action */}
-                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-emerald-100">
+                  {/* Single Progressive Action Button (Step 4: Complete Job) */}
+                  <div className="pt-2 flex flex-col gap-3 border-t border-emerald-100">
                     <button
                       type="button"
                       disabled={updatingId === activeJob.id}
                       onClick={handleCompleteJob}
-                      className="w-full sm:w-auto py-2.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center justify-center gap-2 transition shadow-xs cursor-pointer disabled:opacity-50"
+                      className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold text-sm inline-flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-500/25 active:scale-[0.99] transition cursor-pointer disabled:opacity-50 tracking-wide"
                     >
-                      <CheckCircle className="w-4 h-4" />
-                      <span>{updatingId === activeJob.id ? 'Verifying & Completing...' : 'Complete Job & Submit Payment'}</span>
+                      {updatingId === activeJob.id ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Verifying & Completing Order...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-5 h-5 text-emerald-200" />
+                          <span>4. Complete Work Order & Settle</span>
+                          <ArrowRight className="w-4 h-4 text-emerald-200" />
+                        </>
+                      )}
                     </button>
 
-                    <div className="text-xs text-slate-500 font-medium text-right w-full sm:w-auto">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Payout:</span>
+                    <div className="text-xs text-slate-500 font-medium text-center">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Your Driver Earning:</span>
                       <strong className="text-emerald-600">
                         {formatCurrency(centsToDollars(activeJob.repairerFeeCents || 4500), currencySymbol)}
                       </strong>
@@ -787,156 +1649,24 @@ export default function TechnicianPortal() {
         </div>
       )}
 
-      {/* Completed Dispatches History */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-600" />
-              <span>Completed Dispatches History</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Verified roadside jobs, payment settlement proof, and technician compensation records.
-            </p>
+      {/* Dedicated History & Earnings Link Banner */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+            <HistoryIcon className="w-5 h-5 text-slate-600" />
           </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-3 py-1 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">
-              {completedJobs.length} Completed
-            </span>
-            <span className="px-3 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-xs">
-              Earned: {formatCurrency(centsToDollars(completedJobs.reduce((acc, j) => acc + (j.repairerFeeCents || 0), 0)), currencySymbol)}
-            </span>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Completed Dispatches & Audited Earnings</h3>
+            <p className="text-xs text-slate-500">Track approved earnings, pending audit tickets, and roadside receipts in your dedicated history ledger.</p>
           </div>
         </div>
-
-        {completedJobs.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-8 text-center space-y-2">
-            <CheckCircle className="w-8 h-8 text-slate-300 mx-auto" />
-            <h4 className="text-xs font-bold text-slate-700">No completed dispatches logged yet today</h4>
-            <p className="text-[11px] text-slate-400">Completed jobs will appear here with settlement proof and earnings audit status.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3">
-            {completedJobs.map((job) => {
-              const method = job.paymentMethod || 'CASH';
-              const isAudited = Boolean((job as any).expenseStatedById);
-              const feeCents = job.repairerFeeCents || 0;
-
-              return (
-                <div key={job.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs hover:border-slate-300 transition space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono font-bold text-slate-900 text-xs bg-slate-100 px-2 py-0.5 rounded-lg">
-                        #{job.jobCode || job.jobNumber}
-                      </span>
-                      <span className="font-bold text-slate-800 text-xs">
-                        {job.customer?.fullName || job.recipientName || 'Customer'}
-                      </span>
-                      {job.customer?.phone && (
-                        <a href={`tel:${job.customer.phone}`} className="text-[11px] font-mono text-blue-600 hover:underline flex items-center gap-1">
-                          <Phone size={10} />
-                          <span>{job.customer.phone}</span>
-                        </a>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                        <Calendar size={11} />
-                        <span>{formatDate(job.completedAt || job.createdAt)}</span>
-                      </span>
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                        Completed
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Body: Location, Vehicle, and Payment Details */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase text-slate-400 block">Service Location</span>
-                      <p className="text-slate-700 font-medium truncate mt-0.5 flex items-start gap-1" title={job.serviceAddress || 'Address on file'}>
-                        <MapPin size={12} className="text-red-500 shrink-0 mt-0.5" />
-                        <span className="truncate">{job.serviceAddress || 'Roadside Location'}</span>
-                      </p>
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] font-bold uppercase text-slate-400 block">Vehicle & Tire</span>
-                      <p className="text-slate-800 font-semibold mt-0.5 flex items-center gap-1.5">
-                        <Car size={12} className="text-slate-400 shrink-0" />
-                        <span>{job.vehicle ? `${job.vehicle.year || ''} ${job.vehicle.make} ${job.vehicle.model}`.trim() : 'Standard Vehicle'}</span>
-                      </p>
-                      {job.vehicle?.tireSize && (
-                        <span className="text-[10px] font-mono text-slate-500">
-                          Tire: <strong>{job.vehicle.tireSize}</strong>
-                        </span>
-                      )}
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] font-bold uppercase text-slate-400 block">Settlement & Method</span>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                          method === 'CASH'
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                            : method === 'POS'
-                            ? 'bg-blue-50 text-blue-800 border-blue-200'
-                            : 'bg-purple-50 text-purple-800 border-purple-200'
-                        }`}>
-                          {method.replace('_', ' ')}
-                        </span>
-                        <span className="font-mono font-bold text-slate-900 text-xs">
-                          {formatCurrency(centsToDollars(job.totalCents || job.cashCollectedCents || 0), currencySymbol)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer: Payout audit & proof button */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs flex-wrap gap-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {isAudited ? (
-                        <span className="font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1.5">
-                          <CheckCircle2 size={12} className="text-emerald-600" />
-                          <span>Audited Compensation: {formatCurrency(centsToDollars(feeCents), currencySymbol)}</span>
-                        </span>
-                      ) : (
-                        <span className="font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 inline-flex items-center gap-1.5">
-                          <Clock size={12} className="text-amber-600" />
-                          <span>Estimated Payout: {formatCurrency(centsToDollars(feeCents || 4500), currencySymbol)} (Pending Audit)</span>
-                        </span>
-                      )}
-
-                      {job.receiptUrl && (
-                        <button
-                          type="button"
-                          onClick={() => setViewingReceiptUrl(job.receiptUrl || null)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] border border-slate-200 transition cursor-pointer"
-                          title="View Roadside Proof Slip"
-                        >
-                          <Eye size={12} />
-                          <span>View Proof Slip</span>
-                        </button>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setChatJob(job)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 font-semibold text-[11px] border border-slate-200 transition cursor-pointer"
-                      title="View Chat Logs"
-                    >
-                      <MessageSquare size={12} />
-                      <span>Chat Logs</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <Link
+          to="/history"
+          className="btn-secondary text-xs px-4 py-2 font-bold inline-flex items-center gap-2 shrink-0 cursor-pointer"
+        >
+          <span>View History & Earnings</span>
+          <ArrowRight className="w-4 h-4" />
+        </Link>
       </div>
 
       {/* Two-Way Job Chat Modal */}
@@ -975,6 +1705,72 @@ export default function TechnicianPortal() {
             </div>
             <div className="rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center max-h-[70vh]">
               <img src={viewingReceiptUrl} alt="Payment Receipt" className="max-h-[65vh] w-auto object-contain" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Map Popup Modal (Opened only when driver taps 'View Map') */}
+      {showMapModal && activeJob && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4"
+          onClick={() => setShowMapModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-2xl w-full p-4 space-y-3 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center gap-2">
+                <MapPin size={18} className="text-emerald-600" />
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    Breakdown Location & GPS Map
+                  </h3>
+                  <p className="text-[11px] text-slate-500 truncate max-w-xs sm:max-w-md">
+                    {activeJob.serviceAddress || activeJob.locationAddress || 'Roadside address'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMapModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg transition cursor-pointer"
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+
+            <div className="rounded-xl overflow-hidden border border-slate-200">
+              <TechnicianMap
+                address={activeJob.serviceAddress || activeJob.locationAddress || ''}
+                latitude={(activeJob as any).serviceLatitude}
+                longitude={(activeJob as any).serviceLongitude}
+                customerName={activeJob.customer?.fullName || activeJob.recipientName}
+                customerPhone={activeJob.customer?.phone || activeJob.recipientPhone}
+                jobCode={activeJob.jobCode}
+                height="340px"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-1 text-xs">
+              <button
+                type="button"
+                onClick={() => handleCopyAddress(activeJob.serviceAddress || activeJob.locationAddress || '')}
+                className="text-slate-600 hover:text-slate-900 font-bold inline-flex items-center gap-1 cursor-pointer"
+              >
+                <Copy size={13} />
+                <span>Copy Address</span>
+              </button>
+              <a
+                href={getGoogleMapsUrl(activeJob)}
+                target="_blank"
+                rel="noreferrer"
+                className="text-emerald-600 hover:text-emerald-700 font-bold inline-flex items-center gap-1"
+              >
+                <span>Open in Google Maps App</span>
+                <ExternalLink size={13} />
+              </a>
             </div>
           </div>
         </div>
