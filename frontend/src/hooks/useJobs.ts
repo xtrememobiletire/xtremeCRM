@@ -24,7 +24,8 @@ export function useJobs(params?: {
   return useQuery<JobsResponse>({
     queryKey: ['jobs', effectiveCountry, effectiveParams],
     queryFn: () => jobService.getJobs(effectiveParams),
-    staleTime: 10000,
+    staleTime: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -47,13 +48,15 @@ export function useUpdateJobStatus() {
       status, 
       cashAmountCents,
       formData,
-      payload
+      payload,
+      driverDeclineReason,
     }: { 
       id: string; 
       status?: string; 
       cashAmountCents?: number;
       formData?: FormData;
       payload?: any;
+      driverDeclineReason?: string;
     }) => {
       if (formData) {
         return jobService.updateJobStatus(id, formData);
@@ -61,9 +64,15 @@ export function useUpdateJobStatus() {
       if (payload) {
         return jobService.updateJobStatus(id, payload);
       }
+      if (driverDeclineReason) {
+        return jobService.updateJobStatus(id, {
+          status: status || 'CANCELLED',
+          driverDeclineReason,
+        });
+      }
       return jobService.updateJobStatus(id, status || 'COMPLETED', cashAmountCents);
     },
-    onMutate: async ({ id, status, formData, payload }) => {
+    onMutate: async ({ id, status, formData, payload, driverDeclineReason }: any) => {
       const nextStatus = status || (payload?.status as string) || (formData?.get('status') as string);
       await queryClient.cancelQueries({ queryKey: ['technician-jobs'] });
       await queryClient.cancelQueries({ queryKey: ['jobs'] });
@@ -72,11 +81,29 @@ export function useUpdateJobStatus() {
       const prevJobs = queryClient.getQueriesData({ queryKey: ['jobs'] });
 
       if (nextStatus) {
+        const declineReason = driverDeclineReason;
         queryClient.setQueriesData({ queryKey: ['technician-jobs'] }, (old: any) => {
           if (!old || !old.data) return old;
+          if (nextStatus === 'CANCELLED') {
+            return {
+              ...old,
+              data: old.data.filter((j: any) => j.id !== id && j.jobId !== id),
+              total: Math.max(0, (old.total || old.data.length) - 1),
+            };
+          }
           return {
             ...old,
-            data: old.data.map((j: any) => (j.id === id ? { ...j, status: nextStatus } : j)),
+            data: old.data.map((j: any) =>
+              j.id === id
+                ? {
+                    ...j,
+                    status: nextStatus,
+                    driverDeclineReason: declineReason || j.driverDeclineReason,
+                    lastDeclinedDriverId: j.driverId || j.lastDeclinedDriverId,
+                    driverId: j.driverId,
+                  }
+                : j
+            ),
           };
         });
 
@@ -84,7 +111,17 @@ export function useUpdateJobStatus() {
           if (!old || !old.data) return old;
           return {
             ...old,
-            data: old.data.map((j: any) => (j.id === id ? { ...j, status: nextStatus } : j)),
+            data: old.data.map((j: any) =>
+              j.id === id
+                ? {
+                    ...j,
+                    status: nextStatus,
+                    driverDeclineReason: declineReason || j.driverDeclineReason,
+                    lastDeclinedDriverId: j.driverId || j.lastDeclinedDriverId,
+                    driverId: nextStatus === 'CANCELLED' ? null : j.driverId,
+                  }
+                : j
+            ),
           };
         });
       }

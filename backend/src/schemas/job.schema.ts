@@ -128,6 +128,7 @@ export const UpdateJobStatusSchema = z.object({
   cashAmountCents: z.coerce.number().int().nonnegative().optional(),
   cashCollected: z.coerce.number().nonnegative().optional(),
   receiptUrl: z.string().optional(),
+  driverDeclineReason: z.string().optional(),
 });
 
 export type UpdateJobStatusInput = z.infer<typeof UpdateJobStatusSchema>;

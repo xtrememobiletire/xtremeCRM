@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Globe, 
@@ -13,7 +13,7 @@ import {
   Car,
   AlertTriangle
 } from 'lucide-react';
-import VerifyAddressModal from '../components/bookings/VerifyAddressModal';
+const VerifyAddressModal = lazy(() => import('../components/bookings/VerifyAddressModal'));
 import EmptyState from '../components/ui/EmptyState';
 import { jobService } from '../services/jobService';
 import { useTenant } from '../context/TenantContext';
@@ -265,15 +265,17 @@ export default function Bookings() {
 
       {/* Verify Address Modal */}
       {verifyBooking && (
-        <VerifyAddressModal
-          isOpen={Boolean(verifyBooking)}
-          onClose={() => setVerifyBooking(null)}
-          booking={verifyBooking}
-          onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ['bookings-queue'] });
-            queryClient.invalidateQueries({ queryKey: ['jobs'] });
-          }}
-        />
+        <Suspense fallback={null}>
+          <VerifyAddressModal
+            isOpen={Boolean(verifyBooking)}
+            onClose={() => setVerifyBooking(null)}
+            booking={verifyBooking}
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ['bookings-queue'] });
+              queryClient.invalidateQueries({ queryKey: ['jobs'] });
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

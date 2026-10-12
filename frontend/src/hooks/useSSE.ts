@@ -110,14 +110,46 @@ export function useSSE() {
       // 2. Technician assigned jobs (handles envelope { data: [...] } and raw arrays)
       queryClient.setQueriesData({ queryKey: ['technician-jobs'] }, (oldJobs: any) => {
         if (!oldJobs) return oldJobs;
+        const isAssignedToMe = Boolean(
+          user?.id && (
+            jobPayload.driverId === user.id ||
+            jobPayload.driver?.id === user.id
+          )
+        );
+
+        if (!isAssignedToMe) {
+          // Unassigned or assigned to someone else: remove from my technician-jobs cache
+          if (Array.isArray(oldJobs.data)) {
+            return {
+              ...oldJobs,
+              data: oldJobs.data.filter((j: any) => j.id !== jobId && j.jobId !== jobId),
+              total: Math.max(0, (oldJobs.total || oldJobs.data.length) - 1),
+            };
+          }
+          if (Array.isArray(oldJobs)) {
+            return oldJobs.filter((j: any) => j.id !== jobId && j.jobId !== jobId);
+          }
+          return oldJobs;
+        }
+
         if (Array.isArray(oldJobs.data)) {
+          const exists = oldJobs.data.some((j: any) => j.id === jobId || j.jobId === jobId);
+          if (exists) {
+            return {
+              ...oldJobs,
+              data: oldJobs.data.map(updateJobItem),
+            };
+          }
           return {
             ...oldJobs,
-            data: oldJobs.data.map(updateJobItem),
+            data: [jobPayload, ...oldJobs.data],
+            total: (oldJobs.total || oldJobs.data.length) + 1,
           };
         }
         if (Array.isArray(oldJobs)) {
-          return oldJobs.map(updateJobItem);
+          const exists = oldJobs.some((j: any) => j.id === jobId || j.jobId === jobId);
+          if (exists) return oldJobs.map(updateJobItem);
+          return [jobPayload, ...oldJobs];
         }
         return oldJobs;
       });

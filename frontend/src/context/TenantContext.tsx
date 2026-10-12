@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react';
 import { REGIONS, type RegionCode, type RegionConfig } from '../constants/regions';
 import { queryClient } from '../lib/queryClient';
 import { useAuth } from './AuthContext';
@@ -101,21 +101,24 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   const region = REGIONS[country] || REGIONS.CA;
 
+  const value = useMemo(
+    () => ({
+      country,
+      region,
+      currencySymbol: region.symbol,
+      taxRate: region.taxRate,
+      setCountry,
+      isAgentActive,
+      setIsAgentActive,
+      toggleAgentActive,
+      agentMode,
+      setAgentMode,
+    }),
+    [country, region, isAgentActive, agentMode]
+  );
+
   return (
-    <TenantContext.Provider
-      value={{
-        country,
-        region,
-        currencySymbol: region.symbol,
-        taxRate: region.taxRate,
-        setCountry,
-        isAgentActive,
-        setIsAgentActive,
-        toggleAgentActive,
-        agentMode,
-        setAgentMode,
-      }}
-    >
+    <TenantContext.Provider value={value}>
       {children}
     </TenantContext.Provider>
   );

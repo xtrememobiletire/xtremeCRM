@@ -78,8 +78,16 @@ export const jobController = {
       const userRole = (req.user as any)?.role;
       const userId = (req.user as any)?.id;
       if (userRole === 'DRIVER') {
-        where.driverId = userId;
+        where.OR = [
+          { driverId: userId },
+          { lastDeclinedDriverId: userId, status: { in: ['COMPLETED', 'CANCELLED'] } },
+        ];
         delete where.countryCode;
+      } else if (driverId) {
+        where.OR = [
+          { driverId },
+          { lastDeclinedDriverId: driverId, status: { in: ['COMPLETED', 'CANCELLED'] } },
+        ];
       } else if (userRole === 'FLEET_MANAGER') {
         const fleet = await prisma.fleet.findFirst({ where: { managerUserId: userId } });
         if (fleet) where.fleetId = fleet.id;
@@ -149,6 +157,13 @@ export const jobController = {
                 phone: true,
               },
             },
+            lastDeclinedDriver: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+              },
+            },
             createdBy: {
               select: {
                 id: true,
@@ -200,6 +215,13 @@ export const jobController = {
           vehicle: true,
           fleet: true,
           driver: {
+            select: {
+              id: true,
+              fullName: true,
+              phone: true,
+            },
+          },
+          lastDeclinedDriver: {
             select: {
               id: true,
               fullName: true,
@@ -548,8 +570,23 @@ export const jobController = {
       };
       if (['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(rawStatus)) {
         updateData.dispositionNotes = rawStatus === 'ARRIVED' ? 'ON_SCENE' : rawStatus;
-      } else if (rawStatus === 'COMPLETED' || rawStatus === 'CANCELLED') {
+      } else if (rawStatus === 'COMPLETED') {
         updateData.dispositionNotes = rawStatus;
+      } else if (rawStatus === 'CANCELLED') {
+        // Driver decline / cancellation unassigns job back to PENDING so dispatcher can reassign
+        const decliningDriverId = job.driverId || (req.user as any)?.id;
+        updateData.status = 'PENDING';
+        updateData.driverId = null;
+        updateData.lastDeclinedDriverId = decliningDriverId;
+        updateData.assignedAt = null;
+        updateData.driverEtaMinutes = null;
+        updateData.driverEstimatedArrivalAt = null;
+        if (req.body.driverDeclineReason) {
+          updateData.driverDeclineReason = String(req.body.driverDeclineReason).toUpperCase();
+          updateData.dispositionNotes = `DECLINED_${String(req.body.driverDeclineReason).toUpperCase()}`;
+        } else {
+          updateData.dispositionNotes = 'CANCELLED';
+        }
       }
       if (urgency) updateData.urgency = urgency;
       if (status === 'COMPLETED') {
@@ -606,6 +643,13 @@ export const jobController = {
           customer: true,
           vehicle: true,
           driver: true,
+          lastDeclinedDriver: {
+            select: {
+              id: true,
+              fullName: true,
+              phone: true,
+            },
+          },
           serviceItems: true,
         },
       });
@@ -672,6 +716,9 @@ export const jobController = {
           countryCode: updated.countryCode,
           driverId: updated.driverId,
           driverName: (updated as any).driver?.fullName,
+          lastDeclinedDriverId: updated.lastDeclinedDriverId,
+          lastDeclinedDriver: (updated as any).lastDeclinedDriver,
+          driverDeclineReason: updated.driverDeclineReason,
           urgency: updated.urgency,
           paymentMethod: updated.paymentMethod,
           paymentStatus: updated.paymentStatus,
@@ -684,10 +731,11 @@ export const jobController = {
         sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:status_updated', statusPayload);
 
         // Notify driver
-        if (updated.driverId) {
-          io.to(`driver:${updated.driverId}`).emit('job:status_updated', statusPayload);
-          io.to(`user:${updated.driverId}`).emit('job:status_updated', statusPayload);
-          sseManager.broadcast(`sse:driver:${updated.driverId}`, 'job:status_updated', statusPayload);
+        const driverRecipientId = updated.driverId || job.driverId || (req.user as any)?.id;
+        if (driverRecipientId) {
+          io.to(`driver:${driverRecipientId}`).emit('job:status_updated', statusPayload);
+          io.to(`user:${driverRecipientId}`).emit('job:status_updated', statusPayload);
+          sseManager.broadcast(`sse:driver:${driverRecipientId}`, 'job:status_updated', statusPayload);
         }
 
         // Notify ticket creator
@@ -768,6 +816,8 @@ export const jobController = {
           driverId,
           status: 'ASSIGNED',
           assignedAt: new Date(),
+          lastDeclinedDriverId: null,
+          driverDeclineReason: null,
           driverEstimatedArrivalAt,
           driverEtaMinutes: effectiveDriverEtaMinutes ? Number(effectiveDriverEtaMinutes) : undefined,
           // Preserve customer promised arrival time; only fallback if job had no promised ETA set

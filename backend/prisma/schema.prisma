@@ -223,6 +223,7 @@ model User {
   // Internal Staff Relations
   createdJobs       Job[]     @relation("AgentJobs")
   assignedJobs      Job[]     @relation("DriverJobs")
+  declinedJobs      Job[]     @relation("JobLastDeclinedDriver")
   statedJobExpenses Job[]     @relation("JobExpensesStatedBy")
   verifiedPayments  Job[]     @relation("JobPaymentsVerifiedBy")
   auditedJobs       Job[]     @relation("JobAuditedBy")
@@ -516,8 +517,11 @@ model Job {
   cashCollectedCents     Int?                    @default(0) @map("cash_collected_cents")
 
   // Call Center Outcome
-  disposition      JobDisposition @default(BOOKED)
-  dispositionNotes String?        @map("disposition_notes")
+  disposition         JobDisposition @default(BOOKED)
+  dispositionNotes    String?        @map("disposition_notes")
+  driverDeclineReason String?        @map("driver_decline_reason") // Operational Driver Rejection ("BUSY", "OUT_OF_AREA", "OTHER")
+  lastDeclinedDriverId String?       @map("last_declined_driver_id")
+  lastDeclinedDriver   User?         @relation("JobLastDeclinedDriver", fields: [lastDeclinedDriverId], references: [id])
 
   // ------------------------------------------------------
   // FINANCIALS & REVENUE (Inlined from JobFinancial)
