@@ -10,8 +10,14 @@ import { useTenant } from '../../context/TenantContext';
 
 function PageLoader() {
   return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="w-8 h-8 border-3 border-slate-200 border-t-red-600 rounded-full animate-spin" />
+    <div className="w-full py-8 space-y-4 animate-pulse">
+      <div className="h-6 bg-slate-200 rounded-lg w-1/4 mb-4" />
+      <div className="h-10 bg-slate-200 rounded-xl w-full mb-4" />
+      <div className="space-y-3">
+        <div className="h-16 bg-slate-100 rounded-xl w-full" />
+        <div className="h-16 bg-slate-100 rounded-xl w-full" />
+        <div className="h-16 bg-slate-100 rounded-xl w-full" />
+      </div>
     </div>
   );
 }
@@ -20,7 +26,7 @@ export default function MainLayout() {
   const location = useLocation();
   const { user } = useAuth();
   const { activeChatJob, closeChatJob, socket } = useSocket();
-  const { isAgentActive, setAgentMode, country } = useTenant();
+  const { isAgentActive, setAgentMode, country, agentMode } = useTenant();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return typeof window !== 'undefined' ? localStorage.getItem('xtreme_sidebar_collapsed') === 'true' : false;
@@ -29,29 +35,36 @@ export default function MainLayout() {
   // Automatic Presence & Mode Synchronization:
   // When active: navigating to /outbound automatically sets OUTBOUND; navigating to /inbound automatically sets INBOUND.
   // When inactive: stays INACTIVE.
+  // Guarded against redundant updates to avoid cascading root context re-renders.
   useEffect(() => {
     if (user?.role === 'CALL_AGENT' || user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER') {
       if (!isAgentActive) {
-        setAgentMode('INACTIVE');
-        if (socket && user?.id) {
-          socket.emit('agent:presence', { userId: user.id, mode: 'INACTIVE', countryCode: country });
+        if (agentMode !== 'INACTIVE') {
+          setAgentMode('INACTIVE');
+          if (socket && user?.id) {
+            socket.emit('agent:presence', { userId: user.id, mode: 'INACTIVE', countryCode: country });
+          }
         }
         return;
       }
 
       if (location.pathname.startsWith('/outbound') || location.pathname.startsWith('/leads')) {
-        setAgentMode('OUTBOUND');
-        if (socket && user?.id) {
-          socket.emit('agent:presence', { userId: user.id, mode: 'OUTBOUND', countryCode: country });
+        if (agentMode !== 'OUTBOUND') {
+          setAgentMode('OUTBOUND');
+          if (socket && user?.id) {
+            socket.emit('agent:presence', { userId: user.id, mode: 'OUTBOUND', countryCode: country });
+          }
         }
       } else if (location.pathname.startsWith('/inbound')) {
-        setAgentMode('INBOUND');
-        if (socket && user?.id) {
-          socket.emit('agent:presence', { userId: user.id, mode: 'INBOUND', countryCode: country });
+        if (agentMode !== 'INBOUND') {
+          setAgentMode('INBOUND');
+          if (socket && user?.id) {
+            socket.emit('agent:presence', { userId: user.id, mode: 'INBOUND', countryCode: country });
+          }
         }
       }
     }
-  }, [location.pathname, isAgentActive, user?.id, user?.role, country, socket, setAgentMode]);
+  }, [location.pathname, isAgentActive, agentMode, user?.id, user?.role, country, socket, setAgentMode]);
 
   // Strict role containment: CALL_AGENT allowed on /inbound, /inbound-fleet, and /leads
   if (user?.role === 'CALL_AGENT') {

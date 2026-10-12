@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Truck, 
@@ -12,9 +12,10 @@ import {
   Building2,
   Sparkles
 } from 'lucide-react';
-import FleetJobDetailModal from '../components/pages/jobs/FleetJobDetailModal';
-import AssignDriverModal from '../components/pages/jobs/AssignDriverModal';
-import CreateFleetJobModal from '../components/pages/jobs/CreateFleetJobModal';
+
+const FleetJobDetailModal = lazy(() => import('../components/pages/jobs/FleetJobDetailModal'));
+const AssignDriverModal = lazy(() => import('../components/pages/jobs/AssignDriverModal'));
+const CreateFleetJobModal = lazy(() => import('../components/pages/jobs/CreateFleetJobModal'));
 import EmptyState from '../components/ui/EmptyState';
 import Pagination from '../components/common/Pagination';
 import { jobService } from '../services/jobService';
@@ -387,32 +388,38 @@ export default function FleetJobs() {
 
       {/* Modals */}
       {selectedJob && (
-        <FleetJobDetailModal
-          isOpen={Boolean(selectedJob)}
-          onClose={() => setSelectedJob(null)}
-          job={selectedJob}
-        />
+        <Suspense fallback={null}>
+          <FleetJobDetailModal
+            isOpen={Boolean(selectedJob)}
+            onClose={() => setSelectedJob(null)}
+            job={selectedJob}
+          />
+        </Suspense>
       )}
 
       {assignJob && (
-        <AssignDriverModal
-          isOpen={Boolean(assignJob)}
-          onClose={() => {
-            setAssignJob(null);
-            refetch();
-          }}
-          job={assignJob}
-        />
+        <Suspense fallback={null}>
+          <AssignDriverModal
+            isOpen={Boolean(assignJob)}
+            onClose={() => {
+              setAssignJob(null);
+              refetch();
+            }}
+            job={assignJob}
+          />
+        </Suspense>
       )}
 
       {isCreateOpen && (
-        <CreateFleetJobModal
-          isOpen={isCreateOpen}
-          onClose={() => {
-            setIsCreateOpen(false);
-            refetch();
-          }}
-        />
+        <Suspense fallback={null}>
+          <CreateFleetJobModal
+            isOpen={isCreateOpen}
+            onClose={() => {
+              setIsCreateOpen(false);
+              refetch();
+            }}
+            />
+        </Suspense>
       )}
     </div>
   );

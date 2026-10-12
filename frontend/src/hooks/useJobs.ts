@@ -24,7 +24,8 @@ export function useJobs(params?: {
   return useQuery<JobsResponse>({
     queryKey: ['jobs', effectiveCountry, effectiveParams],
     queryFn: () => jobService.getJobs(effectiveParams),
-    staleTime: 10000,
+    staleTime: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 

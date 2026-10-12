@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useSearchParams, Navigate } from 'react-router-dom';
 import { Plus, RefreshCw, CheckCircle2, MapPin } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import JobFilters from '../components/pages/jobs/JobFilters';
 import JobListContainer from '../components/pages/jobs/JobListContainer';
 import DriverActiveOrderCard from '../components/jobs/DriverActiveOrderCard';
-import CreateRoadsideJobModal from '../components/pages/jobs/CreateRoadsideJobModal';
-import JobDetailModal from '../components/pages/jobs/JobDetailModal';
-import AssignDriverModal from '../components/pages/jobs/AssignDriverModal';
-import ExpenseStatingModal from '../components/accounting/ExpenseStatingModal';
 import EmptyState from '../components/ui/EmptyState';
+
+const CreateRoadsideJobModal = lazy(() => import('../components/pages/jobs/CreateRoadsideJobModal'));
+const JobDetailModal = lazy(() => import('../components/pages/jobs/JobDetailModal'));
+const AssignDriverModal = lazy(() => import('../components/pages/jobs/AssignDriverModal'));
+const ExpenseStatingModal = lazy(() => import('../components/accounting/ExpenseStatingModal'));
 import { useJobs } from '../hooks/useJobs';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
@@ -227,52 +228,62 @@ export default function Jobs() {
         </>
       )}
 
-      <CreateRoadsideJobModal
-        isOpen={isCreateOpen}
-        onClose={handleCloseCreate}
-        prefillPhone={intakePhoneParam}
-      />
+      {isCreateOpen && (
+        <Suspense fallback={null}>
+          <CreateRoadsideJobModal
+            isOpen={isCreateOpen}
+            onClose={handleCloseCreate}
+            prefillPhone={intakePhoneParam}
+          />
+        </Suspense>
+      )}
       {selectedJob && (
-        <JobDetailModal
-          isOpen={!!selectedJob}
-          onClose={() => setSelectedJob(null)}
-          job={selectedJob}
-        />
+        <Suspense fallback={null}>
+          <JobDetailModal
+            isOpen={!!selectedJob}
+            onClose={() => setSelectedJob(null)}
+            job={selectedJob}
+          />
+        </Suspense>
       )}
       {assignJob && (
-        <AssignDriverModal
-          isOpen={!!assignJob}
-          onClose={() => setAssignJob(null)}
-          job={assignJob}
-        />
+        <Suspense fallback={null}>
+          <AssignDriverModal
+            isOpen={!!assignJob}
+            onClose={() => setAssignJob(null)}
+            job={assignJob}
+          />
+        </Suspense>
       )}
       {cogsJob && (
-        <ExpenseStatingModal
-          isOpen={!!cogsJob}
-          onClose={() => {
-            setCogsJob(null);
-            refetch();
-          }}
-          job={{
-            id: cogsJob.id,
-            jobNumber: cogsJob.jobCode || cogsJob.jobNumber,
-            customerName: cogsJob.customer?.name || cogsJob.recipientName || 'Customer',
-            countryCode: cogsJob.countryCode,
-            currencySymbol: cogsJob.countryCode === 'UK' ? '£' : cogsJob.countryCode === 'CA' ? 'CA$' : '$',
-            revenueCents: cogsJob.totalAmount || cogsJob.totalCents || 0,
-            costCents: (cogsJob.materialCostCents || 0) + (cogsJob.repairerFeeCents || 0) + (cogsJob.otherExpenseCents || 0),
-            materialCostCents: cogsJob.materialCostCents || 0,
-            repairerFeeCents: cogsJob.repairerFeeCents || 0,
-            otherExpenseCents: cogsJob.otherExpenseCents || 0,
-            expenseNotes: cogsJob.expenseNotes,
-            profitCents: (cogsJob.totalAmount || cogsJob.totalCents || 0) - ((cogsJob.materialCostCents || 0) + (cogsJob.repairerFeeCents || 0) + (cogsJob.otherExpenseCents || 0)),
-            marginPercent: 0,
-            paymentStatus: cogsJob.paymentStatus || 'UNPAID',
-            date: cogsJob.createdAt,
-            itPlatformFeeCents: cogsJob.countryCode === 'CA' ? 150 : 100,
-            netAfterItRoyaltyCents: 0,
-          }}
-        />
+        <Suspense fallback={null}>
+          <ExpenseStatingModal
+            isOpen={!!cogsJob}
+            onClose={() => {
+              setCogsJob(null);
+              refetch();
+            }}
+            job={{
+              id: cogsJob.id,
+              jobNumber: cogsJob.jobCode || cogsJob.jobNumber,
+              customerName: cogsJob.customer?.name || cogsJob.recipientName || 'Customer',
+              countryCode: cogsJob.countryCode,
+              currencySymbol: cogsJob.countryCode === 'UK' ? '£' : cogsJob.countryCode === 'CA' ? 'CA$' : '$',
+              revenueCents: cogsJob.totalAmount || cogsJob.totalCents || 0,
+              costCents: (cogsJob.materialCostCents || 0) + (cogsJob.repairerFeeCents || 0) + (cogsJob.otherExpenseCents || 0),
+              materialCostCents: cogsJob.materialCostCents || 0,
+              repairerFeeCents: cogsJob.repairerFeeCents || 0,
+              otherExpenseCents: cogsJob.otherExpenseCents || 0,
+              expenseNotes: cogsJob.expenseNotes,
+              profitCents: (cogsJob.totalAmount || cogsJob.totalCents || 0) - ((cogsJob.materialCostCents || 0) + (cogsJob.repairerFeeCents || 0) + (cogsJob.otherExpenseCents || 0)),
+              marginPercent: 0,
+              paymentStatus: cogsJob.paymentStatus || 'UNPAID',
+              date: cogsJob.createdAt,
+              itPlatformFeeCents: cogsJob.countryCode === 'CA' ? 150 : 100,
+              netAfterItRoyaltyCents: 0,
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

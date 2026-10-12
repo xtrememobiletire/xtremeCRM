@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Wrench, Plus, Radio, ArrowRight } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import PageHeader from '../components/ui/PageHeader';
@@ -6,11 +6,12 @@ import TimeframeDropdown from '../components/ui/TimeframeDropdown';
 import Card from '../components/ui/Card';
 import DashboardKpiGrid from '../components/pages/dashboard/DashboardKpiGrid';
 import JobTable from '../components/jobs/JobTable';
-import CreateRoadsideJobModal from '../components/pages/jobs/CreateRoadsideJobModal';
-import JobDetailModal from '../components/jobs/JobDetailModal';
-import AssignDriverModal from '../components/jobs/AssignDriverModal';
 import ProximityDistanceTool from '../components/dispatch/ProximityDistanceTool';
 import DriverCashTracker from '../components/dispatch/DriverCashTracker';
+
+const CreateRoadsideJobModal = lazy(() => import('../components/pages/jobs/CreateRoadsideJobModal'));
+const JobDetailModal = lazy(() => import('../components/jobs/JobDetailModal'));
+const AssignDriverModal = lazy(() => import('../components/jobs/AssignDriverModal'));
 import { useJobs } from '../hooks/useJobs';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../context/AuthContext';
@@ -81,9 +82,21 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <CreateRoadsideJobModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
-      {selectedJob && <JobDetailModal isOpen={!!selectedJob} onClose={() => setSelectedJob(null)} job={selectedJob} />}
-      {assignJob && <AssignDriverModal isOpen={!!assignJob} onClose={() => setAssignJob(null)} job={assignJob} />}
+      {isCreateOpen && (
+        <Suspense fallback={null}>
+          <CreateRoadsideJobModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
+        </Suspense>
+      )}
+      {selectedJob && (
+        <Suspense fallback={null}>
+          <JobDetailModal isOpen={!!selectedJob} onClose={() => setSelectedJob(null)} job={selectedJob} />
+        </Suspense>
+      )}
+      {assignJob && (
+        <Suspense fallback={null}>
+          <AssignDriverModal isOpen={!!assignJob} onClose={() => setAssignJob(null)} job={assignJob} />
+        </Suspense>
+      )}
     </div>
   );
 }
