@@ -58,9 +58,18 @@ enum FleetStatus {
 enum InvoiceStatus {
   DRAFT
   PENDING
+  PARTIAL
   PAID
   OVERDUE
   CANCELLED
+}
+
+enum InvoiceType {
+  JOB
+  FLEET
+  MEMBER
+  CUSTOMER
+  CUSTOM
 }
 
 enum JobStatus {
@@ -229,6 +238,7 @@ model User {
   auditedJobs       Job[]     @relation("JobAuditedBy")
   sourcedFleets     Fleet[]   @relation("VirtualAssistantFleets")
   createdInvoices   Invoice[] @relation("InvoicesCreated")
+  paymentsRecorded  InvoicePayment[] @relation("InvoicePaymentsRecorded")
 
   // Financial & Operational Ledger Relations (Restrict: financial records must NEVER cascade-delete)
   vaCommissions       FleetCommissionLedger[] @relation("VACommissions")
@@ -396,9 +406,20 @@ model Vehicle {
 // INVOICING & FINANCIAL INSTRUMENTS (Strict Country Silos)
 // --------------------------------------------------------
 
+model InvoiceSequence {
+  id          String      @id @default(uuid())
+  countryCode CountryCode @map("country_code")
+  year        Int
+  lastSeq     Int         @default(0) @map("last_seq")
+
+  @@unique([countryCode, year])
+  @@map("invoice_sequences")
+}
+
 model Invoice {
   id            String        @id @default(uuid())
   invoiceNumber String        @unique @map("invoice_number") // Format: [Initials]-[Country]-[digits], e.g. "MW-US-0002"
+  invoiceType   InvoiceType   @default(JOB) @map("invoice_type")
   countryCode   CountryCode   @default(US) @map("country_code") // Strict regional silo: CA, US, UK
   currency      CurrencyCode  @default(USD) // Strict currency lock: CAD for CA, USD for US, GBP for UK
 
@@ -411,9 +432,15 @@ model Invoice {
   dueDate   DateTime      @db.Timestamptz @map("due_date")
   status    InvoiceStatus @default(PENDING)
 
-  subtotalCents  Int @map("subtotal_cents")
-  taxAmountCents Int @map("tax_amount_cents")
-  totalCents     Int @map("total_cents") // Currency units in cents/pence (never mixed across countries)
+  subtotalCents   Int     @map("subtotal_cents")
+  taxRatePercent  Float?  @map("tax_rate_percent") // Flexible tax rate override
+  isTaxExempt     Boolean @default(false) @map("is_tax_exempt")
+  taxAmountCents  Int     @map("tax_amount_cents")
+  depositCents    Int     @default(0) @map("deposit_cents") // Credited advance deposit
+  discountCents   Int     @default(0) @map("discount_cents")
+  totalCents      Int     @map("total_cents") // Net total
+  amountPaidCents Int     @default(0) @map("amount_paid_cents") // Cumulative payments applied
+  balanceDueCents Int     @default(0) @map("balance_due_cents") // Remaining balance due
 
   createdById String @map("created_by_id")
   createdBy   User   @relation("InvoicesCreated", fields: [createdById], references: [id])
@@ -422,8 +449,9 @@ model Invoice {
   paymentMethod PaymentMethod? @map("payment_method")
   notes         String?
 
-  items InvoiceItem[]
-  jobs  Job[]
+  items    InvoiceItem[]
+  jobs     Job[]
+  payments InvoicePayment[]
 
   createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
   updatedAt DateTime @updatedAt @db.Timestamptz @map("updated_at")
@@ -431,10 +459,27 @@ model Invoice {
   @@index([fleetId, status])
   @@index([customerId, status])
   @@index([countryCode, status])
+  @@index([invoiceType])
   @@index([dueDate])
   @@index([issueDate])
   @@index([createdById])
   @@map("invoices")
+}
+
+model InvoicePayment {
+  id            String        @id @default(uuid())
+  invoiceId     String        @map("invoice_id")
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amountCents   Int           @map("amount_cents")
+  paymentMethod PaymentMethod @map("payment_method")
+  referenceId   String?       @map("reference_id") // Check #, E-transfer ref, or Stripe ID
+  notes         String?
+  recordedById  String?       @map("recorded_by_id")
+  recordedBy    User?         @relation("InvoicePaymentsRecorded", fields: [recordedById], references: [id])
+  recordedAt    DateTime      @default(now()) @db.Timestamptz @map("recorded_at")
+
+  @@index([invoiceId])
+  @@map("invoice_payments")
 }
 
 model InvoiceItem {

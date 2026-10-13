@@ -23,8 +23,8 @@ import { useSocket } from '../../../context/SocketContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useUpdateJobStatus } from '../../../hooks/useJobs';
 import { JOB_STATUSES } from '../../../constants/statuses';
-import { accountingService } from '../../../services/accountingService';
 import InvoicePdfModal from '../../invoices/InvoicePdfModal';
+import GenerateInvoicePopover from '../../invoices/GenerateInvoicePopover';
 import { toast } from 'sonner';
 
 interface FleetJobDetailModalProps {
@@ -33,6 +33,10 @@ interface FleetJobDetailModalProps {
   job: any;
 }
 
+/**
+ * Render fleet work order details, status controls, chat, and invoice actions;
+ * return nothing without a job. Invoice generation success opens its print preview.
+ */
 export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDetailModalProps) {
   const { user } = useAuth();
   const isAdminOrAccountant = user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER' || user?.role === 'ACCOUNTANT';
@@ -41,7 +45,7 @@ export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDe
   const updateStatusMutation = useUpdateJobStatus();
   const [updating, setUpdating] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(job?.invoice?.id || null);
-  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+  const [showGeneratePopover, setShowGeneratePopover] = useState(false);
   const [status, setStatus] = useState<string>(job?.status || 'PENDING');
 
   if (!job) return null;
@@ -56,19 +60,6 @@ export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDe
       toast.error('Failed to update work order status');
     } finally {
       setUpdating(false);
-    }
-  };
-
-  const handleGenerateInvoice = async () => {
-    try {
-      setIsGeneratingInvoice(true);
-      const inv = await accountingService.generateInvoice(job.id);
-      toast.success(`Fleet invoice #${inv.invoiceNumber} generated`);
-      setSelectedInvoiceId(inv.id);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to generate fleet invoice');
-    } finally {
-      setIsGeneratingInvoice(false);
     }
   };
 
@@ -374,10 +365,10 @@ export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDe
           </div>
 
           <div className="flex items-center gap-2">
-            {job.invoice?.id || selectedInvoiceId ? (
+            {job.invoice?.id || job.invoiceId || selectedInvoiceId ? (
               <button
                 type="button"
-                onClick={() => setSelectedInvoiceId(job.invoice?.id || selectedInvoiceId)}
+                onClick={() => setSelectedInvoiceId(job.invoice?.id || job.invoiceId || selectedInvoiceId)}
                 className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 border border-slate-700 transition cursor-pointer"
               >
                 <Printer size={13} />
@@ -386,12 +377,11 @@ export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDe
             ) : isAdminOrAccountant ? (
               <button
                 type="button"
-                disabled={isGeneratingInvoice}
-                onClick={handleGenerateInvoice}
-                className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md transition disabled:opacity-50 cursor-pointer"
+                onClick={() => setShowGeneratePopover(true)}
+                className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md transition cursor-pointer"
               >
                 <FileText size={13} />
-                <span>{isGeneratingInvoice ? 'Generating...' : 'Generate Corporate Invoice'}</span>
+                <span>Generate Corporate Invoice</span>
               </button>
             ) : null}
           </div>
@@ -404,6 +394,18 @@ export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDe
           invoiceId={selectedInvoiceId}
           isOpen={Boolean(selectedInvoiceId)}
           onClose={() => setSelectedInvoiceId(null)}
+        />
+      )}
+
+      {/* Generate Invoice Popover */}
+      {showGeneratePopover && (
+        <GenerateInvoicePopover
+          isOpen={showGeneratePopover}
+          onClose={() => setShowGeneratePopover(false)}
+          job={job}
+          onSuccess={(inv) => {
+            setSelectedInvoiceId(inv.id);
+          }}
         />
       )}
     </Modal>

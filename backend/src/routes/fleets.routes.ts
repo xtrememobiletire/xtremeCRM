@@ -45,6 +45,17 @@ router.get(
 );
 
 /**
+ * @route   GET /api/fleets/:id/billing-summary
+ * @desc    Get fleet outstanding balance & unbilled completed work orders
+ * @access  Private
+ */
+router.get(
+  '/:id/billing-summary',
+  validateRequest({ params: idParamSchema }),
+  fleetController.getFleetBillingSummary
+);
+
+/**
  * @route   POST /api/fleets
  * @desc    Create new B2B fleet account
  * @access  Private

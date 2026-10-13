@@ -1,9 +1,8 @@
-import { Eye, UserCheck, AlertCircle, MessageSquare, Clock, Zap, XCircle } from 'lucide-react';
+import { Eye, UserCheck, AlertCircle, Clock, Zap, XCircle } from 'lucide-react';
 import StatusBadge from '../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
 import { useTenant } from '../../context/TenantContext';
-import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
 
 const formatDeclineReason = (reason?: string) => {
@@ -20,11 +19,15 @@ interface JobTableProps {
   onAssignDriver: (job: any) => void;
 }
 
+/**
+ * Render job rows with driver/decline details and detail/assignment callbacks,
+ * or nothing for an empty list. Drivers do not see assignment controls;
+ * completed/cancelled jobs have assignment disabled.
+ */
 export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTableProps) {
   const { user } = useAuth();
   const isDriver = user?.role === 'DRIVER';
   const { currencySymbol } = useTenant();
-  const { openChatJob } = useSocket();
 
   if (!jobs || jobs.length === 0) {
     return null;
@@ -107,69 +110,100 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
               </td>
               {!isDriver && (
                 <td className="table-td whitespace-nowrap">
-                  {job.driver || job.assignedDriver ? (
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-1.5 text-xs text-slate-800 font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        <span>
-                          {job.driver?.fullName || 
-                           job.assignedDriver?.fullName || 
-                           `${job.driver?.firstName || ''} ${job.driver?.lastName || ''}`.trim() || 
-                           'Assigned Technician'}
-                        </span>
-                      </div>
-                      {(job.driverEtaMinutes || job.driverEstimatedArrivalAt) && (
-                        <div className="text-[10px] font-mono text-emerald-700 font-semibold flex items-center gap-1 pl-3" title="Technician Driving ETA">
-                          <Zap className="w-2.5 h-2.5 text-emerald-600" />
-                          <span>
-                            {job.driverEtaMinutes ? `Drive ETA: ~${job.driverEtaMinutes}m` : `Arrives ~${new Date(job.driverEstimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <button
-                        type="button"
-                        onClick={() => onAssignDriver(job)}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition cursor-pointer"
-                      >
-                        <AlertCircle className="w-3 h-3 text-amber-500" />
-                        <span>Assign</span>
-                      </button>
-                      {job.driverDeclineReason && (
-                        <div>
-                          <button
-                            type="button"
-                            onClick={() => onViewJob(job)}
-                            title={`Declined by ${job.lastDeclinedDriver?.fullName || 'Technician'} • Reason: ${formatDeclineReason(job.driverDeclineReason)} (Click to view)`}
-                            className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded px-1.5 py-0.5 inline-flex items-center gap-1 hover:bg-rose-100 cursor-pointer transition shadow-2xs"
-                          >
-                            <XCircle className="w-2.5 h-2.5 text-rose-500" />
-                            <span>
-                              {job.lastDeclinedDriver?.fullName ? `${job.lastDeclinedDriver.fullName.split(' ')[0]}: ` : ''}
-                              {formatDeclineReason(job.driverDeclineReason)}
+                  {(() => {
+                    const isCompleted = job.status === 'COMPLETED' || job.status === 'CANCELLED';
+                    const isExternalJob = job.driverType === 'EXTERNAL' || Boolean(job.externalDispatchToken);
+                    const hasActiveDriver = (job.driver || job.assignedDriver || (job.driverId && isExternalJob)) && job.externalDispatchStatus !== 'DENIED';
+
+                    if (hasActiveDriver) {
+                      return (
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-800 font-medium">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isExternalJob ? 'bg-blue-500' : 'bg-emerald-500'}`} />
+                            <span className="truncate max-w-[170px]">
+                              {isExternalJob ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <span className="text-[9px] font-black text-blue-700 bg-blue-50 px-1 py-0.2 rounded border border-blue-200">EXT</span>
+                                  <strong className="text-slate-900">{job.externalCompanyName || job.driver?.fullName || 'Contractor'}</strong>
+                                </span>
+                              ) : (
+                                job.driver?.fullName || 
+                                job.assignedDriver?.fullName || 
+                                `${job.driver?.firstName || ''} ${job.driver?.lastName || ''}`.trim() || 
+                                'Assigned Technician'
+                              )}
                             </span>
-                          </button>
+                          </div>
+                          {(job.driverEtaMinutes || job.driverEstimatedArrivalAt) && (
+                            <div className="text-[10px] font-mono text-emerald-700 font-semibold flex items-center gap-1 pl-3" title="Technician Driving ETA">
+                              <Zap className="w-2.5 h-2.5 text-emerald-600" />
+                              <span>
+                                {job.driverEtaMinutes ? `Drive ETA: ~${job.driverEtaMinutes}m` : `Arrives ~${new Date(job.driverEstimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
+                              </span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  )}
+                      );
+                    }
+
+                    if (isCompleted) {
+                      return (
+                        <span className="text-xs text-slate-400 italic">
+                          {job.driver?.fullName || job.assignedDriver?.fullName || 'Unassigned'}
+                        </span>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-1">
+                        <button
+                          type="button"
+                          onClick={() => onAssignDriver(job)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition cursor-pointer"
+                        >
+                          <AlertCircle className="w-3 h-3 text-amber-500" />
+                          <span>Assign</span>
+                        </button>
+                        {(job.driverDeclineReason || job.externalDispatchStatus === 'DENIED') && (
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => onViewJob(job)}
+                              title={`Declined by ${job.lastDeclinedDriver?.fullName || job.externalCompanyName || 'Contractor'} • Reason: ${formatDeclineReason(job.driverDeclineReason || 'Declined')} (Click to view)`}
+                              className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded px-1.5 py-0.5 inline-flex items-center gap-1 hover:bg-rose-100 cursor-pointer transition shadow-2xs"
+                            >
+                              <XCircle className="w-2.5 h-2.5 text-rose-500" />
+                              <span>
+                                {job.lastDeclinedDriver?.fullName ? `${job.lastDeclinedDriver.fullName.split(' ')[0]}: ` : job.externalCompanyName ? `${job.externalCompanyName}: ` : ''}
+                                {formatDeclineReason(job.driverDeclineReason || 'Declined')}
+                              </span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </td>
               )}
               <td className="table-td whitespace-nowrap">
-                <StatusBadge 
-                  status={job.driverDeclineReason ? 'DECLINED' : job.status} 
-                  label={job.driverDeclineReason ? `Declined (${formatDeclineReason(job.driverDeclineReason)})` : undefined}
-                  title={
-                    job.driverDeclineReason
-                      ? `Declined by ${job.lastDeclinedDriver?.fullName || 'Technician'} • Reason: ${formatDeclineReason(job.driverDeclineReason)} (Click to view)`
-                      : job.status === 'CANCELLED'
-                      ? 'Cancelled work order (Click to view)'
-                      : undefined
-                  }
-                  onClick={job.driverDeclineReason || job.status === 'CANCELLED' ? () => onViewJob(job) : undefined}
-                />
+                {(() => {
+                  const showDecline = Boolean(job.driverDeclineReason) || job.externalDispatchStatus === 'DENIED';
+
+                  return (
+                    <StatusBadge 
+                      status={showDecline ? 'DECLINED' : job.status} 
+                      label={showDecline ? `Declined (${formatDeclineReason(job.driverDeclineReason || 'Declined')})` : undefined}
+                      title={
+                        showDecline
+                          ? `Declined by ${job.lastDeclinedDriver?.fullName || job.externalCompanyName || 'Contractor'} • Reason: ${formatDeclineReason(job.driverDeclineReason || 'Declined')} (Click to view)`
+                          : job.status === 'CANCELLED'
+                          ? 'Cancelled work order (Click to view)'
+                          : undefined
+                      }
+                      onClick={showDecline || job.status === 'CANCELLED' ? () => onViewJob(job) : undefined}
+                    />
+                  );
+                })()}
               </td>
               <td className="table-td whitespace-nowrap">
                 <StatusBadge status={job.urgency} />
@@ -196,27 +230,24 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                   {!isDriver && (
                     <button
                       type="button"
+                      disabled={job.status === 'COMPLETED' || job.status === 'CANCELLED'}
                       onClick={() => onAssignDriver(job)}
-                      className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
-                      title="Assign / Reassign Driver"
+                      className={`p-1.5 rounded-lg transition ${
+                        job.status === 'COMPLETED' || job.status === 'CANCELLED'
+                          ? 'text-slate-300 cursor-not-allowed opacity-50'
+                          : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50 cursor-pointer'
+                      }`}
+                      title={
+                        job.status === 'COMPLETED'
+                          ? 'Job completed • Driver assignment locked'
+                          : job.status === 'CANCELLED'
+                          ? 'Job cancelled • Driver assignment locked'
+                          : 'Assign / Reassign Driver'
+                      }
                     >
                       <UserCheck className="w-4 h-4" />
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      openChatJob({
-                        id: job.id,
-                        jobCode: job.jobCode || job.jobNumber,
-                        driverName: job.driver?.fullName || job.assignedDriver?.fullName || 'Technician',
-                      });
-                    }}
-                    className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
-                    title="Open Two-Way Chat"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                  </button>
                 </div>
               </td>
             </tr>

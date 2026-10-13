@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { prisma } from '../config/database.js';
 import {
   sendSuccess,
@@ -277,6 +278,15 @@ export const jobController = {
     }
   },
 
+  /**
+   * Create a job with customer, vehicle, services, and totals in regional cents.
+   * May merge duplicate customer profiles by phone, create a vehicle, and attempt
+   * customer account provisioning when makeUserAccount is true; provisioning
+   * preserves customerType and its failures do not fail job creation.
+   * Tax rates are in basis points. Return HTTP 201 with related records and attempt
+   * dispatch notifications; invalid phone, missing creator, and caught errors
+   * become HTTP 400 responses. Earlier related writes may remain after a failure.
+   */
   async createJob(req: Request, res: Response) {
     try {
       const data = req.body;
@@ -380,7 +390,7 @@ export const jobController = {
               });
               await prisma.customer.update({
                 where: { id: cust.id },
-                data: { userId: newUser.id, customerType: 'MEMBERSHIP' },
+                data: { userId: newUser.id },
               });
             }
           }
@@ -803,6 +813,13 @@ export const jobController = {
     }
   },
 
+  /**
+   * Assign a driver from the job's country and return the job with related records.
+   * Driver ETA inputs are in minutes; explicit arrival dates take precedence.
+   * Preserve the customer's promised arrival unless absent, then use driver arrival.
+   * Attempt assignment notifications. Missing driver/job returns HTTP 404;
+   * completed/cancelled jobs, country mismatches, and caught errors return 400.
+   */
   async assignDriver(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
@@ -821,6 +838,10 @@ export const jobController = {
 
       if (!driver) return sendError(res, 'Driver not found', 404);
       if (!job) return sendError(res, 'Job not found', 404);
+
+      if (job.status === 'COMPLETED' || job.status === 'CANCELLED') {
+        return sendError(res, `Cannot assign driver on a ${job.status.toLowerCase()} work order`, 400);
+      }
 
       // Strict regional silo: region based jobs should only have region based drivers
       if (driver.countryCode !== job.countryCode) {
@@ -1219,6 +1240,396 @@ export const jobController = {
       });
 
       return sendSuccess(res, { id: job.id, disposition }, 'Disposition recorded', 201);
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Assign an external contractor and return the job, token, and relative public URL.
+   * Reuse an existing token and reset dispatch status to PENDING. Match a driver
+   * by phone or name, creating one if needed; geocode an address when coordinates
+   * are missing. Fees are in cents (externalDriverFeeCents takes precedence over
+   * contractorPayoutFeeCents), and ETA is in minutes. Emit job:updated.
+   * Returns HTTP 404 for a missing job and 400 for completed/cancelled jobs or
+   * caught errors; contractor writes may remain if a later job update fails.
+   */
+  async generateExternalDispatch(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const {
+        externalDriverName,
+        externalCompanyName,
+        externalDriverPhone,
+        externalDriverAddress,
+        latitude,
+        longitude,
+        externalDriverFeeCents,
+        contractorPayoutFeeCents,
+        driverEtaMinutes,
+        driverEstimatedArrivalAt,
+      } = req.body || {};
+
+      const job = await prisma.job.findUnique({ where: { id } });
+      if (!job) return sendError(res, 'Job not found', 404);
+
+      if (job.status === 'COMPLETED' || job.status === 'CANCELLED') {
+        return sendError(res, `Cannot dispatch on a ${job.status.toLowerCase()} work order`, 400);
+      }
+
+      const contractorName = externalCompanyName || externalDriverName || job.externalCompanyName || 'External Contractor';
+      const contractorPhone = externalDriverPhone || job.externalDriverPhone || null;
+      const contractorAddress = externalDriverAddress || null;
+
+      // Issue fresh token if contractor changed, job was previously declined, or no token exists
+      const isSameContractor = Boolean(
+        job.externalDispatchToken &&
+        job.externalDispatchStatus !== 'DENIED' &&
+        (!job.externalDriverPhone || job.externalDriverPhone === contractorPhone) &&
+        (!job.externalCompanyName || job.externalCompanyName === contractorName)
+      );
+      const token = isSameContractor ? (job.externalDispatchToken as string) : crypto.randomUUID();
+
+      const feeCents = externalDriverFeeCents !== undefined
+        ? Number(externalDriverFeeCents)
+        : contractorPayoutFeeCents !== undefined
+        ? Number(contractorPayoutFeeCents)
+        : job.externalDriverFeeCents;
+
+      let contractorLat = latitude !== undefined && latitude !== null ? Number(latitude) : undefined;
+      let contractorLng = longitude !== undefined && longitude !== null ? Number(longitude) : undefined;
+
+      if ((contractorLat === undefined || contractorLng === undefined) && contractorAddress) {
+        const geo = await geocodingService.geocodeAddress(contractorAddress, job.countryCode || 'CA');
+        if (geo.latitude !== null && geo.longitude !== null) {
+          contractorLat = geo.latitude;
+          contractorLng = geo.longitude;
+        }
+      }
+
+      // Auto-upsert contractor User record with coordinates so their jobs appear in Drivers.tsx & calculate real ETA
+      let contractorUserId: string | null = job.driverId;
+
+      if (contractorPhone || contractorName) {
+        let existingUser = await prisma.user.findFirst({
+          where: {
+            role: 'DRIVER',
+            deletedAt: null,
+            countryCode: job.countryCode || 'CA',
+            assignedVehicle: { startsWith: 'EXTERNAL' },
+            ...(contractorPhone
+              ? { phone: contractorPhone }
+              : { fullName: { equals: contractorName, mode: 'insensitive' } }),
+          },
+        });
+
+        if (!existingUser) {
+          const randSuffix = crypto.randomBytes(4).toString('hex');
+          const email = `contractor_${Date.now()}_${randSuffix}@external.xtremetire.com`;
+          const dummyHash = await bcrypt.hash(`Ext_${Date.now()}_${randSuffix}`, 10);
+
+          existingUser = await prisma.user.create({
+            data: {
+              fullName: contractorName,
+              email,
+              passwordHash: dummyHash,
+              role: 'DRIVER',
+              countryCode: job.countryCode || 'CA',
+              phone: contractorPhone || undefined,
+              address: contractorAddress || undefined,
+              latitude: contractorLat,
+              longitude: contractorLng,
+              assignedVehicle: `EXTERNAL: ${contractorName}`,
+              isAgentActive: true,
+            },
+          });
+        } else {
+          const userUpdate: any = {};
+          if (contractorAddress && existingUser.address !== contractorAddress) userUpdate.address = contractorAddress;
+          if (contractorLat !== undefined && existingUser.latitude !== contractorLat) userUpdate.latitude = contractorLat;
+          if (contractorLng !== undefined && existingUser.longitude !== contractorLng) userUpdate.longitude = contractorLng;
+          if (Object.keys(userUpdate).length > 0) {
+            existingUser = await prisma.user.update({
+              where: { id: existingUser.id },
+              data: userUpdate,
+            });
+          }
+        }
+
+        contractorUserId = existingUser.id;
+      }
+
+      const updated = await prisma.job.update({
+        where: { id },
+        data: {
+          driverId: contractorUserId,
+          driverType: 'EXTERNAL',
+          externalDispatchToken: token,
+          externalDispatchStatus: 'PENDING',
+          externalCompanyName: contractorName,
+          externalDriverPhone: contractorPhone,
+          externalDriverFeeCents: feeCents !== undefined && feeCents !== null ? Number(feeCents) : null,
+          driverEtaMinutes: driverEtaMinutes !== undefined && driverEtaMinutes !== null ? Number(driverEtaMinutes) : job.driverEtaMinutes,
+          driverEstimatedArrivalAt: driverEstimatedArrivalAt ? new Date(driverEstimatedArrivalAt) : job.driverEstimatedArrivalAt,
+          status: 'ASSIGNED',
+          driverDeclineReason: null,
+          lastDeclinedDriverId: null,
+        },
+        include: {
+          vehicle: true,
+          customer: true,
+          fleet: true,
+          driver: true,
+        },
+      });
+
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:updated', updated);
+
+      return sendSuccess(res, {
+        job: updated,
+        token,
+        externalDispatchToken: token,
+        publicUrl: `/dispatch/external/${token}`,
+        externalDispatchUrl: `/dispatch/external/${token}`,
+      }, 'External driver dispatch link generated');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Clear the external dispatch token, contractor details, assignment, and driver
+   * ETA, resetting the job to PENDING with INTERNAL driver type. Return the updated
+   * job and emit job:updated and job:status_updated. Missing jobs return HTTP 404;
+   * completed jobs and caught errors return 400. Cancelled jobs can be reset.
+   */
+  async revokeExternalDispatch(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const job = await prisma.job.findUnique({ where: { id } });
+      if (!job) return sendError(res, 'Job not found', 404);
+
+      if (job.status === 'COMPLETED' || job.status === 'CANCELLED') {
+        return sendError(res, `Cannot revoke dispatch link on a ${job.status.toLowerCase()} work order`, 400);
+      }
+
+      if (!job.externalDispatchToken) {
+        return sendError(res, 'No active external dispatch link to revoke', 400);
+      }
+
+      const updated = await prisma.job.update({
+        where: { id },
+        data: {
+          externalDispatchToken: null,
+          externalDispatchStatus: null,
+          driverType: 'INTERNAL',
+          driverId: null,
+          status: 'PENDING',
+          dispositionNotes: null,
+          externalCompanyName: null,
+          externalDriverPhone: null,
+          externalDriverFeeCents: null,
+          driverEtaMinutes: null,
+          driverEstimatedArrivalAt: null,
+          driverDeclineReason: null,
+          lastDeclinedDriverId: null,
+        },
+        include: {
+          vehicle: true,
+          customer: true,
+          fleet: true,
+          driver: true,
+        },
+      });
+
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:updated', updated);
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:status_updated', updated);
+
+      return sendSuccess(res, updated, 'External dispatch link revoked');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Return a token-selected job without CRM authentication, including recipient
+   * contact, vehicle/service details, contractor payout, job total, payment status,
+   * and cash collected in cents. Tokens are looked up without a time-based expiry.
+   * Returns HTTP 404 when no job matches and 500 for caught errors.
+   */
+  async getPublicExternalJob(req: Request, res: Response) {
+    try {
+      const token = String(req.params.token);
+      const job = await prisma.job.findUnique({
+        where: { externalDispatchToken: token },
+        include: {
+          vehicle: true,
+          serviceItems: true,
+          customer: true,
+        },
+      });
+
+      if (!job) return sendError(res, 'Dispatch link invalid or expired', 404);
+
+      // Strict Financial & Privacy Sanitization: hide internal pricing, include customer contact & vehicle specs
+      const sanitized = {
+        id: job.id,
+        jobCode: job.jobCode,
+        countryCode: job.countryCode,
+        currency: job.currency,
+        urgency: job.urgency,
+        serviceAddress: job.serviceAddress,
+        latitude: job.serviceLatitude,
+        longitude: job.serviceLongitude,
+        status: job.status,
+        dispositionNotes: job.dispositionNotes,
+        externalDispatchStatus: job.externalDispatchStatus,
+        externalCompanyName: job.externalCompanyName,
+        externalDriverPhone: job.externalDriverPhone,
+        driverEtaMinutes: job.driverEtaMinutes,
+        contractorPayoutFeeCents: job.externalDriverFeeCents || job.repairerFeeCents || 0,
+        totalCents: job.totalCents || 0,
+        paymentStatus: job.paymentStatus || 'UNPAID',
+        customer: {
+          fullName: job.recipientName || job.customer?.fullName || 'Customer',
+          phone: job.recipientPhone || job.customer?.phone || null,
+        },
+        recipientName: job.recipientName || job.customer?.fullName || 'Customer',
+        recipientPhone: job.recipientPhone || job.customer?.phone || null,
+        vehicle: job.vehicle ? {
+          year: job.vehicle.year,
+          make: job.vehicle.make,
+          model: job.vehicle.model,
+          color: job.vehicle.color,
+          licensePlate: job.vehicle.licensePlate,
+          tireSize: job.vehicle.tireSize || 'TBD',
+        } : null,
+        serviceItems: job.serviceItems.map((si) => ({
+          serviceName: si.serviceName,
+          quantity: si.quantity,
+        })),
+        problemNotes: job.problemNotes,
+        cashCollectedCents: job.cashCollectedCents || 0,
+      };
+
+      return sendSuccess(res, sanitized);
+    } catch (err: any) {
+      return sendError(res, err.message);
+    }
+  },
+
+  /**
+   * Apply a public token action and return { status, externalDispatchStatus }.
+   * ACCEPT assigns, DECLINE records a reason and clears the driver, EN_ROUTE and
+   * ON_SCENE/ARRIVED mark progress, and COMPLETE timestamps completion and optionally
+   * stores cashCollectedCents. Emit job:status_updated and job:updated.
+   * Returns HTTP 404 for an unmatched token and 400 for completed/cancelled jobs,
+   * unknown actions, or caught errors; intermediate action order is not enforced.
+   */
+  async updatePublicExternalJobStatus(req: Request, res: Response) {
+    try {
+      const token = String(req.params.token);
+      const { action, cashCollectedCents, reason } = req.body;
+
+      const job = await prisma.job.findUnique({
+        where: { externalDispatchToken: token },
+      });
+      if (!job) return sendError(res, 'Dispatch link invalid or expired', 404);
+
+      if (job.status === 'COMPLETED' || job.status === 'CANCELLED') {
+        return sendError(res, `Cannot update a ${job.status.toLowerCase()} work order`, 400);
+      }
+
+      if (job.externalDispatchStatus === 'DENIED') {
+        return sendError(res, 'This dispatch was previously declined', 400);
+      }
+
+      let updateData: any = {};
+
+      switch (action) {
+        case 'ACCEPT':
+          updateData = {
+            externalDispatchStatus: 'ACCEPTED',
+            status: 'ASSIGNED',
+            driverDeclineReason: null,
+          };
+          break;
+        case 'DECLINE':
+          updateData = {
+            externalDispatchStatus: 'DENIED',
+            externalDispatchToken: null,
+            driverDeclineReason: reason || 'Declined by contractor',
+            lastDeclinedDriverId: job.driverId,
+            driverId: null,
+            driverType: 'INTERNAL',
+            status: 'PENDING',
+            assignedAt: null,
+            dispositionNotes: null,
+          };
+          break;
+        case 'EN_ROUTE':
+          updateData = {
+            status: 'IN_PROGRESS',
+            externalDispatchStatus: job.externalDispatchStatus || 'ACCEPTED',
+            dispositionNotes: 'EN_ROUTE',
+          };
+          break;
+        case 'ON_SCENE':
+        case 'ARRIVED':
+          updateData = {
+            status: 'IN_PROGRESS',
+            externalDispatchStatus: job.externalDispatchStatus || 'ACCEPTED',
+            dispositionNotes: 'ON_SCENE',
+          };
+          break;
+        case 'COMPLETE': {
+          const cash = cashCollectedCents !== undefined ? Number(cashCollectedCents) : (job.cashCollectedCents || 0);
+          if (!Number.isFinite(cash) || cash < 0 || cash > job.totalCents) {
+            return sendError(
+              res,
+              `Cash collected must be a non-negative amount not exceeding total of $${(job.totalCents / 100).toFixed(2)}`,
+              400
+            );
+          }
+          updateData = {
+            status: 'COMPLETED',
+            externalDispatchStatus: 'COMPLETED',
+            completedAt: new Date(),
+            dispositionNotes: 'COMPLETED',
+            cashCollectedCents: cash,
+            ...(cash > 0 && {
+              paymentMethod: 'CASH',
+              paymentStatus: 'PAID_PENDING_VERIFICATION',
+            }),
+          };
+          break;
+        }
+        default:
+          return sendError(res, `Unknown action: ${action}`, 400);
+      }
+
+      const updated = await prisma.job.update({
+        where: { id: job.id },
+        data: updateData,
+        include: {
+          vehicle: true,
+          customer: true,
+          fleet: true,
+          driver: true,
+          lastDeclinedDriver: {
+            select: {
+              id: true,
+              fullName: true,
+              phone: true,
+            },
+          },
+        },
+      });
+
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:status_updated', updated);
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:updated', updated);
+
+      return sendSuccess(res, { status: updated.status, externalDispatchStatus: updated.externalDispatchStatus }, 'Dispatch status updated successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }

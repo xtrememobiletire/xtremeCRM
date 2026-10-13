@@ -1,34 +1,14 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Truck, Navigation, MapPin, Zap, Search, Edit2, X, Loader2, AlertCircle, Clock } from 'lucide-react';
+import { Truck, Navigation, MapPin, Zap, Search, Edit2, X, Loader2, AlertCircle, Share2 } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { userService, type UserItem } from '../../services/userService';
 import { useAssignDriver } from '../../hooks/useJobs';
 import { useMapbox, MAPBOX_TOKEN, DEFAULT_MAP_CENTER } from '../../hooks/useMapbox';
 import { jobService } from '../../services/jobService';
+import ExternalDispatchModal from './ExternalDispatchModal';
 import mapboxgl from 'mapbox-gl';
 import { toast } from 'sonner';
-
-function formatPromisedTime(job: any): string {
-  if (job?.arrivalWindowStart && job?.arrivalWindowEnd) {
-    try {
-      const s = new Date(job.arrivalWindowStart);
-      const e = new Date(job.arrivalWindowEnd);
-      return `${s.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – ${e.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
-    } catch {
-      return 'Scheduled Window';
-    }
-  }
-  if (job?.estimatedArrivalAt) {
-    try {
-      const d = new Date(job.estimatedArrivalAt);
-      return `Promised ~${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
-    } catch {
-      return 'Promised ETA';
-    }
-  }
-  return 'Immediate / ASAP';
-}
 
 interface AssignDriverModalProps {
   isOpen: boolean;
@@ -55,11 +35,25 @@ function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
   return R * c;
 }
 
+/**
+ * Show regional drivers ranked by estimated travel minutes and a job location map
+ * when open. Support internal assignment or external dispatch configuration;
+ * completed/cancelled jobs disable dispatch actions.
+ */
 export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriverModalProps) {
   const queryClient = useQueryClient();
   const assignDriverMutation = useAssignDriver();
+  const [activeJob, setActiveJob] = useState<any>(job);
+  const isCompletedJob = activeJob?.status === 'COMPLETED' || activeJob?.status === 'CANCELLED';
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
   const [driverSearch, setDriverSearch] = useState<string>('');
+  const [driverFilterType, setDriverFilterType] = useState<'INTERNAL' | 'EXTERNAL'>('INTERNAL');
+  const [showExternalModal, setShowExternalModal] = useState<boolean>(false);
+  const [selectedExternalContractor, setSelectedExternalContractor] = useState<{
+    name?: string;
+    phone?: string;
+    address?: string;
+  } | null>(null);
 
   // Local address and geocoding state
   const [currentAddress, setCurrentAddress] = useState<string>('');
@@ -72,6 +66,7 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
   const [isSavingAddress, setIsSavingAddress] = useState<boolean>(false);
 
   useEffect(() => {
+    setActiveJob(job);
     if (job) {
       setCurrentAddress(job.serviceAddress || job.locationAddress || 'Roadside Breakdown Location');
       setCurrentLat(job.serviceLatitude ?? job.latitude ?? null);
@@ -105,27 +100,40 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
         etaMinutes = 25;
       }
 
+      const isExternal =
+        drv.assignedVehicle === 'EXTERNAL_CONTRACTOR' ||
+        drv.assignedVehicle?.startsWith('EXTERNAL');
+
       return {
         ...drv,
         distanceKm,
         etaMinutes,
+        isExternal,
       };
     }).sort((a, b) => (a.etaMinutes ?? 999) - (b.etaMinutes ?? 999));
   }, [rawDrivers, currentLat, currentLng]);
 
-  // Filtered drivers by local search
+  // Filtered drivers by local search and driverFilterType
   const filteredDrivers = useMemo(() => {
-    if (!driverSearch.trim()) return rankedDrivers;
-    const q = driverSearch.toLowerCase();
-    return rankedDrivers.filter(
-      (d) =>
+    return rankedDrivers.filter((d) => {
+      if (driverFilterType === 'INTERNAL' && d.isExternal) return false;
+      if (driverFilterType === 'EXTERNAL' && !d.isExternal) return false;
+
+      if (!driverSearch.trim()) return true;
+      const q = driverSearch.toLowerCase();
+      return (
         d.fullName.toLowerCase().includes(q) ||
         (d.address && d.address.toLowerCase().includes(q)) ||
-        (d.assignedVehicle && d.assignedVehicle.toLowerCase().includes(q))
-    );
-  }, [rankedDrivers, driverSearch]);
+        (d.assignedVehicle && d.assignedVehicle.toLowerCase().includes(q)) ||
+        (d.phone && d.phone.toLowerCase().includes(q))
+      );
+    });
+  }, [rankedDrivers, driverFilterType, driverSearch]);
 
-  const activeSelectedDriverId = selectedDriverId || rankedDrivers[0]?.id || '';
+  const internalCount = useMemo(() => rankedDrivers.filter((d) => !d.isExternal).length, [rankedDrivers]);
+  const externalCount = useMemo(() => rankedDrivers.filter((d) => d.isExternal).length, [rankedDrivers]);
+
+  const activeSelectedDriverId = selectedDriverId || filteredDrivers[0]?.id || rankedDrivers[0]?.id || '';
   const selectedDriver = rankedDrivers.find((d) => d.id === activeSelectedDriverId) || rankedDrivers[0];
 
   // 3. Mapbox Map Visual Setup
@@ -245,21 +253,41 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
     }
   }, [map, isLoaded, currentLng, currentLat, selectedDriver, currentAddress]);
 
+  /**
+   * Reject completed/cancelled jobs or missing drivers. Open external dispatch
+   * configuration for contractors, or assign the selected internal driver with
+   * travel ETA in minutes and close on success; request failures become error toasts.
+   */
   const handleAssign = async () => {
-    if (!activeSelectedDriverId) {
+    if (isCompletedJob) {
+      toast.error(`Cannot dispatch driver: Job is ${activeJob?.status}`);
+      return;
+    }
+
+    if (!selectedDriver) {
       toast.error('Please select a driver to dispatch');
       return;
     }
 
+    if (selectedDriver.isExternal) {
+      setSelectedExternalContractor({
+        name: selectedDriver.fullName,
+        phone: selectedDriver.phone,
+        address: selectedDriver.address,
+      });
+      setShowExternalModal(true);
+      return;
+    }
+
     try {
-      const driverEtaMins = selectedDriver?.etaMinutes || 20;
+      const driverEtaMins = selectedDriver.etaMinutes || 20;
       await assignDriverMutation.mutateAsync({
         jobId: job.id,
         driverId: activeSelectedDriverId,
         etaMinutes: driverEtaMins,
         driverEstimatedArrivalAt: new Date(Date.now() + driverEtaMins * 60000).toISOString(),
       });
-      toast.success(`Technician ${selectedDriver?.fullName} dispatched (~${driverEtaMins} min travel ETA)`);
+      toast.success(`Technician ${selectedDriver.fullName} dispatched (~${driverEtaMins} min travel ETA)`);
       onClose();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to dispatch driver');
@@ -275,12 +303,24 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
       isOpen={isOpen}
       onClose={onClose}
       title={`Dispatch Regional Technician • Job #${job?.jobNumber || job?.jobCode || ''}`}
-      maxWidth="max-w-5xl"
+      maxWidth="max-w-6xl"
     >
-      {/* 2-Column Dispatch Layout: Map Canvas + iPhone Style Drivers Sidebar */}
+      {isCompletedJob && (
+        <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-amber-900 text-xs font-semibold">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={15} className="text-amber-600 shrink-0" />
+            <span>Work order is {activeJob?.status} • Driver assignment and dispatch actions are locked.</span>
+          </div>
+          <span className="px-2 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px] font-bold uppercase tracking-wider">
+            Read Only
+          </span>
+        </div>
+      )}
+
+      {/* 2-Column Balanced Dispatch Layout: Map Canvas + Drivers Sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[560px]">
-        {/* Left: Mapbox Canvas (lg: 7 cols) */}
-        <div className="lg:col-span-7 relative h-64 lg:h-full rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner">
+        {/* Left: Mapbox Canvas (lg: 6 cols - 50%) */}
+        <div className="lg:col-span-6 relative h-64 lg:h-full rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner">
           <div ref={containerRef} className="w-full h-full" />
 
           {/* Apple Maps Style Floating Route & ETA Header */}
@@ -406,25 +446,8 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
           </div>
         </div>
 
-        {/* Right: iPhone Style Drivers Sidebar Sheet (lg: 5 cols) */}
-        <div className="lg:col-span-5 bg-slate-50/70 border border-slate-200/90 rounded-3xl p-4 flex flex-col h-full shadow-lg relative overflow-hidden backdrop-blur-sm">
-          {/* iOS Style Sheet Grab Handle */}
-          <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-3 shrink-0" />
-
-          {/* Customer SLA vs Dispatch Choice Header */}
-          <div className="mb-2.5 px-3 py-2 bg-blue-50/90 border border-blue-200/80 rounded-2xl flex items-center justify-between text-xs shrink-0">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-blue-600 shrink-0" />
-              <div>
-                <span className="text-[10px] uppercase font-bold text-blue-700 tracking-wider block">Customer Promised Time</span>
-                <span className="font-bold text-slate-900">{formatPromisedTime(job)}</span>
-              </div>
-            </div>
-            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              Free Dispatch
-            </span>
-          </div>
-
+        {/* Right: Spacious Drivers Sidebar (lg: 6 cols - 50%) */}
+        <div className="lg:col-span-6 bg-slate-50/70 border border-slate-200/90 rounded-2xl p-4 flex flex-col h-full shadow-sm relative overflow-hidden backdrop-blur-sm">
           {/* Header & Filter */}
           <div className="pb-3 border-b border-slate-200/60 shrink-0 space-y-2.5">
             <div className="flex items-center justify-between">
@@ -435,11 +458,52 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
                     {countryCode}
                   </span>
                 </h4>
-                <p className="text-[11px] text-slate-500">Ranked by proximity & roadside ETA</p>
               </div>
               <span className="text-xs font-bold font-mono text-slate-600 bg-white px-2 py-0.5 rounded-full border border-slate-200">
                 {filteredDrivers.length} Online
               </span>
+            </div>
+
+            {/* Decline Reason Banner if previously declined */}
+            {(activeJob?.driverDeclineReason || activeJob?.externalDispatchStatus === 'DENIED') && (
+              <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-rose-900">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                  <span>Contractor Declined Assignment</span>
+                </div>
+                <div className="text-[11px] text-rose-700 bg-white/70 p-2 rounded-lg border border-rose-200/50">
+                  <strong>Reason:</strong> "{activeJob.driverDeclineReason || 'Declined by contractor'}"
+                  {activeJob.externalCompanyName && (
+                    <div className="text-[10px] text-rose-600 mt-0.5 font-medium">Declining Contractor: {activeJob.externalCompanyName}</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Strict Segmented Filter: Internal vs External */}
+            <div className="flex bg-slate-200/70 p-0.5 rounded-xl text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setDriverFilterType('INTERNAL')}
+                className={`flex-1 py-1.5 rounded-lg text-center transition cursor-pointer ${
+                  driverFilterType === 'INTERNAL'
+                    ? 'bg-white text-slate-900 shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Internal ({internalCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setDriverFilterType('EXTERNAL')}
+                className={`flex-1 py-1.5 rounded-lg text-center transition cursor-pointer ${
+                  driverFilterType === 'EXTERNAL'
+                    ? 'bg-white text-blue-700 shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                External ({externalCount})
+              </button>
             </div>
 
             {/* Quick Filter Search */}
@@ -475,12 +539,20 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
                     onClick={() => setSelectedDriverId(drv.id)}
                     className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${
                       isSelected
-                        ? 'border-red-600 bg-red-50/80 ring-2 ring-red-500/20 shadow-xs'
+                        ? drv.isExternal
+                          ? 'border-blue-600 bg-blue-50/80 ring-2 ring-blue-500/20 shadow-xs'
+                          : 'border-red-600 bg-red-50/80 ring-2 ring-red-500/20 shadow-xs'
                         : 'border-slate-200/80 bg-white hover:bg-slate-50 shadow-2xs'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isSelected ? 'bg-red-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600'}`}>
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                        isSelected
+                          ? drv.isExternal
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-red-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}>
                         <Truck size={17} />
                       </div>
                       <div className="min-w-0">
@@ -488,14 +560,20 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
                           <span className="font-bold text-slate-900 text-xs truncate">
                             {drv.fullName}
                           </span>
-                          {isClosest && (
+                          {drv.isExternal ? (
+                            <span className="px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 text-[9px] font-bold shrink-0">
+                              External
+                            </span>
+                          ) : isClosest ? (
                             <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[9px] font-bold shrink-0">
                               Closest
                             </span>
-                          )}
+                          ) : null}
                         </div>
                         <div className="text-[10px] text-slate-500 truncate mt-0.5 font-medium">
-                          {drv.assignedVehicle || 'Service Van'} • {drv.address || 'Regional Depot'}
+                          {drv.isExternal
+                            ? `${drv.assignedVehicle?.replace(/^EXTERNAL:\s*/, '') || 'Contractor'} • ${drv.phone || drv.address || 'External'}`
+                            : `${drv.assignedVehicle || 'Service Van'} • ${drv.address || 'Regional Depot'}`}
                         </div>
                       </div>
                     </div>
@@ -518,25 +596,89 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
           </div>
 
           {/* Bottom Sticky Action Button */}
-          <div className="pt-3 border-t border-slate-200/60 shrink-0">
+          <div className="pt-2.5 border-t border-slate-200/60 shrink-0 space-y-2">
+            {/* Outsource to External Driver Public Link */}
             <button
               type="button"
-              onClick={handleAssign}
-              disabled={!activeSelectedDriverId || assignDriverMutation.isPending}
-              className="w-full py-3 px-4 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50 cursor-pointer"
+              disabled={isCompletedJob}
+              onClick={() => {
+                setSelectedExternalContractor(null);
+                setShowExternalModal(true);
+              }}
+              className={`w-full py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-between transition-colors ${
+                isCompletedJob
+                  ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+                  : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-700 cursor-pointer'
+              }`}
             >
-              <Navigation size={15} />
-              <span>
-                {assignDriverMutation.isPending 
-                  ? 'Dispatching...' 
-                  : selectedDriver 
-                  ? `Confirm Dispatch • ~${selectedDriver.etaMinutes || 20}m ETA` 
-                  : 'Select Technician'}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <Share2 size={13} className={isCompletedJob ? 'text-slate-400 shrink-0' : 'text-blue-600 shrink-0'} />
+                <span>Outsource to External Driver (Public Link)</span>
+              </div>
+              {activeJob?.externalDispatchStatus === 'DENIED' ? (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
+                  Declined • Configure New Link →
+                </span>
+              ) : activeJob?.externalDispatchToken ? (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                  Active • {activeJob.externalDispatchStatus || 'SENT'}
+                </span>
+              ) : (
+                <span className="text-[10px] text-blue-600 font-bold">Configure Link →</span>
+              )}
             </button>
+
+            {isCompletedJob ? (
+              <div className="w-full py-3 px-4 rounded-2xl bg-slate-200 text-slate-500 font-bold text-xs text-center border border-slate-300">
+                Dispatch Actions Locked • Order {activeJob?.status}
+              </div>
+            ) : selectedDriver?.isExternal ? (
+              <button
+                type="button"
+                onClick={handleAssign}
+                className="w-full py-3 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer"
+              >
+                <Share2 size={15} />
+                <span>Outsource & Send Link • {selectedDriver.fullName}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleAssign}
+                disabled={!activeSelectedDriverId || assignDriverMutation.isPending}
+                className="w-full py-3 px-4 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50 cursor-pointer"
+              >
+                <Navigation size={15} />
+                <span>
+                  {assignDriverMutation.isPending 
+                    ? 'Dispatching...' 
+                    : selectedDriver 
+                    ? `Confirm Dispatch • ~${selectedDriver.etaMinutes || 20}m ETA` 
+                    : 'Select Technician'}
+                </span>
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* External Driver Dispatch Modal */}
+      <ExternalDispatchModal
+        isOpen={showExternalModal}
+        onClose={() => {
+          setShowExternalModal(false);
+          setSelectedExternalContractor(null);
+        }}
+        job={activeJob}
+        initialContractor={selectedExternalContractor || undefined}
+        onUpdated={(updatedJob) => {
+          if (updatedJob) {
+            setActiveJob(updatedJob);
+          }
+          queryClient.invalidateQueries({ queryKey: ['jobs'] });
+          queryClient.invalidateQueries({ queryKey: ['fleet-jobs'] });
+        }}
+      />
     </Modal>
   );
 }

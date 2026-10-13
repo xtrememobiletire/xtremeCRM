@@ -8,10 +8,10 @@ import { BACKEND_ROOT_URL } from '../utils/api';
  * useSSE Hook
  * High-performance Server-Sent Events stream from /api/events/stream
  * 
- * 1. Direct in-memory mutation (setQueriesData) for single entity events (0 network roundtrips)
+ * 1. Direct lead/job cache updates plus invalidation of related queries
  * 2. 150ms debounced invalidation batcher for bulk events (stops request storms)
  * 3. Scoped replenishment targeting specific VAs
- * 4. Visibility & Online auto-reconnection: heals connection immediately on laptop wake/network return
+ * 4. Visibility and online listeners refresh caches and reconnect closed or inactive streams
  * 5. Full entity coverage: Jobs, Leads, Bookings, Customers, Fleets, Invoices
  * STRICT BAN: Zero usage of sessionStorage or localStorage for query caches
  */
@@ -192,7 +192,21 @@ export function useSSE() {
     const targetCountry = country || user.countryCode || 'CA';
     const sseUrl = `${BACKEND_ROOT_URL}/api/events/stream?countryCode=${targetCountry}`;
 
+    /**
+     * Replace the active SSE connection and subscribe to lead, job, and billing events.
+     * Without a stored auth token, close the connection and stop. Closed streams
+     * schedule a reconnect after 3.5 seconds while a token remains present.
+     */
     const connectSSE = () => {
+      const currentToken = typeof window !== 'undefined' ? localStorage.getItem('xtreme_token') : null;
+      if (!currentToken) {
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+          eventSourceRef.current = null;
+        }
+        return;
+      }
+
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
@@ -362,9 +376,13 @@ export function useSSE() {
         scheduleInvalidation(['fleets', 'dispatch-map-fleets', 'fleet-dashboard']);
       };
 
+      /**
+       * Record stream activity and schedule invoice list, fleet billing, and accounting
+       * query invalidation through the shared debouncer.
+       */
       const handleInvoiceChanged = () => {
         lastActivityRef.current = Date.now();
-        scheduleInvalidation(['invoices', 'accounting-reconciliation', 'accounting-summary']);
+        scheduleInvalidation(['invoices', 'accounting-invoices', 'fleet-billing-summary', 'accounting-reconciliation', 'accounting-summary']);
       };
 
       // Lead listeners
@@ -398,12 +416,15 @@ export function useSSE() {
       es.addEventListener('invoice:updated', handleInvoiceChanged);
 
       es.onerror = () => {
-        // If stream permanently closed, schedule immediate reconnect with backoff
+        // If stream closed or errored, close instance and retry only if user remains logged in
         if (es.readyState === EventSource.CLOSED) {
+          es.close();
+          const currentToken = typeof window !== 'undefined' ? localStorage.getItem('xtreme_token') : null;
+          if (!currentToken) return;
           if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
           reconnectTimeoutRef.current = setTimeout(() => {
             connectSSE();
-          }, 2500);
+          }, 3500);
         }
       };
     };

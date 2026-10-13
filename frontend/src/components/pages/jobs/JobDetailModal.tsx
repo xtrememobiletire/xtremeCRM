@@ -9,8 +9,9 @@ import { useSocket } from '../../../context/SocketContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useUpdateJobStatus } from '../../../hooks/useJobs';
 import { JOB_STATUSES } from '../../../constants/statuses';
-import { accountingService } from '../../../services/accountingService';
 import InvoicePdfModal from '../../invoices/InvoicePdfModal';
+import GenerateInvoicePopover from '../../invoices/GenerateInvoicePopover';
+import { accountingService } from '../../../services/accountingService';
 import { toast } from 'sonner';
 
 interface JobDetailModalProps {
@@ -19,16 +20,22 @@ interface JobDetailModalProps {
   job: any;
 }
 
+/**
+ * Render job details, workflow/chat controls, and invoice actions, with labor
+ * fees for drivers and expense controls for admins/accountants; return nothing
+ * without a job. Invoice generation success opens its print preview.
+ */
 export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalProps) {
   const { user } = useAuth();
   const isDriver = user?.role === 'DRIVER';
   const isAdminOrAccountant = user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER' || user?.role === 'ACCOUNTANT';
+  const canManageInvoices = isAdminOrAccountant || user?.role === 'DISPATCHER';
   const { country, currencySymbol } = useTenant();
   const { openChatJob } = useSocket();
   const updateStatusMutation = useUpdateJobStatus();
   const [updating, setUpdating] = useState(false);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(job?.invoice?.id || null);
-  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>('');
+  const [showGeneratePopover, setShowGeneratePopover] = useState(false);
 
   // Accountant expense stating local state
   const itPlatformFeeCents = country === 'CA' ? 150 : 100;
@@ -81,19 +88,6 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
       toast.success('Accountant expenses stated and ledger derived successfully');
     } catch {
       toast.error('Failed to state job expenses');
-    }
-  };
-
-  const handleGenerateInvoice = async () => {
-    try {
-      setIsGeneratingInvoice(true);
-      const inv = await accountingService.generateInvoice(job.id);
-      toast.success(`Invoice #${inv.invoiceNumber} generated successfully`);
-      setSelectedInvoiceId(inv.id);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to generate invoice');
-    } finally {
-      setIsGeneratingInvoice(false);
     }
   };
 
@@ -322,24 +316,23 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
           </div>
 
           <div className="flex items-center gap-2">
-            {job.invoice || selectedInvoiceId ? (
+            {job.invoice?.id || job.invoiceId || selectedInvoiceId ? (
               <button
                 type="button"
-                onClick={() => setSelectedInvoiceId(job.invoice?.id || selectedInvoiceId)}
+                onClick={() => setSelectedInvoiceId(job.invoice?.id || job.invoiceId || selectedInvoiceId)}
                 className="btn-secondary py-1.5 px-3 text-xs inline-flex items-center gap-1.5 text-slate-800 hover:bg-slate-100"
               >
                 <Printer className="w-3.5 h-3.5 text-red-600" />
                 <span>View / Print PDF</span>
               </button>
-            ) : status === 'COMPLETED' ? (
+            ) : (status === 'COMPLETED' && canManageInvoices) ? (
               <button
                 type="button"
-                disabled={isGeneratingInvoice}
-                onClick={handleGenerateInvoice}
+                onClick={() => setShowGeneratePopover(true)}
                 className="btn-primary py-1.5 px-3 text-xs inline-flex items-center gap-1.5"
               >
                 <FileText className="w-3.5 h-3.5" />
-                <span>{isGeneratingInvoice ? 'Generating...' : '1-Click Invoice Generation'}</span>
+                <span>Generate Invoice</span>
               </button>
             ) : (
               <span className="text-[11px] text-slate-400 font-medium italic">Available upon completion</span>
@@ -479,8 +472,19 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
       {selectedInvoiceId && (
         <InvoicePdfModal
           isOpen={!!selectedInvoiceId}
-          onClose={() => setSelectedInvoiceId(null)}
+          onClose={() => setSelectedInvoiceId('')}
           invoiceId={selectedInvoiceId}
+        />
+      )}
+
+      {showGeneratePopover && (
+        <GenerateInvoicePopover
+          isOpen={showGeneratePopover}
+          onClose={() => setShowGeneratePopover(false)}
+          job={job}
+          onSuccess={(inv) => {
+            setSelectedInvoiceId(inv.id);
+          }}
         />
       )}
     </Modal>

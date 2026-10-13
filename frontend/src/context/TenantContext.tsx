@@ -36,7 +36,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         }
       } catch {}
     }
-    return (localStorage.getItem('xtreme_country') as RegionCode) || 'CA';
+    const savedCountry = localStorage.getItem('xtreme_country');
+    return (savedCountry === 'CA' || savedCountry === 'US' || savedCountry === 'UK') ? (savedCountry as RegionCode) : 'CA';
   });
 
   // Automatically enforce regional silo when user logs in or loads

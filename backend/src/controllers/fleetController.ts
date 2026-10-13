@@ -618,6 +618,63 @@ export const fleetController = {
       return sendError(res, err.message, 400);
     }
   },
+
+  /**
+   * Return the fleet, completed jobs without invoices, and PENDING or OVERDUE
+   * invoices, with unbilled totals and outstanding balances in cents.
+   * PARTIAL invoices are excluded. Returns HTTP 404 for a missing fleet and
+   * 500 for caught errors.
+   */
+  async getFleetBillingSummary(req: Request, res: Response) {
+    try {
+      const fleetId = String(req.params.id);
+      const fleet = await prisma.fleet.findUnique({
+        where: { id: fleetId },
+        select: { id: true, name: true, fleetCode: true, countryCode: true, discountPercent: true },
+      });
+      if (!fleet) return sendError(res, 'Fleet not found', 404);
+
+      const [unbilledJobs, invoices] = await Promise.all([
+        prisma.job.findMany({
+          where: {
+            fleetId,
+            invoiceId: null,
+            status: 'COMPLETED',
+          },
+          include: {
+            vehicle: true,
+            serviceItems: true,
+          },
+          orderBy: { completedAt: 'desc' },
+        }),
+        prisma.invoice.findMany({
+          where: {
+            fleetId,
+            status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] },
+            balanceDueCents: { gt: 0 },
+          },
+          include: {
+            items: true,
+            payments: true,
+          },
+          orderBy: { dueDate: 'asc' },
+        }),
+      ]);
+
+      const unbilledTotalCents = unbilledJobs.reduce((sum, j) => sum + (j.totalCents || 0), 0);
+      const outstandingBalanceCents = invoices.reduce((sum, inv) => sum + inv.balanceDueCents, 0);
+
+      return sendSuccess(res, {
+        fleet,
+        unbilledJobs,
+        unbilledTotalCents,
+        invoices,
+        outstandingBalanceCents,
+      });
+    } catch (err: any) {
+      return sendError(res, err.message);
+    }
+  },
 };
 
 export default fleetController;

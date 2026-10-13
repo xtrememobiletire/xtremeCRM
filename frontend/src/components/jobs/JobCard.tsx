@@ -1,8 +1,7 @@
-import { MapPin, Phone, Car, UserCheck, Eye, MessageSquare, Clock, Zap } from 'lucide-react';
+import { MapPin, Phone, Car, UserCheck, Eye, Clock, Zap } from 'lucide-react';
 import StatusBadge from '../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { useTenant } from '../../context/TenantContext';
-import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
 
 interface JobCardProps {
@@ -11,11 +10,14 @@ interface JobCardProps {
   onAssignDriver: (job: any) => void;
 }
 
+/**
+ * Render a job summary with detail and assignment callbacks; hide assignment for
+ * drivers and disable it for completed/cancelled jobs.
+ */
 export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps) {
   const { user } = useAuth();
   const isDriver = user?.role === 'DRIVER';
   const { currencySymbol } = useTenant();
-  const { openChatJob } = useSocket();
 
   return (
     <div className="card-surface p-4 space-y-3">
@@ -113,8 +115,13 @@ export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps
           {!isDriver && (
             <button
               type="button"
+              disabled={job.status === 'COMPLETED' || job.status === 'CANCELLED'}
               onClick={() => onAssignDriver(job)}
-              className="btn-secondary px-2.5 py-1.5 text-xs cursor-pointer"
+              className={`btn-secondary px-2.5 py-1.5 text-xs ${
+                job.status === 'COMPLETED' || job.status === 'CANCELLED'
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'cursor-pointer'
+              }`}
             >
               <UserCheck className="w-3.5 h-3.5" />
               <span>Assign</span>
@@ -122,23 +129,8 @@ export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps
           )}
           <button
             type="button"
-            onClick={() => {
-              openChatJob({
-                id: job.id,
-                jobCode: job.jobCode || job.jobNumber,
-                driverName: job.driver?.fullName || job.assignedDriver?.fullName || 'Technician',
-              });
-            }}
-            className="btn-secondary px-2.5 py-1.5 text-xs text-emerald-700 hover:bg-emerald-50 border-emerald-200"
-            title="Open Chat"
-          >
-            <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Chat</span>
-          </button>
-          <button
-            type="button"
             onClick={() => onViewJob(job)}
-            className="btn-primary px-2.5 py-1.5 text-xs"
+            className="btn-primary px-2.5 py-1.5 text-xs cursor-pointer"
           >
             <Eye className="w-3.5 h-3.5" />
             <span>Details</span>

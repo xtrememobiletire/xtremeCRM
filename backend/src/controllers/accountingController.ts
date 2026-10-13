@@ -383,16 +383,21 @@ export const accountingController = {
   },
 
   /**
-   * Senior Accountant verifies job cash payment (marks VERIFIED_PAID)
+   * Mark a job payment VERIFIED_PAID and return the updated job.
+   * Requires payout approval permission or ADMIN, GENERAL_MANAGER, or DEVELOPER.
+   * Also attempts to mark a linked unpaid invoice PAID and record a cash payment;
+   * invoice synchronization and notification failures do not fail verification.
+   * Returns HTTP 403 for insufficient permission, 404 for a missing job, and
+   * 400 for other caught errors.
    */
   async verifyJobPayment(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
       const accountantId = (req.user as any)?.id;
 
-      // Barrier check: Senior Accountant, Admin, or General Manager required
+      // Barrier check: Senior Accountant, Admin, General Manager, or Developer required
       const user = await prisma.user.findUnique({ where: { id: accountantId } });
-      if (!user?.canApprovePayouts && !['ADMIN', 'GENERAL_MANAGER'].includes(user?.role || '')) {
+      if (!user?.canApprovePayouts && !['ADMIN', 'GENERAL_MANAGER', 'DEVELOPER'].includes(user?.role || '')) {
         return sendError(
           res,
           'Junior accountants cannot verify cash payments. Senior accountant or Manager approval required.',
@@ -403,14 +408,61 @@ export const accountingController = {
       const job = await prisma.job.findUnique({ where: { id } });
       if (!job) return sendError(res, 'Job not found', 404);
 
-      // Update Job paymentStatus to VERIFIED_PAID
-      const updatedJob = await prisma.job.update({
-        where: { id },
-        data: {
-          paymentStatus: 'VERIFIED_PAID',
-          paymentVerifiedById: accountantId,
-          paymentVerifiedAt: new Date(),
-        },
+      // Atomically update Job paymentStatus and sync linked invoice
+      const updatedJob = await prisma.$transaction(async (tx) => {
+        const updated = await tx.job.update({
+          where: { id },
+          data: {
+            paymentStatus: 'VERIFIED_PAID',
+            paymentVerifiedById: accountantId,
+            paymentVerifiedAt: new Date(),
+          },
+        });
+
+        // Two-way sync: If job has an associated invoice, apply this job's payment share
+        if (job.invoiceId) {
+          const inv = await tx.invoice.findUnique({
+            where: { id: job.invoiceId },
+            include: { jobs: { select: { id: true } } },
+          });
+
+          if (inv && inv.status !== 'PAID') {
+            const isSingleJobInvoice = !inv.jobs || inv.jobs.length <= 1;
+            const jobPaymentCents = job.cashCollectedCents && job.cashCollectedCents > 0
+              ? job.cashCollectedCents
+              : job.totalCents;
+
+            const paymentToApply = isSingleJobInvoice
+              ? (inv.balanceDueCents > 0 ? inv.balanceDueCents : jobPaymentCents)
+              : Math.min(jobPaymentCents, inv.balanceDueCents > 0 ? inv.balanceDueCents : jobPaymentCents);
+
+            const newAmountPaid = inv.amountPaidCents + paymentToApply;
+            const newBalanceDue = Math.max(0, inv.totalCents - inv.depositCents - newAmountPaid);
+            const isFullyPaid = newBalanceDue === 0;
+
+            await tx.invoice.update({
+              where: { id: job.invoiceId },
+              data: {
+                status: isFullyPaid ? 'PAID' : 'PARTIAL',
+                paidAt: isFullyPaid ? new Date() : inv.paidAt,
+                amountPaidCents: newAmountPaid,
+                balanceDueCents: newBalanceDue,
+              },
+            });
+
+            await tx.invoicePayment.create({
+              data: {
+                invoiceId: job.invoiceId,
+                amountCents: paymentToApply,
+                paymentMethod: job.paymentMethod || 'CASH',
+                referenceId: `Job ${job.jobCode} verified by Senior Accountant`,
+                recordedById: accountantId,
+              },
+            });
+          }
+        }
+
+        return updated;
       });
 
       try {

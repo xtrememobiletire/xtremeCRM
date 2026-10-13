@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { jobController } from '../controllers/jobController.js';
 import { authenticate } from '../middleware/auth.js';
+import { authorize } from '../middleware/authorize.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import {
   PaginationQuerySchema,
@@ -8,6 +9,9 @@ import {
   UpdateJobStatusSchema,
   AssignDriverSchema,
   VerifyBookingAddressSchema,
+  ExternalDispatchTokenParamSchema,
+  PublicExternalJobStatusSchema,
+  GenerateExternalDispatchSchema,
   idParamSchema,
 } from '../schemas/index.js';
 import { tenantScope } from '../middleware/tenantScope.js';
@@ -22,8 +26,54 @@ const router = Router();
  */
 router.post('/public-booking', validateRequest({ body: CreateJobSchema }), jobController.createPublicBooking);
 
+/**
+ * @route   GET /api/jobs/public/external/:token
+ * @desc    Public External Driver job container (no CRM auth required)
+ * @access  Public
+ */
+router.get(
+  '/public/external/:token',
+  validateRequest({ params: ExternalDispatchTokenParamSchema }),
+  jobController.getPublicExternalJob
+);
+
+/**
+ * @route   PATCH /api/jobs/public/external/:token/status
+ * @desc    Public External Driver status progression (no CRM auth required)
+ * @access  Public
+ */
+router.patch(
+  '/public/external/:token/status',
+  validateRequest({ params: ExternalDispatchTokenParamSchema, body: PublicExternalJobStatusSchema }),
+  jobController.updatePublicExternalJobStatus
+);
+
 router.use(authenticate);
 router.use(tenantScope);
+
+/**
+ * @route   POST /api/jobs/:id/external-dispatch
+ * @desc    Generate external driver token link
+ * @access  Private
+ */
+router.post(
+  '/:id/external-dispatch',
+  authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']),
+  validateRequest({ params: idParamSchema, body: GenerateExternalDispatchSchema.optional() }),
+  jobController.generateExternalDispatch
+);
+
+/**
+ * @route   POST /api/jobs/:id/revoke-external-dispatch
+ * @desc    Revoke external driver dispatch link
+ * @access  Private
+ */
+router.post(
+  '/:id/revoke-external-dispatch',
+  authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']),
+  validateRequest({ params: idParamSchema }),
+  jobController.revokeExternalDispatch
+);
 
 /**
  * @route   POST /api/jobs/disposition

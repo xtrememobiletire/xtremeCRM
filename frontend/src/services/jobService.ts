@@ -61,9 +61,15 @@ export interface JobItem {
   notes?: string;
   recipientName?: string;
   recipientPhone?: string;
-  completedAt?: string;
   cashCollectedCents?: number;
   receiptUrl?: string;
+  externalDispatchToken?: string | null;
+  externalDispatchStatus?: string | null;
+  externalDriverFeeCents?: number | null;
+  driverType?: 'INTERNAL' | 'EXTERNAL';
+  paymentStatus?: string;
+  invoiceId?: string | null;
+  invoice?: any;
 }
 
 export interface PaginationMeta {
@@ -214,5 +220,69 @@ export const jobService = {
     countryCode: string;
   }): Promise<void> {
     await api.post('/jobs/disposition', payload);
+  },
+
+  /**
+   * Create or update an external contractor dispatch link and assign the job.
+   * A numeric payload supplies only the contractor fee in cents; object ETA is
+   * in minutes. Return the job, token aliases, and relative public URL aliases.
+   * @throws The API request error, including rejection of completed/cancelled jobs.
+   */
+  async generateExternalDispatch(
+    id: string,
+    payload: {
+      externalCompanyName?: string;
+      externalDriverPhone?: string;
+      externalDriverAddress?: string;
+      latitude?: number;
+      longitude?: number;
+      externalDriverFeeCents?: number;
+      contractorPayoutFeeCents?: number;
+      driverEtaMinutes?: number;
+    } | number
+  ): Promise<{ message: string; externalDispatchToken: string; externalDispatchUrl: string; token?: string; publicUrl?: string; job: JobItem }> {
+    const body = typeof payload === 'number'
+      ? { externalDriverFeeCents: payload }
+      : payload;
+    const res = await api.post(`/jobs/${id}/external-dispatch`, body);
+    return res.data.data;
+  },
+
+  /**
+   * Revoke the public token and reset the job's assignment and contractor details.
+   * @returns The updated job.
+   * @throws The API request error, including rejection of completed jobs.
+   */
+  async revokeExternalDispatch(id: string): Promise<{ message: string; job: JobItem }> {
+    const res = await api.post(`/jobs/${id}/revoke-external-dispatch`);
+    return res.data.data;
+  },
+
+  /**
+   * Fetch the token-selected public work order, including recipient contact,
+   * vehicle/services, payout, total, and collected cash in cents.
+   * @throws The API request error, including HTTP 404 for an unmatched token.
+   */
+  async getPublicExternalJob(token: string): Promise<any> {
+    const res = await api.get(`/jobs/public/external/${token}`);
+    return res.data.data;
+  },
+
+  /**
+   * Apply a public dispatch action and return status and externalDispatchStatus.
+   * The server reads cashCollectedCents on COMPLETE; cashAmountCents is not consumed.
+   * @throws The API request error, including unmatched tokens, terminal jobs, or unknown actions.
+   */
+  async updatePublicExternalJobStatus(
+    token: string,
+    payload: {
+      action: 'ACCEPT' | 'DECLINE' | 'EN_ROUTE' | 'ARRIVED' | 'ON_SCENE' | 'COMPLETE';
+      reason?: string;
+      cashAmountCents?: number;
+      cashCollectedCents?: number;
+    }
+  ): Promise<any> {
+    const res = await api.patch(`/jobs/public/external/${token}/status`, payload);
+    return res.data.data;
   },
 };

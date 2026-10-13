@@ -33,7 +33,11 @@ const JobMapView = lazyWithRetry(() => import('./pages/jobs/JobMapView'));
 const FleetJobs = lazyWithRetry(() => import('./pages/FleetJobs'));
 const Bookings = lazyWithRetry(() => import('./pages/Bookings'));
 const FleetInbound = lazyWithRetry(() => import('./pages/FleetInbound'));
+const Invoices = lazyWithRetry(() => import('./pages/Invoices'));
+const Drivers = lazyWithRetry(() => import('./pages/Drivers'));
+const ExternalDriverDispatch = lazyWithRetry(() => import('./pages/ExternalDriverDispatch'));
 
+/** Return the role's home route, defaulting to /dashboard for missing or unknown roles. */
 function getRoleHome(role?: string) {
   switch (role) {
     case 'DRIVER':
@@ -50,6 +54,8 @@ function getRoleHome(role?: string) {
       return '/accounting';
     case 'DISPATCHER':
       return '/jobs';
+    case 'DEVELOPER':
+      return '/dashboard';
     default:
       return '/dashboard';
   }
@@ -70,11 +76,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Render a loader while authentication resolves, then permit allowed roles plus
+ * ADMIN, GENERAL_MANAGER, and DEVELOPER. Redirect guests to login and other users
+ * to their role's home route.
+ */
 function RoleRoute({ allowedRoles, children }: { allowedRoles: string[]; children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role === 'ADMIN' || user.role === 'GENERAL_MANAGER') return <>{children}</>;
+  if (user.role === 'ADMIN' || user.role === 'GENERAL_MANAGER' || user.role === 'DEVELOPER') return <>{children}</>;
   if (!allowedRoles.includes(user.role)) {
     return <Navigate to={getRoleHome(user.role)} replace />;
   }
@@ -88,6 +99,10 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Start authenticated SSE synchronization and render public and role-gated routes,
+ * including the public external dispatch portal; show a loader during authentication.
+ */
 function AppRoutes() {
   const { user, loading } = useAuth();
   useSSE();
@@ -140,6 +155,16 @@ function AppRoutes() {
           {user && <Route index element={<Navigate to={getRoleHome(user.role)} replace />} />}
         </Route>
 
+        {/* Public Sandboxed External Driver Portal */}
+        <Route
+          path="/dispatch/external/:token"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <ExternalDriverDispatch />
+            </Suspense>
+          }
+        />
+
         {/* Dedicated Standalone Fleet Manager Portal */}
         <Route
           path="/fleet-dashboard"
@@ -170,10 +195,12 @@ function AppRoutes() {
           <Route path="/bookings" element={<RoleRoute allowedRoles={['DISPATCHER']}><Bookings /></RoleRoute>} />
           <Route path="/jobs/map" element={<RoleRoute allowedRoles={['DISPATCHER']}><JobMapView /></RoleRoute>} />
           <Route path="/dispatch" element={<RoleRoute allowedRoles={['DISPATCHER']}><Dispatch /></RoleRoute>} />
+          <Route path="/drivers" element={<RoleRoute allowedRoles={['DISPATCHER']}><Drivers /></RoleRoute>} />
           <Route path="/customers" element={<RoleRoute allowedRoles={['DISPATCHER']}><Customers /></RoleRoute>} />
           <Route path="/customers/map" element={<RoleRoute allowedRoles={['DISPATCHER']}><CustomerMapView /></RoleRoute>} />
           <Route path="/fleets" element={<RoleRoute allowedRoles={['DISPATCHER']}><Fleets /></RoleRoute>} />
           <Route path="/vehicles" element={<RoleRoute allowedRoles={['DISPATCHER']}><Vehicles /></RoleRoute>} />
+          <Route path="/invoices" element={<RoleRoute allowedRoles={['ACCOUNTANT', 'DISPATCHER']}><Invoices /></RoleRoute>} />
           <Route path="/accounting" element={<RoleRoute allowedRoles={['ACCOUNTANT']}><Accounting /></RoleRoute>} />
           <Route path="/inbound" element={<RoleRoute allowedRoles={['CALL_AGENT', 'DISPATCHER']}><Inbound /></RoleRoute>} />
           <Route path="/inbound-fleet" element={<RoleRoute allowedRoles={['CALL_AGENT', 'DISPATCHER']}><FleetInbound /></RoleRoute>} />

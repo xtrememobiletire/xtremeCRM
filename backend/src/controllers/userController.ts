@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { prisma } from '../config/database.js';
 import {
   sendSuccess,
@@ -8,6 +9,7 @@ import {
   calculateSkip,
   createPaginatedResponse,
 } from '../utils/index.js';
+import { geocodingService } from '../services/geocodingService.js';
 
 export const userController = {
   async getUsers(req: Request, res: Response) {
@@ -87,23 +89,71 @@ export const userController = {
     }
   },
 
+  /**
+   * Create a user and return profile fields without the password hash (HTTP 201).
+   * An assignedVehicle value starting with EXTERNAL enables generated email/password
+   * fallbacks, though route validation still requires both. If either coordinate
+   * is missing, successful address geocoding supplies both; unsuccessful geocoding
+   * leaves supplied coordinates intact. Duplicate email returns 409; missing
+   * credentials and caught errors return 400.
+   */
   async createUser(req: Request, res: Response) {
     try {
-      const { email, password, fullName, role, countryCode, phone, isAgentActive } = req.body;
+      const {
+        email,
+        password,
+        fullName,
+        role,
+        countryCode,
+        phone,
+        isAgentActive,
+        address,
+        assignedVehicle,
+        workingDays,
+        workingHours,
+        approvedByName,
+        latitude,
+        longitude,
+      } = req.body;
 
-      const existing = await prisma.user.findUnique({ where: { email } });
+      const isExternalContractor = assignedVehicle === 'EXTERNAL_CONTRACTOR' || assignedVehicle?.startsWith('EXTERNAL');
+      const finalEmail = email?.trim() || (isExternalContractor ? `contractor_${Date.now()}_${crypto.randomBytes(4).toString('hex')}@external.xtremetire.com` : '');
+      if (!finalEmail) return sendError(res, 'Email is required', 400);
+
+      const existing = await prisma.user.findUnique({ where: { email: finalEmail } });
       if (existing) return sendError(res, 'User with this email already exists', 409);
 
-      const passwordHash = await bcrypt.hash(password, 10);
+      const finalPassword = password || (isExternalContractor ? `Ext_${Date.now()}_${crypto.randomBytes(4).toString('hex')}` : '');
+      if (!finalPassword) return sendError(res, 'Password is required', 400);
+
+      let finalLat = latitude !== undefined && latitude !== null ? Number(latitude) : undefined;
+      let finalLng = longitude !== undefined && longitude !== null ? Number(longitude) : undefined;
+
+      if ((finalLat === undefined || finalLng === undefined) && address) {
+        const geo = await geocodingService.geocodeAddress(address, countryCode || 'CA');
+        if (geo.latitude !== null && geo.longitude !== null) {
+          finalLat = geo.latitude;
+          finalLng = geo.longitude;
+        }
+      }
+
+      const passwordHash = await bcrypt.hash(finalPassword, 10);
       const user = await prisma.user.create({
         data: {
-          email,
+          email: finalEmail,
           passwordHash,
           fullName,
           role: role || 'CALL_AGENT',
           countryCode: countryCode || 'CA',
           phone,
           isAgentActive: isAgentActive ?? false,
+          address,
+          assignedVehicle,
+          workingDays,
+          workingHours,
+          approvedByName,
+          latitude: finalLat,
+          longitude: finalLng,
         },
         select: {
           id: true,
@@ -112,6 +162,13 @@ export const userController = {
           role: true,
           countryCode: true,
           phone: true,
+          address: true,
+          assignedVehicle: true,
+          workingDays: true,
+          workingHours: true,
+          approvedByName: true,
+          latitude: true,
+          longitude: true,
           isAgentActive: true,
           createdAt: true,
         },
@@ -123,10 +180,41 @@ export const userController = {
     }
   },
 
+  /**
+   * Update supplied profile, role, duty, schedule, and location fields and return
+   * the updated profile. Successful geocoding replaces both coordinates when an
+   * address is supplied and either coordinate is missing; unsuccessful geocoding
+   * leaves existing coordinates unchanged unless explicitly supplied.
+   * Password and email are not updated. Caught errors become HTTP 400 responses.
+   */
   async updateUser(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
-      const { fullName, role, countryCode, phone, isAgentActive } = req.body;
+      const {
+        fullName,
+        role,
+        countryCode,
+        phone,
+        isAgentActive,
+        address,
+        assignedVehicle,
+        workingDays,
+        workingHours,
+        approvedByName,
+        latitude,
+        longitude,
+      } = req.body;
+
+      let finalLat = latitude !== undefined && latitude !== null ? Number(latitude) : undefined;
+      let finalLng = longitude !== undefined && longitude !== null ? Number(longitude) : undefined;
+
+      if ((finalLat === undefined || finalLng === undefined) && address) {
+        const geo = await geocodingService.geocodeAddress(address, countryCode || 'CA');
+        if (geo.latitude !== null && geo.longitude !== null) {
+          finalLat = geo.latitude;
+          finalLng = geo.longitude;
+        }
+      }
 
       const updated = await prisma.user.update({
         where: { id },
@@ -136,6 +224,13 @@ export const userController = {
           ...(countryCode && { countryCode }),
           ...(phone !== undefined && { phone }),
           ...(isAgentActive !== undefined && { isAgentActive }),
+          ...(address !== undefined && { address }),
+          ...(assignedVehicle !== undefined && { assignedVehicle }),
+          ...(workingDays !== undefined && { workingDays }),
+          ...(workingHours !== undefined && { workingHours }),
+          ...(approvedByName !== undefined && { approvedByName }),
+          ...(finalLat !== undefined && { latitude: finalLat }),
+          ...(finalLng !== undefined && { longitude: finalLng }),
         },
         select: {
           id: true,
@@ -144,6 +239,13 @@ export const userController = {
           role: true,
           countryCode: true,
           phone: true,
+          address: true,
+          assignedVehicle: true,
+          workingDays: true,
+          workingHours: true,
+          approvedByName: true,
+          latitude: true,
+          longitude: true,
           isAgentActive: true,
           updatedAt: true,
         },
