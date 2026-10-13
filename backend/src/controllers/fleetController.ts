@@ -619,6 +619,12 @@ export const fleetController = {
     }
   },
 
+  /**
+   * Return the fleet, completed jobs without invoices, and PENDING or OVERDUE
+   * invoices, with unbilled totals and outstanding balances in cents.
+   * PARTIAL invoices are excluded. Returns HTTP 404 for a missing fleet and
+   * 500 for caught errors.
+   */
   async getFleetBillingSummary(req: Request, res: Response) {
     try {
       const fleetId = String(req.params.id);

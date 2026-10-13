@@ -383,7 +383,12 @@ export const accountingController = {
   },
 
   /**
-   * Senior Accountant verifies job cash payment (marks VERIFIED_PAID)
+   * Mark a job payment VERIFIED_PAID and return the updated job.
+   * Requires payout approval permission or ADMIN, GENERAL_MANAGER, or DEVELOPER.
+   * Also attempts to mark a linked unpaid invoice PAID and record a cash payment;
+   * invoice synchronization and notification failures do not fail verification.
+   * Returns HTTP 403 for insufficient permission, 404 for a missing job, and
+   * 400 for other caught errors.
    */
   async verifyJobPayment(req: Request, res: Response) {
     try {

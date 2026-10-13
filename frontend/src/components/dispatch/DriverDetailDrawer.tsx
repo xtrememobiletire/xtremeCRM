@@ -20,6 +20,10 @@ interface DriverDetailDrawerProps {
   onDutyToggled?: () => void;
 }
 
+/**
+ * Show a selected driver's profile, duty controls, and up to 50 dispatched jobs
+ * when open; earnings and cash metrics use only completed jobs in that result.
+ */
 export default function DriverDetailDrawer({
   driver,
   isOpen,
@@ -46,6 +50,10 @@ export default function DriverDetailDrawer({
 
   const isOnDuty = Boolean(driver.isAgentActive);
 
+  /**
+   * Save the opposite duty state and notify onDutyToggled on success;
+   * request failures are shown as error toasts.
+   */
   const handleToggleDuty = async () => {
     try {
       setIsToggling(true);

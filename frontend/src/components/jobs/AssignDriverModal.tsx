@@ -35,6 +35,11 @@ function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
   return R * c;
 }
 
+/**
+ * Show regional drivers ranked by estimated travel minutes and a job location map
+ * when open. Support internal assignment or external dispatch configuration;
+ * completed/cancelled jobs disable dispatch actions.
+ */
 export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriverModalProps) {
   const queryClient = useQueryClient();
   const assignDriverMutation = useAssignDriver();
@@ -248,6 +253,11 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
     }
   }, [map, isLoaded, currentLng, currentLat, selectedDriver, currentAddress]);
 
+  /**
+   * Reject completed/cancelled jobs or missing drivers. Open external dispatch
+   * configuration for contractors, or assign the selected internal driver with
+   * travel ETA in minutes and close on success; request failures become error toasts.
+   */
   const handleAssign = async () => {
     if (isCompletedJob) {
       toast.error(`Cannot dispatch driver: Job is ${activeJob?.status}`);

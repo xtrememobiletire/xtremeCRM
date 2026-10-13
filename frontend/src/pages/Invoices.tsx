@@ -24,6 +24,10 @@ import RecordPaymentModal from '../components/invoices/RecordPaymentModal';
 type InvoicesTabType = 'FLEET' | 'MEMBER' | 'CUSTOMER';
 type FleetSubTabType = 'INVOICES' | 'UNBILLED';
 
+/**
+ * Render fleet, member, and customer invoice lists with creation, payment, and
+ * print actions, plus fleet job selection for consolidated billing.
+ */
 export default function Invoices() {
   const { country, currencySymbol } = useTenant();
 
@@ -103,12 +107,17 @@ export default function Invoices() {
   const consolidatedMutation = useGenerateFleetConsolidatedInvoice();
 
   // Toggle job selection in unbilled queue
+  /** Toggle a job ID in the selection for consolidated billing. */
   const toggleJobSelection = (jobId: string) => {
     setSelectedJobIds((prev) =>
       prev.includes(jobId) ? prev.filter((id) => id !== jobId) : [...prev, jobId]
     );
   };
 
+  /**
+   * Clear selection when its count matches the unbilled list; otherwise select
+   * all job IDs in the current unbilled list.
+   */
   const handleSelectAllUnbilled = () => {
     if (selectedJobIds.length === unbilledJobs.length) {
       setSelectedJobIds([]);
@@ -123,6 +132,10 @@ export default function Invoices() {
       .reduce((sum, j) => sum + (j.totalCents || 0), 0);
   }, [unbilledJobs, selectedJobIds]);
 
+  /**
+   * Open consolidation options only when a fleet and at least one job are selected;
+   * show an error toast for missing selections.
+   */
   const handleOpenConsolidateModal = () => {
     if (!selectedFleetId) {
       toast.error('Please select a fleet first');
@@ -135,6 +148,11 @@ export default function Invoices() {
     setIsConsolidateModalOpen(true);
   };
 
+  /**
+   * Submit selected fleet jobs and tax/due-date options; success clears selection,
+   * refreshes invoices/billing, and opens the new invoice preview. Missing selections
+   * skip submission; request failures are shown as error toasts.
+   */
   const handleConfirmConsolidated = () => {
     if (!selectedFleetId || selectedJobIds.length === 0) return;
 

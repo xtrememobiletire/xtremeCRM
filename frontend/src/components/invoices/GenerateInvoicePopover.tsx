@@ -17,6 +17,10 @@ interface EditableLineItem {
   quantity: number;
 }
 
+/**
+ * Render job invoice options with editable items, tax, deposit credit, and totals
+ * when open; fleet terms initially use NET_7 and other jobs use receipt terms.
+ */
 export default function GenerateInvoicePopover({
   job,
   isOpen,
@@ -73,6 +77,7 @@ export default function GenerateInvoicePopover({
   const creditedCents = creditDeposit ? upfrontCents : 0;
   const netDueCents = Math.max(0, taxableBaseCents + calculatedTaxCents - creditedCents);
 
+  /** Append a blank invoice item with zero price and quantity one. */
   const handleAddItem = () => {
     setItems((prev) => [
       ...prev,
@@ -85,6 +90,7 @@ export default function GenerateInvoicePopover({
     ]);
   };
 
+  /** Remove an item by its editor ID; show an error instead of removing the final item. */
   const handleRemoveItem = (id: string) => {
     if (items.length <= 1) {
       toast.error('Invoice must have at least one line item');
@@ -93,6 +99,7 @@ export default function GenerateInvoicePopover({
     setItems((prev) => prev.filter((it) => it.id !== id));
   };
 
+  /** Update a matching editor item field; unitPriceDollars is in major currency units. */
   const handleUpdateItem = (id: string, field: keyof EditableLineItem, val: any) => {
     setItems((prev) =>
       prev.map((it) => {
@@ -102,6 +109,11 @@ export default function GenerateInvoicePopover({
     );
   };
 
+  /**
+   * Validate descriptions and nonnegative prices, then request an invoice with
+   * prices in cents and receipt terms for nonfleet jobs. Notify onSuccess and
+   * close after success; request failures are shown as error toasts.
+   */
   const handleGenerate = () => {
     // Validate line items
     for (const it of items) {

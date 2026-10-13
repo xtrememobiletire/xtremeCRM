@@ -33,6 +33,10 @@ interface FleetJobDetailModalProps {
   job: any;
 }
 
+/**
+ * Render fleet work order details, status controls, chat, and invoice actions;
+ * return nothing without a job. Invoice generation success opens its print preview.
+ */
 export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDetailModalProps) {
   const { user } = useAuth();
   const isAdminOrAccountant = user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER' || user?.role === 'ACCOUNTANT';

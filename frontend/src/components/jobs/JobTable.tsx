@@ -19,6 +19,11 @@ interface JobTableProps {
   onAssignDriver: (job: any) => void;
 }
 
+/**
+ * Render job rows with driver/decline details and detail/assignment callbacks,
+ * or nothing for an empty list. Drivers do not see assignment controls;
+ * completed/cancelled jobs have assignment disabled.
+ */
 export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTableProps) {
   const { user } = useAuth();
   const isDriver = user?.role === 'DRIVER';

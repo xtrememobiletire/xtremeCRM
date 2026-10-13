@@ -1,5 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 
+/**
+ * Create middleware that calls next for an allowed role or ADMIN,
+ * GENERAL_MANAGER, or DEVELOPER. A missing or disallowed role receives HTTP 403.
+ */
 export const authorize = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const userRole = (req.user as any)?.role;

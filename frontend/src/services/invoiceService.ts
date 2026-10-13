@@ -124,6 +124,11 @@ export interface FleetBillingSummary {
 }
 
 export const invoiceService = {
+  /**
+   * Fetch invoices with optional account/status/search filters and pagination.
+   * @returns The API envelope with the data array and meta pagination.
+   * @throws The API request error on rejection.
+   */
   async getInvoices(params?: {
     countryCode?: string;
     status?: string;
@@ -138,11 +143,20 @@ export const invoiceService = {
     return res.data;
   },
 
+  /**
+   * Fetch an invoice with items, account details, linked jobs, and payment history.
+   * @throws The API request error, including HTTP 404 for a missing invoice.
+   */
   async getInvoiceById(id: string): Promise<InvoiceRecord> {
     const res = await api.get(`/invoices/${id}`);
     return res.data.data;
   },
 
+  /**
+   * Create a manual invoice with prices, discounts, and deposits in cents and tax
+   * as a percentage. The server chooses issueDate; payload.issueDate is ignored.
+   * @throws The API request error on rejection.
+   */
   async createInvoice(payload: {
     invoiceType: InvoiceType;
     customerId?: string;
@@ -161,6 +175,12 @@ export const invoiceService = {
     return res.data.data;
   },
 
+  /**
+   * Fetch an existing job invoice or create and link one using optional tax,
+   * line-item, due-date, discount, and deposit-credit settings. Prices/discounts are
+   * in cents; creditDeposit defaults to true on the server.
+   * @throws The API request error, including HTTP 404 for a missing job.
+   */
   async generateInvoiceFromJob(
     jobId: string,
     payload?: {
@@ -178,6 +198,11 @@ export const invoiceService = {
     return res.data.data;
   },
 
+  /**
+   * Invoice the selected completed, unbilled jobs belonging to the fleet; the
+   * server ignores other IDs, applies the fleet discount, and links eligible jobs.
+   * @throws The API request error, including rejection when no jobs are eligible.
+   */
   async generateFleetConsolidatedInvoice(payload: {
     fleetId: string;
     jobIds: string[];
@@ -190,6 +215,11 @@ export const invoiceService = {
     return res.data.data;
   },
 
+  /**
+   * Record a payment in cents and update the invoice and linked jobs' payment status.
+   * @returns The API payload { pmt, updatedInvoice }.
+   * @throws The API request error, including HTTP 404 for a missing invoice.
+   */
   async recordPayment(
     invoiceId: string,
     payload: {
@@ -203,6 +233,11 @@ export const invoiceService = {
     return res.data.data;
   },
 
+  /**
+   * Allocate a payment in cents to outstanding fleet invoices by earliest due date.
+   * @returns The API payload { settledCount, allocatedCents }; excess funds are unallocated.
+   * @throws The API request error, including rejection when no invoices are eligible.
+   */
   async recordFleetLumpSumPayment(payload: {
     fleetId: string;
     amountCents: number;
@@ -214,11 +249,21 @@ export const invoiceService = {
     return res.data.data;
   },
 
+  /**
+   * Fetch JSON template data with regional billing details and formatted totals.
+   * @throws The API request error, including HTTP 404 for a missing invoice.
+   */
   async getInvoicePdfData(id: string): Promise<any> {
     const res = await api.get(`/invoices/${id}/pdf`);
     return res.data.data;
   },
 
+  /**
+   * Fetch fleet billing data with totals in cents; PARTIAL invoices are excluded.
+   * @returns The API payload with fleet, unbilledJobs, unbilledTotalCents, invoices,
+   * and outstandingBalanceCents.
+   * @throws The API request error, including HTTP 404 for a missing fleet.
+   */
   async getFleetBillingSummary(fleetId: string): Promise<FleetBillingSummary> {
     const res = await api.get(`/fleets/${fleetId}/billing-summary`);
     return res.data.data;

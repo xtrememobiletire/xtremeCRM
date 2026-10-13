@@ -13,6 +13,10 @@ import { userService, type UserItem } from '../services/userService';
 import AddDriverModal from '../components/dispatch/AddDriverModal';
 import DriverDetailDrawer from '../components/dispatch/DriverDetailDrawer';
 
+/**
+ * Render driver profiles filtered by region, type, and search, with creation,
+ * duty controls, and a profile/job-history drawer.
+ */
 export default function Drivers() {
   const queryClient = useQueryClient();
 
@@ -59,6 +63,10 @@ export default function Drivers() {
   }, [rawDrivers, regionFilter, typeFilter, searchQuery]);
 
   // Toggle On-Duty presence
+  /**
+   * Stop the card click, save the opposite duty state, refresh drivers, and update
+   * the selected profile when it matches. Request failures become error toasts.
+   */
   const handleToggleDuty = async (e: React.MouseEvent, driver: UserItem) => {
     e.stopPropagation(); // prevent opening drawer when clicking toggle
     try {

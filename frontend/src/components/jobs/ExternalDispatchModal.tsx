@@ -31,6 +31,10 @@ interface ExternalDispatchModalProps {
   onUpdated?: (updatedJob?: any) => void;
 }
 
+/**
+ * Render contractor details, payout, road ETA, and public link controls when open;
+ * completed/cancelled jobs disable generation and revocation actions.
+ */
 export default function ExternalDispatchModal({
   isOpen,
   onClose,
@@ -78,6 +82,13 @@ export default function ExternalDispatchModal({
   }, [job, initialContractor, isOpen]);
 
   // Recalculate ETA directly from geocoded coordinates
+  /**
+   * Update ETA from starting coordinates in degrees using Mapbox driving time
+   * rounded to minutes plus five minutes, with a five-minute minimum. Skip routing
+   * if the token is missing or either destination coordinate is zero or missing.
+   * Caught request errors
+   * use 25 minutes only when no ETA is set; an empty route leaves ETA unchanged.
+   */
   const handleCalculateEtaWithCoords = async (startLat: number, startLng: number) => {
     const destLat = job?.serviceLatitude ?? job?.latitude;
     const destLng = job?.serviceLongitude ?? job?.longitude;
@@ -104,6 +115,13 @@ export default function ExternalDispatchModal({
   };
 
   // Recalculate ETA when depot address changes
+  /**
+   * Geocode addressToUse (or the depot address) and update road ETA in minutes with
+   * a five-minute preparation buffer. Skip routing if the address/token is missing
+   * or either destination coordinate is zero or missing. Caught request errors
+   * use 25 minutes only when no ETA
+   * is set; missing geocoding/route results leave ETA unchanged.
+   */
   const handleCalculateEta = async (addressToUse?: string) => {
     const addr = addressToUse || depotAddress;
     const destLat = job?.serviceLatitude ?? job?.latitude;
@@ -148,6 +166,10 @@ export default function ExternalDispatchModal({
     ? `${window.location.origin}/dispatch/external/${currentToken}`
     : '';
 
+  /**
+   * Request a clipboard copy of the current link, if present, and show copied
+   * feedback for two seconds without awaiting the clipboard result.
+   */
   const handleCopyLink = () => {
     if (!publicUrl) return;
     navigator.clipboard.writeText(publicUrl);
@@ -156,6 +178,11 @@ export default function ExternalDispatchModal({
     setTimeout(() => setHasCopied(false), 2000);
   };
 
+  /**
+   * Require an active job and nonnegative payout, convert the fee to cents, and
+   * save contractor dispatch details. Attempt to copy the link, refresh job caches,
+   * and notify onUpdated; request failures become error toasts.
+   */
   const handleGenerate = async () => {
     if (isCompletedJob) {
       toast.error(`Cannot generate or update dispatch link: Job is ${job.status}`);
@@ -200,6 +227,10 @@ export default function ExternalDispatchModal({
     }
   };
 
+  /**
+   * Reject completed/cancelled jobs; otherwise revoke the link, refresh job caches,
+   * reset the form, notify onUpdated, and close. Request failures become error toasts.
+   */
   const handleRevoke = async () => {
     if (isCompletedJob) {
       toast.error(`Cannot revoke dispatch link: Job is ${job.status}`);

@@ -13,6 +13,10 @@ interface CreateInvoiceModalProps {
   defaultType?: InvoiceType;
 }
 
+/**
+ * Render manual invoice creation with account selection, editable items, tax,
+ * discount, and deposit preview when open. defaultType initializes the selected type.
+ */
 export default function CreateInvoiceModal({
   isOpen,
   onClose,
@@ -54,15 +58,18 @@ export default function CreateInvoiceModal({
     isMemberType ? c.customerType === 'MEMBERSHIP' : c.customerType !== 'MEMBERSHIP'
   );
 
+  /** Append a blank invoice item with quantity one. */
   const handleAddItem = () => {
     setItems([...items, { itemDetails: '', unitPrice: '', quantity: 1 }]);
   };
 
+  /** Remove an item by zero-based index, keeping at least one item. */
   const handleRemoveItem = (index: number) => {
     if (items.length <= 1) return;
     setItems(items.filter((_, i) => i !== index));
   };
 
+  /** Update a field of the item at a zero-based index; unitPrice is in major currency units. */
   const handleItemChange = (index: number, field: string, val: any) => {
     const copy = [...items];
     copy[index] = { ...copy[index], [field]: val };
@@ -80,6 +87,12 @@ export default function CreateInvoiceModal({
   const taxAmountCents = isTaxExempt ? 0 : Math.round((taxableBaseCents * taxRatePercent) / 100);
   const totalCents = Math.max(0, taxableBaseCents + taxAmountCents - depositCents);
 
+  /**
+   * Require the selected account and at least one described item with a positive price.
+   * Submit qualifying items with prices and adjustments converted to cents;
+   * close on success and show validation or request failures as error toasts.
+   * @throws RangeError if dueDate cannot be converted to an ISO date.
+   */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 

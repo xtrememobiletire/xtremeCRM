@@ -88,6 +88,14 @@ export const userController = {
     }
   },
 
+  /**
+   * Create a user and return profile fields without the password hash (HTTP 201).
+   * An assignedVehicle value starting with EXTERNAL enables generated email/password
+   * fallbacks, though route validation still requires both. If either coordinate
+   * is missing, successful address geocoding supplies both; unsuccessful geocoding
+   * leaves supplied coordinates intact. Duplicate email returns 409; missing
+   * credentials and caught errors return 400.
+   */
   async createUser(req: Request, res: Response) {
     try {
       const {
@@ -171,6 +179,13 @@ export const userController = {
     }
   },
 
+  /**
+   * Update supplied profile, role, duty, schedule, and location fields and return
+   * the updated profile. Successful geocoding replaces both coordinates when an
+   * address is supplied and either coordinate is missing; unsuccessful geocoding
+   * leaves existing coordinates unchanged unless explicitly supplied.
+   * Password and email are not updated. Caught errors become HTTP 400 responses.
+   */
   async updateUser(req: Request, res: Response) {
     try {
       const id = String(req.params.id);

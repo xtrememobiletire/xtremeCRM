@@ -10,6 +10,10 @@ interface JobCardProps {
   onAssignDriver: (job: any) => void;
 }
 
+/**
+ * Render a job summary with detail and assignment callbacks; hide assignment for
+ * drivers and disable it for completed/cancelled jobs.
+ */
 export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps) {
   const { user } = useAuth();
   const isDriver = user?.role === 'DRIVER';

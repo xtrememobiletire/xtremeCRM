@@ -64,6 +64,10 @@ const baseNavItems = [
   { icon: DollarSign, label: 'Accounting', path: '/accounting' },
 ];
 
+/**
+ * Render role-specific navigation with a pending-job badge and sign-out control.
+ * Preload route chunks on idle, focus, or hover; support mobile and collapsed views.
+ */
 export default function Sidebar({ isOpen, onClose, isCollapsed = false }: SidebarProps) {
   const queryClient = useQueryClient();
   const { user, logout } = useAuth();

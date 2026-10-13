@@ -11,6 +11,10 @@ interface RecordPaymentModalProps {
   onSuccess?: () => void;
 }
 
+/**
+ * Render payment entry when open; a fleet without an invoice selects lump-sum
+ * allocation, otherwise the supplied invoice receives the payment.
+ */
 export default function RecordPaymentModal({
   isOpen,
   onClose,
@@ -36,6 +40,11 @@ export default function RecordPaymentModal({
 
   if (!isOpen) return null;
 
+  /**
+   * Require a positive amount in major currency units and submit it as cents to
+   * the invoice or fleet payment mutation. Notify and close on success;
+   * validation and request failures are shown as error toasts.
+   */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const amountNumber = parseFloat(amountInput);

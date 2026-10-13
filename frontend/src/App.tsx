@@ -37,6 +37,7 @@ const Invoices = lazyWithRetry(() => import('./pages/Invoices'));
 const Drivers = lazyWithRetry(() => import('./pages/Drivers'));
 const ExternalDriverDispatch = lazyWithRetry(() => import('./pages/ExternalDriverDispatch'));
 
+/** Return the role's home route, defaulting to /dashboard for missing or unknown roles. */
 function getRoleHome(role?: string) {
   switch (role) {
     case 'DRIVER':
@@ -75,6 +76,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Render a loader while authentication resolves, then permit allowed roles plus
+ * ADMIN, GENERAL_MANAGER, and DEVELOPER. Redirect guests to login and other users
+ * to their role's home route.
+ */
 function RoleRoute({ allowedRoles, children }: { allowedRoles: string[]; children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
@@ -93,6 +99,10 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Start authenticated SSE synchronization and render public and role-gated routes,
+ * including the public external dispatch portal; show a loader during authentication.
+ */
 function AppRoutes() {
   const { user, loading } = useAuth();
   useSSE();

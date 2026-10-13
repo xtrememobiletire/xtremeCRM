@@ -277,6 +277,15 @@ export const jobController = {
     }
   },
 
+  /**
+   * Create a job with customer, vehicle, services, and totals in regional cents.
+   * May merge duplicate customer profiles by phone, create a vehicle, and attempt
+   * customer account provisioning when makeUserAccount is true; provisioning
+   * preserves customerType and its failures do not fail job creation.
+   * Tax rates are in basis points. Return HTTP 201 with related records and attempt
+   * dispatch notifications; invalid phone, missing creator, and caught errors
+   * become HTTP 400 responses. Earlier related writes may remain after a failure.
+   */
   async createJob(req: Request, res: Response) {
     try {
       const data = req.body;
@@ -803,6 +812,13 @@ export const jobController = {
     }
   },
 
+  /**
+   * Assign a driver from the job's country and return the job with related records.
+   * Driver ETA inputs are in minutes; explicit arrival dates take precedence.
+   * Preserve the customer's promised arrival unless absent, then use driver arrival.
+   * Attempt assignment notifications. Missing driver/job returns HTTP 404;
+   * completed/cancelled jobs, country mismatches, and caught errors return 400.
+   */
   async assignDriver(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
@@ -1229,7 +1245,13 @@ export const jobController = {
   },
 
   /**
-   * External Subcontractor Driver Dispatch (Generate Public Token Link)
+   * Assign an external contractor and return the job, token, and relative public URL.
+   * Reuse an existing token and reset dispatch status to PENDING. Match a driver
+   * by phone or name, creating one if needed; geocode an address when coordinates
+   * are missing. Fees are in cents (externalDriverFeeCents takes precedence over
+   * contractorPayoutFeeCents), and ETA is in minutes. Emit job:updated.
+   * Returns HTTP 404 for a missing job and 400 for completed/cancelled jobs or
+   * caught errors; contractor writes may remain if a later job update fails.
    */
   async generateExternalDispatch(req: Request, res: Response) {
     try {
@@ -1365,7 +1387,10 @@ export const jobController = {
   },
 
   /**
-   * Revoke External Subcontractor Dispatch Token
+   * Clear the external dispatch token, contractor details, assignment, and driver
+   * ETA, resetting the job to PENDING with INTERNAL driver type. Return the updated
+   * job and emit job:updated and job:status_updated. Missing jobs return HTTP 404;
+   * completed jobs and caught errors return 400. Cancelled jobs can be reset.
    */
   async revokeExternalDispatch(req: Request, res: Response) {
     try {
@@ -1412,7 +1437,10 @@ export const jobController = {
   },
 
   /**
-   * Public Unauthenticated: Get Sanitized External Job Container
+   * Return a token-selected job without CRM authentication, including recipient
+   * contact, vehicle/service details, contractor payout, job total, payment status,
+   * and cash collected in cents. Tokens are looked up without a time-based expiry.
+   * Returns HTTP 404 when no job matches and 500 for caught errors.
    */
   async getPublicExternalJob(req: Request, res: Response) {
     try {
@@ -1476,7 +1504,12 @@ export const jobController = {
   },
 
   /**
-   * Public Unauthenticated: Update External Job Status
+   * Apply a public token action and return { status, externalDispatchStatus }.
+   * ACCEPT assigns, DECLINE records a reason and clears the driver, EN_ROUTE and
+   * ON_SCENE/ARRIVED mark progress, and COMPLETE timestamps completion and optionally
+   * stores cashCollectedCents. Emit job:status_updated and job:updated.
+   * Returns HTTP 404 for an unmatched token and 400 for completed/cancelled jobs,
+   * unknown actions, or caught errors; intermediate action order is not enforced.
    */
   async updatePublicExternalJobStatus(req: Request, res: Response) {
     try {

@@ -46,6 +46,10 @@ const REGIONAL_HUBS = {
   },
 };
 
+/**
+ * Load and render a printable invoice when open, with local address overrides
+ * and a Mark Paid action. Address edits affect the preview/printout without saving.
+ */
 export default function InvoicePdfModal({
   isOpen,
   onClose,
@@ -92,6 +96,7 @@ export default function InvoicePdfModal({
     }
   }, [isOpen, invoiceId]);
 
+  /** Select a regional hub and replace the preview's company address and phone. */
   const handleCountryHubChange = (cc: 'CA' | 'US' | 'UK') => {
     setSelectedCountryCode(cc);
     const hub = REGIONAL_HUBS[cc];
@@ -99,6 +104,7 @@ export default function InvoicePdfModal({
     setCompanyPhone(hub.phone);
   };
 
+  /** Restore preview contacts and hub selection from the loaded invoice, if available. */
   const handleResetAddresses = () => {
     if (!data) return;
     const cCode = (data.countryCode || 'CA') as 'CA' | 'US' | 'UK';
@@ -118,6 +124,10 @@ export default function InvoicePdfModal({
     window.print();
   };
 
+  /**
+   * Mark the invoice PAID, update the local preview, and notify onStatusUpdated;
+   * request failures are shown as an error toast.
+   */
   const handleMarkPaid = async () => {
     try {
       setUpdating(true);

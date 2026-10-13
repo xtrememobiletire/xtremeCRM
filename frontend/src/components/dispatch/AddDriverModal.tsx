@@ -13,6 +13,10 @@ interface AddDriverModalProps {
   onSuccess?: () => void;
 }
 
+/**
+ * Render an internal technician or external contractor creation form when open;
+ * notify onSuccess and close after creation succeeds.
+ */
 export default function AddDriverModal({ isOpen, onClose, onSuccess }: AddDriverModalProps) {
   const queryClient = useQueryClient();
   const { country } = useTenant();
@@ -33,6 +37,11 @@ export default function AddDriverModal({ isOpen, onClose, onSuccess }: AddDriver
 
   if (!isOpen) return null;
 
+  /**
+   * Validate driver details, create the selected driver type, and refresh drivers.
+   * External contractors use an EXTERNAL vehicle tag. Notify and close on success;
+   * show request failures as error toasts.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 

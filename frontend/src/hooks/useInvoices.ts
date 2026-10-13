@@ -13,6 +13,11 @@ export interface UseInvoicesParams {
   limit?: number;
 }
 
+/**
+ * Return an invoice list query using the tenant country unless overridden.
+ * ALL omits the API country query parameter; the server may still use request
+ * country context. The result contains the API's data array and meta pagination.
+ */
 export function useInvoices(params?: UseInvoicesParams) {
   const { country } = useTenant();
   const effectiveCountry = params?.countryCode !== undefined ? params.countryCode : country;
@@ -27,6 +32,7 @@ export function useInvoices(params?: UseInvoicesParams) {
   });
 }
 
+/** Return a single-invoice query, disabled until a truthy ID is supplied. */
 export function useInvoice(id: string | null | undefined) {
   return useQuery({
     queryKey: ['invoice', id],
@@ -35,6 +41,7 @@ export function useInvoice(id: string | null | undefined) {
   });
 }
 
+/** Return a fleet billing summary query, disabled until a truthy fleet ID is supplied. */
 export function useFleetBillingSummary(fleetId: string | null | undefined) {
   return useQuery({
     queryKey: ['fleet-billing-summary', fleetId],
@@ -43,6 +50,10 @@ export function useFleetBillingSummary(fleetId: string | null | undefined) {
   });
 }
 
+/**
+ * Return a manual invoice mutation that invalidates invoice and accounting
+ * invoice lists after success; request errors are exposed through mutation state.
+ */
 export function useCreateInvoice() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -67,6 +78,10 @@ export function useCreateInvoice() {
   });
 }
 
+/**
+ * Return a job invoice mutation; success invalidates invoice, job, accounting
+ * invoice, and accounting ledger queries. Request errors remain in mutation state.
+ */
 export function useGenerateJobInvoice() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -95,6 +110,10 @@ export function useGenerateJobInvoice() {
   });
 }
 
+/**
+ * Return a consolidated fleet invoice mutation; success invalidates invoices,
+ * the selected fleet's billing summary, fleets, and jobs. Errors remain in mutation state.
+ */
 export function useGenerateFleetConsolidatedInvoice() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -115,6 +134,11 @@ export function useGenerateFleetConsolidatedInvoice() {
   });
 }
 
+/**
+ * Return an invoice payment mutation; success invalidates invoice lists/detail,
+ * fleet billing summaries, fleets, jobs, and the accounting ledger.
+ * Request errors remain in mutation state.
+ */
 export function useRecordPayment() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -141,6 +165,11 @@ export function useRecordPayment() {
   });
 }
 
+/**
+ * Return a fleet payment mutation; success invalidates invoices, the selected
+ * fleet's billing summary, fleets, jobs, and the accounting ledger.
+ * Request errors remain in mutation state.
+ */
 export function useRecordFleetLumpSumPayment() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -20,6 +20,11 @@ interface JobDetailModalProps {
   job: any;
 }
 
+/**
+ * Render job details, workflow/chat controls, and invoice actions, with labor
+ * fees for drivers and expense controls for admins/accountants; return nothing
+ * without a job. Invoice generation success opens its print preview.
+ */
 export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalProps) {
   const { user } = useAuth();
   const isDriver = user?.role === 'DRIVER';

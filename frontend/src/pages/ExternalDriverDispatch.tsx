@@ -20,6 +20,10 @@ import { jobService } from '../services/jobService';
 import { getNavigationUrl } from '../utils/navigation';
 import { formatCurrency, centsToDollars } from '../utils/currency';
 
+/**
+ * Render the public route-token work order with navigation, customer payment
+ * information, and accept/decline/progress actions; reload after status updates.
+ */
 export default function ExternalDriverDispatch() {
   const { token } = useParams<{ token: string }>();
 
@@ -34,6 +38,10 @@ export default function ExternalDriverDispatch() {
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
 
+  /**
+   * Load the token-selected job, or do nothing without a token; caught request
+   * errors become the page's error state.
+   */
   const fetchJob = async () => {
     if (!token) return;
     try {
@@ -52,6 +60,10 @@ export default function ExternalDriverDispatch() {
     fetchJob();
   }, [token]);
 
+  /**
+   * Stop the click and request a clipboard copy of the service address, if present;
+   * show copied feedback for two seconds without awaiting the clipboard result.
+   */
   const handleCopyAddress = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!job?.serviceAddress) return;
@@ -61,6 +73,11 @@ export default function ExternalDriverDispatch() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  /**
+   * Submit a token action, then reload the job. Completion requires collection
+   * confirmation when customer payment is due and sends the job total as cash cents.
+   * Decline sends the entered reason; request failures are shown as error toasts.
+   */
   const handleAction = async (action: 'ACCEPT' | 'DECLINE' | 'EN_ROUTE' | 'ON_SCENE' | 'COMPLETE') => {
     if (!token) return;
 
@@ -140,6 +157,10 @@ export default function ExternalDriverDispatch() {
   const isPrepaid = job.paymentStatus === 'PAID' || job.paymentStatus === 'SETTLED';
   const isCustomerDue = !isPrepaid && (job.totalCents || 0) > 0;
 
+  /**
+   * Return the portal status, prioritizing completion, scene, and route markers
+   * before acceptance/denial; missing or unrecognized state defaults to PENDING.
+   */
   const getEffectiveStatus = (j: any): 'PENDING' | 'ACCEPTED' | 'EN_ROUTE' | 'ON_SCENE' | 'COMPLETED' | 'DECLINED' => {
     if (!j) return 'PENDING';
     if (j.status === 'COMPLETED' || j.dispositionNotes === 'COMPLETED') return 'COMPLETED';

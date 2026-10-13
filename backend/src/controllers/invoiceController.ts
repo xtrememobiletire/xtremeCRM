@@ -11,7 +11,10 @@ import {
 import { sseManager } from '../services/sseManager.js';
 
 /**
- * Thread-Safe Atomic Invoice Sequence Generator
+ * Advance the country's sequence for the current local year using the supplied
+ * transaction and return initials-country-sequence, padded to at least four digits.
+ * The year scopes the counter but is not included in the returned number.
+ * Database errors propagate to the caller.
  */
 async function getNextInvoiceNumber(tx: any, countryCode: any, initials: string): Promise<string> {
   const year = new Date().getFullYear();
@@ -25,7 +28,11 @@ async function getNextInvoiceNumber(tx: any, countryCode: any, initials: string)
 }
 
 /**
- * Flexible Tax & Totals Engine
+ * Calculate tax, total, and remaining balance in cents after a discount.
+ * Tax applies to the subtotal minus discount, floored at zero; exemption overrides
+ * the supplied percentage rate. Without a rate, use 13% for CA, 20% for UK,
+ * and 8% otherwise. Round tax to the nearest cent, then subtract the deposit
+ * from the total and floor the balance at zero.
  */
 function calculateTaxAndTotals(
   subtotalCents: number,
@@ -51,6 +58,13 @@ function calculateTaxAndTotals(
 }
 
 export const invoiceController = {
+  /**
+   * Return invoices newest first as { success, data, meta }, filtered by country,
+   * status, invoice type, fleet, customer, or a case-insensitive number/name search.
+   * MEMBER also requires a MEMBERSHIP customer. Country defaults to req.countryCode;
+   * ALL omits the country filter. Pagination defaults to page 1 and 20 per page,
+   * with the limit clamped to 1–100. Caught errors become HTTP 500 responses.
+   */
   async getInvoices(req: Request, res: Response) {
     try {
       const pageParam = req.query.page ? Number(req.query.page) : 1;
@@ -122,6 +136,11 @@ export const invoiceController = {
     }
   },
 
+  /**
+   * Return an invoice with items, customer, fleet, creator, linked jobs, and
+   * payments ordered newest first. Returns HTTP 404 when missing and 500 for
+   * caught errors.
+   */
   async getInvoiceById(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
@@ -163,7 +182,14 @@ export const invoiceController = {
   },
 
   /**
-   * On-Demand Invoice Generation from Job (with Flexible Taxes, Deposit Credit & Payment Terms)
+   * Return a job's existing invoice, or create and link a PENDING invoice.
+   * The job ID comes from the route or body; nonempty custom line items replace
+   * job services. Prices, discounts, and deposits are in cents; creditDeposit
+   * credits the job's upfront amount by default. A dueDate overrides paymentTerms;
+   * otherwise terms select receipt, 7, 14, or 30 days, defaulting to 30 days for
+   * fleets and receipt for other jobs. New invoices emit invoice:created and
+   * return HTTP 201; existing invoices return 200. Missing jobs return 404,
+   * and missing job/creator IDs or other caught errors return 400.
    */
   async generateInvoice(req: Request, res: Response) {
     try {
@@ -350,7 +376,12 @@ export const invoiceController = {
   },
 
   /**
-   * Consolidated Weekly Fleet Invoicing (Aggregates multiple completed unbilled jobs for a fleet)
+   * Create a PENDING fleet invoice from the selected completed, unbilled jobs.
+   * Selected IDs outside the fleet or already billed/incomplete jobs are ignored.
+   * Apply the fleet's percentage discount and optional tax settings, with no
+   * deposit credit; default the due date to 30 days from now. Link included jobs
+   * and emit invoice:created, returning HTTP 201. A missing fleet returns 404;
+   * no eligible jobs, no creator, or other caught errors return 400.
    */
   async generateFleetConsolidatedInvoice(req: Request, res: Response) {
     try {
@@ -479,7 +510,12 @@ export const invoiceController = {
   },
 
   /**
-   * Manual Ad-Hoc / Custom Invoicing
+   * Create a PENDING invoice from manual line items without linking jobs.
+   * Unit prices, discounts, and deposits are in cents; taxRatePercent is a
+   * percentage and isTaxExempt overrides it. The controller defaults to CUSTOM,
+   * CA, and a due date 30 days from now, emitting invoice:created on success.
+   * Returns HTTP 201 with items and account details, or 400 for a missing creator
+   * or other caught errors.
    */
   async createInvoice(req: Request, res: Response) {
     try {
@@ -581,7 +617,11 @@ export const invoiceController = {
   },
 
   /**
-   * Record Single Invoice Payment (with automatic two-way status sync to Job)
+   * Record amountCents against an invoice and recalculate its balance after deposits.
+   * A zero balance marks the invoice PAID and linked jobs VERIFIED_PAID; a positive
+   * paid amount with balance remaining marks both PARTIAL. Emit invoice:updated
+   * and return { pmt, updatedInvoice }. Returns HTTP 404 for a missing invoice
+   * and 400 for caught errors.
    */
   async recordPayment(req: Request, res: Response) {
     try {
@@ -650,7 +690,11 @@ export const invoiceController = {
   },
 
   /**
-   * Record Lump-Sum Fleet Payment across outstanding invoices in FIFO order
+   * Allocate amountCents across a fleet's PENDING, PARTIAL, and OVERDUE invoices
+   * by earliest due date, stopping when funds run out. Record each allocation and
+   * synchronize linked jobs to VERIFIED_PAID or PARTIAL. Excess funds remain
+   * unallocated; return { settledCount, allocatedCents }, with amounts in cents.
+   * Returns HTTP 400 when no eligible invoices exist or an error is caught.
    */
   async recordFleetLumpSumPayment(req: Request, res: Response) {
     try {
@@ -740,6 +784,12 @@ export const invoiceController = {
     }
   },
 
+  /**
+   * Set an invoice's status and optional payment method, returning it with items.
+   * PAID sets paidAt (now unless supplied), clears the balance, and marks linked
+   * jobs VERIFIED_PAID without creating a payment record. Emit invoice:updated;
+   * caught errors, including missing invoice updates, become HTTP 400 responses.
+   */
   async updateInvoiceStatus(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
@@ -782,7 +832,9 @@ export const invoiceController = {
   },
 
   /**
-   * Layout payload conforming to verified KT Group Invoice Template (FR-5.6)
+   * Return the KT Group invoice template payload (FR-5.6) as JSON, with regional
+   * hub details, YYYY-MM-DD dates, billing contact, and formatted item/totals values.
+   * Returns HTTP 404 for a missing invoice and 500 for caught errors.
    */
   async getInvoicePdfData(req: Request, res: Response) {
     try {
