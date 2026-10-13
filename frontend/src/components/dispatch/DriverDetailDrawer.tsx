@@ -7,17 +7,22 @@ import {
   MapPin,
   Calendar,
   Power,
+  Edit3,
+  Clock,
 } from 'lucide-react';
 import { type UserItem, userService } from '../../services/userService';
 import { jobService, type JobItem } from '../../services/jobService';
 import { useTenant } from '../../context/TenantContext';
+import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
+import EditDriverForm from './EditDriverForm';
 
 interface DriverDetailDrawerProps {
   driver: UserItem | null;
   isOpen: boolean;
   onClose: () => void;
   onDutyToggled?: () => void;
+  onDriverUpdated?: (updated: UserItem) => void;
 }
 
 /**
@@ -29,9 +34,18 @@ export default function DriverDetailDrawer({
   isOpen,
   onClose,
   onDutyToggled,
+  onDriverUpdated,
 }: DriverDetailDrawerProps) {
+  const { user } = useAuth();
   const { currencySymbol } = useTenant();
   const [isToggling, setIsToggling] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Check if current user can edit drivers (Admin, GM, or Dispatcher)
+  const canEdit =
+    user?.role === 'ADMIN' ||
+    user?.role === 'GENERAL_MANAGER' ||
+    user?.role === 'DISPATCHER';
 
   // Fetch this driver's dispatched job history
   const {
@@ -104,103 +118,155 @@ export default function DriverDetailDrawer({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition cursor-pointer"
-            title="Close"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            {canEdit && !isEditing && (
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition cursor-pointer"
+                title="Edit Details"
+              >
+                <Edit3 size={13} />
+                <span>Edit</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition cursor-pointer"
+              title="Close"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Content */}
         <div className="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
-          {/* Quick Metrics Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
-              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">
-                Total Jobs
-              </span>
-              <span className="text-base font-black text-slate-900 mt-0.5 block">{jobs.length}</span>
-              <span className="text-[10px] text-slate-500 font-medium">Dispatched</span>
+          {isEditing ? (
+            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/90">
+              <EditDriverForm
+                driver={driver}
+                onSuccess={(updated) => {
+                  setIsEditing(false);
+                  onDriverUpdated?.(updated);
+                }}
+                onCancel={() => setIsEditing(false)}
+              />
             </div>
-            <div className="p-2.5 bg-emerald-50/70 rounded-xl border border-emerald-200/80">
-              <span className="text-[10px] font-bold uppercase text-emerald-700 tracking-wider block">
-                Completed
-              </span>
-              <span className="text-base font-black text-emerald-800 mt-0.5 block">
-                {completedJobs.length}
-              </span>
-              <span className="text-[10px] text-emerald-600 font-medium">Delivered</span>
-            </div>
-            <div className="p-2.5 bg-blue-50/70 rounded-xl border border-blue-200/80">
-              <span className="text-[10px] font-bold uppercase text-blue-700 tracking-wider block">
-                Labor Fee
-              </span>
-              <span className="text-base font-black text-blue-900 mt-0.5 block font-mono">
-                {currencySymbol}{(totalEarnedCents / 100).toFixed(2)}
-              </span>
-              <span className="text-[10px] text-blue-600 font-medium">Earned payout</span>
-            </div>
-            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
-              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">
-                Cash in Hand
-              </span>
-              <span className="text-base font-black text-slate-900 mt-0.5 block font-mono">
-                {currencySymbol}{(totalCashCollectedCents / 100).toFixed(2)}
-              </span>
-              <span className="text-[10px] text-slate-500 font-medium">Field cash</span>
-            </div>
-          </div>
-
-          {/* Profile & Vehicle Info */}
-          <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/90 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
-                Driver Profile & Assigned Unit
-              </span>
-              <button
-                type="button"
-                disabled={isToggling}
-                onClick={handleToggleDuty}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
-                  isOnDuty
-                    ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
-                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                }`}
-              >
-                <Power size={12} />
-                <span>{isOnDuty ? 'Set Off Duty' : 'Set On Duty'}</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-200/70 text-slate-700">
-              <div className="flex items-center gap-2">
-                <Truck size={13} className="text-slate-400 shrink-0" />
-                <span className="font-medium truncate">
-                  Rig: <strong>{driver.assignedVehicle || 'Mobile Service Rig'}</strong>
-                </span>
+          ) : (
+            <>
+              {/* Quick Metrics Bar */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">
+                    Total Jobs
+                  </span>
+                  <span className="text-base font-black text-slate-900 mt-0.5 block">{jobs.length}</span>
+                  <span className="text-[10px] text-slate-500 font-medium">Dispatched</span>
+                </div>
+                <div className="p-2.5 bg-emerald-50/70 rounded-xl border border-emerald-200/80">
+                  <span className="text-[10px] font-bold uppercase text-emerald-700 tracking-wider block">
+                    Completed
+                  </span>
+                  <span className="text-base font-black text-emerald-800 mt-0.5 block">
+                    {completedJobs.length}
+                  </span>
+                  <span className="text-[10px] text-emerald-600 font-medium">Delivered</span>
+                </div>
+                <div className="p-2.5 bg-blue-50/70 rounded-xl border border-blue-200/80">
+                  <span className="text-[10px] font-bold uppercase text-blue-700 tracking-wider block">
+                    Labor Fee
+                  </span>
+                  <span className="text-base font-black text-blue-900 mt-0.5 block font-mono">
+                    {currencySymbol}{(totalEarnedCents / 100).toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-blue-600 font-medium">Earned payout</span>
+                </div>
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">
+                    Cash in Hand
+                  </span>
+                  <span className="text-base font-black text-slate-900 mt-0.5 block font-mono">
+                    {currencySymbol}{(totalCashCollectedCents / 100).toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium">Field cash</span>
+                </div>
               </div>
-              {driver.phone && (
-                <div className="flex items-center gap-2">
-                  <Phone size={13} className="text-slate-400 shrink-0" />
-                  <a
-                    href={`tel:${driver.phone}`}
-                    className="font-mono text-blue-600 hover:underline font-semibold"
-                  >
-                    {driver.phone}
-                  </a>
+
+              {/* Profile & Vehicle Info */}
+              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/90 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
+                    Driver Profile & Assigned Unit
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditing(true)}
+                        className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <Edit3 size={11} />
+                        <span>Edit</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={isToggling}
+                      onClick={handleToggleDuty}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                        isOnDuty
+                          ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      }`}
+                    >
+                      <Power size={12} />
+                      <span>{isOnDuty ? 'Set Off Duty' : 'Set On Duty'}</span>
+                    </button>
+                  </div>
                 </div>
-              )}
-              {driver.address && (
-                <div className="flex items-center gap-2 col-span-2">
-                  <MapPin size={13} className="text-rose-500 shrink-0" />
-                  <span className="truncate">{driver.address}</span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-200/70 text-slate-700">
+                  <div className="flex items-center gap-2">
+                    <Truck size={13} className="text-slate-400 shrink-0" />
+                    <span className="font-medium truncate">
+                      Rig: <strong>{driver.assignedVehicle || 'Mobile Service Rig'}</strong>
+                    </span>
+                  </div>
+                  {driver.phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone size={13} className="text-slate-400 shrink-0" />
+                      <a
+                        href={`tel:${driver.phone}`}
+                        className="font-mono text-blue-600 hover:underline font-semibold"
+                      >
+                        {driver.phone}
+                      </a>
+                    </div>
+                  )}
+                  {driver.address && (
+                    <div className="flex items-center gap-2 col-span-2">
+                      <MapPin size={13} className="text-rose-500 shrink-0" />
+                      <span className="truncate">{driver.address}</span>
+                    </div>
+                  )}
+                  {driver.workingDays && (
+                    <div className="flex items-center gap-2">
+                      <Calendar size={13} className="text-slate-400 shrink-0" />
+                      <span className="truncate">Days: {driver.workingDays}</span>
+                    </div>
+                  )}
+                  {driver.workingHours && (
+                    <div className="flex items-center gap-2">
+                      <Clock size={13} className="text-slate-400 shrink-0" />
+                      <span className="truncate">Hours: {driver.workingHours}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
+            </>
+          )}
 
           {/* Dispatched Job History */}
           <div>

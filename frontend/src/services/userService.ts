@@ -9,6 +9,8 @@ export interface UserItem {
   countryCode: string;
   address?: string;
   assignedVehicle?: string;
+  workingDays?: string;
+  workingHours?: string;
   latitude?: number | null;
   longitude?: number | null;
   isAgentActive?: boolean;
