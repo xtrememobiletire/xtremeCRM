@@ -390,9 +390,9 @@ export const accountingController = {
       const id = String(req.params.id);
       const accountantId = (req.user as any)?.id;
 
-      // Barrier check: Senior Accountant, Admin, or General Manager required
+      // Barrier check: Senior Accountant, Admin, General Manager, or Developer required
       const user = await prisma.user.findUnique({ where: { id: accountantId } });
-      if (!user?.canApprovePayouts && !['ADMIN', 'GENERAL_MANAGER'].includes(user?.role || '')) {
+      if (!user?.canApprovePayouts && !['ADMIN', 'GENERAL_MANAGER', 'DEVELOPER'].includes(user?.role || '')) {
         return sendError(
           res,
           'Junior accountants cannot verify cash payments. Senior accountant or Manager approval required.',
@@ -412,6 +412,35 @@ export const accountingController = {
           paymentVerifiedAt: new Date(),
         },
       });
+
+      // Two-way sync: If job has an associated invoice, mark it PAID and record payment
+      if (job.invoiceId) {
+        try {
+          const inv = await prisma.invoice.findUnique({ where: { id: job.invoiceId } });
+          if (inv && inv.status !== 'PAID') {
+            await prisma.invoice.update({
+              where: { id: job.invoiceId },
+              data: {
+                status: 'PAID',
+                paidAt: new Date(),
+                amountPaidCents: inv.totalCents,
+                balanceDueCents: 0,
+              },
+            });
+            await prisma.invoicePayment.create({
+              data: {
+                invoiceId: job.invoiceId,
+                amountCents: inv.balanceDueCents > 0 ? inv.balanceDueCents : inv.totalCents,
+                paymentMethod: 'CASH',
+                referenceId: `Job ${job.jobCode} verified by Senior Accountant`,
+                recordedById: accountantId,
+              },
+            }).catch(() => {});
+          }
+        } catch (invoiceSyncErr) {
+          console.error('[verifyJobPayment] Failed to sync linked invoice:', invoiceSyncErr);
+        }
+      }
 
       try {
         const io = getIO();

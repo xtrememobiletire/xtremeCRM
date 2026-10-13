@@ -22,8 +22,36 @@ const router = Router();
  */
 router.post('/public-booking', validateRequest({ body: CreateJobSchema }), jobController.createPublicBooking);
 
+/**
+ * @route   GET /api/jobs/public/external/:token
+ * @desc    Public External Driver job container (no CRM auth required)
+ * @access  Public
+ */
+router.get('/public/external/:token', jobController.getPublicExternalJob);
+
+/**
+ * @route   PATCH /api/jobs/public/external/:token/status
+ * @desc    Public External Driver status progression (no CRM auth required)
+ * @access  Public
+ */
+router.patch('/public/external/:token/status', jobController.updatePublicExternalJobStatus);
+
 router.use(authenticate);
 router.use(tenantScope);
+
+/**
+ * @route   POST /api/jobs/:id/external-dispatch
+ * @desc    Generate external driver token link
+ * @access  Private
+ */
+router.post('/:id/external-dispatch', validateRequest({ params: idParamSchema }), jobController.generateExternalDispatch);
+
+/**
+ * @route   POST /api/jobs/:id/revoke-external-dispatch
+ * @desc    Revoke external driver dispatch link
+ * @access  Private
+ */
+router.post('/:id/revoke-external-dispatch', validateRequest({ params: idParamSchema }), jobController.revokeExternalDispatch);
 
 /**
  * @route   POST /api/jobs/disposition

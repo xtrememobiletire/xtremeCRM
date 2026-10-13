@@ -10,6 +10,46 @@ import {
 } from '../utils/index.js';
 import { sseManager } from '../services/sseManager.js';
 
+/**
+ * Thread-Safe Atomic Invoice Sequence Generator
+ */
+async function getNextInvoiceNumber(tx: any, countryCode: any, initials: string): Promise<string> {
+  const year = new Date().getFullYear();
+  const seqRecord = await tx.invoiceSequence.upsert({
+    where: { countryCode_year: { countryCode, year } },
+    update: { lastSeq: { increment: 1 } },
+    create: { countryCode, year, lastSeq: 1 },
+  });
+  const seqDigits = String(seqRecord.lastSeq).padStart(4, '0');
+  return `${initials}-${countryCode}-${seqDigits}`;
+}
+
+/**
+ * Flexible Tax & Totals Engine
+ */
+function calculateTaxAndTotals(
+  subtotalCents: number,
+  discountCents: number,
+  depositCents: number,
+  countryCode: string,
+  taxRatePercent?: number,
+  isTaxExempt?: boolean
+) {
+  const taxableAmount = Math.max(0, subtotalCents - discountCents);
+  let taxRate = 0;
+  if (!isTaxExempt) {
+    if (taxRatePercent !== undefined && taxRatePercent !== null) {
+      taxRate = taxRatePercent / 100;
+    } else {
+      taxRate = countryCode === 'CA' ? 0.13 : countryCode === 'UK' ? 0.20 : 0.08;
+    }
+  }
+  const taxAmountCents = Math.round(taxableAmount * taxRate);
+  const totalCents = taxableAmount + taxAmountCents;
+  const balanceDueCents = Math.max(0, totalCents - depositCents);
+  return { taxAmountCents, totalCents, balanceDueCents };
+}
+
 export const invoiceController = {
   async getInvoices(req: Request, res: Response) {
     try {
@@ -20,13 +60,20 @@ export const invoiceController = {
 
       const countryCode = (req.query.countryCode as any) || req.countryCode;
       const status = req.query.status as any;
+      const invoiceType = req.query.invoiceType as any;
       const fleetId = req.query.fleetId as string;
       const customerId = req.query.customerId as string;
       const search = req.query.search as string;
 
       const where: any = {};
-      if (countryCode) where.countryCode = countryCode;
+      if (countryCode && countryCode !== 'ALL') where.countryCode = countryCode;
       if (status) where.status = status;
+      if (invoiceType) {
+        where.invoiceType = invoiceType;
+        if (invoiceType === 'MEMBER') {
+          where.customer = { customerType: 'MEMBERSHIP' };
+        }
+      }
       if (fleetId) where.fleetId = fleetId;
       if (customerId) where.customerId = customerId;
       if (search) {
@@ -47,6 +94,15 @@ export const invoiceController = {
             items: true,
             customer: true,
             fleet: true,
+            payments: true,
+            jobs: {
+              select: {
+                id: true,
+                jobCode: true,
+                status: true,
+                serviceAddress: true,
+              },
+            },
             createdBy: {
               select: {
                 id: true,
@@ -75,6 +131,14 @@ export const invoiceController = {
           items: true,
           customer: true,
           fleet: true,
+          payments: {
+            include: {
+              recordedBy: {
+                select: { id: true, fullName: true, email: true },
+              },
+            },
+            orderBy: { recordedAt: 'desc' },
+          },
           createdBy: {
             select: {
               id: true,
@@ -99,12 +163,24 @@ export const invoiceController = {
   },
 
   /**
-   * 1-Click Invoice Generation from Job (FR-5.2, FR-5.4)
-   * Format: [CreatorInitials]-[CountryCode]-[SequentialDigits] (e.g. MW-US-0002)
+   * On-Demand Invoice Generation from Job (with Flexible Taxes, Deposit Credit & Payment Terms)
    */
   async generateInvoice(req: Request, res: Response) {
     try {
-      const { jobId, dueDate: customDueDate, notes } = req.body;
+      const jobId = (req.params.jobId || req.body?.jobId) as string;
+      if (!jobId) return sendError(res, 'Valid Job ID is required', 400);
+
+      const {
+        dueDate: customDueDate,
+        notes,
+        taxRatePercent,
+        isTaxExempt,
+        creditDeposit = true,
+        paymentTerms,
+        discountCents = 0,
+        lineItems: customLineItems,
+      } = req.body || {};
+
       const creator = req.user as any;
       const createdById = creator?.id || (await prisma.user.findFirst())?.id;
       if (!createdById) return sendError(res, 'No creator user found', 400);
@@ -117,12 +193,37 @@ export const invoiceController = {
           vehicle: true,
           serviceItems: true,
           createdBy: true,
+          invoice: {
+            include: {
+              items: true,
+              customer: true,
+              fleet: true,
+            },
+          },
         },
       });
 
       if (!job) return sendError(res, 'Job not found', 404);
 
-      // Extract creator initials (e.g. "Sarah Agent" -> "SA", fallback "XT")
+      // Strict Single Invoice Guarantee: if job already has an invoice, return it
+      if (job.invoice) {
+        return sendSuccess(res, job.invoice, 'Invoice already exists for this job');
+      }
+      if (job.invoiceId) {
+        const existingInv = await prisma.invoice.findUnique({
+          where: { id: job.invoiceId },
+          include: {
+            items: true,
+            customer: true,
+            fleet: true,
+          },
+        });
+        if (existingInv) {
+          return sendSuccess(res, existingInv, 'Invoice already exists for this job');
+        }
+      }
+
+      // Creator initials
       const initials = (creator?.fullName || 'Xtreme Admin')
         .split(' ')
         .map((n: string) => n[0])
@@ -130,61 +231,114 @@ export const invoiceController = {
         .toUpperCase()
         .slice(0, 3) || 'XT';
 
-      const count = await prisma.invoice.count({
-        where: { countryCode: job.countryCode },
-      });
-      const seqDigits = String(count + 1).padStart(4, '0');
-      const invoiceNumber = `${initials}-${job.countryCode}-${seqDigits}`;
-
       const issueDate = new Date();
-      const dueDate = customDueDate ? new Date(customDueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      let dueDate: Date;
+      if (customDueDate) {
+        dueDate = new Date(customDueDate);
+      } else if (paymentTerms === 'DUE_ON_RECEIPT') {
+        dueDate = new Date(issueDate);
+      } else if (paymentTerms === 'NET_7') {
+        dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      } else if (paymentTerms === 'NET_14') {
+        dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+      } else if (paymentTerms === 'NET_30') {
+        dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      } else {
+        // Default: due on receipt for standard retail jobs, Net 30 for fleets
+        dueDate = job.fleetId
+          ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+          : new Date(issueDate);
+      }
 
-      // Build line items from job service items
-      const itemsData = job.serviceItems.length > 0
-        ? job.serviceItems.map((item) => ({
-            itemDetails: `${item.serviceName} (${job.vehicle ? `${job.vehicle.year} ${job.vehicle.make} ${job.vehicle.model}` : 'Standard Vehicle'})`,
-            unitPriceCents: item.unitPriceCents,
-            quantity: item.quantity,
-          }))
-        : [
-            {
-              itemDetails: `Roadside Assistance: ${job.serviceAddress}`,
-              unitPriceCents: job.subtotalCents,
-              quantity: 1,
-            },
-          ];
+      // Determine invoice type: FLEET vs MEMBER vs CUSTOMER
+      let invoiceType: any = 'CUSTOMER';
+      if (job.fleetId) {
+        invoiceType = 'FLEET';
+      } else if (job.customer?.customerType === 'MEMBERSHIP') {
+        invoiceType = 'MEMBER';
+      }
 
-      const invoice = await prisma.invoice.create({
-        data: {
-          invoiceNumber,
-          countryCode: job.countryCode,
-          currency: job.currency,
-          customerId: job.customerId,
-          fleetId: job.fleetId,
-          issueDate,
-          dueDate,
-          status: 'PENDING',
-          subtotalCents: job.subtotalCents,
-          taxAmountCents: job.taxAmountCents,
-          totalCents: job.totalCents,
-          createdById,
-          paymentMethod: job.paymentMethod,
-          notes: notes || `Generated from Job ${job.jobCode}`,
-          items: {
-            create: itemsData,
+      // Build line items from customLineItems if provided, else from job service items
+      let itemsData: { itemDetails: string; unitPriceCents: number; quantity: number }[] = [];
+      if (Array.isArray(customLineItems) && customLineItems.length > 0) {
+        itemsData = customLineItems.map((item: any) => ({
+          itemDetails: String(item.itemDetails || item.description || 'Roadside Assistance Service'),
+          unitPriceCents: Math.max(0, Math.round(Number(item.unitPriceCents || 0))),
+          quantity: Math.max(1, Math.round(Number(item.quantity || 1))),
+        }));
+      } else if (job.serviceItems.length > 0) {
+        itemsData = job.serviceItems.map((item) => ({
+          itemDetails: `${item.serviceName} (${job.vehicle ? `${job.vehicle.year || ''} ${job.vehicle.make || ''} ${job.vehicle.model || ''}`.trim() : 'Standard Vehicle'})`,
+          unitPriceCents: item.unitPriceCents,
+          quantity: item.quantity,
+        }));
+      } else {
+        itemsData = [
+          {
+            itemDetails: `Roadside Assistance: ${job.serviceAddress}`,
+            unitPriceCents: job.subtotalCents,
+            quantity: 1,
           },
-        },
-        include: {
-          items: true,
-          customer: true,
-          fleet: true,
-        },
-      });
+        ];
+      }
 
-      // Link job to this invoice
-      await prisma.job.update({
-        where: { id: jobId },
-        data: { invoiceId: invoice.id },
+      const subtotalCents = itemsData.reduce((sum, it) => sum + it.unitPriceCents * it.quantity, 0);
+      const discountAmountCents = Math.max(0, Math.round(Number(discountCents || 0)));
+      const depositCents = creditDeposit ? (job.upfrontAmountCents || 0) : 0;
+
+      const { taxAmountCents, totalCents, balanceDueCents } = calculateTaxAndTotals(
+        subtotalCents,
+        discountAmountCents,
+        depositCents,
+        job.countryCode,
+        taxRatePercent,
+        isTaxExempt
+      );
+
+      const invoice = await prisma.$transaction(async (tx) => {
+        const invoiceNumber = await getNextInvoiceNumber(tx, job.countryCode, initials);
+
+        const inv = await tx.invoice.create({
+          data: {
+            invoiceNumber,
+            invoiceType,
+            countryCode: job.countryCode,
+            currency: job.currency,
+            customerId: job.customerId,
+            fleetId: job.fleetId,
+            issueDate,
+            dueDate,
+            status: 'PENDING',
+            subtotalCents,
+            taxRatePercent: taxRatePercent !== undefined ? Number(taxRatePercent) : null,
+            isTaxExempt: Boolean(isTaxExempt),
+            taxAmountCents,
+            depositCents,
+            discountCents: discountAmountCents,
+            totalCents,
+            amountPaidCents: 0,
+            balanceDueCents,
+            createdById,
+            paymentMethod: job.paymentMethod,
+            notes: notes || `Generated from Job ${job.jobCode}`,
+            items: {
+              create: itemsData,
+            },
+          },
+          include: {
+            items: true,
+            customer: true,
+            fleet: true,
+          },
+        });
+
+        // Link job to this invoice
+        await tx.job.update({
+          where: { id: jobId },
+          data: { invoiceId: inv.id },
+        });
+
+        return inv;
       });
 
       sseManager.broadcast(`sse:dispatch:${invoice.countryCode}`, 'invoice:created', invoice);
@@ -195,16 +349,153 @@ export const invoiceController = {
     }
   },
 
+  /**
+   * Consolidated Weekly Fleet Invoicing (Aggregates multiple completed unbilled jobs for a fleet)
+   */
+  async generateFleetConsolidatedInvoice(req: Request, res: Response) {
+    try {
+      const { fleetId, jobIds, dueDate: customDueDate, notes, taxRatePercent, isTaxExempt } = req.body;
+      const creator = req.user as any;
+      const createdById = creator?.id || (await prisma.user.findFirst())?.id;
+      if (!createdById) return sendError(res, 'No creator user found', 400);
+
+      const fleet = await prisma.fleet.findUnique({
+        where: { id: fleetId },
+      });
+      if (!fleet) return sendError(res, 'Fleet not found', 404);
+
+      const jobs = await prisma.job.findMany({
+        where: {
+          id: { in: jobIds },
+          fleetId,
+          invoiceId: null,
+          status: 'COMPLETED',
+        },
+        include: {
+          serviceItems: true,
+          vehicle: true,
+        },
+      });
+
+      if (jobs.length === 0) {
+        return sendError(res, 'No unbilled completed jobs found for the selected IDs', 400);
+      }
+
+      const countryCode = fleet.countryCode;
+      const currency = countryCode === 'US' ? 'USD' : countryCode === 'UK' ? 'GBP' : 'CAD';
+
+      const initials = (creator?.fullName || 'Xtreme Admin')
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 3) || 'XT';
+
+      // Build consolidated line items from all selected jobs
+      const itemsData = jobs.flatMap((j) => {
+        const vehiclePlate = j.vehicle?.licensePlate || 'Fleet Unit';
+        if (j.serviceItems.length > 0) {
+          return j.serviceItems.map((si) => ({
+            itemDetails: `[${j.jobCode}] ${vehiclePlate}: ${si.serviceName}`,
+            unitPriceCents: si.unitPriceCents,
+            quantity: si.quantity,
+          }));
+        }
+        return [
+          {
+            itemDetails: `[${j.jobCode}] ${vehiclePlate}: Roadside Service at ${j.serviceAddress}`,
+            unitPriceCents: j.subtotalCents,
+            quantity: 1,
+          },
+        ];
+      });
+
+      const subtotalCents = itemsData.reduce((sum, it) => sum + it.unitPriceCents * it.quantity, 0);
+      const discountPercent = fleet.discountPercent || 0;
+      const discountCents = Math.round(subtotalCents * (discountPercent / 100));
+      const depositCents = 0;
+
+      const { taxAmountCents, totalCents, balanceDueCents } = calculateTaxAndTotals(
+        subtotalCents,
+        discountCents,
+        depositCents,
+        countryCode,
+        taxRatePercent,
+        isTaxExempt
+      );
+
+      const issueDate = new Date();
+      const dueDate = customDueDate ? new Date(customDueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+      const invoice = await prisma.$transaction(async (tx) => {
+        const invoiceNumber = await getNextInvoiceNumber(tx, countryCode, initials);
+
+        const inv = await tx.invoice.create({
+          data: {
+            invoiceNumber,
+            invoiceType: 'FLEET',
+            countryCode,
+            currency,
+            fleetId,
+            issueDate,
+            dueDate,
+            status: 'PENDING',
+            subtotalCents,
+            taxRatePercent: taxRatePercent !== undefined ? Number(taxRatePercent) : null,
+            isTaxExempt: Boolean(isTaxExempt),
+            taxAmountCents,
+            depositCents,
+            discountCents,
+            totalCents,
+            amountPaidCents: 0,
+            balanceDueCents,
+            createdById,
+            notes: notes || `Consolidated statement for ${jobs.length} completed work orders`,
+            items: {
+              create: itemsData,
+            },
+          },
+          include: {
+            items: true,
+            fleet: true,
+          },
+        });
+
+        // Link all jobs to this consolidated invoice
+        await tx.job.updateMany({
+          where: { id: { in: jobs.map((j) => j.id) } },
+          data: { invoiceId: inv.id },
+        });
+
+        return inv;
+      });
+
+      sseManager.broadcast(`sse:dispatch:${invoice.countryCode}`, 'invoice:created', invoice);
+
+      return sendSuccess(res, invoice, `Consolidated invoice created for ${jobs.length} jobs`, 201);
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Manual Ad-Hoc / Custom Invoicing
+   */
   async createInvoice(req: Request, res: Response) {
     try {
       const {
         customerId,
         fleetId,
+        invoiceType = 'CUSTOM',
         countryCode,
         currency,
         dueDate: customDueDate,
         notes,
         paymentMethod,
+        taxRatePercent,
+        isTaxExempt,
+        depositCents = 0,
+        discountCents = 0,
         items,
       } = req.body;
 
@@ -222,50 +513,63 @@ export const invoiceController = {
         .toUpperCase()
         .slice(0, 3) || 'XT';
 
-      const count = await prisma.invoice.count({ where: { countryCode: country } });
-      const seqDigits = String(count + 1).padStart(4, '0');
-      const invoiceNumber = `${initials}-${country}-${seqDigits}`;
-
       const subtotalCents = items.reduce(
         (sum: number, it: any) => sum + it.unitPriceCents * (it.quantity || 1),
         0
       );
-      const taxRate = country === 'CA' ? 0.13 : country === 'UK' ? 0.20 : 0.08;
-      const taxAmountCents = Math.round(subtotalCents * taxRate);
-      const totalCents = subtotalCents + taxAmountCents;
+
+      const { taxAmountCents, totalCents, balanceDueCents } = calculateTaxAndTotals(
+        subtotalCents,
+        Number(discountCents) || 0,
+        Number(depositCents) || 0,
+        country,
+        taxRatePercent,
+        isTaxExempt
+      );
 
       const issueDate = new Date();
       const dueDate = customDueDate ? new Date(customDueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-      const invoice = await prisma.invoice.create({
-        data: {
-          invoiceNumber,
-          countryCode: country,
-          currency: curr,
-          customerId,
-          fleetId,
-          issueDate,
-          dueDate,
-          status: 'PENDING',
-          subtotalCents,
-          taxAmountCents,
-          totalCents,
-          createdById,
-          paymentMethod,
-          notes,
-          items: {
-            create: items.map((it: any) => ({
-              itemDetails: it.itemDetails,
-              unitPriceCents: it.unitPriceCents,
-              quantity: it.quantity || 1,
-            })),
+      const invoice = await prisma.$transaction(async (tx) => {
+        const invoiceNumber = await getNextInvoiceNumber(tx, country, initials);
+
+        return await tx.invoice.create({
+          data: {
+            invoiceNumber,
+            invoiceType,
+            countryCode: country,
+            currency: curr,
+            customerId,
+            fleetId,
+            issueDate,
+            dueDate,
+            status: 'PENDING',
+            subtotalCents,
+            taxRatePercent: taxRatePercent !== undefined ? Number(taxRatePercent) : null,
+            isTaxExempt: Boolean(isTaxExempt),
+            taxAmountCents,
+            depositCents: Number(depositCents) || 0,
+            discountCents: Number(discountCents) || 0,
+            totalCents,
+            amountPaidCents: 0,
+            balanceDueCents,
+            createdById,
+            paymentMethod,
+            notes,
+            items: {
+              create: items.map((it: any) => ({
+                itemDetails: it.itemDetails,
+                unitPriceCents: it.unitPriceCents,
+                quantity: it.quantity || 1,
+              })),
+            },
           },
-        },
-        include: {
-          items: true,
-          customer: true,
-          fleet: true,
-        },
+          include: {
+            items: true,
+            customer: true,
+            fleet: true,
+          },
+        });
       });
 
       sseManager.broadcast(`sse:dispatch:${invoice.countryCode}`, 'invoice:created', invoice);
@@ -276,21 +580,197 @@ export const invoiceController = {
     }
   },
 
+  /**
+   * Record Single Invoice Payment (with automatic two-way status sync to Job)
+   */
+  async recordPayment(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const { amountCents, paymentMethod, referenceId, notes } = req.body;
+      const user = req.user as any;
+
+      const invoice = await prisma.invoice.findUnique({
+        where: { id },
+      });
+      if (!invoice) return sendError(res, 'Invoice not found', 404);
+
+      const payment = await prisma.$transaction(async (tx) => {
+        const pmt = await tx.invoicePayment.create({
+          data: {
+            invoiceId: id,
+            amountCents: Number(amountCents),
+            paymentMethod,
+            referenceId,
+            notes,
+            recordedById: user?.id,
+          },
+        });
+
+        const newAmountPaid = invoice.amountPaidCents + Number(amountCents);
+        const newBalanceDue = Math.max(0, invoice.totalCents - invoice.depositCents - newAmountPaid);
+        const isFullyPaid = newBalanceDue === 0;
+        const isPartiallyPaid = newBalanceDue > 0 && newAmountPaid > 0;
+        const newStatus = isFullyPaid ? 'PAID' : isPartiallyPaid ? 'PARTIAL' : invoice.status;
+
+        const updatedInvoice = await tx.invoice.update({
+          where: { id },
+          data: {
+            amountPaidCents: newAmountPaid,
+            balanceDueCents: newBalanceDue,
+            status: newStatus,
+            ...(isFullyPaid && {
+              paidAt: new Date(),
+              paymentMethod: paymentMethod || invoice.paymentMethod,
+            }),
+          },
+        });
+
+        // Two-way sync: Update linked jobs payment status
+        if (isFullyPaid) {
+          await tx.job.updateMany({
+            where: { invoiceId: id },
+            data: { paymentStatus: 'VERIFIED_PAID' },
+          });
+        } else if (isPartiallyPaid) {
+          await tx.job.updateMany({
+            where: { invoiceId: id },
+            data: { paymentStatus: 'PARTIAL' },
+          });
+        }
+
+        return { pmt, updatedInvoice };
+      });
+
+      sseManager.broadcast(`sse:dispatch:${invoice.countryCode}`, 'invoice:updated', payment.updatedInvoice);
+
+      return sendSuccess(res, payment, 'Payment recorded successfully');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Record Lump-Sum Fleet Payment across outstanding invoices in FIFO order
+   */
+  async recordFleetLumpSumPayment(req: Request, res: Response) {
+    try {
+      const { fleetId, amountCents, paymentMethod, referenceId, notes } = req.body;
+      const user = req.user as any;
+
+      const pendingInvoices = await prisma.invoice.findMany({
+        where: {
+          fleetId,
+          status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] },
+        },
+        orderBy: { dueDate: 'asc' }, // Oldest first (FIFO)
+      });
+
+      if (pendingInvoices.length === 0) {
+        return sendError(res, 'No outstanding invoices found for this fleet', 400);
+      }
+
+      let remainingFunds = Number(amountCents);
+      const settledInvoiceIds: string[] = [];
+      const partialInvoiceIds: string[] = [];
+
+      await prisma.$transaction(async (tx) => {
+        for (const inv of pendingInvoices) {
+          if (remainingFunds <= 0) break;
+
+          const due = inv.balanceDueCents;
+          const payThis = Math.min(remainingFunds, due);
+
+          await tx.invoicePayment.create({
+            data: {
+              invoiceId: inv.id,
+              amountCents: payThis,
+              paymentMethod,
+              referenceId,
+              notes: notes ? `${notes} (Fleet Lump-Sum allocation)` : 'Fleet Lump-Sum allocation',
+              recordedById: user?.id,
+            },
+          });
+
+          const newAmountPaid = inv.amountPaidCents + payThis;
+          const newBalanceDue = inv.totalCents - inv.depositCents - newAmountPaid;
+          const isFullyPaid = newBalanceDue <= 0;
+          const isPartiallyPaid = newBalanceDue > 0 && newAmountPaid > 0;
+          const newStatus = isFullyPaid ? 'PAID' : isPartiallyPaid ? 'PARTIAL' : inv.status;
+
+          await tx.invoice.update({
+            where: { id: inv.id },
+            data: {
+              amountPaidCents: newAmountPaid,
+              balanceDueCents: Math.max(0, newBalanceDue),
+              status: newStatus,
+              ...(isFullyPaid && {
+                paidAt: new Date(),
+                paymentMethod: paymentMethod || inv.paymentMethod,
+              }),
+            },
+          });
+
+          if (isFullyPaid) {
+            settledInvoiceIds.push(inv.id);
+          } else if (isPartiallyPaid) {
+            partialInvoiceIds.push(inv.id);
+          }
+
+          remainingFunds -= payThis;
+        }
+
+        // Two-way sync: update all linked jobs
+        if (settledInvoiceIds.length > 0) {
+          await tx.job.updateMany({
+            where: { invoiceId: { in: settledInvoiceIds } },
+            data: { paymentStatus: 'VERIFIED_PAID' },
+          });
+        }
+        if (partialInvoiceIds.length > 0) {
+          await tx.job.updateMany({
+            where: { invoiceId: { in: partialInvoiceIds } },
+            data: { paymentStatus: 'PARTIAL' },
+          });
+        }
+      });
+
+      return sendSuccess(res, { settledCount: settledInvoiceIds.length, allocatedCents: Number(amountCents) - remainingFunds }, 'Lump-sum payment applied successfully');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
   async updateInvoiceStatus(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
       const { status, paymentMethod, paidAt } = req.body;
 
-      const updated = await prisma.invoice.update({
-        where: { id },
-        data: {
-          status,
-          ...(paymentMethod && { paymentMethod }),
-          ...(status === 'PAID' && { paidAt: paidAt ? new Date(paidAt) : new Date() }),
-        },
-        include: {
-          items: true,
-        },
+      const updated = await prisma.$transaction(async (tx) => {
+        const inv = await tx.invoice.update({
+          where: { id },
+          data: {
+            status,
+            ...(paymentMethod && { paymentMethod }),
+            ...(status === 'PAID' && {
+              paidAt: paidAt ? new Date(paidAt) : new Date(),
+              balanceDueCents: 0,
+              amountPaidCents: { set: undefined }, // will preserve existing or match
+            }),
+          },
+          include: {
+            items: true,
+          },
+        });
+
+        // Two-way sync: If invoice marked PAID, mark linked jobs VERIFIED_PAID
+        if (status === 'PAID') {
+          await tx.job.updateMany({
+            where: { invoiceId: id },
+            data: { paymentStatus: 'VERIFIED_PAID' },
+          });
+        }
+
+        return inv;
       });
 
       sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'invoice:updated', updated);
@@ -326,18 +806,18 @@ export const invoiceController = {
         ? {
             address: '11815 Medway Church Loop, Manassas, VA 20109',
             phone: '+1 (703) 555-0144',
-            taxLabel: 'State & Local Sales Tax (8%)',
+            taxLabel: invoice.taxRatePercent !== null ? `Sales Tax (${invoice.taxRatePercent}%)` : 'State & Local Sales Tax (8%)',
           }
         : invoice.countryCode === 'UK'
         ? {
             address: 'Independent UK Hub, London',
             phone: '+44 20 7946 0912',
-            taxLabel: 'VAT (20%)',
+            taxLabel: invoice.taxRatePercent !== null ? `VAT (${invoice.taxRatePercent}%)` : 'VAT (20%)',
           }
         : {
             address: '857 Winterton Way, Mississauga, ON L5V 1Z5',
             phone: '+1 (416) 555-0192',
-            taxLabel: 'HST Ontario (13%)',
+            taxLabel: invoice.taxRatePercent !== null ? `HST (${invoice.taxRatePercent}%)` : 'HST Ontario (13%)',
           };
 
       const pdfData = {
@@ -348,10 +828,12 @@ export const invoiceController = {
           hub: regionalHub,
         },
         invoiceNumber: invoice.invoiceNumber,
+        invoiceType: invoice.invoiceType,
         issueDate: invoice.issueDate.toISOString().split('T')[0],
         dueDate: invoice.dueDate.toISOString().split('T')[0],
         currency: invoice.currency,
         status: invoice.status,
+        countryCode: invoice.countryCode,
         billTo: invoice.fleet
           ? {
               name: invoice.fleet.name,
@@ -365,6 +847,7 @@ export const invoiceController = {
               name: invoice.customer?.fullName || 'Retail Customer',
               phone: invoice.customer?.phone,
               email: invoice.customer?.email,
+              address: invoice.customer?.address || invoice.jobs?.[0]?.serviceAddress || '',
             },
         items: invoice.items.map((it) => ({
           details: it.itemDetails,
@@ -374,8 +857,13 @@ export const invoiceController = {
         })),
         summary: {
           subtotal: formatCurrency(invoice.subtotalCents, invoice.currency as any),
+          discount: invoice.discountCents > 0 ? formatCurrency(invoice.discountCents, invoice.currency as any) : null,
+          depositCredited: invoice.depositCents > 0 ? formatCurrency(invoice.depositCents, invoice.currency as any) : null,
           tax: formatCurrency(invoice.taxAmountCents, invoice.currency as any),
+          taxRateFormatted: invoice.isTaxExempt ? 'Tax Exempt (0%)' : `${invoice.taxRatePercent ?? (invoice.countryCode === 'CA' ? 13 : invoice.countryCode === 'UK' ? 20 : 8)}%`,
           grandTotal: formatCurrency(invoice.totalCents, invoice.currency as any),
+          amountPaid: formatCurrency(invoice.amountPaidCents, invoice.currency as any),
+          balanceDue: formatCurrency(invoice.balanceDueCents, invoice.currency as any),
           isPaid: invoice.status === 'PAID',
         },
       };

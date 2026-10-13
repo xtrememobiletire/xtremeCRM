@@ -61,9 +61,15 @@ export interface JobItem {
   notes?: string;
   recipientName?: string;
   recipientPhone?: string;
-  completedAt?: string;
   cashCollectedCents?: number;
   receiptUrl?: string;
+  externalDispatchToken?: string | null;
+  externalDispatchStatus?: string | null;
+  externalDriverFeeCents?: number | null;
+  driverType?: 'INTERNAL' | 'EXTERNAL';
+  paymentStatus?: string;
+  invoiceId?: string | null;
+  invoice?: any;
 }
 
 export interface PaginationMeta {
@@ -214,5 +220,43 @@ export const jobService = {
     countryCode: string;
   }): Promise<void> {
     await api.post('/jobs/disposition', payload);
+  },
+
+  async generateExternalDispatch(
+    id: string,
+    payload: {
+      externalCompanyName?: string;
+      externalDriverPhone?: string;
+      externalDriverAddress?: string;
+      latitude?: number;
+      longitude?: number;
+      externalDriverFeeCents?: number;
+      contractorPayoutFeeCents?: number;
+      driverEtaMinutes?: number;
+    } | number
+  ): Promise<{ message: string; externalDispatchToken: string; externalDispatchUrl: string; token?: string; publicUrl?: string; job: JobItem }> {
+    const body = typeof payload === 'number'
+      ? { externalDriverFeeCents: payload }
+      : payload;
+    const res = await api.post(`/jobs/${id}/external-dispatch`, body);
+    return res.data.data;
+  },
+
+  async revokeExternalDispatch(id: string): Promise<{ message: string; job: JobItem }> {
+    const res = await api.post(`/jobs/${id}/revoke-external-dispatch`);
+    return res.data.data;
+  },
+
+  async getPublicExternalJob(token: string): Promise<any> {
+    const res = await api.get(`/jobs/public/external/${token}`);
+    return res.data.data;
+  },
+
+  async updatePublicExternalJobStatus(
+    token: string,
+    payload: { action: 'ACCEPT' | 'DECLINE' | 'EN_ROUTE' | 'ARRIVED' | 'COMPLETE'; reason?: string; cashAmountCents?: number }
+  ): Promise<any> {
+    const res = await api.patch(`/jobs/public/external/${token}/status`, payload);
+    return res.data.data;
   },
 };

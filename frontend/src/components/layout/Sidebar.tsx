@@ -17,7 +17,9 @@ import {
   History,
   PhoneIncoming,
   PhoneOutgoing,
-  Globe
+  Globe,
+  FileText,
+  UserCheck
 } from 'lucide-react';
 
 const routeChunkLoaders: Record<string, () => Promise<any>> = {
@@ -30,6 +32,8 @@ const routeChunkLoaders: Record<string, () => Promise<any>> = {
   '/dispatch': () => import('../../pages/Dispatch'),
   '/fleets': () => import('../../pages/Fleets'),
   '/customers': () => import('../../pages/Customers'),
+  '/invoices': () => import('../../pages/Invoices'),
+  '/drivers': () => import('../../pages/Drivers'),
   '/accounting': () => import('../../pages/Accounting'),
   '/leads': () => import('../../pages/Leads'),
   '/fleet-dashboard': () => import('../../pages/FleetDashboard'),
@@ -53,8 +57,10 @@ const baseNavItems = [
   { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
   { icon: PhoneOutgoing, label: 'Leads', path: '/leads' },
   { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
+  { icon: UserCheck, label: 'Drivers', path: '/drivers' },
   { icon: Truck, label: 'Fleets', path: '/fleets' },
   { icon: Users, label: 'Customers', path: '/customers' },
+  { icon: FileText, label: 'Invoices', path: '/invoices' },
   { icon: DollarSign, label: 'Accounting', path: '/accounting' },
 ];
 
@@ -89,6 +95,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       ]
     : isAccountant
     ? [
+        { icon: FileText, label: 'Invoices', path: '/invoices' },
         { icon: DollarSign, label: 'Accounting', path: '/accounting' },
       ]
     : isDispatcher
@@ -99,9 +106,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         { icon: PhoneIncoming, label: 'Roadside Intake', path: '/inbound' },
         { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
         { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
+        { icon: UserCheck, label: 'Drivers', path: '/drivers' },
         { icon: PhoneOutgoing, label: 'Leads', path: '/leads' },
         { icon: Truck, label: 'Fleets', path: '/fleets' },
         { icon: Users, label: 'Customers', path: '/customers' },
+        { icon: FileText, label: 'Invoices', path: '/invoices' },
       ]
     : isVa
     ? [

@@ -190,9 +190,19 @@ export function useSSE() {
     };
 
     const targetCountry = country || user.countryCode || 'CA';
-    const sseUrl = `${BACKEND_ROOT_URL}/api/events/stream?countryCode=${targetCountry}`;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('xtreme_token') : null;
+    const sseUrl = `${BACKEND_ROOT_URL}/api/events/stream?countryCode=${targetCountry}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
 
     const connectSSE = () => {
+      const currentToken = typeof window !== 'undefined' ? localStorage.getItem('xtreme_token') : null;
+      if (!currentToken) {
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+          eventSourceRef.current = null;
+        }
+        return;
+      }
+
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
@@ -364,7 +374,7 @@ export function useSSE() {
 
       const handleInvoiceChanged = () => {
         lastActivityRef.current = Date.now();
-        scheduleInvalidation(['invoices', 'accounting-reconciliation', 'accounting-summary']);
+        scheduleInvalidation(['invoices', 'accounting-invoices', 'fleet-billing-summary', 'accounting-reconciliation', 'accounting-summary']);
       };
 
       // Lead listeners
@@ -398,12 +408,15 @@ export function useSSE() {
       es.addEventListener('invoice:updated', handleInvoiceChanged);
 
       es.onerror = () => {
-        // If stream permanently closed, schedule immediate reconnect with backoff
+        // If stream closed or errored, close instance and retry only if user remains logged in
         if (es.readyState === EventSource.CLOSED) {
+          es.close();
+          const currentToken = typeof window !== 'undefined' ? localStorage.getItem('xtreme_token') : null;
+          if (!currentToken) return;
           if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
           reconnectTimeoutRef.current = setTimeout(() => {
             connectSSE();
-          }, 2500);
+          }, 3500);
         }
       };
     };

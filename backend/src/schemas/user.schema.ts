@@ -19,6 +19,13 @@ export const createUserSchema = z.object({
   countryCode: z.enum(['CA', 'US', 'UK']).default('CA'),
   phone: z.string().optional(),
   isAgentActive: z.boolean().optional().default(false),
+  address: z.string().optional(),
+  assignedVehicle: z.string().optional(),
+  workingDays: z.string().optional(),
+  workingHours: z.string().optional(),
+  approvedByName: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 export const updateUserSchema = createUserSchema.partial().omit({ password: true });

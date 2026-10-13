@@ -6,6 +6,9 @@ import {
   invoiceQuerySchema,
   createInvoiceSchema,
   generateInvoiceSchema,
+  generateFleetConsolidatedSchema,
+  recordPaymentSchema,
+  recordFleetLumpSumPaymentSchema,
   updateInvoiceStatusSchema,
   idParamSchema,
 } from '../schemas/index.js';
@@ -26,6 +29,77 @@ router.get(
 );
 
 /**
+ * @route   POST /api/invoices
+ * @desc    Create manual/ad-hoc invoice
+ * @access  Private
+ */
+router.post(
+  '/',
+  validateRequest({ body: createInvoiceSchema }),
+  invoiceController.createInvoice
+);
+
+/**
+ * @route   POST /api/invoices/generate & POST /api/invoices/generate/:jobId
+ * @desc    On-demand Invoice Generation from Job
+ * @access  Private
+ */
+router.post(
+  '/generate/:jobId',
+  invoiceController.generateInvoice
+);
+
+router.post(
+  '/generate',
+  validateRequest({ body: generateInvoiceSchema }),
+  invoiceController.generateInvoice
+);
+
+/**
+ * @route   POST /api/invoices/consolidated
+ * @desc    Weekly Fleet Consolidated Statement Invoicing
+ * @access  Private
+ */
+router.post(
+  '/consolidated',
+  validateRequest({ body: generateFleetConsolidatedSchema }),
+  invoiceController.generateFleetConsolidatedInvoice
+);
+
+/**
+ * @route   POST /api/invoices/payments/lump-sum
+ * @desc    Record lump-sum payment across fleet invoices (FIFO)
+ * @access  Private
+ */
+router.post(
+  '/payments/lump-sum',
+  validateRequest({ body: recordFleetLumpSumPaymentSchema }),
+  invoiceController.recordFleetLumpSumPayment
+);
+
+/**
+ * @route   POST /api/invoices/:id/payments
+ * @desc    Record payment on a single invoice
+ * @access  Private
+ */
+router.post(
+  '/:id/payments',
+  validateRequest({ params: idParamSchema, body: recordPaymentSchema }),
+  invoiceController.recordPayment
+);
+
+/**
+ * @route   GET /api/invoices/:id/pdf
+ * @desc    Get KT Group template PDF payload
+ * @access  Private
+ */
+router.get(
+  '/:id/pdf',
+  validateRequest({ params: idParamSchema }),
+  invoiceController.getInvoicePdfData
+);
+
+/**
  * @route   GET /api/invoices/:id
  * @desc    Get single invoice by ID
  * @access  Private
@@ -37,28 +111,6 @@ router.get(
 );
 
 /**
- * @route   POST /api/invoices
- * @desc    Create manual invoice
- * @access  Private (ADMIN, ACCOUNTANT)
- */
-router.post(
-  '/',
-  validateRequest({ body: createInvoiceSchema }),
-  invoiceController.createInvoice
-);
-
-/**
- * @route   POST /api/invoices/generate
- * @desc    1-Click Invoice Generation from Job (FR-5.2)
- * @access  Private
- */
-router.post(
-  '/generate',
-  validateRequest({ body: generateInvoiceSchema }),
-  invoiceController.generateInvoice
-);
-
-/**
  * @route   PATCH /api/invoices/:id/status
  * @desc    Update invoice status
  * @access  Private
@@ -67,17 +119,6 @@ router.patch(
   '/:id/status',
   validateRequest({ params: idParamSchema, body: updateInvoiceStatusSchema }),
   invoiceController.updateInvoiceStatus
-);
-
-/**
- * @route   GET /api/invoices/:id/pdf
- * @desc    Get KT Group template PDF payload (FR-5.6)
- * @access  Private
- */
-router.get(
-  '/:id/pdf',
-  validateRequest({ params: idParamSchema }),
-  invoiceController.getInvoicePdfData
 );
 
 export default router;
