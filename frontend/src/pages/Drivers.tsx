@@ -320,6 +320,10 @@ export default function Drivers() {
             refetch();
             setSelectedDriver((prev: any) => (prev ? { ...prev, isAgentActive: !prev.isAgentActive } : null));
           }}
+          onDriverUpdated={(updated) => {
+            refetch();
+            setSelectedDriver(updated);
+          }}
         />
       )}
 

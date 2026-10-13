@@ -40,11 +40,11 @@ router.get(
 /**
  * @route   POST /api/users
  * @desc    Create new user
- * @access  Private (ADMIN, GENERAL_MANAGER)
+ * @access  Private (ADMIN, GENERAL_MANAGER, DISPATCHER)
  */
 router.post(
   '/',
-  authorize(['ADMIN', 'GENERAL_MANAGER']),
+  authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']),
   validateRequest({ body: createUserSchema }),
   userController.createUser
 );
@@ -52,11 +52,11 @@ router.post(
 /**
  * @route   PATCH /api/users/:id
  * @desc    Update user profile or role
- * @access  Private (ADMIN, GENERAL_MANAGER)
+ * @access  Private (ADMIN, GENERAL_MANAGER, DISPATCHER)
  */
 router.patch(
   '/:id',
-  authorize(['ADMIN', 'GENERAL_MANAGER']),
+  authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']),
   validateRequest({ params: idParamSchema, body: updateUserSchema }),
   userController.updateUser
 );
