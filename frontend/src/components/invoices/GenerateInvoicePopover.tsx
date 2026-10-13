@@ -32,7 +32,7 @@ export default function GenerateInvoicePopover({
   const initialItems: EditableLineItem[] = useMemo(() => {
     if (job.serviceItems && Array.isArray(job.serviceItems) && job.serviceItems.length > 0) {
       return job.serviceItems.map((si: any, idx: number) => ({
-        id: `item-${idx}-${Date.now()}`,
+        id: `item-${idx}-${si.id || idx}`,
         itemDetails: si.serviceName || 'Service Item',
         unitPriceDollars: (si.unitPriceCents || 0) / 100,
         quantity: si.quantity || 1,
@@ -41,7 +41,7 @@ export default function GenerateInvoicePopover({
     const totalDollars = (job.subtotalCents || job.totalCents || 12000) / 100;
     return [
       {
-        id: `item-0-${Date.now()}`,
+        id: `item-0-${job.id || 'service'}`,
         itemDetails: `Roadside Assistance: ${job.serviceAddress || 'On-Site Service'}`,
         unitPriceDollars: totalDollars,
         quantity: 1,
