@@ -408,44 +408,62 @@ export const accountingController = {
       const job = await prisma.job.findUnique({ where: { id } });
       if (!job) return sendError(res, 'Job not found', 404);
 
-      // Update Job paymentStatus to VERIFIED_PAID
-      const updatedJob = await prisma.job.update({
-        where: { id },
-        data: {
-          paymentStatus: 'VERIFIED_PAID',
-          paymentVerifiedById: accountantId,
-          paymentVerifiedAt: new Date(),
-        },
-      });
+      // Atomically update Job paymentStatus and sync linked invoice
+      const updatedJob = await prisma.$transaction(async (tx) => {
+        const updated = await tx.job.update({
+          where: { id },
+          data: {
+            paymentStatus: 'VERIFIED_PAID',
+            paymentVerifiedById: accountantId,
+            paymentVerifiedAt: new Date(),
+          },
+        });
 
-      // Two-way sync: If job has an associated invoice, mark it PAID and record payment
-      if (job.invoiceId) {
-        try {
-          const inv = await prisma.invoice.findUnique({ where: { id: job.invoiceId } });
+        // Two-way sync: If job has an associated invoice, apply this job's payment share
+        if (job.invoiceId) {
+          const inv = await tx.invoice.findUnique({
+            where: { id: job.invoiceId },
+            include: { jobs: { select: { id: true } } },
+          });
+
           if (inv && inv.status !== 'PAID') {
-            await prisma.invoice.update({
+            const isSingleJobInvoice = !inv.jobs || inv.jobs.length <= 1;
+            const jobPaymentCents = job.cashCollectedCents && job.cashCollectedCents > 0
+              ? job.cashCollectedCents
+              : job.totalCents;
+
+            const paymentToApply = isSingleJobInvoice
+              ? (inv.balanceDueCents > 0 ? inv.balanceDueCents : jobPaymentCents)
+              : Math.min(jobPaymentCents, inv.balanceDueCents > 0 ? inv.balanceDueCents : jobPaymentCents);
+
+            const newAmountPaid = inv.amountPaidCents + paymentToApply;
+            const newBalanceDue = Math.max(0, inv.totalCents - inv.depositCents - newAmountPaid);
+            const isFullyPaid = newBalanceDue === 0;
+
+            await tx.invoice.update({
               where: { id: job.invoiceId },
               data: {
-                status: 'PAID',
-                paidAt: new Date(),
-                amountPaidCents: inv.totalCents,
-                balanceDueCents: 0,
+                status: isFullyPaid ? 'PAID' : 'PARTIAL',
+                paidAt: isFullyPaid ? new Date() : inv.paidAt,
+                amountPaidCents: newAmountPaid,
+                balanceDueCents: newBalanceDue,
               },
             });
-            await prisma.invoicePayment.create({
+
+            await tx.invoicePayment.create({
               data: {
                 invoiceId: job.invoiceId,
-                amountCents: inv.balanceDueCents > 0 ? inv.balanceDueCents : inv.totalCents,
-                paymentMethod: 'CASH',
+                amountCents: paymentToApply,
+                paymentMethod: job.paymentMethod || 'CASH',
                 referenceId: `Job ${job.jobCode} verified by Senior Accountant`,
                 recordedById: accountantId,
               },
-            }).catch(() => {});
+            });
           }
-        } catch (invoiceSyncErr) {
-          console.error('[verifyJobPayment] Failed to sync linked invoice:', invoiceSyncErr);
         }
-      }
+
+        return updated;
+      });
 
       try {
         const io = getIO();

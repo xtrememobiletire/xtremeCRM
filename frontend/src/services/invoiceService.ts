@@ -97,20 +97,25 @@ export interface InvoicesResponse {
 export interface FleetBillingSummary {
   fleet: {
     id: string;
-    companyName: string;
-    paymentTerms: string;
-    creditLimitCents: number;
+    name?: string;
+    companyName?: string;
+    fleetCode?: string;
+    paymentTerms?: string;
+    creditLimitCents?: number;
     countryCode: string;
+    discountPercent?: number;
   };
-  outstandingInvoices: InvoiceRecord[];
-  totalOutstandingCents: number;
-  unbilledCompletedJobs: Array<{
+  invoices?: InvoiceRecord[];
+  outstandingInvoices?: InvoiceRecord[];
+  outstandingBalanceCents?: number;
+  totalOutstandingCents?: number;
+  unbilledJobs?: Array<{
     id: string;
     jobCode: string;
-    completedAt: string;
-    serviceAddress: string;
-    totalCents: number;
-    currency: string;
+    completedAt?: string;
+    serviceAddress?: string;
+    totalCents?: number;
+    currency?: string;
     vehicle?: {
       year?: number;
       make?: string;
@@ -119,8 +124,24 @@ export interface FleetBillingSummary {
       tireSize?: string;
     };
   }>;
-  totalUnbilledCents: number;
-  combinedTotalReceivableCents: number;
+  unbilledCompletedJobs?: Array<{
+    id: string;
+    jobCode: string;
+    completedAt?: string;
+    serviceAddress?: string;
+    totalCents?: number;
+    currency?: string;
+    vehicle?: {
+      year?: number;
+      make?: string;
+      model?: string;
+      licensePlate?: string;
+      tireSize?: string;
+    };
+  }>;
+  unbilledTotalCents?: number;
+  totalUnbilledCents?: number;
+  combinedTotalReceivableCents?: number;
 }
 
 export const invoiceService = {

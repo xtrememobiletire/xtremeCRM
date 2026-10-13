@@ -29,6 +29,7 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
   const { user } = useAuth();
   const isDriver = user?.role === 'DRIVER';
   const isAdminOrAccountant = user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER' || user?.role === 'ACCOUNTANT';
+  const canManageInvoices = isAdminOrAccountant || user?.role === 'DISPATCHER';
   const { country, currencySymbol } = useTenant();
   const { openChatJob } = useSocket();
   const updateStatusMutation = useUpdateJobStatus();
@@ -324,7 +325,7 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
                 <Printer className="w-3.5 h-3.5 text-red-600" />
                 <span>View / Print PDF</span>
               </button>
-            ) : (status === 'COMPLETED' || isAdminOrAccountant) ? (
+            ) : (status === 'COMPLETED' && canManageInvoices) ? (
               <button
                 type="button"
                 onClick={() => setShowGeneratePopover(true)}

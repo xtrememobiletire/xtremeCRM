@@ -316,7 +316,10 @@ export default function Drivers() {
           driver={selectedDriver}
           isOpen={Boolean(selectedDriver)}
           onClose={() => setSelectedDriver(null)}
-          onDutyToggled={() => refetch()}
+          onDutyToggled={() => {
+            refetch();
+            setSelectedDriver((prev: any) => (prev ? { ...prev, isAgentActive: !prev.isAgentActive } : null));
+          }}
         />
       )}
 

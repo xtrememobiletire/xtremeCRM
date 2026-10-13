@@ -38,11 +38,11 @@ export default function GenerateInvoicePopover({
       return job.serviceItems.map((si: any, idx: number) => ({
         id: `item-${idx}-${si.id || idx}`,
         itemDetails: si.serviceName || 'Service Item',
-        unitPriceDollars: (si.unitPriceCents || 0) / 100,
+        unitPriceDollars: (si.unitPriceCents || si.priceCents || 0) / 100,
         quantity: si.quantity || 1,
       }));
     }
-    const totalDollars = (job.subtotalCents || job.totalCents || 12000) / 100;
+    const totalDollars = (job.subtotalCents || job.totalCents || job.totalAmount || 12000) / 100;
     return [
       {
         id: `item-0-${job.id || 'service'}`,

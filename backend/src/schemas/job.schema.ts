@@ -168,5 +168,25 @@ export const VerifyBookingAddressSchema = z.object({
   ).optional(),
 });
 
-export type VerifyBookingAddressInput = z.infer<typeof VerifyBookingAddressSchema>;
+export const ExternalDispatchTokenParamSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+});
 
+export const PublicExternalJobStatusSchema = z.object({
+  action: z.enum(['ACCEPT', 'DECLINE', 'EN_ROUTE', 'ARRIVED', 'ON_SCENE', 'COMPLETE']),
+  reason: z.string().optional(),
+  cashCollectedCents: z.coerce.number().int().nonnegative().optional(),
+});
+
+export const GenerateExternalDispatchSchema = z.object({
+  externalCompanyName: z.string().optional(),
+  externalDriverName: z.string().optional(),
+  externalDriverPhone: z.string().optional(),
+  externalDriverAddress: z.string().optional(),
+  externalDriverFeeCents: z.coerce.number().int().nonnegative().optional(),
+  contractorPayoutFeeCents: z.coerce.number().int().nonnegative().optional(),
+  latitude: z.coerce.number().optional().nullable(),
+  longitude: z.coerce.number().optional().nullable(),
+  driverEtaMinutes: z.coerce.number().optional(),
+  driverEstimatedArrivalAt: z.string().optional(),
+});

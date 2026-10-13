@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { prisma } from '../config/database.js';
 import {
   sendSuccess,
@@ -1276,16 +1277,25 @@ export const jobController = {
         return sendError(res, `Cannot dispatch on a ${job.status.toLowerCase()} work order`, 400);
       }
 
-      const token = job.externalDispatchToken || crypto.randomUUID();
+      const contractorName = externalCompanyName || externalDriverName || job.externalCompanyName || 'External Contractor';
+      const contractorPhone = externalDriverPhone || job.externalDriverPhone || null;
+      const contractorAddress = externalDriverAddress || null;
+
+      // Issue fresh token if contractor changed, job was previously declined, or no token exists
+      const isSameContractor = Boolean(
+        job.externalDispatchToken &&
+        job.externalDispatchStatus !== 'DENIED' &&
+        (!job.externalDriverPhone || job.externalDriverPhone === contractorPhone) &&
+        (!job.externalCompanyName || job.externalCompanyName === contractorName)
+      );
+      const token = isSameContractor ? (job.externalDispatchToken as string) : crypto.randomUUID();
+
       const feeCents = externalDriverFeeCents !== undefined
         ? Number(externalDriverFeeCents)
         : contractorPayoutFeeCents !== undefined
         ? Number(contractorPayoutFeeCents)
         : job.externalDriverFeeCents;
 
-      const contractorName = externalCompanyName || externalDriverName || job.externalCompanyName || 'External Contractor';
-      const contractorPhone = externalDriverPhone || job.externalDriverPhone || null;
-      const contractorAddress = externalDriverAddress || null;
       let contractorLat = latitude !== undefined && latitude !== null ? Number(latitude) : undefined;
       let contractorLng = longitude !== undefined && longitude !== null ? Number(longitude) : undefined;
 
@@ -1305,15 +1315,16 @@ export const jobController = {
           where: {
             role: 'DRIVER',
             deletedAt: null,
-            OR: [
-              ...(contractorPhone ? [{ phone: contractorPhone }] : []),
-              { fullName: { equals: contractorName, mode: 'insensitive' } },
-            ],
+            countryCode: job.countryCode || 'CA',
+            assignedVehicle: { startsWith: 'EXTERNAL' },
+            ...(contractorPhone
+              ? { phone: contractorPhone }
+              : { fullName: { equals: contractorName, mode: 'insensitive' } }),
           },
         });
 
         if (!existingUser) {
-          const randSuffix = Math.random().toString(36).substring(7);
+          const randSuffix = crypto.randomBytes(4).toString('hex');
           const email = `contractor_${Date.now()}_${randSuffix}@external.xtremetire.com`;
           const dummyHash = await bcrypt.hash(`Ext_${Date.now()}_${randSuffix}`, 10);
 
@@ -1398,8 +1409,12 @@ export const jobController = {
       const job = await prisma.job.findUnique({ where: { id } });
       if (!job) return sendError(res, 'Job not found', 404);
 
-      if (job.status === 'COMPLETED') {
-        return sendError(res, 'Cannot revoke dispatch link on a completed work order', 400);
+      if (job.status === 'COMPLETED' || job.status === 'CANCELLED') {
+        return sendError(res, `Cannot revoke dispatch link on a ${job.status.toLowerCase()} work order`, 400);
+      }
+
+      if (!job.externalDispatchToken) {
+        return sendError(res, 'No active external dispatch link to revoke', 400);
       }
 
       const updated = await prisma.job.update({
@@ -1525,6 +1540,10 @@ export const jobController = {
         return sendError(res, `Cannot update a ${job.status.toLowerCase()} work order`, 400);
       }
 
+      if (job.externalDispatchStatus === 'DENIED') {
+        return sendError(res, 'This dispatch was previously declined', 400);
+      }
+
       let updateData: any = {};
 
       switch (action) {
@@ -1538,6 +1557,7 @@ export const jobController = {
         case 'DECLINE':
           updateData = {
             externalDispatchStatus: 'DENIED',
+            externalDispatchToken: null,
             driverDeclineReason: reason || 'Declined by contractor',
             lastDeclinedDriverId: job.driverId,
             driverId: null,
@@ -1550,6 +1570,7 @@ export const jobController = {
         case 'EN_ROUTE':
           updateData = {
             status: 'IN_PROGRESS',
+            externalDispatchStatus: job.externalDispatchStatus || 'ACCEPTED',
             dispositionNotes: 'EN_ROUTE',
           };
           break;
@@ -1557,17 +1578,32 @@ export const jobController = {
         case 'ARRIVED':
           updateData = {
             status: 'IN_PROGRESS',
+            externalDispatchStatus: job.externalDispatchStatus || 'ACCEPTED',
             dispositionNotes: 'ON_SCENE',
           };
           break;
-        case 'COMPLETE':
+        case 'COMPLETE': {
+          const cash = cashCollectedCents !== undefined ? Number(cashCollectedCents) : (job.cashCollectedCents || 0);
+          if (!Number.isFinite(cash) || cash < 0 || cash > job.totalCents) {
+            return sendError(
+              res,
+              `Cash collected must be a non-negative amount not exceeding total of $${(job.totalCents / 100).toFixed(2)}`,
+              400
+            );
+          }
           updateData = {
             status: 'COMPLETED',
+            externalDispatchStatus: 'COMPLETED',
             completedAt: new Date(),
             dispositionNotes: 'COMPLETED',
-            cashCollectedCents: cashCollectedCents !== undefined ? Number(cashCollectedCents) : job.cashCollectedCents,
+            cashCollectedCents: cash,
+            ...(cash > 0 && {
+              paymentMethod: 'CASH',
+              paymentStatus: 'PAID_PENDING_VERIFICATION',
+            }),
           };
           break;
+        }
         default:
           return sendError(res, `Unknown action: ${action}`, 400);
       }

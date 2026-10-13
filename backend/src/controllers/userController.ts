@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { prisma } from '../config/database.js';
 import {
   sendSuccess,
@@ -116,13 +117,13 @@ export const userController = {
       } = req.body;
 
       const isExternalContractor = assignedVehicle === 'EXTERNAL_CONTRACTOR' || assignedVehicle?.startsWith('EXTERNAL');
-      const finalEmail = email?.trim() || (isExternalContractor ? `contractor_${Date.now()}_${Math.random().toString(36).substring(7)}@external.xtremetire.com` : '');
+      const finalEmail = email?.trim() || (isExternalContractor ? `contractor_${Date.now()}_${crypto.randomBytes(4).toString('hex')}@external.xtremetire.com` : '');
       if (!finalEmail) return sendError(res, 'Email is required', 400);
 
       const existing = await prisma.user.findUnique({ where: { email: finalEmail } });
       if (existing) return sendError(res, 'User with this email already exists', 409);
 
-      const finalPassword = password || (isExternalContractor ? `Ext_${Date.now()}_${Math.random().toString(36).substring(7)}` : '');
+      const finalPassword = password || (isExternalContractor ? `Ext_${Date.now()}_${crypto.randomBytes(4).toString('hex')}` : '');
       if (!finalPassword) return sendError(res, 'Password is required', 400);
 
       let finalLat = latitude !== undefined && latitude !== null ? Number(latitude) : undefined;

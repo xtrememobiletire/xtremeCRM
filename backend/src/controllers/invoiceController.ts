@@ -18,13 +18,26 @@ import { sseManager } from '../services/sseManager.js';
  */
 async function getNextInvoiceNumber(tx: any, countryCode: any, initials: string): Promise<string> {
   const year = new Date().getFullYear();
-  const seqRecord = await tx.invoiceSequence.upsert({
-    where: { countryCode_year: { countryCode, year } },
-    update: { lastSeq: { increment: 1 } },
-    create: { countryCode, year, lastSeq: 1 },
-  });
+  let seqRecord;
+  try {
+    seqRecord = await tx.invoiceSequence.upsert({
+      where: { countryCode_year: { countryCode, year } },
+      update: { lastSeq: { increment: 1 } },
+      create: { countryCode, year, lastSeq: 1 },
+    });
+  } catch (err: any) {
+    if (err.code === 'P2002') {
+      seqRecord = await tx.invoiceSequence.upsert({
+        where: { countryCode_year: { countryCode, year } },
+        update: { lastSeq: { increment: 1 } },
+        create: { countryCode, year, lastSeq: 1 },
+      });
+    } else {
+      throw err;
+    }
+  }
   const seqDigits = String(seqRecord.lastSeq).padStart(4, '0');
-  return `${initials}-${countryCode}-${seqDigits}`;
+  return `${initials}-${countryCode}-${year}-${seqDigits}`;
 }
 
 /**
@@ -358,11 +371,14 @@ export const invoiceController = {
           },
         });
 
-        // Link job to this invoice
-        await tx.job.update({
-          where: { id: jobId },
+        // Atomically claim job to this invoice
+        const claimed = await tx.job.updateMany({
+          where: { id: jobId, invoiceId: null },
           data: { invoiceId: inv.id },
         });
+        if (claimed.count === 0) {
+          throw new Error('Job has already been invoiced or is currently being invoiced');
+        }
 
         return inv;
       });
@@ -492,11 +508,14 @@ export const invoiceController = {
           },
         });
 
-        // Link all jobs to this consolidated invoice
-        await tx.job.updateMany({
-          where: { id: { in: jobs.map((j) => j.id) } },
+        // Atomically link all unbilled jobs to this consolidated invoice
+        const claimed = await tx.job.updateMany({
+          where: { id: { in: jobs.map((j) => j.id) }, invoiceId: null },
           data: { invoiceId: inv.id },
         });
+        if (claimed.count !== jobs.length) {
+          throw new Error('One or more selected jobs have already been invoiced');
+        }
 
         return inv;
       });
@@ -628,17 +647,30 @@ export const invoiceController = {
       const id = String(req.params.id);
       const { amountCents, paymentMethod, referenceId, notes } = req.body;
       const user = req.user as any;
+      const amount = Number(amountCents);
 
-      const invoice = await prisma.invoice.findUnique({
-        where: { id },
-      });
-      if (!invoice) return sendError(res, 'Invoice not found', 404);
+      if (amount <= 0) {
+        return sendError(res, 'Payment amount must be greater than zero', 400);
+      }
 
       const payment = await prisma.$transaction(async (tx) => {
+        const invoice = await tx.invoice.findUnique({
+          where: { id },
+        });
+        if (!invoice) throw new Error('Invoice not found');
+
+        if (['PAID', 'CANCELLED', 'DRAFT'].includes(invoice.status)) {
+          throw new Error(`Cannot record payment on an invoice with status ${invoice.status}`);
+        }
+
+        if (invoice.balanceDueCents > 0 && amount > invoice.balanceDueCents) {
+          throw new Error(`Payment amount (${amount / 100}) exceeds outstanding balance (${invoice.balanceDueCents / 100})`);
+        }
+
         const pmt = await tx.invoicePayment.create({
           data: {
             invoiceId: id,
-            amountCents: Number(amountCents),
+            amountCents: amount,
             paymentMethod,
             referenceId,
             notes,
@@ -646,7 +678,7 @@ export const invoiceController = {
           },
         });
 
-        const newAmountPaid = invoice.amountPaidCents + Number(amountCents);
+        const newAmountPaid = invoice.amountPaidCents + amount;
         const newBalanceDue = Math.max(0, invoice.totalCents - invoice.depositCents - newAmountPaid);
         const isFullyPaid = newBalanceDue === 0;
         const isPartiallyPaid = newBalanceDue > 0 && newAmountPaid > 0;
@@ -681,7 +713,7 @@ export const invoiceController = {
         return { pmt, updatedInvoice };
       });
 
-      sseManager.broadcast(`sse:dispatch:${invoice.countryCode}`, 'invoice:updated', payment.updatedInvoice);
+      sseManager.broadcast(`sse:dispatch:${payment.updatedInvoice.countryCode}`, 'invoice:updated', payment.updatedInvoice);
 
       return sendSuccess(res, payment, 'Payment recorded successfully');
     } catch (err: any) {
@@ -700,28 +732,34 @@ export const invoiceController = {
     try {
       const { fleetId, amountCents, paymentMethod, referenceId, notes } = req.body;
       const user = req.user as any;
+      let remainingFunds = Number(amountCents);
 
-      const pendingInvoices = await prisma.invoice.findMany({
-        where: {
-          fleetId,
-          status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] },
-        },
-        orderBy: { dueDate: 'asc' }, // Oldest first (FIFO)
-      });
-
-      if (pendingInvoices.length === 0) {
-        return sendError(res, 'No outstanding invoices found for this fleet', 400);
+      if (remainingFunds <= 0) {
+        return sendError(res, 'Payment amount must be greater than zero', 400);
       }
 
-      let remainingFunds = Number(amountCents);
       const settledInvoiceIds: string[] = [];
       const partialInvoiceIds: string[] = [];
 
       await prisma.$transaction(async (tx) => {
+        const pendingInvoices = await tx.invoice.findMany({
+          where: {
+            fleetId,
+            status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] },
+            balanceDueCents: { gt: 0 },
+          },
+          orderBy: { dueDate: 'asc' }, // Oldest first (FIFO)
+        });
+
+        if (pendingInvoices.length === 0) {
+          throw new Error('No outstanding invoices found for this fleet');
+        }
+
         for (const inv of pendingInvoices) {
           if (remainingFunds <= 0) break;
 
           const due = inv.balanceDueCents;
+          if (due <= 0) continue;
           const payThis = Math.min(remainingFunds, due);
 
           await tx.invoicePayment.create({

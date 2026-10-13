@@ -123,7 +123,7 @@ export default function CreateInvoiceModal({
         invoiceType,
         fleetId: invoiceType === 'FLEET' ? selectedFleetId : undefined,
         customerId: invoiceType === 'CUSTOMER' || invoiceType === 'MEMBER' ? selectedCustomerId : undefined,
-        countryCode: (country as 'CA' | 'US' | 'UK') || 'CA',
+        countryCode: (['CA', 'US', 'UK'].includes(country) ? country : 'CA') as 'CA' | 'US' | 'UK',
         dueDate: new Date(dueDate).toISOString(),
         items: validItems,
         taxRatePercent: isTaxExempt ? 0 : taxRatePercent,

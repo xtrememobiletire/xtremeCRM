@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Share2,
   Copy,
@@ -55,6 +55,7 @@ export default function ExternalDispatchModal({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRevoking, setIsRevoking] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
+  const etaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isCompletedJob = job?.status === 'COMPLETED' || job?.status === 'CANCELLED';
 
@@ -346,13 +347,18 @@ export default function ExternalDispatchModal({
               value={depotAddress}
               onChange={(val) => {
                 setDepotAddress(val);
+                setDepotCoords(null);
+                if (etaDebounceRef.current) clearTimeout(etaDebounceRef.current);
                 if (!val.trim()) {
                   setEtaMinutes(null);
-                } else {
-                  handleCalculateEta(val);
+                } else if (val.trim().length >= 5) {
+                  etaDebounceRef.current = setTimeout(() => {
+                    handleCalculateEta(val);
+                  }, 600);
                 }
               }}
               onSelectLocation={(loc: GeocodeLocation) => {
+                if (etaDebounceRef.current) clearTimeout(etaDebounceRef.current);
                 setDepotAddress(loc.address);
                 setDepotCoords({ lat: loc.latitude, lng: loc.longitude });
                 handleCalculateEtaWithCoords(loc.latitude, loc.longitude);

@@ -101,7 +101,12 @@ export default function Invoices() {
   );
 
   const unbilledJobs = useMemo(() => {
-    return fleetBillingSummary?.unbilledCompletedJobs || [];
+    return (fleetBillingSummary?.unbilledJobs || fleetBillingSummary?.unbilledCompletedJobs || []) as Array<{
+      id: string;
+      jobCode: string;
+      totalCents?: number;
+      [key: string]: any;
+    }>;
   }, [fleetBillingSummary]);
 
   const consolidatedMutation = useGenerateFleetConsolidatedInvoice();
@@ -407,7 +412,7 @@ export default function Invoices() {
 
                       <div className="text-right shrink-0">
                         <div className="font-mono font-bold text-sm text-slate-900">
-                          {currencySymbol}{(j.totalCents / 100).toFixed(2)}
+                          {currencySymbol}{((j.totalCents || 0) / 100).toFixed(2)}
                         </div>
                         <div className="text-[10px] text-slate-400 mt-0.5">
                           {j.completedAt ? new Date(j.completedAt).toLocaleDateString() : 'Completed'}

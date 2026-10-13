@@ -444,7 +444,7 @@ export default function InvoicePdfModal({
                       </p>
                       <p className="flex items-center gap-1.5">
                         <Mail size={12} className="text-red-600 shrink-0" />
-                        <span>{activeHub.paymentEmail}</span>
+                        <span>{data?.company?.paymentEmail || activeHub.paymentEmail}</span>
                       </p>
                     </div>
                   </div>
@@ -619,7 +619,7 @@ export default function InvoicePdfModal({
                       PAYMENT INFO:
                     </span>
                     <p className="text-[11px] text-slate-700 leading-relaxed whitespace-pre-line font-medium">
-                      {activeHub.bankInfo}
+                      {data?.company?.bankInfo || activeHub.bankInfo}
                     </p>
                     <p className="text-[10px] text-slate-500 mt-1">
                       Reference: <strong className="font-mono text-slate-800">#{data.invoiceNumber}</strong>

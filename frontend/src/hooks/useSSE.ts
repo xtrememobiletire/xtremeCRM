@@ -190,8 +190,7 @@ export function useSSE() {
     };
 
     const targetCountry = country || user.countryCode || 'CA';
-    const token = typeof window !== 'undefined' ? localStorage.getItem('xtreme_token') : null;
-    const sseUrl = `${BACKEND_ROOT_URL}/api/events/stream?countryCode=${targetCountry}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
+    const sseUrl = `${BACKEND_ROOT_URL}/api/events/stream?countryCode=${targetCountry}`;
 
     /**
      * Replace the active SSE connection and subscribe to lead, job, and billing events.

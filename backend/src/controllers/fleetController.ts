@@ -650,7 +650,8 @@ export const fleetController = {
         prisma.invoice.findMany({
           where: {
             fleetId,
-            status: { in: ['PENDING', 'OVERDUE'] },
+            status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] },
+            balanceDueCents: { gt: 0 },
           },
           include: {
             items: true,

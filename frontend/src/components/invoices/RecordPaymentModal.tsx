@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { CreditCard, Loader2, CheckCircle2 } from 'lucide-react';
 import { useRecordPayment, useRecordFleetLumpSumPayment } from '../../hooks/useInvoices';
+import { useTenant } from '../../context/TenantContext';
 
 interface RecordPaymentModalProps {
   isOpen: boolean;
@@ -23,6 +24,14 @@ export default function RecordPaymentModal({
   onSuccess,
 }: RecordPaymentModalProps) {
   const isLumpSum = !!fleet && !invoice;
+  const { currencySymbol: tenantCurrencySymbol } = useTenant();
+  const currencySymbol = invoice?.currency === 'GBP'
+    ? '£'
+    : invoice?.currency === 'USD'
+    ? '$'
+    : (invoice?.countryCode === 'CA' || fleet?.countryCode === 'CA')
+    ? 'CA$'
+    : tenantCurrencySymbol || '$';
 
   const maxAmountCents = invoice
     ? (invoice.balanceDueCents > 0 ? invoice.balanceDueCents : invoice.totalCents)
@@ -88,7 +97,7 @@ export default function RecordPaymentModal({
         },
         {
           onSuccess: () => {
-            toast.success(`Payment of $${amountNumber.toFixed(2)} recorded on ${invoice.invoiceNumber}`);
+            toast.success(`Payment of ${currencySymbol}${amountNumber.toFixed(2)} recorded on ${invoice.invoiceNumber}`);
             onSuccess?.();
             onClose();
           },
@@ -137,7 +146,7 @@ export default function RecordPaymentModal({
                 <div>
                   <span className="text-slate-500 font-medium">Outstanding Balance:</span>
                   <div className="text-sm font-bold text-slate-900 font-mono">
-                    ${((invoice.balanceDueCents > 0 ? invoice.balanceDueCents : invoice.totalCents) / 100).toFixed(2)}
+                    {currencySymbol}{((invoice.balanceDueCents > 0 ? invoice.balanceDueCents : invoice.totalCents) / 100).toFixed(2)}
                   </div>
                 </div>
                 <button
@@ -161,7 +170,7 @@ export default function RecordPaymentModal({
 
             {/* Payment Amount */}
             <div>
-              <label className="font-semibold text-slate-700 block mb-1.5">Payment Amount ($)</label>
+              <label className="font-semibold text-slate-700 block mb-1.5">Payment Amount ({currencySymbol})</label>
               <input
                 type="number"
                 step="0.01"

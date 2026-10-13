@@ -275,7 +275,12 @@ export const jobService = {
    */
   async updatePublicExternalJobStatus(
     token: string,
-    payload: { action: 'ACCEPT' | 'DECLINE' | 'EN_ROUTE' | 'ARRIVED' | 'COMPLETE'; reason?: string; cashAmountCents?: number }
+    payload: {
+      action: 'ACCEPT' | 'DECLINE' | 'EN_ROUTE' | 'ARRIVED' | 'ON_SCENE' | 'COMPLETE';
+      reason?: string;
+      cashAmountCents?: number;
+      cashCollectedCents?: number;
+    }
   ): Promise<any> {
     const res = await api.patch(`/jobs/public/external/${token}/status`, payload);
     return res.data.data;
