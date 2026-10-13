@@ -154,8 +154,24 @@ export default function ExternalDriverDispatch() {
   const totalDollars = centsToDollars(job.totalCents || 0);
   const totalFormatted = formatCurrency(totalDollars, currencySymbol);
 
-  const isPrepaid = job.paymentStatus === 'PAID' || job.paymentStatus === 'SETTLED';
-  const isCustomerDue = !isPrepaid && (job.totalCents || 0) > 0;
+  const isFleet = Boolean(job.isFleetJob || job.fleet);
+  const isPaidByCompany = Boolean(
+    job.isPaidByCompany ||
+    job.paymentStatus === 'PAID' || 
+    job.paymentStatus === 'SETTLED' ||
+    job.paymentStatus === 'PAID_PENDING_VERIFICATION' ||
+    job.paymentStatus === 'VERIFIED_PAID' ||
+    isFleet
+  );
+
+  const upfrontDollars = centsToDollars(job.upfrontAmountCents || 0);
+  const upfrontFormatted = formatCurrency(upfrontDollars, currencySymbol);
+
+  const balanceDueCents = Math.max(0, (job.totalCents || 0) - (job.upfrontAmountCents || 0));
+  const balanceDueDollars = centsToDollars(balanceDueCents);
+  const balanceDueFormatted = formatCurrency(balanceDueDollars, currencySymbol);
+
+  const isCustomerDue = !isPaidByCompany && balanceDueCents > 0;
 
   /**
    * Return the portal status, prioritizing completion, scene, and route markers
@@ -284,30 +300,62 @@ export default function ExternalDriverDispatch() {
               </div>
 
               <div className="text-right shrink-0">
-                <span className="text-[11px] text-slate-400 font-medium block">Agreed Payout</span>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 inline-block font-mono">
-                  {payoutFormatted}
-                </span>
+                <span className="text-xs text-slate-500 font-medium block">Agreed Payout</span>
+                <div className="flex items-center gap-1.5 justify-end mt-0.5">
+                  <span className="text-sm font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-block font-mono">
+                    {payoutFormatted}
+                  </span>
+                  {isCompleted && (
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded">
+                      Cleared
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
+            {/* Fleet Corporate Account Banner if Fleet Job */}
+            {isFleet && job.fleet && (
+              <div className="mt-3 p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 text-xs flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-indigo-700 block tracking-wide">Corporate Fleet Account</span>
+                  <span className="font-bold text-slate-900 text-xs">{job.fleet.name}</span>
+                </div>
+                <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                  {job.fleet.fleetCode || 'B2B FLEET'}
+                </span>
+              </div>
+            )}
+
             {/* Anti-Dispute Customer Payment Banner */}
             <div className="mt-3">
-              {isPrepaid ? (
-                <div className="py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs flex items-center justify-between">
-                  <span className="font-semibold text-emerald-800">Customer Balance:</span>
-                  <span className="font-bold text-emerald-700">
-                    {currencySymbol}0.00 (Prepaid in Full — Do Not Collect)
+              {isPaidByCompany || !isCustomerDue ? (
+                <div className="py-2.5 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs flex items-center justify-between">
+                  <div>
+                    <span className="font-bold text-emerald-800 block text-xs">Customer Balance: {currencySymbol}0.00</span>
+                    <span className="text-[10px] text-emerald-700">
+                      {isFleet ? 'Corporate B2B Account — DO NOT collect payment' : 'Paid to Company / Advance Deposit — DO NOT collect payment'}
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
+                    PREPAID / B2B
                   </span>
                 </div>
               ) : (
                 <div className="py-2 px-3 rounded-xl bg-amber-50 border border-amber-200 text-xs flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-amber-900 font-semibold">
                     <AlertTriangle size={13} className="text-amber-600 shrink-0" />
-                    <span>Collect from Customer:</span>
+                    <div>
+                      <span>Collect from Customer:</span>
+                      {job.upfrontAmountCents > 0 && (
+                        <span className="text-[10px] text-amber-700 block font-normal">
+                          (Deposit of {upfrontFormatted} paid to office)
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <span className="font-black font-mono text-amber-950 text-sm">
-                    {totalFormatted}
+                    {balanceDueFormatted}
                   </span>
                 </div>
               )}
@@ -368,6 +416,11 @@ export default function ExternalDriverDispatch() {
                   {job.vehicle
                     ? `${job.vehicle.year || ''} ${job.vehicle.make} ${job.vehicle.model}`.trim()
                     : 'Vehicle on file'}
+                  {job.vehicle?.unitNumber && (
+                    <span className="ml-1.5 text-[10px] font-bold text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                      Unit #{job.vehicle.unitNumber}
+                    </span>
+                  )}
                 </span>
               </div>
               {job.vehicle?.tireSize && (
@@ -376,6 +429,23 @@ export default function ExternalDriverDispatch() {
                 </span>
               )}
             </div>
+
+            {/* Services Required Block */}
+            {job.serviceItems && job.serviceItems.length > 0 && (
+              <div className="mt-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
+                <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider flex items-center justify-between">
+                  <span>Services Required ({job.serviceItems.length})</span>
+                </div>
+                <div className="divide-y divide-slate-200/60">
+                  {job.serviceItems.map((si: any, idx: number) => (
+                    <div key={idx} className="py-1 flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-800">{si.serviceName}</span>
+                      <span className="font-mono font-bold text-slate-600 text-[11px]">Qty: {si.quantity || 1}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Problem notes if any */}
             {job.problemNotes && (
@@ -485,11 +555,13 @@ export default function ExternalDriverDispatch() {
                 )}
               </>
             ) : (
-              <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-center space-y-1">
-                <CheckCircle className="w-6 h-6 text-emerald-600 mx-auto" />
-                <div className="text-xs font-bold text-emerald-900">Work Order Completed</div>
-                <p className="text-[11px] text-emerald-700">
-                  Your service completion has been verified. Payout fee of <strong>{payoutFormatted}</strong> will be processed.
+              <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-300 text-center space-y-2 shadow-xs">
+                <CheckCircle className="w-8 h-8 text-emerald-600 mx-auto" />
+                <div className="text-sm font-black text-emerald-950 uppercase tracking-wide">
+                  Work Order Completed • Payment Cleared
+                </div>
+                <p className="text-xs sm:text-sm text-emerald-800 font-medium leading-relaxed">
+                  Your service completion has been verified. Agreed payout fee of <strong className="font-bold text-emerald-950 font-mono">{payoutFormatted}</strong> has been cleared with office dispatch.
                 </p>
               </div>
             )}

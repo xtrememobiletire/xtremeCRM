@@ -10,7 +10,8 @@ import {
   FileText, 
   CheckCircle2, 
   Navigation,
-  UserCheck
+  UserCheck,
+  DollarSign
 } from 'lucide-react';
 import Modal from '../../ui/Modal';
 import AddressAutocompleteInput, { type GeocodeLocation } from '../../common/AddressAutocompleteInput';
@@ -109,6 +110,7 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
   // Technician & Notes
   const [assignedDriverId, setAssignedDriverId] = useState('');
   const [notes, setNotes] = useState('');
+  const [upfrontAmountDollars, setUpfrontAmountDollars] = useState('');
 
   // Selected Fleet Object
   const selectedFleet = useMemo(() => {
@@ -208,6 +210,7 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
     setUrgency('URGENT');
     setAssignedDriverId('');
     setNotes('');
+    setUpfrontAmountDollars('');
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -244,6 +247,8 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
     const taxCents = isTaxIncluded ? 0 : Math.round(subtotalCents * taxRate);
     const totalCents = subtotalCents + taxCents;
 
+    const upfrontCents = upfrontAmountDollars ? Math.round((parseFloat(upfrontAmountDollars) || 0) * 100) : 0;
+
     try {
       await createJobMutation.mutateAsync({
         countryCode: formCountry,
@@ -258,6 +263,7 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
         paymentMethod: 'INVOICE_NET30',
         source: 'FLEET_PORTAL',
         driverId: assignedDriverId || undefined,
+        upfrontAmountCents: upfrontCents,
         notes: `Unit: ${unitNumber || 'N/A'}${notes ? ` | ${notes}` : ''}`,
         problemNotes: notes || undefined,
         arrivalWindowStart: arrivalWindow.arrivalWindowStart,
@@ -710,6 +716,30 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
             rows={2}
             className="w-full px-4 py-2 text-xs rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
           />
+        </div>
+
+        {/* Step 14: Upfront Deposit / Advance Retainer (Optional) */}
+        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+          <label className="block text-xs font-bold text-slate-700 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">14</span>
+              <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Upfront Deposit / Advance Retainer Collected (Optional)</span>
+            </span>
+            <span className="text-[10px] font-mono text-slate-400">Leave blank if standard Net 30 billing</span>
+          </label>
+          <div className="relative">
+            <span className="absolute left-3.5 top-2.5 font-mono text-xs text-slate-400 font-bold">{currencySymbol}</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={upfrontAmountDollars}
+              onChange={(e) => setUpfrontAmountDollars(e.target.value)}
+              placeholder="0.00"
+              className="w-full pl-8 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+            />
+          </div>
         </div>
 
         {/* Total Price Summary & Submit Bar */}

@@ -118,7 +118,7 @@ export default function ReconciliationTable({
                       {r.paymentStatus === 'VERIFIED_PAID' || r.paymentStatus === 'PAID' ? (
                         <>
                           <CheckCircle2 size={10} />
-                          <span>Verified Paid</span>
+                          <span>Payment Cleared</span>
                         </>
                       ) : (
                         <>

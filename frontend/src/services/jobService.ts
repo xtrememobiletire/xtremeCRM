@@ -157,7 +157,28 @@ export const jobService = {
 
   async updateJobStatus(
     id: string,
-    statusOrPayload: string | FormData | { status: string; paymentMethod?: string; amountCents?: number; cashAmountCents?: number; receiptUrl?: string; driverDeclineReason?: string },
+    statusOrPayload: string | FormData | {
+      status?: string;
+      paymentMethod?: string;
+      amountCents?: number;
+      cashAmountCents?: number;
+      receiptUrl?: string;
+      driverDeclineReason?: string;
+      upfrontAmountCents?: number;
+      upfrontReceiptUrl?: string;
+      isUpfrontVerified?: boolean;
+      notes?: string;
+      problemNotes?: string;
+      driverId?: string | null;
+      urgency?: string;
+      serviceItems?: Array<{
+        serviceName: string;
+        category?: 'TIRE_SERVICE' | 'ROADSIDE_ASSISTANCE' | 'MAINTENANCE';
+        unitPriceCents: number;
+        quantity: number;
+        notes?: string;
+      }>;
+    },
     cashAmountCents?: number
   ): Promise<JobItem> {
     if (statusOrPayload instanceof FormData) {
@@ -239,6 +260,7 @@ export const jobService = {
       externalDriverFeeCents?: number;
       contractorPayoutFeeCents?: number;
       driverEtaMinutes?: number;
+      paymentCollectionMode?: 'COMPANY' | 'DRIVER';
     } | number
   ): Promise<{ message: string; externalDispatchToken: string; externalDispatchUrl: string; token?: string; publicUrl?: string; job: JobItem }> {
     const body = typeof payload === 'number'

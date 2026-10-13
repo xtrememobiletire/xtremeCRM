@@ -19,23 +19,39 @@ export default function Modal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-3 sm:p-4">
-      <div className={`bg-white rounded-xl border border-slate-200/90 shadow-xl w-full ${maxWidth} overflow-hidden max-h-[90vh] flex flex-col`}>
-        {title && (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-3 sm:p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && onClose) {
+          onClose();
+        }
+      }}
+    >
+      <div className={`bg-white rounded-xl border border-slate-200/90 shadow-xl w-full ${maxWidth} overflow-hidden max-h-[90vh] flex flex-col relative`}>
+        {title ? (
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
             <h3 className="font-bold text-slate-900 text-sm tracking-tight">{title}</h3>
             {onClose && (
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                 aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
-        )}
+        ) : onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-3 right-3 z-10 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer bg-white/80 backdrop-blur-xs border border-slate-200/60 shadow-2xs"
+            aria-label="Close modal"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        ) : null}
         <div className="p-4 sm:p-5 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
