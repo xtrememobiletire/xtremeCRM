@@ -4,7 +4,7 @@ import { prisma } from './src/config/database.js';
 async function main() {
   console.log('🚀 Creating 1st Fleet Account: KT Group Of Companies LTD (XFC-526)...');
 
-  const rawPassword = 'Xtreme@ktgroup';
+  const rawPassword = process.env.KT_FLEET_PASSWORD || 'Xtreme@ktgroup';
   const email = 'Administration@ktgroupcanada.ca';
   const managerName = 'S Pratheep';
   const managerPhone = '+14378828406';

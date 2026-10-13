@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Truck, Car, Users, Save } from 'lucide-react';
+import { Truck, Car, Users, Save, Copy, Check } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '../ui/Modal';
 import FleetInfoSection, { type FleetFormData } from './FleetInfoSection';
@@ -60,7 +60,7 @@ export default function FleetDetailModal({ fleet, isOpen, onClose }: FleetDetail
         phone: activeFleet.phone || '',
         altPhone: activeFleet.altPhone || '',
         email: activeFleet.email || '',
-        password: activeFleet.password || '',
+        password: '',
         poaEmail: activeFleet.poaEmail || '',
         address: activeFleet.address || '',
         website: activeFleet.website || '',
@@ -160,6 +160,21 @@ export default function FleetDetailModal({ fleet, isOpen, onClose }: FleetDetail
     setDrivers((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const [copiedInvite, setCopiedInvite] = useState(false);
+
+  const handleCopyInvite = () => {
+    const credText = `🏢 Xtreme Mobile Tire — Fleet Manager Portal
+🔗 Portal: ${window.location.origin}/login
+📧 Login Email: ${formData.email || activeFleet?.email || '—'}
+🔑 Password: ${activeFleet?.password || (formData.password ? formData.password : '(Managed via User Account)')}
+🏷️ Fleet Code: ${formData.customFleetCode || activeFleet?.fleetCode || activeFleet?.id || '—'}`;
+
+    navigator.clipboard.writeText(credText);
+    setCopiedInvite(true);
+    toast.success('Fleet manager portal credentials copied to clipboard');
+    setTimeout(() => setCopiedInvite(false), 2500);
+  };
+
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeFleet?.id) return;
@@ -173,7 +188,7 @@ export default function FleetDetailModal({ fleet, isOpen, onClose }: FleetDetail
       phone: formData.phone,
       altPhone: formData.altPhone || undefined,
       email: formData.email || undefined,
-      password: formData.password?.trim() || undefined,
+      password: formData.password?.trim() ? formData.password.trim() : undefined,
       poaEmail: formData.poaEmail || undefined,
       address: formData.address || undefined,
       website: formData.website || undefined,
@@ -249,6 +264,25 @@ export default function FleetDetailModal({ fleet, isOpen, onClose }: FleetDetail
             >
               {drivers.length}
             </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCopyInvite}
+            className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition cursor-pointer"
+            title="Copy portal URL and login credentials for this fleet manager"
+          >
+            {copiedInvite ? (
+              <>
+                <Check size={13} className="text-emerald-600" />
+                <span className="text-emerald-700">Copied Invite!</span>
+              </>
+            ) : (
+              <>
+                <Copy size={13} />
+                <span>Copy Portal Invite</span>
+              </>
+            )}
           </button>
         </div>
 

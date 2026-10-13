@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopNav from './TopNav';
@@ -31,36 +31,50 @@ export default function MainLayout() {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return typeof window !== 'undefined' ? localStorage.getItem('xtreme_sidebar_collapsed') === 'true' : false;
   });
+  const lastEmittedPresenceRef = useRef<{
+    socketId?: string;
+    userId?: string;
+    mode?: string;
+    countryCode?: string;
+  }>({});
 
   // Automatic Presence & Mode Synchronization:
   // When active: navigating to /outbound automatically sets OUTBOUND; navigating to /inbound automatically sets INBOUND.
   // When inactive: stays INACTIVE.
-  // Guarded against redundant updates to avoid cascading root context re-renders.
+  // Emits agent:presence when socket, user, country, or mode requires sync, avoiding redundant state updates.
   useEffect(() => {
     if (user?.role === 'CALL_AGENT' || user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER') {
+      let targetMode: 'INACTIVE' | 'OUTBOUND' | 'INBOUND' | null = null;
       if (!isAgentActive) {
-        if (agentMode !== 'INACTIVE') {
-          setAgentMode('INACTIVE');
-          if (socket && user?.id) {
-            socket.emit('agent:presence', { userId: user.id, mode: 'INACTIVE', countryCode: country });
-          }
-        }
-        return;
+        targetMode = 'INACTIVE';
+      } else if (location.pathname.startsWith('/outbound') || location.pathname.startsWith('/leads')) {
+        targetMode = 'OUTBOUND';
+      } else if (location.pathname.startsWith('/inbound')) {
+        targetMode = 'INBOUND';
       }
 
-      if (location.pathname.startsWith('/outbound') || location.pathname.startsWith('/leads')) {
-        if (agentMode !== 'OUTBOUND') {
-          setAgentMode('OUTBOUND');
-          if (socket && user?.id) {
-            socket.emit('agent:presence', { userId: user.id, mode: 'OUTBOUND', countryCode: country });
-          }
+      if (targetMode) {
+        if (agentMode !== targetMode) {
+          setAgentMode(targetMode);
         }
-      } else if (location.pathname.startsWith('/inbound')) {
-        if (agentMode !== 'INBOUND') {
-          setAgentMode('INBOUND');
-          if (socket && user?.id) {
-            socket.emit('agent:presence', { userId: user.id, mode: 'INBOUND', countryCode: country });
-          }
+
+        const last = lastEmittedPresenceRef.current;
+        const needsEmit =
+          socket &&
+          user?.id &&
+          (last.socketId !== socket.id ||
+            last.userId !== user.id ||
+            last.mode !== targetMode ||
+            last.countryCode !== country);
+
+        if (needsEmit) {
+          socket.emit('agent:presence', { userId: user.id, mode: targetMode, countryCode: country });
+          lastEmittedPresenceRef.current = {
+            socketId: socket.id,
+            userId: user.id,
+            mode: targetMode,
+            countryCode: country,
+          };
         }
       }
     }

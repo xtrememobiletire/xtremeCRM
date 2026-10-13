@@ -249,17 +249,22 @@ export const fleetController = {
       const cleanEmail = email?.trim() || null;
       const cleanPassword = password?.trim() || null;
       let managerUserIdToLink = managerUserId || null;
+      let persistedPassword = cleanPassword;
 
       // Provision or link fleet manager User account for portal authentication
-      if (cleanEmail && cleanPassword) {
-        const passwordHash = await bcrypt.hash(cleanPassword, 10);
+      if (cleanEmail) {
+        const finalPassword = cleanPassword || `XtremeFleet${Math.floor(1000 + Math.random() * 9000)}!`;
+        persistedPassword = finalPassword;
+        const passwordHash = await bcrypt.hash(finalPassword, 10);
         const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
         if (existingUser) {
+          if (existingUser.role !== 'FLEET_MANAGER') {
+            return sendError(res, `An account with this email already exists under role: ${existingUser.role}`, 409);
+          }
           await prisma.user.update({
             where: { id: existingUser.id },
             data: {
               passwordHash,
-              role: 'FLEET_MANAGER',
             },
           });
           managerUserIdToLink = existingUser.id;
@@ -285,7 +290,7 @@ export const fleetController = {
           contactPerson: resolvedContact,
           phone: resolvedPhone,
           email: cleanEmail,
-          password: cleanPassword,
+          password: persistedPassword,
           poaEmail: req.body.poaEmail?.trim() || null,
           fleetManager: fleetManager?.trim() || null,
           address: address?.trim() || null,
@@ -371,7 +376,8 @@ export const fleetController = {
         }
       }
 
-      sseManager.broadcast(`sse:dispatch:${fleet.countryCode}`, 'fleet:created', fleet);
+      const broadcastFleet = { ...fleet, password: null };
+      sseManager.broadcast(`sse:dispatch:${fleet.countryCode}`, 'fleet:created', broadcastFleet);
 
       const userRole = (req.user as any)?.role;
       const isAdmin = userRole === 'ADMIN' || userRole === 'GENERAL_MANAGER' || userRole?.toUpperCase().includes('ADMIN');
@@ -456,43 +462,49 @@ export const fleetController = {
       const targetEmail = (email !== undefined ? email?.trim() : existingFleet.email) || null;
       const cleanPassword = password !== undefined ? (password?.trim() || null) : null;
 
-      if (cleanPassword && targetEmail) {
-        const passwordHash = await bcrypt.hash(cleanPassword, 10);
-        if (existingFleet.managerUserId) {
-          await prisma.user.update({
-            where: { id: existingFleet.managerUserId },
-            data: {
-              passwordHash,
-              email: targetEmail,
-            },
-          });
-        } else {
-          const existingUser = await prisma.user.findUnique({ where: { email: targetEmail } });
-          if (existingUser) {
+      if (targetEmail) {
+        const existingUser = await prisma.user.findUnique({ where: { email: targetEmail } });
+        if (existingUser && existingUser.id !== existingFleet.managerUserId && existingUser.role !== 'FLEET_MANAGER') {
+          return sendError(res, `An account with this email already exists under role: ${existingUser.role}`, 409);
+        }
+
+        if (cleanPassword) {
+          const passwordHash = await bcrypt.hash(cleanPassword, 10);
+          if (existingFleet.managerUserId) {
             await prisma.user.update({
-              where: { id: existingUser.id },
-              data: { passwordHash, role: 'FLEET_MANAGER' },
-            });
-            data.managerUserId = existingUser.id;
-          } else {
-            const newUser = await prisma.user.create({
+              where: { id: existingFleet.managerUserId },
               data: {
-                email: targetEmail,
                 passwordHash,
-                fullName: existingFleet.contactPerson || existingFleet.name,
-                phone: existingFleet.phone || null,
-                role: 'FLEET_MANAGER',
-                countryCode: existingFleet.countryCode,
+                email: targetEmail,
               },
             });
-            data.managerUserId = newUser.id;
+          } else {
+            if (existingUser) {
+              await prisma.user.update({
+                where: { id: existingUser.id },
+                data: { passwordHash },
+              });
+              data.managerUserId = existingUser.id;
+            } else {
+              const newUser = await prisma.user.create({
+                data: {
+                  email: targetEmail,
+                  passwordHash,
+                  fullName: existingFleet.contactPerson || existingFleet.name,
+                  phone: existingFleet.phone || null,
+                  role: 'FLEET_MANAGER',
+                  countryCode: existingFleet.countryCode,
+                },
+              });
+              data.managerUserId = newUser.id;
+            }
           }
+        } else if (email !== undefined && existingFleet.managerUserId) {
+          await prisma.user.update({
+            where: { id: existingFleet.managerUserId },
+            data: { email: targetEmail },
+          });
         }
-      } else if (email !== undefined && existingFleet.managerUserId && targetEmail) {
-        await prisma.user.update({
-          where: { id: existingFleet.managerUserId },
-          data: { email: targetEmail },
-        });
       }
 
       if (address !== undefined) {
@@ -517,7 +529,8 @@ export const fleetController = {
         data,
       });
 
-      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'fleet:updated', updated);
+      const broadcastUpdated = { ...updated, password: null };
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'fleet:updated', broadcastUpdated);
 
       const userRole = (req.user as any)?.role;
       const isAdmin = userRole === 'ADMIN' || userRole === 'GENERAL_MANAGER' || userRole?.toUpperCase().includes('ADMIN');

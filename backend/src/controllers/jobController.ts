@@ -78,16 +78,32 @@ export const jobController = {
       const userRole = (req.user as any)?.role;
       const userId = (req.user as any)?.id;
       if (userRole === 'DRIVER') {
-        where.OR = [
-          { driverId: userId },
-          { lastDeclinedDriverId: userId, status: { in: ['COMPLETED', 'CANCELLED'] } },
-        ];
+        if (status === 'CANCELLED') {
+          where.OR = [
+            { driverId: userId, status: 'CANCELLED' },
+            { lastDeclinedDriverId: userId },
+          ];
+          delete where.status;
+        } else {
+          where.OR = [
+            { driverId: userId },
+            { lastDeclinedDriverId: userId },
+          ];
+        }
         delete where.countryCode;
       } else if (driverId) {
-        where.OR = [
-          { driverId },
-          { lastDeclinedDriverId: driverId, status: { in: ['COMPLETED', 'CANCELLED'] } },
-        ];
+        if (status === 'CANCELLED') {
+          where.OR = [
+            { driverId, status: 'CANCELLED' },
+            { lastDeclinedDriverId: driverId },
+          ];
+          delete where.status;
+        } else {
+          where.OR = [
+            { driverId },
+            { lastDeclinedDriverId: driverId },
+          ];
+        }
       } else if (userRole === 'FLEET_MANAGER') {
         const fleet = await prisma.fleet.findFirst({ where: { managerUserId: userId } });
         if (fleet) where.fleetId = fleet.id;
@@ -551,6 +567,12 @@ export const jobController = {
       const job = await prisma.job.findUnique({ where: { id } });
       if (!job) return sendError(res, 'Job not found', 404);
 
+      const callerRole = (req.user as any)?.role;
+      const callerId = (req.user as any)?.id;
+      if (callerRole === 'DRIVER' && job.driverId !== callerId) {
+        return sendError(res, 'Forbidden: You are not assigned to this job', 403);
+      }
+
       let effectiveAmountCents = amountCents !== undefined
         ? Math.round(Number(amountCents))
         : (cashAmountCents !== undefined 
@@ -573,18 +595,24 @@ export const jobController = {
       } else if (rawStatus === 'COMPLETED') {
         updateData.dispositionNotes = rawStatus;
       } else if (rawStatus === 'CANCELLED') {
-        // Driver decline / cancellation unassigns job back to PENDING so dispatcher can reassign
-        const decliningDriverId = job.driverId || (req.user as any)?.id;
-        updateData.status = 'PENDING';
-        updateData.driverId = null;
-        updateData.lastDeclinedDriverId = decliningDriverId;
-        updateData.assignedAt = null;
-        updateData.driverEtaMinutes = null;
-        updateData.driverEstimatedArrivalAt = null;
-        if (req.body.driverDeclineReason) {
-          updateData.driverDeclineReason = String(req.body.driverDeclineReason).toUpperCase();
-          updateData.dispositionNotes = `DECLINED_${String(req.body.driverDeclineReason).toUpperCase()}`;
+        if (callerRole === 'DRIVER') {
+          // Driver decline unassigns job back to PENDING so dispatcher can reassign
+          const decliningDriverId = job.driverId || callerId;
+          updateData.status = 'PENDING';
+          updateData.driverId = null;
+          updateData.lastDeclinedDriverId = decliningDriverId;
+          updateData.assignedAt = null;
+          updateData.driverEtaMinutes = null;
+          updateData.driverEstimatedArrivalAt = null;
+          if (req.body.driverDeclineReason) {
+            updateData.driverDeclineReason = String(req.body.driverDeclineReason).toUpperCase();
+            updateData.dispositionNotes = `DECLINED_${String(req.body.driverDeclineReason).toUpperCase()}`;
+          } else {
+            updateData.dispositionNotes = 'CANCELLED';
+          }
         } else {
+          // Admin / Dispatcher cancellation retains true CANCELLED status
+          updateData.status = 'CANCELLED';
           updateData.dispositionNotes = 'CANCELLED';
         }
       }

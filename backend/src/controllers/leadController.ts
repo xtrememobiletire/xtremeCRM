@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcrypt';
 import * as XLSX from 'xlsx';
 import { prisma } from '../config/database.js';
 import {
@@ -857,6 +858,38 @@ export const leadController = {
         if (phoneValidation.isValid) fleetPhone = phoneValidation.normalized;
       }
 
+      const fleetEmail = (extra.email || lead.email)?.trim() || null;
+      let managerUserIdToLink: string | null = null;
+      let fleetPassword: string | null = null;
+
+      if (fleetEmail) {
+        const rawPass: string = extra.password?.trim() || `XtremeFleet${Math.floor(1000 + Math.random() * 9000)}!`;
+        fleetPassword = rawPass;
+        const passwordHash: string = await bcrypt.hash(rawPass, 10);
+        const existingUser = await prisma.user.findUnique({ where: { email: fleetEmail } });
+        if (existingUser) {
+          if (existingUser.role === 'FLEET_MANAGER') {
+            await prisma.user.update({
+              where: { id: existingUser.id },
+              data: { passwordHash },
+            });
+            managerUserIdToLink = existingUser.id;
+          }
+        } else {
+          const newUser = await prisma.user.create({
+            data: {
+              email: fleetEmail,
+              passwordHash,
+              fullName: contactPerson || companyName || 'Fleet Manager',
+              phone: fleetPhone || null,
+              role: 'FLEET_MANAGER',
+              countryCode: lead.countryCode,
+            },
+          });
+          managerUserIdToLink = newUser.id;
+        }
+      }
+
       const fleet = await prisma.fleet.create({
         data: {
           fleetCode,
@@ -866,7 +899,8 @@ export const leadController = {
           ceoOwnerName: extra.ceoOwnerName || lead.ceoOwnerName || req.body.ceoOwnerName?.trim() || undefined,
           phone: fleetPhone,
           altPhone: extra.altPhone || lead.altPhone || undefined,
-          email: extra.email || lead.email,
+          email: fleetEmail,
+          password: fleetPassword,
           poaEmail: extra.poaEmail || lead.poaEmail || req.body.poaEmail?.trim() || undefined,
           address: extra.address || lead.address,
           website: extra.website || lead.website || undefined,
@@ -877,6 +911,7 @@ export const leadController = {
           contractSignedAt: new Date(),
           convertedFromLeadId: lead.id,
           virtualAssistantId,
+          managerUserId: managerUserIdToLink,
         },
       });
 

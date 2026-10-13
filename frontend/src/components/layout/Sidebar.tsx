@@ -119,8 +119,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     routeChunkLoaders[path]?.();
     if (path === '/jobs') {
       queryClient.prefetchQuery({
-        queryKey: ['jobs', country, { page: 1, limit: 20, isFleetJob: 'false', countryCode: country }],
-        queryFn: () => jobService.getJobs({ page: 1, limit: 20, isFleetJob: 'false', countryCode: country }),
+        queryKey: ['jobs', 'ALL', { page: 1, limit: 20, isFleetJob: 'false', countryCode: 'ALL' }],
+        queryFn: () => jobService.getJobs({ page: 1, limit: 20, isFleetJob: 'false', countryCode: 'ALL' }),
         staleTime: 60000,
       });
     } else if (path === '/bookings') {

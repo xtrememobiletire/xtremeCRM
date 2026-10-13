@@ -84,18 +84,19 @@ export default function History() {
   const rawJobs = jobsResponse?.data || [];
   // Scoped to driver if driver, then filter for completed or cancelled orders
   const scopedJobs = isDriver && user?.id
-    ? rawJobs.filter((j: any) => j.driverId === user.id || j.driver?.id === user.id)
+    ? rawJobs.filter((j: any) => j.driverId === user.id || j.driver?.id === user.id || j.lastDeclinedDriverId === user.id)
     : rawJobs;
 
   const getJobDate = (job: any) => job.completedAt || job.updatedAt || job.createdAt;
 
   const timeframeJobs = useMemo(() => {
     return scopedJobs.filter((j: any) => {
-      const isHistoryStatus = j.status === 'COMPLETED' || j.status === 'CANCELLED';
+      const isDeclinedByMe = isDriver && j.lastDeclinedDriverId === user?.id;
+      const isHistoryStatus = j.status === 'COMPLETED' || j.status === 'CANCELLED' || isDeclinedByMe;
       if (!isHistoryStatus) return false;
       return isWithinTimeframe(getJobDate(j), timeframe);
     });
-  }, [scopedJobs, timeframe]);
+  }, [scopedJobs, timeframe, isDriver, user?.id]);
 
   const isJobAudited = (job: any): boolean => {
     return Boolean(job.isAudited || job.auditedById || job.expenseStatedById);
@@ -114,8 +115,8 @@ export default function History() {
   }, [completedJobs]);
 
   const cancelledJobs = useMemo(() => {
-    return timeframeJobs.filter((j: any) => j.status === 'CANCELLED');
-  }, [timeframeJobs]);
+    return timeframeJobs.filter((j: any) => j.status === 'CANCELLED' || (isDriver && j.lastDeclinedDriverId === user?.id));
+  }, [timeframeJobs, isDriver, user?.id]);
 
   const auditedEarnedCents = useMemo(() => {
     return auditedJobs.reduce((sum: number, j: any) => sum + (j.repairerFeeCents || 0), 0);

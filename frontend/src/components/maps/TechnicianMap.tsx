@@ -43,6 +43,7 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
   const { containerRef, map, isLoaded, flyTo } = useMapbox({ zoom: 14 });
   const jobMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const driverMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const hasFittedBoundsRef = useRef(false);
   const [coords, setCoords] = useState<[number, number] | null>(
     latitude && longitude ? [longitude, latitude] : null
   );
@@ -51,6 +52,10 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
   const [driveEtaMins, setDriveEtaMins] = useState<number | null>(null);
   const [isTrackingDriver, setIsTrackingDriver] = useState(false);
   const [trackingError, setTrackingError] = useState<string | null>(null);
+
+  useEffect(() => {
+    hasFittedBoundsRef.current = false;
+  }, [coords]);
 
   // 1. Resolve customer breakdown coordinates if not provided
   useEffect(() => {
@@ -87,13 +92,6 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
     const handlePos = (pos: GeolocationPosition) => {
       const dCoords: [number, number] = [pos.coords.longitude, pos.coords.latitude];
       setDriverCoords(dCoords);
-
-      if (coords) {
-        const d = calculateDistanceKm(dCoords[0], dCoords[1], coords[0], coords[1]);
-        setDistanceKm(d);
-        // Approx roadside driving time (~30 km/h realistic city response with traffic)
-        setDriveEtaMins(Math.max(2, Math.round(d * 2.2)));
-      }
     };
 
     navigator.geolocation.getCurrentPosition(
@@ -117,7 +115,7 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
     return () => {
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [coords]);
+  }, []);
 
   // Recalculate distance when customer coords change
   useEffect(() => {
@@ -135,37 +133,37 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
     // A. Customer breakdown marker (Red 🛞)
     if (coords) {
       if (jobMarkerRef.current) {
-        jobMarkerRef.current.remove();
+        jobMarkerRef.current.setLngLat(coords);
+      } else {
+        const cEl = document.createElement('div');
+        cEl.style.width = '38px';
+        cEl.style.height = '38px';
+        cEl.style.borderRadius = '50%';
+        cEl.style.backgroundColor = '#dc2626';
+        cEl.style.border = '3px solid white';
+        cEl.style.boxShadow = '0 0 15px rgba(220, 38, 38, 0.7)';
+        cEl.style.display = 'flex';
+        cEl.style.alignItems = 'center';
+        cEl.style.justifyContent = 'center';
+        cEl.style.fontSize = '18px';
+        cEl.innerText = '🛞';
+
+        const popup = new mapboxgl.Popup({ offset: 20 }).setHTML(`
+          <div style="font-family: inherit; font-size: 12px; color: #0f172a; padding: 3px;">
+            <b style="color: #dc2626;">Our Location (Breakdown)${jobCode ? ` #${jobCode}` : ''}</b><br/>
+            <b>${customerName}</b><br/>
+            ${customerPhone ? `<span style="color: #059669; font-weight: bold;">${customerPhone}</span><br/>` : ''}
+            <span style="color: #64748b; font-size: 11px;">${address}</span>
+          </div>
+        `);
+
+        const marker = new mapboxgl.Marker(cEl)
+          .setLngLat(coords)
+          .setPopup(popup)
+          .addTo(map);
+
+        jobMarkerRef.current = marker;
       }
-
-      const cEl = document.createElement('div');
-      cEl.style.width = '38px';
-      cEl.style.height = '38px';
-      cEl.style.borderRadius = '50%';
-      cEl.style.backgroundColor = '#dc2626';
-      cEl.style.border = '3px solid white';
-      cEl.style.boxShadow = '0 0 15px rgba(220, 38, 38, 0.7)';
-      cEl.style.display = 'flex';
-      cEl.style.alignItems = 'center';
-      cEl.style.justifyContent = 'center';
-      cEl.style.fontSize = '18px';
-      cEl.innerText = '🛞';
-
-      const popup = new mapboxgl.Popup({ offset: 20 }).setHTML(`
-        <div style="font-family: inherit; font-size: 12px; color: #0f172a; padding: 3px;">
-          <b style="color: #dc2626;">Our Location (Breakdown)${jobCode ? ` #${jobCode}` : ''}</b><br/>
-          <b>${customerName}</b><br/>
-          ${customerPhone ? `<span style="color: #059669; font-weight: bold;">${customerPhone}</span><br/>` : ''}
-          <span style="color: #64748b; font-size: 11px;">${address}</span>
-        </div>
-      `);
-
-      const marker = new mapboxgl.Marker(cEl)
-        .setLngLat(coords)
-        .setPopup(popup)
-        .addTo(map);
-
-      jobMarkerRef.current = marker;
     }
 
     // B. Driver Location marker (Blue 🚗)
@@ -200,12 +198,15 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
       }
     }
 
-    // C. Fit Bounds if both present, or fly to customer
+    // C. Fit Bounds if both present (run once on initial availability), or fly to customer
     if (coords && driverCoords) {
-      const bounds = new mapboxgl.LngLatBounds();
-      bounds.extend(coords);
-      bounds.extend(driverCoords);
-      map.fitBounds(bounds, { padding: 60, duration: 1000 });
+      if (!hasFittedBoundsRef.current) {
+        hasFittedBoundsRef.current = true;
+        const bounds = new mapboxgl.LngLatBounds();
+        bounds.extend(coords);
+        bounds.extend(driverCoords);
+        map.fitBounds(bounds, { padding: 60, duration: 1000 });
+      }
 
       // Draw direct route dash-line between driver and breakdown
       const routeData: any = {
@@ -312,7 +313,7 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
               </span>
               <p className="font-bold text-slate-100 truncate text-[11px] mt-0.5">
                 {driverCoords
-                  ? `Telemetry: ${driverCoords[1].toFixed(4)}° N, ${driverCoords[0].toFixed(4)}° W`
+                  ? `Telemetry: ${Math.abs(driverCoords[1]).toFixed(4)}° ${driverCoords[1] >= 0 ? 'N' : 'S'}, ${Math.abs(driverCoords[0]).toFixed(4)}° ${driverCoords[0] >= 0 ? 'E' : 'W'}`
                   : isTrackingDriver
                   ? 'Acquiring satellite telemetry...'
                   : 'GPS Standby'}
@@ -335,13 +336,21 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
             onClick={() => {
               if (navigator.geolocation) {
                 setIsTrackingDriver(true);
-                navigator.geolocation.getCurrentPosition((pos) => {
-                  const dCoords: [number, number] = [pos.coords.longitude, pos.coords.latitude];
-                  setDriverCoords(dCoords);
-                  if (map) {
-                    map.flyTo({ center: dCoords, zoom: 15 });
-                  }
-                });
+                navigator.geolocation.getCurrentPosition(
+                  (pos) => {
+                    const dCoords: [number, number] = [pos.coords.longitude, pos.coords.latitude];
+                    setDriverCoords(dCoords);
+                    if (map) {
+                      map.flyTo({ center: dCoords, zoom: 15 });
+                    }
+                  },
+                  (err) => {
+                    console.warn('[TechnicianMap] Recenter geolocation error:', err);
+                    setTrackingError(`GPS access: ${err.message}`);
+                    setIsTrackingDriver(false);
+                  },
+                  { enableHighAccuracy: true, timeout: 10000 }
+                );
               }
             }}
             title="Recenter on driver position"

@@ -19,7 +19,12 @@ export function useCustomers(params?: {
     queryKey: ['customers', effectiveCountry, effectiveParams],
     queryFn: () => customerService.getCustomers(effectiveParams),
     staleTime: 60000,
-    placeholderData: (previousData) => previousData,
+    placeholderData: (previousData, previousQuery) => {
+      if (previousQuery?.queryKey?.[1] !== effectiveCountry) {
+        return undefined;
+      }
+      return previousData;
+    },
   });
 }
 

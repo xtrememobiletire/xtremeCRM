@@ -299,10 +299,10 @@ model Fleet {
   phone         String      // E.164 formatted primary management phone (e.g. +17035550144)
   altPhone            String?     @map("alt_phone")
   ceoOwnerName        String?     @map("ceo_owner_name")
-  email               String?     // Billing/contact email
+  email               String?     // Fleet manager portal login email (the credentials email we provide them)
   password            String?     // Fleet manager portal login password (viewable by admin)
-  poaEmail            String?     @map("poa_email") // Power of Attorney (Signing / Billing Authority)
-  fleetManager        String?     @map("fleet_manager")
+  poaEmail            String?     @map("poa_email") // Billing email (Invoices & accounts payable)
+  fleetManager        String?     @map("fleet_manager") // Fleet Manager Name
   website             String?
   numberOfUnits       Int?        @map("number_of_units")
   address             String?     // e.g. "10100 Richmond Hwy, Lorton, VA 22079"
