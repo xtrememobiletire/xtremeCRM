@@ -151,7 +151,7 @@ export const jobService = {
 
   async updateJobStatus(
     id: string,
-    statusOrPayload: string | FormData | { status: string; paymentMethod?: string; amountCents?: number; cashAmountCents?: number; receiptUrl?: string },
+    statusOrPayload: string | FormData | { status: string; paymentMethod?: string; amountCents?: number; cashAmountCents?: number; receiptUrl?: string; driverDeclineReason?: string },
     cashAmountCents?: number
   ): Promise<JobItem> {
     if (statusOrPayload instanceof FormData) {

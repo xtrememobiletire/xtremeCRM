@@ -1,5 +1,6 @@
+import { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import { jobService } from '../../services/jobService';
@@ -18,6 +19,24 @@ import {
   PhoneOutgoing,
   Globe
 } from 'lucide-react';
+
+const routeChunkLoaders: Record<string, () => Promise<any>> = {
+  '/dashboard': () => import('../../pages/Dashboard'),
+  '/jobs': () => import('../../pages/Jobs'),
+  '/fleet-jobs': () => import('../../pages/FleetJobs'),
+  '/bookings': () => import('../../pages/Bookings'),
+  '/inbound': () => import('../../pages/Inbound'),
+  '/inbound-fleet': () => import('../../pages/FleetInbound'),
+  '/dispatch': () => import('../../pages/Dispatch'),
+  '/fleets': () => import('../../pages/Fleets'),
+  '/customers': () => import('../../pages/Customers'),
+  '/accounting': () => import('../../pages/Accounting'),
+  '/leads': () => import('../../pages/Leads'),
+  '/fleet-dashboard': () => import('../../pages/FleetDashboard'),
+  '/member-dashboard': () => import('../../pages/MemberDashboard'),
+  '/technician': () => import('../../pages/TechnicianPortal'),
+  '/history': () => import('../../pages/History'),
+};
 
 interface SidebarProps {
   isOpen: boolean;
@@ -40,6 +59,7 @@ const baseNavItems = [
 ];
 
 export default function Sidebar({ isOpen, onClose, isCollapsed = false }: SidebarProps) {
+  const queryClient = useQueryClient();
   const { user, logout } = useAuth();
   const { country, currencySymbol } = useTenant();
   const isFleetManager = user?.role === 'FLEET_MANAGER';
@@ -64,7 +84,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     ? [{ icon: Car, label: 'Member Portal', path: '/member-dashboard' }]
     : isDriver
     ? [
-        { icon: Wrench, label: 'Active Orders', path: '/technician' },
+        { icon: Wrench, label: 'Orders', path: '/technician' },
         { icon: History, label: 'Earnings & History', path: '/history' },
       ]
     : isAccountant
@@ -94,6 +114,51 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         { icon: PhoneOutgoing, label: 'Leads Queue', path: '/leads' },
       ]
     : baseNavItems;
+
+  const prefetchRoute = (path: string) => {
+    routeChunkLoaders[path]?.();
+    if (path === '/jobs') {
+      queryClient.prefetchQuery({
+        queryKey: ['jobs', 'ALL', { page: 1, limit: 20, isFleetJob: 'false', countryCode: 'ALL' }],
+        queryFn: () => jobService.getJobs({ page: 1, limit: 20, isFleetJob: 'false', countryCode: 'ALL' }),
+        staleTime: 60000,
+      });
+    } else if (path === '/bookings') {
+      queryClient.prefetchQuery({
+        queryKey: ['bookings-queue', country, '', 1],
+        queryFn: () =>
+          jobService.getJobs({
+            page: 1,
+            limit: 25,
+            countryCode: country,
+            status: 'UNVERIFIED_PUBLIC',
+          }),
+        staleTime: 60000,
+      });
+    }
+  };
+
+  // Pre-warm top 3 role routes in background when browser is idle
+  useEffect(() => {
+    const idleCallback =
+      typeof window !== 'undefined' && 'requestIdleCallback' in window
+        ? (window as any).requestIdleCallback
+        : (cb: any) => setTimeout(cb, 1200);
+
+    const handle = idleCallback(() => {
+      navItems.slice(0, 3).forEach((item) => {
+        routeChunkLoaders[item.path]?.();
+      });
+    });
+
+    return () => {
+      if (typeof window !== 'undefined' && 'cancelIdleCallback' in window) {
+        (window as any).cancelIdleCallback(handle);
+      } else {
+        clearTimeout(handle);
+      }
+    };
+  }, [navItems]);
 
   return (
     <>
@@ -146,6 +211,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                 key={item.path}
                 to={item.path}
                 onClick={() => { if (isOpen) onClose(); }}
+                onMouseEnter={() => prefetchRoute(item.path)}
+                onFocus={() => prefetchRoute(item.path)}
                 title={isCollapsed ? item.label : undefined}
                 className={({ isActive }) =>
                   `relative flex items-center gap-3 rounded-xl text-xs sm:text-sm transition-all duration-150 ${

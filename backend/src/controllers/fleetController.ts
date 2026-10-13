@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcrypt';
 import { prisma } from '../config/database.js';
 import {
   sendSuccess,
@@ -59,7 +60,18 @@ export const fleetController = {
         prisma.fleet.count({ where }),
       ]);
 
-      const paginated = createPaginatedResponse(fleets, page, limit, totalCount);
+      const userRole = (req.user as any)?.role;
+      const isAdmin = userRole === 'ADMIN' || userRole === 'GENERAL_MANAGER' || userRole?.toUpperCase().includes('ADMIN');
+
+      const sanitizedFleets = fleets.map((f: any) => {
+        if (!isAdmin) {
+          const { password: _p, ...rest } = f;
+          return rest;
+        }
+        return f;
+      });
+
+      const paginated = createPaginatedResponse(sanitizedFleets, page, limit, totalCount);
       return res.status(200).json(paginated);
     } catch (err: any) {
       return sendError(res, err.message);
@@ -160,6 +172,13 @@ export const fleetController = {
       });
 
       if (!fleet) return sendError(res, 'Fleet not found', 404);
+
+      const userRole = (req.user as any)?.role;
+      const isAdmin = userRole === 'ADMIN' || userRole === 'GENERAL_MANAGER' || userRole?.toUpperCase().includes('ADMIN');
+      if (!isAdmin) {
+        const { password: _p, ...rest } = fleet as any;
+        return sendSuccess(res, rest);
+      }
       return sendSuccess(res, fleet);
     } catch (err: any) {
       return sendError(res, err.message);
@@ -176,6 +195,7 @@ export const fleetController = {
         contactName,
         phone,
         email,
+        password,
         address,
         website,
         countryCode,
@@ -226,13 +246,51 @@ export const fleetController = {
         }
       }
 
+      const cleanEmail = email?.trim() || null;
+      const cleanPassword = password?.trim() || null;
+      let managerUserIdToLink = managerUserId || null;
+      let persistedPassword = cleanPassword;
+
+      // Provision or link fleet manager User account for portal authentication
+      if (cleanEmail) {
+        const finalPassword = cleanPassword || `XtremeFleet${Math.floor(1000 + Math.random() * 9000)}!`;
+        persistedPassword = finalPassword;
+        const passwordHash = await bcrypt.hash(finalPassword, 10);
+        const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
+        if (existingUser) {
+          if (existingUser.role !== 'FLEET_MANAGER') {
+            return sendError(res, `An account with this email already exists under role: ${existingUser.role}`, 409);
+          }
+          await prisma.user.update({
+            where: { id: existingUser.id },
+            data: {
+              passwordHash,
+            },
+          });
+          managerUserIdToLink = existingUser.id;
+        } else {
+          const newUser = await prisma.user.create({
+            data: {
+              email: cleanEmail,
+              passwordHash,
+              fullName: resolvedContact || resolvedName,
+              phone: resolvedPhone || null,
+              role: 'FLEET_MANAGER',
+              countryCode: effectiveCountry,
+            },
+          });
+          managerUserIdToLink = newUser.id;
+        }
+      }
+
       const fleet = await prisma.fleet.create({
         data: {
           fleetCode: code,
           name: resolvedName,
           contactPerson: resolvedContact,
           phone: resolvedPhone,
-          email: email?.trim() || null,
+          email: cleanEmail,
+          password: persistedPassword,
           poaEmail: req.body.poaEmail?.trim() || null,
           fleetManager: fleetManager?.trim() || null,
           address: address?.trim() || null,
@@ -244,7 +302,7 @@ export const fleetController = {
           discountPercent: req.body.discountPercent ? Number(req.body.discountPercent) : 0,
           contractSignedAt: new Date(),
           virtualAssistantId: virtualAssistantId || null,
-          managerUserId: managerUserId || null,
+          managerUserId: managerUserIdToLink,
         },
       });
 
@@ -318,9 +376,14 @@ export const fleetController = {
         }
       }
 
-      sseManager.broadcast(`sse:dispatch:${fleet.countryCode}`, 'fleet:created', fleet);
+      const broadcastFleet = { ...fleet, password: null };
+      sseManager.broadcast(`sse:dispatch:${fleet.countryCode}`, 'fleet:created', broadcastFleet);
 
-      return sendSuccess(res, fleet, 'Fleet created successfully', 201);
+      const userRole = (req.user as any)?.role;
+      const isAdmin = userRole === 'ADMIN' || userRole === 'GENERAL_MANAGER' || userRole?.toUpperCase().includes('ADMIN');
+      const responseFleet = isAdmin ? fleet : { ...fleet, password: null };
+
+      return sendSuccess(res, responseFleet, 'Fleet created successfully', 201);
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }
@@ -329,6 +392,9 @@ export const fleetController = {
   async updateFleet(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
+      const existingFleet = await prisma.fleet.findUnique({ where: { id } });
+      if (!existingFleet) return sendError(res, 'Fleet not found', 404);
+
       const {
         fleetCode,
         name,
@@ -337,6 +403,7 @@ export const fleetController = {
         contactName,
         phone,
         email,
+        password,
         poaEmail,
         fleetManager,
         managerPhone,
@@ -370,6 +437,7 @@ export const fleetController = {
         }
       }
       if (email !== undefined) data.email = email?.trim() || null;
+      if (password !== undefined) data.password = password?.trim() || null;
       if (poaEmail !== undefined) data.poaEmail = poaEmail?.trim() || null;
       if (fleetManager !== undefined) data.fleetManager = fleetManager?.trim() || null;
       if (managerPhone !== undefined) data.managerPhone = managerPhone?.trim() || null;
@@ -388,6 +456,55 @@ export const fleetController = {
       }
       if (req.body.discountPercent !== undefined) {
         data.discountPercent = Number(req.body.discountPercent) || 0;
+      }
+
+      // Sync password or email with User account
+      const targetEmail = (email !== undefined ? email?.trim() : existingFleet.email) || null;
+      const cleanPassword = password !== undefined ? (password?.trim() || null) : null;
+
+      if (targetEmail) {
+        const existingUser = await prisma.user.findUnique({ where: { email: targetEmail } });
+        if (existingUser && existingUser.id !== existingFleet.managerUserId && existingUser.role !== 'FLEET_MANAGER') {
+          return sendError(res, `An account with this email already exists under role: ${existingUser.role}`, 409);
+        }
+
+        if (cleanPassword) {
+          const passwordHash = await bcrypt.hash(cleanPassword, 10);
+          if (existingFleet.managerUserId) {
+            await prisma.user.update({
+              where: { id: existingFleet.managerUserId },
+              data: {
+                passwordHash,
+                email: targetEmail,
+              },
+            });
+          } else {
+            if (existingUser) {
+              await prisma.user.update({
+                where: { id: existingUser.id },
+                data: { passwordHash },
+              });
+              data.managerUserId = existingUser.id;
+            } else {
+              const newUser = await prisma.user.create({
+                data: {
+                  email: targetEmail,
+                  passwordHash,
+                  fullName: existingFleet.contactPerson || existingFleet.name,
+                  phone: existingFleet.phone || null,
+                  role: 'FLEET_MANAGER',
+                  countryCode: existingFleet.countryCode,
+                },
+              });
+              data.managerUserId = newUser.id;
+            }
+          }
+        } else if (email !== undefined && existingFleet.managerUserId) {
+          await prisma.user.update({
+            where: { id: existingFleet.managerUserId },
+            data: { email: targetEmail },
+          });
+        }
       }
 
       if (address !== undefined) {
@@ -412,9 +529,14 @@ export const fleetController = {
         data,
       });
 
-      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'fleet:updated', updated);
+      const broadcastUpdated = { ...updated, password: null };
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'fleet:updated', broadcastUpdated);
 
-      return sendSuccess(res, updated, 'Fleet updated successfully');
+      const userRole = (req.user as any)?.role;
+      const isAdmin = userRole === 'ADMIN' || userRole === 'GENERAL_MANAGER' || userRole?.toUpperCase().includes('ADMIN');
+      const responseUpdated = isAdmin ? updated : { ...updated, password: null };
+
+      return sendSuccess(res, responseUpdated, 'Fleet updated successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }

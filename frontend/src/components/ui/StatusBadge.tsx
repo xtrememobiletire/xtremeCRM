@@ -7,6 +7,7 @@ const STATUS_CONFIGS: Record<string, { label: string; bg: string; text: string; 
   IN_PROGRESS: { label: 'In Progress', bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
   COMPLETED: { label: 'Completed', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
   CANCELLED: { label: 'Cancelled', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
+  DECLINED: { label: 'Declined', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
 
   // Urgency
   CRITICAL: { label: 'Critical', bg: 'bg-rose-100', text: 'text-rose-800', border: 'border-rose-300' },
@@ -34,9 +35,19 @@ interface StatusBadgeProps {
   status: string;
   label?: string;
   className?: string;
+  title?: string;
+  tooltip?: string;
+  onClick?: () => void;
 }
 
-export default function StatusBadge({ status, label, className = '' }: StatusBadgeProps) {
+export default function StatusBadge({
+  status,
+  label,
+  className = '',
+  title,
+  tooltip,
+  onClick,
+}: StatusBadgeProps) {
   const normalized = String(status || '').toUpperCase().trim();
   const config = STATUS_CONFIGS[normalized] || {
     label: label || status || 'Unknown',
@@ -45,8 +56,27 @@ export default function StatusBadge({ status, label, className = '' }: StatusBad
     border: 'border-slate-200',
   };
 
+  const hoverText = title || tooltip;
+  const isInteractive = Boolean(onClick);
+
+  if (isInteractive) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        title={hoverText}
+        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border cursor-pointer hover:opacity-85 active:scale-95 transition-all ${config.bg} ${config.text} ${config.border} ${className}`}
+      >
+        {label || config.label}
+      </button>
+    );
+  }
+
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${config.bg} ${config.text} ${config.border} ${className}`}>
+    <span
+      title={hoverText}
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${config.bg} ${config.text} ${config.border} ${className}`}
+    >
       {label || config.label}
     </span>
   );

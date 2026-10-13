@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { fleetController } from '../controllers/fleetController.js';
 import { authenticate } from '../middleware/auth.js';
+import { authorize } from '../middleware/authorize.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import {
   createFleetSchema,
@@ -50,6 +51,7 @@ router.get(
  */
 router.post(
   '/',
+  authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']),
   validateRequest({ body: createFleetSchema }),
   fleetController.createFleet
 );
@@ -61,6 +63,7 @@ router.post(
  */
 router.patch(
   '/:id',
+  authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']),
   validateRequest({ params: idParamSchema, body: updateFleetSchema }),
   fleetController.updateFleet
 );
@@ -83,6 +86,7 @@ router.get(
  */
 router.post(
   '/:id/drivers',
+  authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']),
   validateRequest({ params: idParamSchema, body: addFleetDriverSchema }),
   fleetController.addFleetDriver
 );
@@ -92,7 +96,11 @@ router.post(
  * @desc    Remove driver from fleet
  * @access  Private
  */
-router.delete('/:id/drivers/:driverId', fleetController.deleteFleetDriver);
+router.delete(
+  '/:id/drivers/:driverId',
+  authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']),
+  fleetController.deleteFleetDriver
+);
 
 /**
  * @route   DELETE /api/fleets/:id
@@ -101,6 +109,7 @@ router.delete('/:id/drivers/:driverId', fleetController.deleteFleetDriver);
  */
 router.delete(
   '/:id',
+  authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']),
   validateRequest({ params: idParamSchema }),
   fleetController.deleteFleet
 );

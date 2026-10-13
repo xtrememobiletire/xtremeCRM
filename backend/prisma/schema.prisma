@@ -223,6 +223,7 @@ model User {
   // Internal Staff Relations
   createdJobs       Job[]     @relation("AgentJobs")
   assignedJobs      Job[]     @relation("DriverJobs")
+  declinedJobs      Job[]     @relation("JobLastDeclinedDriver")
   statedJobExpenses Job[]     @relation("JobExpensesStatedBy")
   verifiedPayments  Job[]     @relation("JobPaymentsVerifiedBy")
   auditedJobs       Job[]     @relation("JobAuditedBy")
@@ -298,9 +299,10 @@ model Fleet {
   phone         String      // E.164 formatted primary management phone (e.g. +17035550144)
   altPhone            String?     @map("alt_phone")
   ceoOwnerName        String?     @map("ceo_owner_name")
-  email               String?     // Billing/contact email
-  poaEmail            String?     @map("poa_email") // Power of Attorney (Signing / Billing Authority)
-  fleetManager        String?     @map("fleet_manager")
+  email               String?     // Fleet manager portal login email (the credentials email we provide them)
+  password            String?     // Fleet manager portal login password (viewable by admin)
+  poaEmail            String?     @map("poa_email") // Billing email (Invoices & accounts payable)
+  fleetManager        String?     @map("fleet_manager") // Fleet Manager Name
   website             String?
   numberOfUnits       Int?        @map("number_of_units")
   address             String?     // e.g. "10100 Richmond Hwy, Lorton, VA 22079"
@@ -515,8 +517,11 @@ model Job {
   cashCollectedCents     Int?                    @default(0) @map("cash_collected_cents")
 
   // Call Center Outcome
-  disposition      JobDisposition @default(BOOKED)
-  dispositionNotes String?        @map("disposition_notes")
+  disposition         JobDisposition @default(BOOKED)
+  dispositionNotes    String?        @map("disposition_notes")
+  driverDeclineReason String?        @map("driver_decline_reason") // Operational Driver Rejection ("BUSY", "OUT_OF_AREA", "OTHER")
+  lastDeclinedDriverId String?       @map("last_declined_driver_id")
+  lastDeclinedDriver   User?         @relation("JobLastDeclinedDriver", fields: [lastDeclinedDriverId], references: [id])
 
   // ------------------------------------------------------
   // FINANCIALS & REVENUE (Inlined from JobFinancial)

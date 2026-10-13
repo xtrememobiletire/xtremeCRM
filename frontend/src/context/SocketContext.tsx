@@ -251,7 +251,9 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ['technician-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['accounting'] });
 
-      if (data?.jobCode && data?.status) {
+      // Suppress generic status alerts for drivers (drivers only get assigned notices & direct chat)
+      const isDriver = userRef.current?.role === 'DRIVER';
+      if (!isDriver && data?.jobCode && data?.status) {
         addNotification({
           type: 'STATUS_UPDATED',
           title: `Status: #${data.jobCode}`,

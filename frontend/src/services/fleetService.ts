@@ -21,6 +21,7 @@ export interface FleetItem {
   contactPerson?: string;
   phone?: string;
   email?: string;
+  password?: string;
   paymentTerms: string;
   creditLimitCents?: number;
   outstandingBalanceCents?: number;

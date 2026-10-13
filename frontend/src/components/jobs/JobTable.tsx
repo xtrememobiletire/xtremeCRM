@@ -1,10 +1,18 @@
-import { Eye, UserCheck, AlertCircle, MessageSquare, Clock, Zap } from 'lucide-react';
+import { Eye, UserCheck, AlertCircle, MessageSquare, Clock, Zap, XCircle } from 'lucide-react';
 import StatusBadge from '../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
 import { useTenant } from '../../context/TenantContext';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
+
+const formatDeclineReason = (reason?: string) => {
+  if (!reason) return 'Declined';
+  const clean = reason.replace(/^DECLINED_/, '').toUpperCase();
+  if (clean === 'BUSY') return 'Busy';
+  if (clean === 'OUT_OF_AREA') return 'Out of Area';
+  return 'Other';
+};
 
 interface JobTableProps {
   jobs: any[];
@@ -120,19 +128,48 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                       )}
                     </div>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => onAssignDriver(job)}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition cursor-pointer"
-                    >
-                      <AlertCircle className="w-3 h-3 text-amber-500" />
-                      <span>Assign</span>
-                    </button>
+                    <div className="space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => onAssignDriver(job)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition cursor-pointer"
+                      >
+                        <AlertCircle className="w-3 h-3 text-amber-500" />
+                        <span>Assign</span>
+                      </button>
+                      {job.driverDeclineReason && (
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => onViewJob(job)}
+                            title={`Declined by ${job.lastDeclinedDriver?.fullName || 'Technician'} • Reason: ${formatDeclineReason(job.driverDeclineReason)} (Click to view)`}
+                            className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded px-1.5 py-0.5 inline-flex items-center gap-1 hover:bg-rose-100 cursor-pointer transition shadow-2xs"
+                          >
+                            <XCircle className="w-2.5 h-2.5 text-rose-500" />
+                            <span>
+                              {job.lastDeclinedDriver?.fullName ? `${job.lastDeclinedDriver.fullName.split(' ')[0]}: ` : ''}
+                              {formatDeclineReason(job.driverDeclineReason)}
+                            </span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </td>
               )}
               <td className="table-td whitespace-nowrap">
-                <StatusBadge status={job.status} />
+                <StatusBadge 
+                  status={job.driverDeclineReason ? 'DECLINED' : job.status} 
+                  label={job.driverDeclineReason ? `Declined (${formatDeclineReason(job.driverDeclineReason)})` : undefined}
+                  title={
+                    job.driverDeclineReason
+                      ? `Declined by ${job.lastDeclinedDriver?.fullName || 'Technician'} • Reason: ${formatDeclineReason(job.driverDeclineReason)} (Click to view)`
+                      : job.status === 'CANCELLED'
+                      ? 'Cancelled work order (Click to view)'
+                      : undefined
+                  }
+                  onClick={job.driverDeclineReason || job.status === 'CANCELLED' ? () => onViewJob(job) : undefined}
+                />
               </td>
               <td className="table-td whitespace-nowrap">
                 <StatusBadge status={job.urgency} />

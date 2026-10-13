@@ -4,7 +4,7 @@ import { prisma } from './src/config/database.js';
 async function main() {
   console.log('🚀 Creating 1st Fleet Account: KT Group Of Companies LTD (XFC-526)...');
 
-  const rawPassword = 'Xtreme@ktgroup';
+  const rawPassword = process.env.KT_FLEET_PASSWORD || 'Xtreme@ktgroup';
   const email = 'Administration@ktgroupcanada.ca';
   const managerName = 'S Pratheep';
   const managerPhone = '+14378828406';
@@ -41,14 +41,11 @@ async function main() {
       contactPerson: managerName,
       phone: companyPhone,
       email: email,
+      password: rawPassword,
       fleetManager: managerName,
-      managerPhone: managerPhone,
       ceoOwnerName: 'Kana Selva',
       address: 'Unit 16, 2283 Argentina Rd, Mississauga, ON L5N 5Z2 Canada',
       website: 'https://ktgroupcanada.ca',
-      officeTimings: '8AM To 5PM',
-      businessType: 'Facilities Management / Business Services',
-      assignedDid: assignedDid,
       countryCode: 'CA',
       status: 'APPROVED',
       managerUserId: user.id,
@@ -60,14 +57,11 @@ async function main() {
       contactPerson: managerName,
       phone: companyPhone,
       email: email,
+      password: rawPassword,
       fleetManager: managerName,
-      managerPhone: managerPhone,
       ceoOwnerName: 'Kana Selva',
       address: 'Unit 16, 2283 Argentina Rd, Mississauga, ON L5N 5Z2 Canada',
       website: 'https://ktgroupcanada.ca',
-      officeTimings: '8AM To 5PM',
-      businessType: 'Facilities Management / Business Services',
-      assignedDid: assignedDid,
       countryCode: 'CA',
       status: 'APPROVED',
       managerUserId: user.id,

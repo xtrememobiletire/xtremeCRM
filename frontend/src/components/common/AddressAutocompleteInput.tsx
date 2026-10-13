@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Search, Loader2, X } from 'lucide-react';
-import { MAPBOX_TOKEN } from '../../hooks/useMapbox';
+import { MAPBOX_TOKEN } from '../../constants/mapboxConfig';
 
 export interface GeocodeLocation {
   address: string;

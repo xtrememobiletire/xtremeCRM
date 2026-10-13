@@ -15,6 +15,7 @@ import { geocodingService } from '../services/geocodingService.js';
 import { sseManager } from '../services/sseManager.js';
 
 const stripDriverFinancials = (job: any) => {
+  const isAudited = Boolean(job.auditedById || job.expenseStatedById);
   const {
     materialCostCents,
     itPlatformFeeCents,
@@ -26,7 +27,11 @@ const stripDriverFinancials = (job: any) => {
     invoice,
     ...rest
   } = job;
-  return rest;
+  return {
+    ...rest,
+    isAudited,
+    expenseStatedById: isAudited ? (job.expenseStatedById || 'audited') : null,
+  };
 };
 
 const normalizeUrgency = (u?: string | null): 'URGENT' | 'STANDARD' | 'FUTURE' => {
@@ -73,8 +78,32 @@ export const jobController = {
       const userRole = (req.user as any)?.role;
       const userId = (req.user as any)?.id;
       if (userRole === 'DRIVER') {
-        where.driverId = userId;
+        if (status === 'CANCELLED') {
+          where.OR = [
+            { driverId: userId, status: 'CANCELLED' },
+            { lastDeclinedDriverId: userId },
+          ];
+          delete where.status;
+        } else {
+          where.OR = [
+            { driverId: userId },
+            { lastDeclinedDriverId: userId },
+          ];
+        }
         delete where.countryCode;
+      } else if (driverId) {
+        if (status === 'CANCELLED') {
+          where.OR = [
+            { driverId, status: 'CANCELLED' },
+            { lastDeclinedDriverId: driverId },
+          ];
+          delete where.status;
+        } else {
+          where.OR = [
+            { driverId },
+            { lastDeclinedDriverId: driverId },
+          ];
+        }
       } else if (userRole === 'FLEET_MANAGER') {
         const fleet = await prisma.fleet.findFirst({ where: { managerUserId: userId } });
         if (fleet) where.fleetId = fleet.id;
@@ -144,6 +173,13 @@ export const jobController = {
                 phone: true,
               },
             },
+            lastDeclinedDriver: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+              },
+            },
             createdBy: {
               select: {
                 id: true,
@@ -167,11 +203,15 @@ export const jobController = {
 
       const isDriver = (req.user as any)?.role === 'DRIVER';
       const jobs = rawJobs.map((j) => {
+        const effectiveStatus = (j.dispositionNotes && ['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(j.dispositionNotes) && (j.status === 'IN_PROGRESS' || j.status === 'ASSIGNED'))
+          ? (j.dispositionNotes === 'ARRIVED' ? 'ON_SCENE' : (j.dispositionNotes === 'ACCEPTED' ? 'ASSIGNED' : j.dispositionNotes))
+          : j.status;
+        const jobWithStatus = { ...j, status: effectiveStatus, rawStatus: j.status };
         if (isDriver) {
           // PRD NFR-4: Driver financial isolation
-          return stripDriverFinancials(j);
+          return stripDriverFinancials(jobWithStatus);
         }
-        return j;
+        return jobWithStatus;
       });
 
       const paginated = createPaginatedResponse(jobs, page, limit, totalCount);
@@ -191,6 +231,13 @@ export const jobController = {
           vehicle: true,
           fleet: true,
           driver: {
+            select: {
+              id: true,
+              fullName: true,
+              phone: true,
+            },
+          },
+          lastDeclinedDriver: {
             select: {
               id: true,
               fullName: true,
@@ -217,10 +264,14 @@ export const jobController = {
       });
 
       if (!job) return sendError(res, 'Job not found', 404);
+      const effectiveStatus = (job.dispositionNotes && ['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(job.dispositionNotes) && (job.status === 'IN_PROGRESS' || job.status === 'ASSIGNED'))
+        ? (job.dispositionNotes === 'ARRIVED' ? 'ON_SCENE' : (job.dispositionNotes === 'ACCEPTED' ? 'ASSIGNED' : job.dispositionNotes))
+        : job.status;
+      const jobWithStatus = { ...job, status: effectiveStatus, rawStatus: job.status };
       if ((req.user as any)?.role === 'DRIVER') {
-        return sendSuccess(res, stripDriverFinancials(job));
+        return sendSuccess(res, stripDriverFinancials(jobWithStatus));
       }
-      return sendSuccess(res, job);
+      return sendSuccess(res, jobWithStatus);
     } catch (err: any) {
       return sendError(res, err.message);
     }
@@ -516,6 +567,12 @@ export const jobController = {
       const job = await prisma.job.findUnique({ where: { id } });
       if (!job) return sendError(res, 'Job not found', 404);
 
+      const callerRole = (req.user as any)?.role;
+      const callerId = (req.user as any)?.id;
+      if (callerRole === 'DRIVER' && job.driverId !== callerId) {
+        return sendError(res, 'Forbidden: You are not assigned to this job', 403);
+      }
+
       let effectiveAmountCents = amountCents !== undefined
         ? Math.round(Number(amountCents))
         : (cashAmountCents !== undefined 
@@ -524,11 +581,41 @@ export const jobController = {
 
       const isTrialJob = Boolean(job.isTestService);
 
-      const mappedStatus = (status === 'ON_SCENE' || status === 'EN_ROUTE') ? 'IN_PROGRESS' : status;
+      const rawStatus = String(status).toUpperCase();
+      const mappedStatus = (rawStatus === 'ON_SCENE' || rawStatus === 'EN_ROUTE' || rawStatus === 'ARRIVED') 
+        ? 'IN_PROGRESS' 
+        : (rawStatus === 'ACCEPTED' ? 'ASSIGNED' : rawStatus);
+
       const updateData: any = {
         status: mappedStatus,
         updatedAt: new Date(),
       };
+      if (['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(rawStatus)) {
+        updateData.dispositionNotes = rawStatus === 'ARRIVED' ? 'ON_SCENE' : rawStatus;
+      } else if (rawStatus === 'COMPLETED') {
+        updateData.dispositionNotes = rawStatus;
+      } else if (rawStatus === 'CANCELLED') {
+        if (callerRole === 'DRIVER') {
+          // Driver decline unassigns job back to PENDING so dispatcher can reassign
+          const decliningDriverId = job.driverId || callerId;
+          updateData.status = 'PENDING';
+          updateData.driverId = null;
+          updateData.lastDeclinedDriverId = decliningDriverId;
+          updateData.assignedAt = null;
+          updateData.driverEtaMinutes = null;
+          updateData.driverEstimatedArrivalAt = null;
+          if (req.body.driverDeclineReason) {
+            updateData.driverDeclineReason = String(req.body.driverDeclineReason).toUpperCase();
+            updateData.dispositionNotes = `DECLINED_${String(req.body.driverDeclineReason).toUpperCase()}`;
+          } else {
+            updateData.dispositionNotes = 'CANCELLED';
+          }
+        } else {
+          // Admin / Dispatcher cancellation retains true CANCELLED status
+          updateData.status = 'CANCELLED';
+          updateData.dispositionNotes = 'CANCELLED';
+        }
+      }
       if (urgency) updateData.urgency = urgency;
       if (status === 'COMPLETED') {
         const chosenMethod = paymentMethod || job.paymentMethod || 'CASH';
@@ -584,6 +671,13 @@ export const jobController = {
           customer: true,
           vehicle: true,
           driver: true,
+          lastDeclinedDriver: {
+            select: {
+              id: true,
+              fullName: true,
+              phone: true,
+            },
+          },
           serviceItems: true,
         },
       });
@@ -635,14 +729,24 @@ export const jobController = {
 
       try {
         const io = getIO();
+        const effectiveStatus = (updated.dispositionNotes && ['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(updated.dispositionNotes) && (updated.status === 'IN_PROGRESS' || updated.status === 'ASSIGNED'))
+          ? (updated.dispositionNotes === 'ARRIVED' ? 'ON_SCENE' : (updated.dispositionNotes === 'ACCEPTED' ? 'ASSIGNED' : updated.dispositionNotes))
+          : updated.status;
+
         const statusPayload = {
           id: updated.id,
           jobId: updated.id,
           jobCode: updated.jobCode,
-          status: updated.status,
+          status: effectiveStatus,
+          rawStatus: updated.status,
+          technicianStatus: effectiveStatus,
+          dispositionNotes: updated.dispositionNotes,
           countryCode: updated.countryCode,
           driverId: updated.driverId,
           driverName: (updated as any).driver?.fullName,
+          lastDeclinedDriverId: updated.lastDeclinedDriverId,
+          lastDeclinedDriver: (updated as any).lastDeclinedDriver,
+          driverDeclineReason: updated.driverDeclineReason,
           urgency: updated.urgency,
           paymentMethod: updated.paymentMethod,
           paymentStatus: updated.paymentStatus,
@@ -655,10 +759,11 @@ export const jobController = {
         sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:status_updated', statusPayload);
 
         // Notify driver
-        if (updated.driverId) {
-          io.to(`driver:${updated.driverId}`).emit('job:status_updated', statusPayload);
-          io.to(`user:${updated.driverId}`).emit('job:status_updated', statusPayload);
-          sseManager.broadcast(`sse:driver:${updated.driverId}`, 'job:status_updated', statusPayload);
+        const driverRecipientId = updated.driverId || job.driverId || (req.user as any)?.id;
+        if (driverRecipientId) {
+          io.to(`driver:${driverRecipientId}`).emit('job:status_updated', statusPayload);
+          io.to(`user:${driverRecipientId}`).emit('job:status_updated', statusPayload);
+          sseManager.broadcast(`sse:driver:${driverRecipientId}`, 'job:status_updated', statusPayload);
         }
 
         // Notify ticket creator
@@ -687,11 +792,12 @@ export const jobController = {
         }
       } catch {}
 
-      if ((req.user as any)?.role === 'DRIVER') {
-        return sendSuccess(res, stripDriverFinancials(updated), 'Job status updated successfully');
-      }
+      const updatedWithStatus = { ...updated, status: (updated.dispositionNotes && ['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(updated.dispositionNotes) && (updated.status === 'IN_PROGRESS' || updated.status === 'ASSIGNED')) ? (updated.dispositionNotes === 'ARRIVED' ? 'ON_SCENE' : (updated.dispositionNotes === 'ACCEPTED' ? 'ASSIGNED' : updated.dispositionNotes)) : updated.status, rawStatus: updated.status };
 
-      return sendSuccess(res, updated, 'Job status updated successfully');
+      if ((req.user as any)?.role === 'DRIVER') {
+        return sendSuccess(res, stripDriverFinancials(updatedWithStatus), 'Job status updated successfully');
+      }
+      return sendSuccess(res, updatedWithStatus, 'Job status updated successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }
@@ -738,6 +844,8 @@ export const jobController = {
           driverId,
           status: 'ASSIGNED',
           assignedAt: new Date(),
+          lastDeclinedDriverId: null,
+          driverDeclineReason: null,
           driverEstimatedArrivalAt,
           driverEtaMinutes: effectiveDriverEtaMinutes ? Number(effectiveDriverEtaMinutes) : undefined,
           // Preserve customer promised arrival time; only fallback if job had no promised ETA set

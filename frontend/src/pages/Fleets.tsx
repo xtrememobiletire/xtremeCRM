@@ -7,8 +7,12 @@ import FleetDetailModal from '../components/fleets/FleetDetailModal';
 import EmptyState from '../components/ui/EmptyState';
 import { TableSkeleton } from '../components/common/Skeleton';
 import { useFleets } from '../hooks/useFleets';
+import { useAuth } from '../context/AuthContext';
 
 export default function Fleets() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER' || user?.role?.toUpperCase().includes('ADMIN');
+
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedFleet, setSelectedFleet] = useState<any | null>(null);
   const [search, setSearch] = useState('');
@@ -24,6 +28,8 @@ export default function Fleets() {
       f.companyName?.toLowerCase().includes(query) ||
       f.name?.toLowerCase().includes(query) ||
       f.contactName?.toLowerCase().includes(query) ||
+      f.contactPerson?.toLowerCase().includes(query) ||
+      f.email?.toLowerCase().includes(query) ||
       f.phone?.includes(query)
     );
   });
@@ -59,7 +65,7 @@ export default function Fleets() {
       </div>
 
       {isLoading ? (
-        <TableSkeleton rows={5} cols={7} />
+        <TableSkeleton rows={5} cols={isAdmin ? 9 : 8} />
       ) : fleets.length === 0 ? (
         <EmptyState
           icon={Truck}

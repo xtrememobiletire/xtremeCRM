@@ -8,6 +8,7 @@ export interface FleetFormData {
   phone: string;
   altPhone: string;
   email: string;
+  password?: string;
   poaEmail: string;
   address: string;
   website: string;
@@ -146,26 +147,40 @@ export default function FleetInfoSection({ formData, onChange, countryCode = 'CA
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Official / Billing Email</label>
+            <label className="block font-semibold text-slate-700 mb-1">Portal Login Email</label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => onChange('email', e.target.value)}
-              placeholder="dispatch@company.com"
+              placeholder="manager@company.com"
               className="input-base"
             />
+            <p className="text-[10px] text-slate-400 mt-0.5">Used by Fleet Manager to sign in</p>
           </div>
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">POA / Signing Email</label>
+            <label className="block font-semibold text-slate-700 mb-1">Fleet Manager Password</label>
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={formData.password || ''}
+              onChange={(e) => onChange('password', e.target.value)}
+              placeholder="Set manager password..."
+              className="input-base font-mono"
+            />
+            <p className="text-[10px] text-slate-400 mt-0.5">Leave blank to auto-generate</p>
+          </div>
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Billing / Invoices Email</label>
             <input
               type="email"
               value={formData.poaEmail}
               onChange={(e) => onChange('poaEmail', e.target.value)}
-              placeholder="finance@company.com"
+              placeholder="invoices@company.com"
               className="input-base"
             />
+            <p className="text-[10px] text-slate-400 mt-0.5">Accounts payable & invoices routing</p>
           </div>
         </div>
 
