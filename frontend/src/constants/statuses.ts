@@ -19,17 +19,15 @@ export const JOB_STATUSES = [
 ] as const;
 
 export const JOB_URGENCIES = [
-  'CRITICAL',
-  'HIGH',
-  'NORMAL',
-  'LOW',
+  'URGENT',
+  'STANDARD',
+  'FUTURE',
 ] as const;
 
 export const URGENCIES = {
-  CRITICAL: { label: 'Critical Hazard', color: 'bg-red-600 text-white' },
-  HIGH: { label: 'High Priority', color: 'bg-orange-500 text-white' },
-  NORMAL: { label: 'Normal Priority', color: 'bg-slate-700 text-white' },
-  LOW: { label: 'Scheduled Booking', color: 'bg-sky-600 text-white' },
+  URGENT: { label: 'Urgent', color: 'bg-red-600 text-white' },
+  STANDARD: { label: 'Standard', color: 'bg-slate-700 text-white' },
+  FUTURE: { label: 'Future', color: 'bg-sky-600 text-white' },
 } as const;
 
 export const DISPOSITIONS = [

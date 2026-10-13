@@ -42,6 +42,7 @@ export default function Inbound() {
   const [urgency, setUrgency] = useState<'URGENT' | 'STANDARD' | 'FUTURE'>('URGENT');
   const [arrivalWindow, setArrivalWindow] = useState<ArrivalWindowData>({ mode: 'ETA', estimatedArrivalMinutes: 30 });
   const [notes, setNotes] = useState('');
+  const [upfrontAmountDollars, setUpfrontAmountDollars] = useState('');
   const [isProvisionAccount, setIsProvisionAccount] = useState(true);
 
   useEffect(() => {
@@ -90,6 +91,8 @@ export default function Inbound() {
       const taxCents = isTaxIncluded ? 0 : Math.round(subtotalCents * effectiveTaxRate);
       const totalCents = isTaxIncluded ? subtotalCents : subtotalCents + taxCents;
 
+      const upfrontCents = upfrontAmountDollars ? Math.round((parseFloat(upfrontAmountDollars) || 0) * 100) : 0;
+
       await jobService.createJob({
         customerName: callerName || 'Valued Customer',
         customerPhone: phoneValidation.normalized,
@@ -99,6 +102,8 @@ export default function Inbound() {
         serviceLatitude: serviceCoords.latitude ?? undefined,
         serviceLongitude: serviceCoords.longitude ?? undefined,
         notes,
+        problemNotes: notes || undefined,
+        upfrontAmountCents: upfrontCents,
         urgency,
         countryCode: formCountry,
         source: leadSource,
@@ -132,6 +137,7 @@ export default function Inbound() {
       setVehicleMakeModel('');
       setTireSize('');
       setNotes('');
+      setUpfrontAmountDollars('');
       setArrivalWindow({ mode: 'ETA', estimatedArrivalMinutes: 30 });
       setUrgency('URGENT');
       setServiceItems([
@@ -188,6 +194,8 @@ export default function Inbound() {
           setArrivalWindow={setArrivalWindow}
           notes={notes}
           setNotes={setNotes}
+          upfrontAmountDollars={upfrontAmountDollars}
+          setUpfrontAmountDollars={setUpfrontAmountDollars}
           isProvisionAccount={isProvisionAccount}
           setIsProvisionAccount={setIsProvisionAccount}
           isBooking={isBooking}

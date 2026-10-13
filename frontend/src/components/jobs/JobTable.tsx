@@ -1,4 +1,5 @@
-import { Eye, UserCheck, AlertCircle, Clock, Zap, XCircle } from 'lucide-react';
+import { Eye, UserCheck, AlertCircle, Clock, Zap, XCircle, Copy, ExternalLink } from 'lucide-react';
+import { toast } from 'sonner';
 import StatusBadge from '../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
@@ -122,9 +123,41 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isExternalJob ? 'bg-blue-500' : 'bg-emerald-500'}`} />
                             <span className="truncate max-w-[170px]">
                               {isExternalJob ? (
-                                <span className="inline-flex items-center gap-1">
-                                  <span className="text-[9px] font-black text-blue-700 bg-blue-50 px-1 py-0.2 rounded border border-blue-200">EXT</span>
+                                <span className="inline-flex items-center gap-1.5 flex-wrap">
+                                  {job.externalDispatchToken ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const url = `${window.location.origin}/dispatch/external/${job.externalDispatchToken}`;
+                                        navigator.clipboard.writeText(url).then(() => {
+                                          toast.success('External dispatch link copied to clipboard');
+                                        }).catch(() => {
+                                          toast.error('Failed to copy link');
+                                        });
+                                      }}
+                                      title="Click to copy External Contractor portal link"
+                                      className="text-[9px] font-black text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-900 px-1.5 py-0.5 rounded border border-blue-200 inline-flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                                    >
+                                      <span>EXT</span>
+                                      <Copy className="w-2.5 h-2.5 text-blue-600" />
+                                    </button>
+                                  ) : (
+                                    <span className="text-[9px] font-black text-blue-700 bg-blue-50 px-1 py-0.2 rounded border border-blue-200">EXT</span>
+                                  )}
                                   <strong className="text-slate-900">{job.externalCompanyName || job.driver?.fullName || 'Contractor'}</strong>
+                                  {job.externalDispatchToken && (
+                                    <a
+                                      href={`/dispatch/external/${job.externalDispatchToken}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      title="Open External Contractor Portal"
+                                      className="text-slate-400 hover:text-blue-600 transition p-0.5"
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                  )}
                                 </span>
                               ) : (
                                 job.driver?.fullName || 

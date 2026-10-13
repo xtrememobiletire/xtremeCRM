@@ -51,6 +51,7 @@ export default function ExternalDispatchModal({
   const [depotCoords, setDepotCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
   const [isCalculatingEta, setIsCalculatingEta] = useState<boolean>(false);
+  const [paymentCollectionMode, setPaymentCollectionMode] = useState<'COMPANY' | 'DRIVER'>('COMPANY');
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRevoking, setIsRevoking] = useState(false);
@@ -79,6 +80,10 @@ export default function ExternalDispatchModal({
       );
       setDepotAddress(initialContractor?.address || '');
       setEtaMinutes(job.driverEtaMinutes || null);
+      
+      const isFleet = Boolean(job.fleetId || job.fleet);
+      const isPrepaid = job.paymentStatus === 'PAID_PENDING_VERIFICATION' || job.paymentStatus === 'VERIFIED_PAID';
+      setPaymentCollectionMode(isFleet || isPrepaid ? 'COMPANY' : 'DRIVER');
     }
   }, [job, initialContractor, isOpen]);
 
@@ -207,6 +212,7 @@ export default function ExternalDispatchModal({
         longitude: depotCoords?.lng,
         externalDriverFeeCents: feeCents,
         driverEtaMinutes: etaMinutes || undefined,
+        paymentCollectionMode,
       });
 
       const copyTarget = res.externalDispatchToken
@@ -373,6 +379,50 @@ export default function ExternalDispatchModal({
                 <span>Estimated Driving Arrival: ~{etaMinutes} mins</span>
               </p>
             )}
+          </div>
+
+          {/* Payment Collection Policy Toggle */}
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wide block">
+              Payment Collection Instruction
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentCollectionMode('COMPANY')}
+                className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                  paymentCollectionMode === 'COMPANY'
+                    ? 'bg-blue-50 border-blue-500 text-blue-900 shadow-2xs'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                <div className="font-bold text-xs flex items-center gap-1.5">
+                  <Building size={13} className="text-blue-600" />
+                  <span>Collected by Company</span>
+                </div>
+                <div className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                  Direct B2B account / Paid to company. Driver collects $0.
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentCollectionMode('DRIVER')}
+                className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                  paymentCollectionMode === 'DRIVER'
+                    ? 'bg-amber-50 border-amber-500 text-amber-950 shadow-2xs'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                <div className="font-bold text-xs flex items-center gap-1.5">
+                  <DollarSign size={13} className="text-amber-600" />
+                  <span>Driver Collects</span>
+                </div>
+                <div className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                  Driver collects payment balance from customer on scene.
+                </div>
+              </button>
+            </div>
           </div>
 
           {/* Agreed Payout Fee */}

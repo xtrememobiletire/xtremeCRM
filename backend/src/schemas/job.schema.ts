@@ -99,6 +99,8 @@ export const CreateJobSchema = z.object({
   country: z.enum(['CA', 'US', 'UK']).optional(),
   disposition: z.string().optional(),
   makeUserAccount: z.boolean().optional(),
+  upfrontAmountCents: z.coerce.number().int().nonnegative().optional(),
+  upfrontAmountDollars: z.coerce.number().nonnegative().optional(),
 }).refine((data) => data.serviceAddress || data.locationAddress, {
   message: 'Service breakdown address is required',
   path: ['serviceAddress'],
@@ -121,14 +123,29 @@ export const UpdateJobStatusSchema = z.object({
       'COMPLETED',
       'CANCELLED',
     ])
-  ),
+  ).optional(),
   urgency: z.enum(['EMERGENCY', 'URGENT', 'STANDARD', 'FUTURE']).optional(),
-  paymentMethod: z.enum(['CASH', 'POS', 'E_TRANSFER', 'STRIPE', 'MOTO']).optional(),
+  paymentMethod: z.enum(['CASH', 'POS', 'E_TRANSFER', 'STRIPE', 'MOTO', 'INVOICE_NET30']).optional(),
   amountCents: z.coerce.number().int().nonnegative().optional(),
   cashAmountCents: z.coerce.number().int().nonnegative().optional(),
   cashCollected: z.coerce.number().nonnegative().optional(),
   receiptUrl: z.string().optional(),
   driverDeclineReason: z.string().optional(),
+  upfrontAmountCents: z.coerce.number().int().nonnegative().optional(),
+  upfrontReceiptUrl: z.string().optional(),
+  isUpfrontVerified: z.boolean().optional(),
+  problemNotes: z.string().optional(),
+  notes: z.string().optional(),
+  driverId: z.string().uuid().nullable().optional(),
+  serviceItems: z.array(
+    z.object({
+      serviceName: z.string().min(1),
+      category: z.enum(['TIRE_SERVICE', 'ROADSIDE_ASSISTANCE', 'MAINTENANCE']).optional().default('TIRE_SERVICE'),
+      unitPriceCents: z.coerce.number().int().nonnegative(),
+      quantity: z.coerce.number().int().positive().default(1),
+      notes: z.string().optional(),
+    })
+  ).optional(),
 });
 
 export type UpdateJobStatusInput = z.infer<typeof UpdateJobStatusSchema>;
@@ -189,4 +206,5 @@ export const GenerateExternalDispatchSchema = z.object({
   longitude: z.coerce.number().optional().nullable(),
   driverEtaMinutes: z.coerce.number().optional(),
   driverEstimatedArrivalAt: z.string().optional(),
+  paymentCollectionMode: z.enum(['COMPANY', 'DRIVER']).optional(),
 });

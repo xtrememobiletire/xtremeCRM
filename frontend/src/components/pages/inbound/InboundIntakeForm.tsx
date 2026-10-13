@@ -10,7 +10,8 @@ import {
   CheckCircle2, 
   Share2,
   Check,
-  X
+  X,
+  DollarSign
 } from 'lucide-react';
 import { useKeyboardShortcuts } from '../../../hooks/useKeyboardShortcuts';
 import AddressAutocompleteInput, { type GeocodeLocation } from '../../common/AddressAutocompleteInput';
@@ -51,6 +52,8 @@ interface InboundIntakeFormProps {
   setEtaMinutes?: (val: string) => void;
   notes: string;
   setNotes: (val: string) => void;
+  upfrontAmountDollars?: string;
+  setUpfrontAmountDollars?: (val: string) => void;
   isProvisionAccount: boolean;
   setIsProvisionAccount: (val: boolean) => void;
   isBooking: boolean;
@@ -89,6 +92,8 @@ export default function InboundIntakeForm({
   setEtaMinutes,
   notes,
   setNotes,
+  upfrontAmountDollars = '',
+  setUpfrontAmountDollars,
   isProvisionAccount,
   setIsProvisionAccount,
   isBooking,
@@ -507,7 +512,35 @@ export default function InboundIntakeForm({
           />
         </div>
 
-        {/* Step 12: Auto-Provision Customer Portal Account */}
+        {/* Step 12: Upfront Deposit / Advance Payment Collected (Optional) */}
+        {setUpfrontAmountDollars && (
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 shadow-2xs">
+            <label className="block text-xs font-bold text-slate-700 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">
+                  {onCountryChange ? 12 : 11}
+                </span>
+                <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Upfront Deposit / Advance Payment Collected (Optional)</span>
+              </span>
+              <span className="text-[10px] font-mono text-slate-400">Leave blank if unpaid</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-2.5 font-mono text-xs text-slate-400 font-bold">{currencySymbol}</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={upfrontAmountDollars}
+                onChange={(e) => setUpfrontAmountDollars(e.target.value)}
+                placeholder="0.00"
+                className="w-full pl-8 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Step 13: Auto-Provision Customer Portal Account */}
         <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100">
           <input
             type="checkbox"

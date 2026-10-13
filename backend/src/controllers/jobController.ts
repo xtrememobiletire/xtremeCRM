@@ -503,6 +503,15 @@ export const jobController = {
         }
       }
 
+      const upfrontAmountCents = data.upfrontAmountCents !== undefined
+        ? Math.round(Number(data.upfrontAmountCents))
+        : (data.upfrontAmountDollars !== undefined ? Math.round(Number(data.upfrontAmountDollars) * 100) : 0);
+
+      let initialPaymentStatus: 'UNPAID' | 'PARTIAL' | 'PAID_PENDING_VERIFICATION' = 'UNPAID';
+      if (upfrontAmountCents > 0) {
+        initialPaymentStatus = upfrontAmountCents >= totalCents ? 'PAID_PENDING_VERIFICATION' : 'PARTIAL';
+      }
+
       const job = await prisma.job.create({
         data: {
           jobCode,
@@ -539,10 +548,11 @@ export const jobController = {
           taxRateBps,
           taxAmountCents,
           totalCents,
+          upfrontAmountCents,
           itPlatformFeeCents,
           repairerFeeCents,
           paymentMethod: validPaymentMethod(data.paymentMethod),
-          paymentStatus: 'UNPAID',
+          paymentStatus: initialPaymentStatus,
           status: data.source === 'LANDING_PAGE_SELF_BOOK' ? 'UNVERIFIED_PUBLIC' : 'PENDING',
           serviceItems: {
             create: serviceItemsCreate,
@@ -572,9 +582,9 @@ export const jobController = {
   async updateJobStatus(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
-      const { status, urgency, paymentMethod, amountCents, cashAmountCents, cashCollected, receiptUrl } = req.body;
+      const { status, urgency, paymentMethod, amountCents, cashAmountCents, cashCollected, receiptUrl, upfrontAmountCents, upfrontReceiptUrl, isUpfrontVerified, notes, problemNotes, driverId, serviceItems } = req.body;
 
-      const job = await prisma.job.findUnique({ where: { id } });
+      const job = await prisma.job.findUnique({ where: { id }, include: { serviceItems: true } });
       if (!job) return sendError(res, 'Job not found', 404);
 
       const callerRole = (req.user as any)?.role;
@@ -591,39 +601,106 @@ export const jobController = {
 
       const isTrialJob = Boolean(job.isTestService);
 
-      const rawStatus = String(status).toUpperCase();
-      const mappedStatus = (rawStatus === 'ON_SCENE' || rawStatus === 'EN_ROUTE' || rawStatus === 'ARRIVED') 
-        ? 'IN_PROGRESS' 
-        : (rawStatus === 'ACCEPTED' ? 'ASSIGNED' : rawStatus);
-
       const updateData: any = {
-        status: mappedStatus,
         updatedAt: new Date(),
       };
-      if (['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(rawStatus)) {
-        updateData.dispositionNotes = rawStatus === 'ARRIVED' ? 'ON_SCENE' : rawStatus;
-      } else if (rawStatus === 'COMPLETED') {
-        updateData.dispositionNotes = rawStatus;
-      } else if (rawStatus === 'CANCELLED') {
-        if (callerRole === 'DRIVER') {
-          // Driver decline unassigns job back to PENDING so dispatcher can reassign
-          const decliningDriverId = job.driverId || callerId;
-          updateData.status = 'PENDING';
-          updateData.driverId = null;
-          updateData.lastDeclinedDriverId = decliningDriverId;
-          updateData.assignedAt = null;
-          updateData.driverEtaMinutes = null;
-          updateData.driverEstimatedArrivalAt = null;
-          if (req.body.driverDeclineReason) {
-            updateData.driverDeclineReason = String(req.body.driverDeclineReason).toUpperCase();
-            updateData.dispositionNotes = `DECLINED_${String(req.body.driverDeclineReason).toUpperCase()}`;
+
+      if (notes !== undefined || problemNotes !== undefined) {
+        updateData.problemNotes = notes || problemNotes || '';
+      }
+
+      // Handle service items updates (Management editing work order catalog items)
+      if (Array.isArray(serviceItems)) {
+        const subtotal = serviceItems.reduce((sum: number, it: any) => sum + (Number(it.unitPriceCents) || 0) * (Number(it.quantity) || 1), 0);
+        const taxRate = job.countryCode === 'CA' ? 0.13 : job.countryCode === 'UK' ? 0.20 : 0.08;
+        const tax = Math.round(subtotal * taxRate);
+        const newTotal = subtotal + tax;
+
+        updateData.subtotalCents = subtotal;
+        updateData.taxAmountCents = tax;
+        updateData.totalCents = newTotal;
+
+        // Replace service items atomically
+        await prisma.jobServiceItem.deleteMany({ where: { jobId: id } });
+        if (serviceItems.length > 0) {
+          await prisma.jobServiceItem.createMany({
+            data: serviceItems.map((si: any) => ({
+              jobId: id,
+              serviceName: si.serviceName,
+              category: si.category || 'TIRE_SERVICE',
+              unitPriceCents: Number(si.unitPriceCents) || 0,
+              quantity: Number(si.quantity) || 1,
+              notes: si.notes || null,
+            })),
+          });
+        }
+      }
+
+      if (upfrontReceiptUrl !== undefined) {
+        updateData.upfrontReceiptUrl = upfrontReceiptUrl;
+      }
+
+      if (isUpfrontVerified) {
+        updateData.upfrontVerifiedAt = new Date();
+      }
+
+      if (upfrontAmountCents !== undefined) {
+        const parsedUpfront = Math.round(Number(upfrontAmountCents));
+        updateData.upfrontAmountCents = parsedUpfront;
+        const total = updateData.totalCents !== undefined ? updateData.totalCents : (job.totalCents || 0);
+        if (job.status !== 'COMPLETED') {
+          if (parsedUpfront >= total && total > 0) {
+            updateData.paymentStatus = 'PAID_PENDING_VERIFICATION';
+          } else if (parsedUpfront > 0) {
+            updateData.paymentStatus = 'PARTIAL';
+          } else if (job.paymentStatus === 'PARTIAL' || job.paymentStatus === 'PAID_PENDING_VERIFICATION') {
+            updateData.paymentStatus = 'UNPAID';
+          }
+        }
+      }
+
+      if (driverId !== undefined) {
+        updateData.driverId = driverId;
+        if (driverId) {
+          updateData.assignedAt = new Date();
+          if (job.status === 'PENDING') {
+            updateData.status = 'ASSIGNED';
+          }
+        }
+      }
+
+      if (status) {
+        const rawStatus = String(status).toUpperCase();
+        const mappedStatus = (rawStatus === 'ON_SCENE' || rawStatus === 'EN_ROUTE' || rawStatus === 'ARRIVED') 
+          ? 'IN_PROGRESS' 
+          : (rawStatus === 'ACCEPTED' ? 'ASSIGNED' : rawStatus);
+
+        updateData.status = mappedStatus;
+        if (['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(rawStatus)) {
+          updateData.dispositionNotes = rawStatus === 'ARRIVED' ? 'ON_SCENE' : rawStatus;
+        } else if (rawStatus === 'COMPLETED') {
+          updateData.dispositionNotes = rawStatus;
+        } else if (rawStatus === 'CANCELLED') {
+          if (callerRole === 'DRIVER') {
+            // Driver decline unassigns job back to PENDING so dispatcher can reassign
+            const decliningDriverId = job.driverId || callerId;
+            updateData.status = 'PENDING';
+            updateData.driverId = null;
+            updateData.lastDeclinedDriverId = decliningDriverId;
+            updateData.assignedAt = null;
+            updateData.driverEtaMinutes = null;
+            updateData.driverEstimatedArrivalAt = null;
+            if (req.body.driverDeclineReason) {
+              updateData.driverDeclineReason = String(req.body.driverDeclineReason).toUpperCase();
+              updateData.dispositionNotes = `DECLINED_${String(req.body.driverDeclineReason).toUpperCase()}`;
+            } else {
+              updateData.dispositionNotes = 'CANCELLED';
+            }
           } else {
+            // Admin / Dispatcher cancellation retains true CANCELLED status
+            updateData.status = 'CANCELLED';
             updateData.dispositionNotes = 'CANCELLED';
           }
-        } else {
-          // Admin / Dispatcher cancellation retains true CANCELLED status
-          updateData.status = 'CANCELLED';
-          updateData.dispositionNotes = 'CANCELLED';
         }
       }
       if (urgency) updateData.urgency = urgency;
@@ -1257,18 +1334,19 @@ export const jobController = {
   async generateExternalDispatch(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
-      const {
-        externalDriverName,
-        externalCompanyName,
-        externalDriverPhone,
-        externalDriverAddress,
-        latitude,
-        longitude,
-        externalDriverFeeCents,
-        contractorPayoutFeeCents,
-        driverEtaMinutes,
-        driverEstimatedArrivalAt,
-      } = req.body || {};
+        const {
+          externalDriverName,
+          externalCompanyName,
+          externalDriverPhone,
+          externalDriverAddress,
+          latitude,
+          longitude,
+          externalDriverFeeCents,
+          contractorPayoutFeeCents,
+          driverEtaMinutes,
+          driverEstimatedArrivalAt,
+          paymentCollectionMode,
+        } = req.body || {};
 
       const job = await prisma.job.findUnique({ where: { id } });
       if (!job) return sendError(res, 'Job not found', 404);
@@ -1359,22 +1437,30 @@ export const jobController = {
         contractorUserId = existingUser.id;
       }
 
+      const externalUpdateData: any = {
+        driverId: contractorUserId,
+        driverType: 'EXTERNAL',
+        externalDispatchToken: token,
+        externalDispatchStatus: 'PENDING',
+        externalCompanyName: contractorName,
+        externalDriverPhone: contractorPhone,
+        externalDriverFeeCents: feeCents !== undefined && feeCents !== null ? Number(feeCents) : null,
+        driverEtaMinutes: driverEtaMinutes !== undefined && driverEtaMinutes !== null ? Number(driverEtaMinutes) : job.driverEtaMinutes,
+        driverEstimatedArrivalAt: driverEstimatedArrivalAt ? new Date(driverEstimatedArrivalAt) : job.driverEstimatedArrivalAt,
+        status: 'ASSIGNED',
+        driverDeclineReason: null,
+        lastDeclinedDriverId: null,
+      };
+
+      if (paymentCollectionMode === 'COMPANY') {
+        externalUpdateData.paymentMethod = job.fleetId ? 'INVOICE_NET30' : (job.paymentMethod || 'E_TRANSFER');
+      } else if (paymentCollectionMode === 'DRIVER') {
+        externalUpdateData.paymentMethod = 'CASH';
+      }
+
       const updated = await prisma.job.update({
         where: { id },
-        data: {
-          driverId: contractorUserId,
-          driverType: 'EXTERNAL',
-          externalDispatchToken: token,
-          externalDispatchStatus: 'PENDING',
-          externalCompanyName: contractorName,
-          externalDriverPhone: contractorPhone,
-          externalDriverFeeCents: feeCents !== undefined && feeCents !== null ? Number(feeCents) : null,
-          driverEtaMinutes: driverEtaMinutes !== undefined && driverEtaMinutes !== null ? Number(driverEtaMinutes) : job.driverEtaMinutes,
-          driverEstimatedArrivalAt: driverEstimatedArrivalAt ? new Date(driverEstimatedArrivalAt) : job.driverEstimatedArrivalAt,
-          status: 'ASSIGNED',
-          driverDeclineReason: null,
-          lastDeclinedDriverId: null,
-        },
+        data: externalUpdateData,
         include: {
           vehicle: true,
           customer: true,
@@ -1466,10 +1552,18 @@ export const jobController = {
           vehicle: true,
           serviceItems: true,
           customer: true,
+          fleet: true,
         },
       });
 
       if (!job) return sendError(res, 'Dispatch link invalid or expired', 404);
+
+      const isFleet = Boolean(job.fleetId || job.fleet);
+      const isPaidByCompany = Boolean(
+        job.paymentStatus === 'PAID_PENDING_VERIFICATION' || 
+        job.paymentStatus === 'VERIFIED_PAID' ||
+        isFleet
+      );
 
       // Strict Financial & Privacy Sanitization: hide internal pricing, include customer contact & vehicle specs
       const sanitized = {
@@ -1489,7 +1583,18 @@ export const jobController = {
         driverEtaMinutes: job.driverEtaMinutes,
         contractorPayoutFeeCents: job.externalDriverFeeCents || job.repairerFeeCents || 0,
         totalCents: job.totalCents || 0,
+        upfrontAmountCents: job.upfrontAmountCents || 0,
         paymentStatus: job.paymentStatus || 'UNPAID',
+        paymentMethod: job.paymentMethod,
+        isFleetJob: isFleet,
+        isPaidByCompany,
+        fleet: job.fleet ? {
+          id: job.fleet.id,
+          name: job.fleet.name,
+          fleetCode: job.fleet.fleetCode,
+          contactPerson: job.fleet.contactPerson,
+          phone: job.fleet.phone,
+        } : null,
         customer: {
           fullName: job.recipientName || job.customer?.fullName || 'Customer',
           phone: job.recipientPhone || job.customer?.phone || null,
@@ -1502,11 +1607,13 @@ export const jobController = {
           model: job.vehicle.model,
           color: job.vehicle.color,
           licensePlate: job.vehicle.licensePlate,
+          unitNumber: job.vehicle.unitNumber || null,
           tireSize: job.vehicle.tireSize || 'TBD',
         } : null,
         serviceItems: job.serviceItems.map((si) => ({
           serviceName: si.serviceName,
           quantity: si.quantity,
+          category: si.category,
         })),
         problemNotes: job.problemNotes,
         cashCollectedCents: job.cashCollectedCents || 0,
@@ -1593,7 +1700,6 @@ export const jobController = {
           }
           updateData = {
             status: 'COMPLETED',
-            externalDispatchStatus: 'COMPLETED',
             completedAt: new Date(),
             dispositionNotes: 'COMPLETED',
             cashCollectedCents: cash,
