@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -16,10 +16,28 @@ export default function Modal({
   children,
   maxWidth = 'max-w-lg',
 }: ModalProps) {
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!isOpen || !onClose) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCloseRef.current?.();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, Boolean(onClose)]);
+
   if (!isOpen) return null;
 
   return (
     <div 
+      role="presentation"
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-3 sm:p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget && onClose) {
@@ -27,7 +45,11 @@ export default function Modal({
         }
       }}
     >
-      <div className={`bg-white rounded-xl border border-slate-200/90 shadow-xl w-full ${maxWidth} overflow-hidden max-h-[90vh] flex flex-col relative`}>
+      <div 
+        role="dialog"
+        aria-modal="true"
+        className={`bg-white rounded-xl border border-slate-200/90 shadow-xl w-full ${maxWidth} overflow-hidden max-h-[90vh] flex flex-col relative`}
+      >
         {title ? (
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
             <h3 className="font-bold text-slate-900 text-sm tracking-tight">{title}</h3>

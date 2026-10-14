@@ -40,7 +40,10 @@ export default function EditJobServicesModal({
     const existingIndex = items.findIndex((i) => i.serviceId === catalogId);
     if (existingIndex >= 0) {
       const updated = [...items];
-      updated[existingIndex].quantity += 1;
+      updated[existingIndex] = {
+        ...updated[existingIndex],
+        quantity: updated[existingIndex].quantity + 1,
+      };
       setItems(updated);
     } else {
       setItems([
@@ -59,7 +62,10 @@ export default function EditJobServicesModal({
 
   const handleUpdatePrice = (index: number, newPriceDollars: number) => {
     const updated = [...items];
-    updated[index].unitPriceCents = dollarsToCents(Math.max(0, newPriceDollars));
+    updated[index] = {
+      ...updated[index],
+      unitPriceCents: dollarsToCents(Math.max(0, newPriceDollars)),
+    };
     setItems(updated);
   };
 
@@ -69,7 +75,10 @@ export default function EditJobServicesModal({
       return;
     }
     const updated = [...items];
-    updated[index].quantity = newQty;
+    updated[index] = {
+      ...updated[index],
+      quantity: newQty,
+    };
     setItems(updated);
   };
 

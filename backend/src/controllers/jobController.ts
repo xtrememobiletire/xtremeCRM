@@ -593,6 +593,18 @@ export const jobController = {
         return sendError(res, 'Forbidden: You are not assigned to this job', 403);
       }
 
+      const isManagement = ['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER', 'DEVELOPER'].includes(callerRole);
+      const isModifyingRestrictedFields =
+        serviceItems !== undefined ||
+        upfrontAmountCents !== undefined ||
+        isUpfrontVerified !== undefined ||
+        upfrontReceiptUrl !== undefined ||
+        driverId !== undefined;
+
+      if (isModifyingRestrictedFields && !isManagement) {
+        return sendError(res, 'Forbidden: Insufficient permissions to modify work order items, deposits, or driver assignment', 403);
+      }
+
       let effectiveAmountCents = amountCents !== undefined
         ? Math.round(Number(amountCents))
         : (cashAmountCents !== undefined 
@@ -612,27 +624,21 @@ export const jobController = {
       // Handle service items updates (Management editing work order catalog items)
       if (Array.isArray(serviceItems)) {
         const subtotal = serviceItems.reduce((sum: number, it: any) => sum + (Number(it.unitPriceCents) || 0) * (Number(it.quantity) || 1), 0);
-        const taxRate = job.countryCode === 'CA' ? 0.13 : job.countryCode === 'UK' ? 0.20 : 0.08;
-        const tax = Math.round(subtotal * taxRate);
+        const taxRateBps = (job.taxRateBps !== null && job.taxRateBps !== undefined)
+          ? job.taxRateBps
+          : (job.countryCode === 'CA' ? 1300 : job.countryCode === 'UK' ? 2000 : 800);
+        const tax = Math.round((subtotal * taxRateBps) / 10000);
         const newTotal = subtotal + tax;
 
         updateData.subtotalCents = subtotal;
         updateData.taxAmountCents = tax;
         updateData.totalCents = newTotal;
+      }
 
-        // Replace service items atomically
-        await prisma.jobServiceItem.deleteMany({ where: { jobId: id } });
-        if (serviceItems.length > 0) {
-          await prisma.jobServiceItem.createMany({
-            data: serviceItems.map((si: any) => ({
-              jobId: id,
-              serviceName: si.serviceName,
-              category: si.category || 'TIRE_SERVICE',
-              unitPriceCents: Number(si.unitPriceCents) || 0,
-              quantity: Number(si.quantity) || 1,
-              notes: si.notes || null,
-            })),
-          });
+      if (req.file) {
+        const fileUrl = `/uploads/receipts/${req.file.filename}`;
+        if (upfrontAmountCents !== undefined || upfrontReceiptUrl !== undefined) {
+          updateData.upfrontReceiptUrl = fileUrl;
         }
       }
 
@@ -751,22 +757,40 @@ export const jobController = {
         }
       }
 
-      const updated = await prisma.job.update({
-        where: { id },
-        data: updateData,
-        include: {
-          customer: true,
-          vehicle: true,
-          driver: true,
-          lastDeclinedDriver: {
-            select: {
-              id: true,
-              fullName: true,
-              phone: true,
+      const updated = await prisma.$transaction(async (tx: any) => {
+        if (Array.isArray(serviceItems)) {
+          await tx.jobServiceItem.deleteMany({ where: { jobId: id } });
+          if (serviceItems.length > 0) {
+            await tx.jobServiceItem.createMany({
+              data: serviceItems.map((si: any) => ({
+                jobId: id,
+                serviceName: si.serviceName,
+                category: si.category || 'TIRE_SERVICE',
+                unitPriceCents: Number(si.unitPriceCents) || 0,
+                quantity: Number(si.quantity) || 1,
+                notes: si.notes || null,
+              })),
+            });
+          }
+        }
+
+        return tx.job.update({
+          where: { id },
+          data: updateData,
+          include: {
+            customer: true,
+            vehicle: true,
+            driver: true,
+            lastDeclinedDriver: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+              },
             },
+            serviceItems: true,
           },
-          serviceItems: true,
-        },
+        });
       });
 
       // Auto-advance prospective lead to ADMIN_APPROVAL if complimentary trial job completed
@@ -1453,7 +1477,9 @@ export const jobController = {
       };
 
       if (paymentCollectionMode === 'COMPANY') {
-        externalUpdateData.paymentMethod = job.fleetId ? 'INVOICE_NET30' : (job.paymentMethod || 'E_TRANSFER');
+        externalUpdateData.paymentMethod = (job.paymentMethod && job.paymentMethod !== 'CASH')
+          ? job.paymentMethod
+          : 'E_TRANSFER';
       } else if (paymentCollectionMode === 'DRIVER') {
         externalUpdateData.paymentMethod = 'CASH';
       }
@@ -1560,9 +1586,10 @@ export const jobController = {
 
       const isFleet = Boolean(job.fleetId || job.fleet);
       const isPaidByCompany = Boolean(
+        isFleet ||
         job.paymentStatus === 'PAID_PENDING_VERIFICATION' || 
         job.paymentStatus === 'VERIFIED_PAID' ||
-        isFleet
+        (job.paymentMethod && job.paymentMethod !== 'CASH' && job.paymentStatus !== 'PARTIAL')
       );
 
       // Strict Financial & Privacy Sanitization: hide internal pricing, include customer contact & vehicle specs

@@ -93,7 +93,7 @@ export default function ExternalDriverDispatch() {
       if (action === 'DECLINE') {
         payload.reason = declineReason.trim() || 'Unavailable';
       } else if (action === 'COMPLETE') {
-        payload.cashCollectedCents = isCustomerDue ? (job?.totalCents || 0) : 0;
+        payload.cashCollectedCents = isCustomerDue ? balanceDueCents : 0;
       }
 
       await jobService.updatePublicExternalJobStatus(token, payload);
@@ -150,9 +150,6 @@ export default function ExternalDriverDispatch() {
   const currencySymbol = job.currency === 'GBP' ? '£' : job.countryCode === 'CA' ? 'CA$' : '$';
   const payoutDollars = centsToDollars(job.contractorPayoutFeeCents || 0);
   const payoutFormatted = formatCurrency(payoutDollars, currencySymbol);
-
-  const totalDollars = centsToDollars(job.totalCents || 0);
-  const totalFormatted = formatCurrency(totalDollars, currencySymbol);
 
   const isFleet = Boolean(job.isFleetJob || job.fleet);
   const isPaidByCompany = Boolean(
@@ -533,7 +530,7 @@ export default function ExternalDriverDispatch() {
                           className="mt-0.5 rounded border-amber-400 text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
                         />
                         <span className="font-bold text-amber-950 text-[11px] leading-snug">
-                          I have collected the exact amount of {totalFormatted} from the customer.
+                          I have collected the exact amount of {balanceDueFormatted} from the customer.
                         </span>
                       </label>
                     )}

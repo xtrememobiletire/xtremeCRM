@@ -188,6 +188,7 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
     setUrgency('URGENT');
     setAssignedDriverId('');
     setPaymentMethod('POS');
+    setUpfrontAmountInput('');
     setNotes('');
   };
 
