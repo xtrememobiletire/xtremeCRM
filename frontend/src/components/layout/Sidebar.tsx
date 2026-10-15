@@ -52,20 +52,37 @@ interface SidebarProps {
   isCollapsed?: boolean;
 }
 
+const adminNavItems = [
+  { icon: BarChart3, label: 'Dashboard', path: '/dashboard' },
+  { icon: Wrench, label: 'Jobs', path: '/jobs' },
+  { icon: Truck, label: 'Fleet Jobs', path: '/fleet-jobs' },
+  { icon: Globe, label: 'Bookings', path: '/bookings' },
+  { icon: DollarSign, label: 'Accounting', path: '/accounting' },
+  { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
+  { icon: PhoneOutgoing, label: 'Leads', path: '/leads' },
+  { icon: Truck, label: 'Fleets', path: '/fleets' },
+  { icon: FileText, label: 'Invoices', path: '/invoices' },
+  { icon: UserCheck, label: 'Drivers', path: '/drivers' },
+  { icon: Users, label: 'Customer', path: '/customers' },
+  { icon: Cpu, label: 'Developer', path: '/developer-profit' },
+  { icon: PhoneIncoming, label: 'Roadside Intake', path: '/inbound' },
+  { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
+];
+
 const baseNavItems = [
   { icon: BarChart3, label: 'Dashboard', path: '/dashboard' },
   { icon: Wrench, label: 'Jobs', path: '/jobs' },
   { icon: Truck, label: 'Fleet Jobs', path: '/fleet-jobs' },
   { icon: Globe, label: 'Bookings', path: '/bookings' },
+  { icon: DollarSign, label: 'Accounting', path: '/accounting' },
+  { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
+  { icon: PhoneOutgoing, label: 'Leads', path: '/leads' },
+  { icon: Truck, label: 'Fleets', path: '/fleets' },
+  { icon: FileText, label: 'Invoices', path: '/invoices' },
+  { icon: UserCheck, label: 'Drivers', path: '/drivers' },
+  { icon: Users, label: 'Customer', path: '/customers' },
   { icon: PhoneIncoming, label: 'Roadside Intake', path: '/inbound' },
   { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
-  { icon: PhoneOutgoing, label: 'Leads', path: '/leads' },
-  { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
-  { icon: UserCheck, label: 'Drivers', path: '/drivers' },
-  { icon: Truck, label: 'Fleets', path: '/fleets' },
-  { icon: Users, label: 'Customers', path: '/customers' },
-  { icon: FileText, label: 'Invoices', path: '/invoices' },
-  { icon: DollarSign, label: 'Accounting', path: '/accounting' },
 ];
 
 /**
@@ -104,22 +121,23 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       ]
     : isAccountant
     ? [
-        { icon: FileText, label: 'Invoices', path: '/invoices' },
         { icon: DollarSign, label: 'Accounting', path: '/accounting' },
+        { icon: FileText, label: 'Invoices', path: '/invoices' },
       ]
     : isDispatcher
     ? [
+        { icon: BarChart3, label: 'Dashboard', path: '/dashboard' },
         { icon: Wrench, label: 'Jobs', path: '/jobs' },
         { icon: Truck, label: 'Fleet Jobs', path: '/fleet-jobs' },
         { icon: Globe, label: 'Bookings', path: '/bookings' },
-        { icon: PhoneIncoming, label: 'Roadside Intake', path: '/inbound' },
-        { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
         { icon: Navigation, label: 'Dispatch', path: '/dispatch' },
-        { icon: UserCheck, label: 'Drivers', path: '/drivers' },
         { icon: PhoneOutgoing, label: 'Leads', path: '/leads' },
         { icon: Truck, label: 'Fleets', path: '/fleets' },
-        { icon: Users, label: 'Customers', path: '/customers' },
         { icon: FileText, label: 'Invoices', path: '/invoices' },
+        { icon: UserCheck, label: 'Drivers', path: '/drivers' },
+        { icon: Users, label: 'Customer', path: '/customers' },
+        { icon: PhoneIncoming, label: 'Roadside Intake', path: '/inbound' },
+        { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
       ]
     : isVa
     ? [
@@ -127,12 +145,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
       ]
     : isAgent
     ? [
+        { icon: PhoneOutgoing, label: 'Leads Queue', path: '/leads' },
         { icon: PhoneIncoming, label: 'Roadside Intake', path: '/inbound' },
         { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
-        { icon: PhoneOutgoing, label: 'Leads Queue', path: '/leads' },
       ]
     : user?.role === 'DEVELOPER' || user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER'
-    ? [...baseNavItems, { icon: Cpu, label: 'Developer Royalties', path: '/developer-profit' }]
+    ? adminNavItems
     : baseNavItems;
 
   const prefetchRoute = (path: string) => {
