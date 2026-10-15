@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { authorize } from '../middleware/authorize.js';
 import { prisma } from '../config/database.js';
-import { sendSuccess, sendError } from '../utils/index.js';
+import { sendSuccess, sendError, generateUniqueJobCode } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
 
 const router = Router();
@@ -16,7 +16,8 @@ async function getScopedFleet(req: Request) {
   const role = (req.user as any)?.role;
   const requestedFleetId = (req.query.fleetId as string) || (req.body?.fleetId as string);
 
-  if (requestedFleetId && (role === 'ADMIN' || role === 'FLEET_MANAGER')) {
+  // IDOR fix: Only ADMIN or GENERAL_MANAGER can inspect another fleet
+  if (requestedFleetId && ['ADMIN', 'GENERAL_MANAGER'].includes(role)) {
     const matched = await prisma.fleet.findUnique({
       where: { id: requestedFleetId },
       include: { _count: { select: { vehicles: true, drivers: true, jobs: true, invoices: true } } },
@@ -24,29 +25,16 @@ async function getScopedFleet(req: Request) {
     if (matched) return matched;
   }
 
-  let fleet = await prisma.fleet.findFirst({
+  // Scoped resolution strictly for authenticated fleet manager
+  const fleet = await prisma.fleet.findFirst({
     where: {
       OR: [
         { managerUserId: userId },
-        ...(userEmail ? [{ email: userEmail }] : []),
+        ...(userEmail ? [{ email: userEmail.toLowerCase() }] : []),
       ],
     },
     include: { _count: { select: { vehicles: true, drivers: true, jobs: true, invoices: true } } },
   });
-
-  if (!fleet) {
-    fleet = await prisma.fleet.findFirst({
-      where: { fleetCode: 'XMT-5132' },
-      include: { _count: { select: { vehicles: true, drivers: true, jobs: true, invoices: true } } },
-    });
-  }
-
-  if (!fleet) {
-    fleet = await prisma.fleet.findFirst({
-      include: { _count: { select: { vehicles: true, drivers: true, jobs: true, invoices: true } } },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
 
   return fleet;
 }
@@ -363,7 +351,7 @@ router.post('/request-service', async (req: Request, res: Response) => {
     }
 
     const country = fleet.countryCode || 'US';
-    const jobCode = `JOB-${country}-${Math.floor(10000 + Math.random() * 90000)}`;
+    const jobCode = await generateUniqueJobCode(country, 'JOB');
 
     let finalVehicleId = vehicleId;
     if (!finalVehicleId) {

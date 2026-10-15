@@ -18,6 +18,10 @@ export default function AddCustomerModal({ isOpen, onClose }: AddCustomerModalPr
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [customerType, setCustomerType] = useState<'RETAIL' | 'MEMBERSHIP'>('RETAIL');
+  const [membershipTier, setMembershipTier] = useState<'STANDARD' | 'GOLD' | 'PLATINUM'>('STANDARD');
+  const [membershipExpiresAt, setMembershipExpiresAt] = useState('');
   const [notes, setNotes] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,7 +47,11 @@ export default function AddCustomerModal({ isOpen, onClose }: AddCustomerModalPr
         fullName: cleanName,
         phone: phoneValidation.normalized,
         email: cleanEmail || undefined,
+        address: address.trim() || undefined,
         notes: cleanNotes || undefined,
+        customerType,
+        membershipTier: customerType === 'MEMBERSHIP' ? membershipTier : undefined,
+        membershipExpiresAt: customerType === 'MEMBERSHIP' && membershipExpiresAt ? new Date(membershipExpiresAt).toISOString() : undefined,
         countryCode: country,
       });
       toast.success('Customer profile added successfully');
@@ -51,6 +59,10 @@ export default function AddCustomerModal({ isOpen, onClose }: AddCustomerModalPr
       setName('');
       setPhone('');
       setEmail('');
+      setAddress('');
+      setCustomerType('RETAIL');
+      setMembershipTier('STANDARD');
+      setMembershipExpiresAt('');
       setNotes('');
     } catch (err: any) {
       const fieldErrors = err.response?.data?.errors;
@@ -66,6 +78,60 @@ export default function AddCustomerModal({ isOpen, onClose }: AddCustomerModalPr
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Add New Customer Profile" maxWidth="max-w-md">
       <form onSubmit={handleSubmit} className="space-y-3">
+        <div>
+          <label className="text-xs font-semibold text-slate-700">Account Type *</label>
+          <div className="grid grid-cols-2 gap-2 mt-1">
+            <button
+              type="button"
+              onClick={() => setCustomerType('RETAIL')}
+              className={`py-1.5 px-3 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                customerType === 'RETAIL'
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              Retail Motorist
+            </button>
+            <button
+              type="button"
+              onClick={() => setCustomerType('MEMBERSHIP')}
+              className={`py-1.5 px-3 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                customerType === 'MEMBERSHIP'
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                  : 'bg-amber-50/50 text-amber-800 border-amber-200 hover:bg-amber-50'
+              }`}
+            >
+              ★ Membership Plan
+            </button>
+          </div>
+        </div>
+
+        {customerType === 'MEMBERSHIP' && (
+          <div className="p-3 bg-amber-50/50 rounded-2xl border border-amber-200 space-y-2.5">
+            <div>
+              <label className="text-[11px] font-bold text-amber-900 block">Membership Tier *</label>
+              <select
+                value={membershipTier}
+                onChange={(e) => setMembershipTier(e.target.value as any)}
+                className="input-base mt-1 text-xs font-semibold"
+              >
+                <option value="STANDARD">Standard Member</option>
+                <option value="GOLD">Gold Member</option>
+                <option value="PLATINUM">Platinum VIP Member</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-amber-900 block">Expiration Date</label>
+              <input
+                type="date"
+                value={membershipExpiresAt}
+                onChange={(e) => setMembershipExpiresAt(e.target.value)}
+                className="input-base mt-1 text-xs font-mono"
+              />
+            </div>
+          </div>
+        )}
+
         <div>
           <label className="text-xs font-semibold text-slate-700">Full Name *</label>
           <input
@@ -93,6 +159,17 @@ export default function AddCustomerModal({ isOpen, onClose }: AddCustomerModalPr
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="jane@example.com"
+            className="input-base mt-1"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-slate-700">Home / Service Address</label>
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="e.g. 123 Main St, Toronto, ON"
             className="input-base mt-1"
           />
         </div>

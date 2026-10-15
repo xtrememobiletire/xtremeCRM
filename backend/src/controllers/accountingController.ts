@@ -62,42 +62,35 @@ export const accountingController = {
         select: {
           id: true,
           status: true,
+          countryCode: true,
+          currency: true,
           totalCents: true,
           subtotalCents: true,
           materialCostCents: true,
           repairerFeeCents: true,
           otherExpenseCents: true,
           itPlatformFeeCents: true,
-          currency: true,
         },
       });
 
-      const totalJobs = jobs.length;
-      const completedJobsList = jobs.filter((j) => j.status === 'COMPLETED');
-      const completedJobs = completedJobsList.length;
+      const buildBucket = (jobList: typeof jobs, curr: 'CAD' | 'USD' | 'GBP') => {
+        const completed = jobList.filter((j) => j.status === 'COMPLETED');
+        const grossRevenueCents = completed.reduce((sum, j) => sum + j.totalCents, 0);
+        const materialCostCents = completed.reduce((sum, j) => sum + j.materialCostCents, 0);
+        const repairerFeeCents = completed.reduce((sum, j) => sum + j.repairerFeeCents, 0);
+        const otherExpenseCents = completed.reduce((sum, j) => sum + j.otherExpenseCents, 0);
+        const itPlatformFeeCents = completed.reduce((sum, j) => sum + j.itPlatformFeeCents, 0);
 
-      // PRD FR-6.3: Revenue and expenses are strictly computed on completed roadside fulfillment
-      const grossRevenueCents = completedJobsList.reduce((sum, j) => sum + j.totalCents, 0);
-      const materialCostCents = completedJobsList.reduce((sum, j) => sum + j.materialCostCents, 0);
-      const repairerFeeCents = completedJobsList.reduce((sum, j) => sum + j.repairerFeeCents, 0);
-      const otherExpenseCents = completedJobsList.reduce((sum, j) => sum + j.otherExpenseCents, 0);
-      const itPlatformFeeCents = completedJobsList.reduce((sum, j) => sum + j.itPlatformFeeCents, 0);
+        const totalDirectCostsCents = materialCostCents + repairerFeeCents + otherExpenseCents;
+        const netProfitCents = grossRevenueCents - totalDirectCostsCents;
+        const netAfterItRoyaltyCents = netProfitCents - itPlatformFeeCents;
+        const averageMarginPercent = grossRevenueCents > 0
+          ? (netProfitCents / grossRevenueCents) * 100
+          : 0;
 
-      const totalDirectCostsCents = materialCostCents + repairerFeeCents + otherExpenseCents;
-      const netProfitCents = grossRevenueCents - totalDirectCostsCents;
-      const netAfterItRoyaltyCents = netProfitCents - itPlatformFeeCents;
-      const averageMarginPercent = grossRevenueCents > 0
-        ? (netProfitCents / grossRevenueCents) * 100
-        : 0;
-
-      const currency = countryCode === 'US' ? 'USD' : countryCode === 'UK' ? 'GBP' : 'CAD';
-
-      const summary = {
-        countryCode,
-        currency,
-        metrics: {
-          totalJobs,
-          completedJobs,
+        return {
+          totalJobs: jobList.length,
+          completedJobs: completed.length,
           grossRevenueCents,
           materialCostCents,
           repairerFeeCents,
@@ -107,18 +100,35 @@ export const accountingController = {
           netProfitCents,
           netAfterItRoyaltyCents,
           averageMarginPercent: Math.round(averageMarginPercent * 10) / 10,
-        },
-        formatted: {
-          grossRevenue: formatCurrency(grossRevenueCents, currency),
-          materialCosts: formatCurrency(materialCostCents, currency),
-          repairerFees: formatCurrency(repairerFeeCents, currency),
-          otherExpenses: formatCurrency(otherExpenseCents, currency),
-          totalDirectCosts: formatCurrency(totalDirectCostsCents, currency),
-          itRoyalty: formatCurrency(itPlatformFeeCents, currency),
-          netProfit: formatCurrency(netProfitCents, currency),
-          netAfterItRoyalty: formatCurrency(netAfterItRoyaltyCents, currency),
-          averageMargin: `${(Math.round(averageMarginPercent * 10) / 10).toFixed(1)}%`,
-        },
+          formatted: {
+            grossRevenue: formatCurrency(grossRevenueCents, curr),
+            materialCosts: formatCurrency(materialCostCents, curr),
+            repairerFees: formatCurrency(repairerFeeCents, curr),
+            otherExpenses: formatCurrency(otherExpenseCents, curr),
+            totalDirectCosts: formatCurrency(totalDirectCostsCents, curr),
+            itRoyalty: formatCurrency(itPlatformFeeCents, curr),
+            netProfit: formatCurrency(netProfitCents, curr),
+            netAfterItRoyalty: formatCurrency(netAfterItRoyaltyCents, curr),
+            averageMargin: `${(Math.round(averageMarginPercent * 10) / 10).toFixed(1)}%`,
+          },
+        };
+      };
+
+      const currency: 'CAD' | 'USD' | 'GBP' = countryCode === 'US' ? 'USD' : countryCode === 'UK' ? 'GBP' : 'CAD';
+      const defaultBucket = buildBucket(jobs, currency);
+
+      const byCurrency = countryCode === 'ALL' ? {
+        CAD: buildBucket(jobs.filter((j) => j.countryCode === 'CA' || j.currency === 'CAD'), 'CAD'),
+        USD: buildBucket(jobs.filter((j) => j.countryCode === 'US' || j.currency === 'USD'), 'USD'),
+        GBP: buildBucket(jobs.filter((j) => j.countryCode === 'UK' || j.currency === 'GBP'), 'GBP'),
+      } : undefined;
+
+      const summary = {
+        countryCode,
+        currency,
+        metrics: defaultBucket,
+        formatted: defaultBucket.formatted,
+        byCurrency,
       };
 
       return sendSuccess(res, summary);

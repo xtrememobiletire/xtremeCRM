@@ -156,7 +156,18 @@ enum DisqualificationReason {
   PRICING_MISMATCH         // Rejected fleet pricing or credit terms
   UNRESPONSIVE             // Maximum contact attempts exceeded
   WRONG_NUMBER             // Inactive or incorrect phone number
+  FLEET_TOO_SMALL          // Fleet too small (< 3 units)
+  NO_COMMERCIAL_FLEET      // No commercial fleet (personal vehicles)
+  CREDIT_TERMS_REJECTED    // Credit or terms rejected
   OTHER                    // Operational or custom rejection reason
+}
+
+enum FleetPaymentTerms {
+  DUE_ON_RECEIPT
+  NET_7
+  NET_15
+  NET_30
+  NET_60
 }
 
 enum BatchStatus {
@@ -272,6 +283,7 @@ model Customer {
   countryCode  CountryCode  @default(CA) @map("country_code") // Strict regional silo: CA, US, UK
   customerType CustomerType @default(RETAIL) @map("customer_type")
   address      String?
+  notes        String?
   latitude     Float?
   longitude    Float?
 
@@ -309,9 +321,20 @@ model Fleet {
   phone         String      // E.164 formatted primary management phone (e.g. +17035550144)
   altPhone            String?     @map("alt_phone")
   ceoOwnerName        String?     @map("ceo_owner_name")
-  email               String?     // Fleet manager portal login email (the credentials email we provide them)
-  password            String?     // Fleet manager portal login password (viewable by admin)
+  email               String?     // Fleet manager portal login email
   poaEmail            String?     @map("poa_email") // Billing email (Invoices & accounts payable)
+  billingContactName  String?     @map("billing_contact_name")
+  paymentTerms        FleetPaymentTerms @default(NET_30) @map("payment_terms")
+  creditLimitCents    Int?        @map("credit_limit_cents")
+  contractTermYears   Int?        @map("contract_term_years")
+  contractStartDate   DateTime?   @db.Timestamptz @map("contract_start_date")
+  contractEndDate     DateTime?   @db.Timestamptz @map("contract_end_date")
+  governingProvince   String?     @map("governing_province")
+  customerSignatoryName   String? @map("customer_signatory_name")
+  customerSignatoryTitle  String? @map("customer_signatory_title")
+  providerSignatoryName   String? @map("provider_signatory_name")
+  providerSignatoryTitle  String? @map("provider_signatory_title")
+  contractDocumentUrl     String? @map("contract_document_url")
   fleetManager        String?     @map("fleet_manager") // Fleet Manager Name
   website             String?
   numberOfUnits       Int?        @map("number_of_units")

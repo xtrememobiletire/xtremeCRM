@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   X,
@@ -58,17 +58,35 @@ export default function DriverDetailDrawer({
     enabled: isOpen && !!driver?.id,
   });
 
-  // Close on Escape key press
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+
+  // Close on Escape key press (stabilized via ref)
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen]);
+
+  // Focus management: move focus into dialog when opened, restore previous focus when closed
+  useEffect(() => {
+    if (!isOpen) return;
+    previousActiveElementRef.current = document.activeElement as HTMLElement | null;
+    panelRef.current?.focus();
+    return () => {
+      previousActiveElementRef.current?.focus();
+    };
+  }, [isOpen]);
 
   const jobs: JobItem[] = jobsResponse?.data || [];
 
@@ -101,12 +119,18 @@ export default function DriverDetailDrawer({
 
   return (
     <div
+      role="presentation"
       onClick={onClose}
       className="fixed inset-0 z-50 flex justify-end bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
     >
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="driver-drawer-title"
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white w-full max-w-xl h-full shadow-2xl border-l border-slate-200 flex flex-col animate-in slide-in-from-right duration-200 overflow-hidden cursor-default"
+        className="bg-white w-full max-w-xl h-full shadow-2xl border-l border-slate-200 flex flex-col animate-in slide-in-from-right duration-200 overflow-hidden cursor-default focus:outline-none"
       >
         {/* Drawer Header */}
         <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between shrink-0">
@@ -116,7 +140,7 @@ export default function DriverDetailDrawer({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-bold text-slate-900 truncate">
+                <h2 id="driver-drawer-title" className="text-base font-bold text-slate-900 truncate">
                   {driver.fullName}
                 </h2>
                 <span className="px-1.5 py-0.2 rounded bg-slate-200 text-slate-700 font-mono text-[10px] font-bold">

@@ -141,6 +141,9 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     const s = io(socketUrl, {
       withCredentials: true,
+      auth: {
+        token: typeof window !== 'undefined' ? localStorage.getItem('xtreme_token') : null,
+      },
       autoConnect: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
@@ -219,13 +222,9 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    // Outbound Lead Queue invalidation
-    s.on('lead:created', () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-    });
-    s.on('lead:updated', () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-    });
+    // Outbound Lead updates handled via SSE zero-refetch cache patch (ponytail: keep socket for alerts only)
+    s.on('lead:created', () => {});
+    s.on('lead:updated', () => {});
 
     // Real-Time Driver Assignment Notice
     s.on('notification:job_assigned', (data: any) => {
@@ -237,20 +236,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         jobId: data.jobId,
         jobCode: data.jobCode,
       });
-      queryClient.invalidateQueries({ queryKey: ['driver-assigned-jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['technician-jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['jobs'] });
     });
 
-    // Real-Time Job Status Updates
+    // Real-Time Job Status Alerts (data cache patched via useSSE)
     s.on('job:status_updated', (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ['jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['urgent-dispatch-jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['standard-dispatch-jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['driver-assigned-jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['technician-jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['accounting'] });
-
       // Suppress generic status alerts for drivers (drivers only get assigned notices & direct chat)
       const isDriver = userRef.current?.role === 'DRIVER';
       if (!isDriver && data?.jobCode && data?.status) {

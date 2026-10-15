@@ -82,7 +82,13 @@ class SSEManager {
       this.ringBuffer.shift();
     }
 
-    const payload = `id: ${eventId}\nevent: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+    let sanitizedData = data;
+    if (channel.startsWith('sse:driver:') && data && typeof data === 'object') {
+      const { itPlatformFeeCents, grossProfitCents, internalNotes, ...safeData } = data;
+      sanitizedData = safeData;
+    }
+
+    const payload = `id: ${eventId}\nevent: ${event}\ndata: ${JSON.stringify(sanitizedData)}\n\n`;
 
     this.clients.forEach((client) => {
       if (this.clientMatchesChannel(client, channel)) {
@@ -97,11 +103,21 @@ class SSEManager {
 
   private clientMatchesChannel(client: SSEClient, channel: string): boolean {
     if (channel === 'global') return true;
-    if (channel === `sse:dispatch:${client.countryCode}`) return true;
-    if (channel === `sse:jobs:${client.countryCode}`) return true;
-    if (channel === `sse:leads:${client.countryCode}`) return true;
     if (channel === `sse:driver:${client.userId}`) return true;
     if (channel === `sse:user:${client.userId}`) return true;
+
+    // Administrative dispatch and jobs channels restricted to internal ops roles
+    const isOpsRole = ['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER', 'ACCOUNTANT', 'CALL_AGENT', 'DEVELOPER'].includes(client.role);
+    if (isOpsRole && (channel === `sse:dispatch:${client.countryCode}` || channel === `sse:jobs:${client.countryCode}`)) {
+      return true;
+    }
+
+    // Outbound leads pipeline restricted to sales and admin roles
+    const isLeadRole = ['ADMIN', 'GENERAL_MANAGER', 'CALL_AGENT', 'VIRTUAL_ASSISTANT', 'DISPATCHER', 'DEVELOPER'].includes(client.role);
+    if (isLeadRole && channel === `sse:leads:${client.countryCode}`) {
+      return true;
+    }
+
     return false;
   }
 

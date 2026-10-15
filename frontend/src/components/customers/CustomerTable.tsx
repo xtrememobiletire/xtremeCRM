@@ -7,6 +7,9 @@ interface Customer {
   name: string;
   phone: string;
   email?: string;
+  customerType?: 'RETAIL' | 'MEMBERSHIP' | string;
+  membershipTier?: 'STANDARD' | 'GOLD' | 'PLATINUM' | string;
+  membershipExpiresAt?: string;
   fleetCompany?: {
     id: string;
     companyName: string;
@@ -54,6 +57,16 @@ export default function CustomerTable({ customers, onSelectCustomer }: CustomerT
                 {c.fleetCompany ? (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
                     Fleet: {c.fleetCompany.companyName}
+                  </span>
+                ) : c.customerType === 'MEMBERSHIP' ? (
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                    c.membershipTier === 'PLATINUM'
+                      ? 'bg-purple-50 text-purple-700 border-purple-200'
+                      : c.membershipTier === 'GOLD'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  }`}>
+                    ★ {c.membershipTier || 'STANDARD'} Member
                   </span>
                 ) : (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">

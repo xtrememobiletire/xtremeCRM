@@ -431,8 +431,8 @@ export default function ExternalDispatchModal({
               <DollarSign size={12} className="text-slate-400" />
               <span>Agreed Contractor Payout Fee</span>
             </label>
-            <div className="relative">
-              <span className="absolute left-3 top-2 font-mono text-slate-400 text-xs">
+            <div className="flex items-stretch rounded-xl border border-slate-200 bg-white shadow-2xs focus-within:ring-1 focus-within:ring-blue-500 overflow-hidden">
+              <span className="inline-flex items-center justify-center px-3 bg-slate-100 border-r border-slate-200 font-mono text-slate-600 text-xs font-bold select-none shrink-0">
                 {currencySymbol}
               </span>
               <input
@@ -442,7 +442,7 @@ export default function ExternalDispatchModal({
                 value={feeInput}
                 onChange={(e) => setFeeInput(e.target.value)}
                 placeholder="120.00"
-                className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-white font-mono text-xs focus:outline-none"
               />
             </div>
           </div>

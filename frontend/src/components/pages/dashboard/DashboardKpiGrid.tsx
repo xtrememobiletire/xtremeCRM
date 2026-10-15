@@ -17,10 +17,10 @@ export default function DashboardKpiGrid({ isLoading, jobs }: DashboardKpiGridPr
   }
 
   const activeJobsCount = jobs.filter((j: any) =>
-    ['DISPATCHED', 'EN_ROUTE', 'ON_SCENE', 'IN_PROGRESS'].includes(j.status)
+    ['ASSIGNED', 'IN_PROGRESS'].includes(j.status)
   ).length;
 
-  const totalRevenueCents = jobs.reduce((sum: number, j: any) => sum + (j.totalAmount || 0), 0);
+  const totalRevenueCents = jobs.reduce((sum: number, j: any) => sum + (j.totalCents ?? j.totalAmount ?? 0), 0);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

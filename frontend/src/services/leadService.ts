@@ -183,6 +183,11 @@ export const leadService = {
     return res.data.data;
   },
 
+  async claimNextLead(countryCode?: string, batchId?: string) {
+    const res = await api.post('/leads/agent-queue/claim', { countryCode, batchId });
+    return res.data.data;
+  },
+
   async getBatches(countryCode?: string, status?: string) {
     const res = await api.get('/leads/batches', { params: { countryCode, status } });
     return res.data.data;

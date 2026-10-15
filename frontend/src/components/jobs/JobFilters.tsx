@@ -1,5 +1,5 @@
 import { Search, Filter } from 'lucide-react';
-import { JOB_STATUSES, JOB_URGENCIES } from '../../constants/statuses';
+import { JOB_STATUSES, JOB_URGENCIES, URGENCIES } from '../../constants/statuses';
 
 interface JobFiltersProps {
   search: string;
@@ -59,7 +59,7 @@ export default function JobFilters({
             <option value="">All Urgencies</option>
             {JOB_URGENCIES.map((u) => (
               <option key={u} value={u}>
-                {u}
+                {URGENCIES[u]?.label || u}
               </option>
             ))}
           </select>

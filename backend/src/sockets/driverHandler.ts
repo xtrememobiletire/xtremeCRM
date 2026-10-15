@@ -12,6 +12,18 @@ export const registerDriverHandlers = (io: Server, socket: Socket) => {
     io.to(`dispatch:${data.region}`).emit('driver:location_update', data);
   });
 
+  socket.on('driver:location_update', (payload: any) => {
+    const region = payload?.region || 'default';
+    io.to(`dispatch:${region}`).emit('driver:location_updated', {
+      driverId: (socket.data as any)?.user?.id || payload?.driverId,
+      ...payload,
+    });
+    io.emit('driver:location_update', {
+      driverId: (socket.data as any)?.user?.id || payload?.driverId,
+      ...payload,
+    });
+  });
+
   socket.on('driver:status', (data: { driverId: string; status: string; region: string }) => {
     io.to(`dispatch:${data.region}`).emit('driver:status_update', data);
   });

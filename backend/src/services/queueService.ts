@@ -92,6 +92,7 @@ export async function initQueueService(): Promise<PgBoss | null> {
             }
           } catch (err: any) {
             logger.error(`[Queue] Batch activation error for ${batchId}:`, err);
+            throw err;
           }
         }
       }
@@ -133,6 +134,9 @@ export async function refillAgentQueueAtomic(
 
   try {
     const replenishedCount = await prisma.$transaction(async (tx) => {
+      // Per-VA advisory lock prevents concurrent transactions assigning duplicate leads
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${vaId}))`;
+
       const activeCount = await tx.lead.count({
         where: {
           assignedAgentId: vaId,
@@ -153,6 +157,7 @@ export async function refillAgentQueueAtomic(
           AND l.status IN ('NEW'::"LeadStatus", 'CALLED'::"LeadStatus")
           AND (${batchId || null}::text IS NULL OR l.batch_id = ${batchId || null})
           AND (${batchId || null}::text IS NOT NULL OR l.country_code = ${countryCode || 'CA'}::"CountryCode")
+          AND (l.last_called_by_va_id IS NULL OR l.last_called_by_va_id != ${vaId} OR l.last_called_at <= NOW() - INTERVAL '2 hours')
           AND (
             l.batch_id IS NULL
             OR EXISTS (
@@ -163,8 +168,9 @@ export async function refillAgentQueueAtomic(
             )
           )
         ORDER BY
-          l.created_at DESC,
-          l.priority DESC
+          l.call_attempts_count ASC,
+          l.priority DESC,
+          l.created_at ASC
         LIMIT ${slotsNeeded}
         FOR UPDATE SKIP LOCKED
       `;
@@ -192,8 +198,6 @@ export async function refillAgentQueueAtomic(
         replenishedCount,
       });
       sseManager.broadcast(`sse:leads:${countryCode}`, 'lead:stats_updated', { countryCode });
-    } else {
-      await checkAndCompleteBatches(countryCode);
     }
 
     return replenishedCount;
@@ -225,7 +229,6 @@ export async function checkAndCompleteBatches(countryCode: string): Promise<void
       const pendingCount = await prisma.lead.count({
         where: {
           batchId: batch.id,
-          stage: { in: ['VA_OUTREACH', 'AGENT_CALLBACK'] },
           status: { notIn: ['DEAD', 'CONVERTED'] },
         },
       });

@@ -19,7 +19,9 @@ import {
   PhoneOutgoing,
   Globe,
   FileText,
-  UserCheck
+  UserCheck,
+  Cpu,
+  MapPin
 } from 'lucide-react';
 
 const routeChunkLoaders: Record<string, () => Promise<any>> = {
@@ -35,10 +37,12 @@ const routeChunkLoaders: Record<string, () => Promise<any>> = {
   '/invoices': () => import('../../pages/Invoices'),
   '/drivers': () => import('../../pages/Drivers'),
   '/accounting': () => import('../../pages/Accounting'),
+  '/developer-profit': () => import('../../pages/DeveloperProfitPage'),
   '/leads': () => import('../../pages/Leads'),
   '/fleet-dashboard': () => import('../../pages/FleetDashboard'),
   '/member-dashboard': () => import('../../pages/MemberDashboard'),
   '/technician': () => import('../../pages/TechnicianPortal'),
+  '/technician/live-map': () => import('../../pages/TechnicianLiveTrackPage'),
   '/history': () => import('../../pages/History'),
 };
 
@@ -95,6 +99,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     : isDriver
     ? [
         { icon: Wrench, label: 'Orders', path: '/technician' },
+        { icon: MapPin, label: 'Live Track Map', path: '/technician/live-map' },
         { icon: History, label: 'Earnings & History', path: '/history' },
       ]
     : isAccountant
@@ -126,6 +131,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
         { icon: PhoneOutgoing, label: 'Leads Queue', path: '/leads' },
       ]
+    : user?.role === 'DEVELOPER' || user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER'
+    ? [...baseNavItems, { icon: Cpu, label: 'Developer Royalties', path: '/developer-profit' }]
     : baseNavItems;
 
   const prefetchRoute = (path: string) => {

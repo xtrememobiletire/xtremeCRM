@@ -50,10 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch {
         // If unauthenticated or token expired, clear invalid storage
-        if (!localStorage.getItem('xtreme_token')) {
-          setUser(null);
-          localStorage.removeItem('xtreme_user');
-        }
+        setUser(null);
+        localStorage.removeItem('xtreme_user');
+        localStorage.removeItem('xtreme_token');
       } finally {
         setLoading(false);
       }

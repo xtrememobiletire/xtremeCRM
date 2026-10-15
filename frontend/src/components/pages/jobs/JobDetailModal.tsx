@@ -111,13 +111,11 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
 
       if (upfrontReceiptFile) {
         const formData = new FormData();
-        formData.append('status', status);
         formData.append('upfrontAmountCents', String(cents));
         formData.append('receipt', upfrontReceiptFile);
         await jobService.updateJobStatus(job.id, formData);
       } else {
         await jobService.updateJobStatus(job.id, {
-          status,
           upfrontAmountCents: cents,
         });
       }
@@ -138,7 +136,6 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
     try {
       setUpdating(true);
       await jobService.updateJobStatus(job.id, {
-        status,
         serviceItems: newServices.map((s) => ({
           serviceName: s.serviceName,
           category: s.category || 'TIRE_SERVICE',
@@ -162,7 +159,6 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
     try {
       setUpdating(true);
       await jobService.updateJobStatus(job.id, {
-        status,
         problemNotes: notesInput,
       });
       await queryClient.invalidateQueries({ queryKey: ['jobs'] });

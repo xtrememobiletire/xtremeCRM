@@ -217,48 +217,98 @@ export default function Accounting() {
       {accountingTab === 'reconciliation' ? (
         <>
           {/* KPI Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              title="Period Gross Revenue"
-              value={formatCurrency(centsToDollars(grossRevenue), selectedCountry === 'ALL' ? '$' : currencySymbol)}
-              subtitle={`${metrics?.completedJobs ?? records.length} completed & billed jobs`}
-              subtitleColor="text-slate-500"
-              icon={DollarSign}
-              iconBg="bg-blue-50"
-              iconColor="text-blue-600"
-              isLoading={isSummaryLoading}
-            />
-            <StatCard
-              title="Direct Operating Costs"
-              value={formatCurrency(centsToDollars(directCosts), selectedCountry === 'ALL' ? '$' : currencySymbol)}
-              subtitle="Tires, patches, technician labor fees"
-              subtitleColor="text-rose-500"
-              icon={Receipt}
-              iconBg="bg-rose-50"
-              iconColor="text-rose-600"
-              isLoading={isSummaryLoading}
-            />
-            <StatCard
-              title="Net Gross Profit"
-              value={formatCurrency(centsToDollars(netProfit), selectedCountry === 'ALL' ? '$' : currencySymbol)}
-              subtitle="Revenue minus direct COGS"
-              subtitleColor="text-emerald-600"
-              icon={TrendingUp}
-              iconBg="bg-emerald-50"
-              iconColor="text-emerald-600"
-              isLoading={isSummaryLoading}
-            />
-            <StatCard
-              title="Average Margin"
-              value={`${averageMargin.toFixed(1)}%`}
-              subtitle="Target: > 50% on mobile roadside"
-              subtitleColor={averageMargin >= 50 ? 'text-emerald-600' : 'text-amber-600'}
-              icon={Landmark}
-              iconBg="bg-amber-50"
-              iconColor="text-amber-600"
-              isLoading={isSummaryLoading}
-            />
-          </div>
+          {selectedCountry === 'ALL' && summaryData?.byCurrency ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {(
+                [
+                  { key: 'CAD', label: 'Canada', flag: '🇨🇦', symbol: 'CA$', data: summaryData.byCurrency.CAD },
+                  { key: 'USD', label: 'United States', flag: '🇺🇸', symbol: '$', data: summaryData.byCurrency.USD },
+                  { key: 'GBP', label: 'United Kingdom', flag: '🇬🇧', symbol: '£', data: summaryData.byCurrency.GBP },
+                ] as const
+              ).map((cur) => (
+                <div key={cur.key} className="card p-4 space-y-3 bg-white border border-slate-200 shadow-2xs rounded-xl">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">{cur.flag}</span>
+                      <div>
+                        <h4 className="font-bold text-sm text-slate-900">{cur.label}</h4>
+                        <p className="text-[11px] text-slate-500 font-medium">
+                          {cur.key} • {cur.data?.completedJobs ?? 0} completed jobs
+                        </p>
+                      </div>
+                    </div>
+                    <span
+                      className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        (cur.data?.averageMarginPercent ?? 0) >= 50
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}
+                    >
+                      {cur.data?.formatted?.averageMargin ?? '0%'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+                    <div className="bg-slate-50 p-2 rounded-lg">
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Revenue</p>
+                      <p className="text-xs font-bold text-slate-800">{cur.data?.formatted?.grossRevenue ?? '$0.00'}</p>
+                    </div>
+                    <div className="bg-rose-50/50 p-2 rounded-lg">
+                      <p className="text-[10px] uppercase font-bold text-rose-500">Direct COGS</p>
+                      <p className="text-xs font-bold text-rose-700">{cur.data?.formatted?.totalDirectCosts ?? '$0.00'}</p>
+                    </div>
+                    <div className="bg-emerald-50/50 p-2 rounded-lg">
+                      <p className="text-[10px] uppercase font-bold text-emerald-600">Net Profit</p>
+                      <p className="text-xs font-bold text-emerald-700">{cur.data?.formatted?.netProfit ?? '$0.00'}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                title="Period Gross Revenue"
+                value={formatCurrency(centsToDollars(grossRevenue), currencySymbol)}
+                subtitle={`${metrics?.completedJobs ?? records.length} completed & billed jobs`}
+                subtitleColor="text-slate-500"
+                icon={DollarSign}
+                iconBg="bg-blue-50"
+                iconColor="text-blue-600"
+                isLoading={isSummaryLoading}
+              />
+              <StatCard
+                title="Direct Operating Costs"
+                value={formatCurrency(centsToDollars(directCosts), currencySymbol)}
+                subtitle="Tires, patches, technician labor fees"
+                subtitleColor="text-rose-500"
+                icon={Receipt}
+                iconBg="bg-rose-50"
+                iconColor="text-rose-600"
+                isLoading={isSummaryLoading}
+              />
+              <StatCard
+                title="Net Gross Profit"
+                value={formatCurrency(centsToDollars(netProfit), currencySymbol)}
+                subtitle="Revenue minus direct COGS"
+                subtitleColor="text-emerald-600"
+                icon={TrendingUp}
+                iconBg="bg-emerald-50"
+                iconColor="text-emerald-600"
+                isLoading={isSummaryLoading}
+              />
+              <StatCard
+                title="Average Margin"
+                value={`${averageMargin.toFixed(1)}%`}
+                subtitle="Target: > 50% on mobile roadside"
+                subtitleColor={averageMargin >= 50 ? 'text-emerald-600' : 'text-amber-600'}
+                icon={Landmark}
+                iconBg="bg-amber-50"
+                iconColor="text-amber-600"
+                isLoading={isSummaryLoading}
+              />
+            </div>
+          )}
 
           {/* Filter Presets & Search */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">

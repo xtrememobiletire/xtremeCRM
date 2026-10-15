@@ -728,8 +728,10 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
             </span>
             <span className="text-[10px] font-mono text-slate-400">Leave blank if standard Net 30 billing</span>
           </label>
-          <div className="relative">
-            <span className="absolute left-3.5 top-2.5 font-mono text-xs text-slate-400 font-bold">{currencySymbol}</span>
+          <div className="flex items-stretch rounded-xl border border-slate-200 bg-white shadow-2xs focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 overflow-hidden">
+            <span className="inline-flex items-center justify-center px-3 bg-slate-100 border-r border-slate-200 font-mono text-xs text-slate-600 font-bold select-none shrink-0">
+              {currencySymbol}
+            </span>
             <input
               type="number"
               step="0.01"
@@ -737,7 +739,7 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
               value={upfrontAmountDollars}
               onChange={(e) => setUpfrontAmountDollars(e.target.value)}
               placeholder="0.00"
-              className="w-full pl-8 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              className="w-full px-3.5 py-2 text-xs bg-white font-mono font-bold text-slate-900 focus:outline-none"
             />
           </div>
         </div>

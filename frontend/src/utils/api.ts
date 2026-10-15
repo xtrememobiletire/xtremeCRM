@@ -29,8 +29,20 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('xtreme_token');
       localStorage.removeItem('xtreme_user');
-      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login') && !window.location.pathname.includes('/landing')) {
-        window.location.href = '/login';
+
+      if (typeof window !== 'undefined') {
+        const pathname = window.location.pathname;
+        const isPublicRoute =
+          pathname === '/' ||
+          pathname.startsWith('/login') ||
+          pathname.startsWith('/landing') ||
+          pathname.startsWith('/dispatch/external');
+        const isAuthCheck = error.config?.url?.includes('/auth/me');
+
+        // Only redirect to /login if this was an active API call on a protected page
+        if (!isAuthCheck && !isPublicRoute) {
+          window.location.href = '/login';
+        }
       }
     }
 
