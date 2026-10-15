@@ -760,41 +760,47 @@ export const jobController = {
         }
       }
 
-      const updated = await prisma.$transaction(async (tx: any) => {
-        if (Array.isArray(serviceItems)) {
-          await tx.jobServiceItem.deleteMany({ where: { jobId: id } });
-          if (serviceItems.length > 0) {
-            await tx.jobServiceItem.createMany({
-              data: serviceItems.map((si: any) => ({
-                jobId: id,
-                serviceName: si.serviceName,
-                category: si.category || 'TIRE_SERVICE',
-                unitPriceCents: Number(si.unitPriceCents) || 0,
-                quantity: Number(si.quantity) || 1,
-                notes: si.notes || null,
-              })),
-            });
+      const updated = await prisma.$transaction(
+        async (tx: any) => {
+          if (Array.isArray(serviceItems)) {
+            await tx.jobServiceItem.deleteMany({ where: { jobId: id } });
+            if (serviceItems.length > 0) {
+              await tx.jobServiceItem.createMany({
+                data: serviceItems.map((si: any) => ({
+                  jobId: id,
+                  serviceName: si.serviceName,
+                  category: si.category || 'TIRE_SERVICE',
+                  unitPriceCents: Number(si.unitPriceCents) || 0,
+                  quantity: Number(si.quantity) || 1,
+                  notes: si.notes || null,
+                })),
+              });
+            }
           }
-        }
 
-        return tx.job.update({
-          where: { id },
-          data: updateData,
-          include: {
-            customer: true,
-            vehicle: true,
-            driver: true,
-            lastDeclinedDriver: {
-              select: {
-                id: true,
-                fullName: true,
-                phone: true,
+          return tx.job.update({
+            where: { id },
+            data: updateData,
+            include: {
+              customer: true,
+              vehicle: true,
+              driver: true,
+              lastDeclinedDriver: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  phone: true,
+                },
               },
+              serviceItems: true,
             },
-            serviceItems: true,
-          },
-        });
-      });
+          });
+        },
+        {
+          maxWait: 15000,
+          timeout: 30000,
+        }
+      );
 
       // Auto-advance prospective lead to ADMIN_APPROVAL if complimentary trial job completed
       if (status === 'COMPLETED' && isTrialJob && job.leadId) {

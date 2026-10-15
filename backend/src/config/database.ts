@@ -24,12 +24,33 @@ declare global {
   var __prisma: PrismaClient | undefined;
 }
 
-export const prisma =
-  globalThis.__prisma ||
-  new PrismaClient({
+function createPrismaClient(): PrismaClient {
+  const client = new PrismaClient({
     adapter,
     log: config.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
+
+  // Default interactive transaction options: 15s maxWait, 30s timeout (prevents 5000ms expiration on busy DB)
+  const defaultTxOptions = {
+    maxWait: 15000,
+    timeout: 30000,
+  };
+
+  const originalTransaction = client.$transaction.bind(client);
+  (client as any).$transaction = (arg: any, options?: any) => {
+    if (typeof arg === 'function') {
+      return originalTransaction(arg, {
+        ...defaultTxOptions,
+        ...options,
+      });
+    }
+    return originalTransaction(arg, options);
+  };
+
+  return client;
+}
+
+export const prisma = globalThis.__prisma || createPrismaClient();
 
 if (config.NODE_ENV !== 'production') {
   globalThis.__prisma = prisma;
