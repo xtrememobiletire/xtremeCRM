@@ -18,7 +18,7 @@ import {
   Eye,
   ArrowLeft,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useMapbox } from '../hooks/useMapbox';
@@ -26,11 +26,15 @@ import { useJobs, useUpdateJobStatus } from '../hooks/useJobs';
 import { useLiveJobTracker } from '../hooks/useLiveJobTracker';
 import { useAuth } from '../context/AuthContext';
 import { useTenant } from '../context/TenantContext';
+import { mapService } from '../services/mapService';
 import TechnicianPaymentModal from '../components/technician/TechnicianPaymentModal';
 import TechnicianJobDetailModal from '../components/technician/TechnicianJobDetailModal';
 
 export const TechnicianLiveTrackPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlJobId = searchParams.get('jobId');
+
   const { user } = useAuth();
   const { currencySymbol } = useTenant();
 
@@ -47,6 +51,10 @@ export const TechnicianLiveTrackPage: React.FC = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
+  // Resolved destination coordinates for current job: [longitude, latitude]
+  const [destinationCoords, setDestinationCoords] = useState<[number, number] | null>(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+
   // Filter active/pending jobs for the technician
   const activeJobs = useMemo(() => {
     const list: any[] = jobsResponse?.data || [];
@@ -57,12 +65,30 @@ export const TechnicianLiveTrackPage: React.FC = () => {
     });
   }, [jobsResponse, user]);
 
+  // Sync selected job with URL query parameter or default to first active job
+  useEffect(() => {
+    if (urlJobId) {
+      setSelectedJobId(urlJobId);
+    } else if (activeJobs.length > 0 && !selectedJobId) {
+      setSelectedJobId(activeJobs[0].id);
+    }
+  }, [urlJobId, activeJobs, selectedJobId]);
+
   const currentJob = useMemo(() => {
     if (selectedJobId) {
       return activeJobs.find((j) => j.id === selectedJobId) || activeJobs[0] || null;
     }
     return activeJobs[0] || null;
   }, [activeJobs, selectedJobId]);
+
+  // Initialize Mapbox map
+  const { containerRef, map, isLoaded } = useMapbox({
+    center: [-79.3832, 43.6532],
+    zoom: 12,
+  });
+
+  const techMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const jobMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
   // Connect Live GPS & Auto-Geofence Hook
   const {
@@ -74,22 +100,79 @@ export const TechnicianLiveTrackPage: React.FC = () => {
     requestImmediateLocation,
   } = useLiveJobTracker({
     activeJob: currentJob,
+    destinationCoords,
     autoStatusEnabled,
   });
 
-  // Coordinates of current active job
-  const jobLat = currentJob ? Number(currentJob.latitude ?? currentJob.serviceLatitude) : null;
-  const jobLng = currentJob ? Number(currentJob.longitude ?? currentJob.serviceLongitude) : null;
-  const hasValidJobCoords = jobLat !== null && !isNaN(jobLat) && jobLng !== null && !isNaN(jobLng);
+  // Resolve Job Coordinates (From job model or fallback geocoding)
+  useEffect(() => {
+    if (!currentJob) {
+      setDestinationCoords(null);
+      return;
+    }
 
-  // Initialize Mapbox using existing hook
-  const { containerRef, map, isLoaded } = useMapbox({
-    center: [-79.6441, 43.589], // Default GTA
-    zoom: 12,
-  });
+    const rawLat = currentJob.latitude ?? currentJob.serviceLatitude;
+    const rawLng = currentJob.longitude ?? currentJob.serviceLongitude;
 
-  const techMarkerRef = useRef<mapboxgl.Marker | null>(null);
-  const jobMarkerRef = useRef<mapboxgl.Marker | null>(null);
+    if (
+      rawLat !== null &&
+      rawLat !== undefined &&
+      rawLng !== null &&
+      rawLng !== undefined &&
+      !isNaN(Number(rawLat)) &&
+      !isNaN(Number(rawLng)) &&
+      (Number(rawLat) !== 0 || Number(rawLng) !== 0)
+    ) {
+      const coords: [number, number] = [Number(rawLng), Number(rawLat)];
+      setDestinationCoords(coords);
+      return;
+    }
+
+    // Geocode address if coordinates are missing
+    const address = currentJob.locationAddress || currentJob.serviceAddress;
+    if (address) {
+      setIsGeocoding(true);
+      let isMounted = true;
+      mapService
+        .geocode(address, currentJob.countryCode)
+        .then((res) => {
+          if (isMounted && res && res.latitude && res.longitude) {
+            const coords: [number, number] = [res.longitude, res.latitude];
+            setDestinationCoords(coords);
+          }
+        })
+        .catch((err) => {
+          console.warn('[TechnicianLiveTrackPage] Geocode error:', err);
+        })
+        .finally(() => {
+          if (isMounted) setIsGeocoding(false);
+        });
+
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [
+    currentJob?.id,
+    currentJob?.latitude,
+    currentJob?.longitude,
+    currentJob?.serviceLatitude,
+    currentJob?.serviceLongitude,
+    currentJob?.locationAddress,
+    currentJob?.serviceAddress,
+    currentJob?.countryCode,
+  ]);
+
+  // When destination coordinates resolve or change, fly map to the job location
+  useEffect(() => {
+    if (!map || !isLoaded || !destinationCoords) return;
+    map.flyTo({
+      center: destinationCoords,
+      zoom: 14,
+      essential: true,
+      duration: 1000,
+    });
+  }, [destinationCoords, map, isLoaded]);
 
   // Resize Mapbox canvas smoothly when toggling Full Screen
   useEffect(() => {
@@ -131,7 +214,7 @@ export const TechnicianLiveTrackPage: React.FC = () => {
       jobMarkerRef.current = null;
     }
 
-    if (hasValidJobCoords && jobLng !== null && jobLat !== null) {
+    if (destinationCoords) {
       const el = document.createElement('div');
       el.innerHTML = `
         <div style="background: #ef4444; color: white; padding: 6px 10px; border-radius: 999px; font-weight: 700; font-size: 11px; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.25); display: flex; align-items: center; gap: 4px; cursor: pointer;">
@@ -139,11 +222,16 @@ export const TechnicianLiveTrackPage: React.FC = () => {
         </div>
       `;
 
-      const customerLabel = currentJob?.customer?.fullName || currentJob?.customer?.name || currentJob?.recipientName || 'Customer';
-      const addressLabel = currentJob?.locationAddress || currentJob?.serviceAddress || '';
+      const customerLabel =
+        currentJob?.customer?.fullName ||
+        currentJob?.customer?.name ||
+        currentJob?.recipientName ||
+        'Customer';
+      const addressLabel =
+        currentJob?.locationAddress || currentJob?.serviceAddress || 'Job Location';
 
       jobMarkerRef.current = new mapboxgl.Marker({ element: el })
-        .setLngLat([jobLng, jobLat])
+        .setLngLat(destinationCoords)
         .setPopup(
           new mapboxgl.Popup({ offset: 20 }).setHTML(
             `<div style="font-size:12px; padding: 2px;"><strong>${customerLabel}</strong><br/>${addressLabel}</div>`
@@ -154,7 +242,7 @@ export const TechnicianLiveTrackPage: React.FC = () => {
 
     // Draw/Update dashed route line between Technician and Job
     const sourceId = 'tech-job-route';
-    const hasBothPoints = myLocation && hasValidJobCoords && jobLng !== null && jobLat !== null;
+    const hasBothPoints = myLocation && destinationCoords;
 
     const geojsonData: any = {
       type: 'FeatureCollection',
@@ -166,7 +254,7 @@ export const TechnicianLiveTrackPage: React.FC = () => {
                 type: 'LineString',
                 coordinates: [
                   [myLocation.lng, myLocation.lat],
-                  [jobLng, jobLat],
+                  [destinationCoords[0], destinationCoords[1]],
                 ],
               },
               properties: {},
@@ -192,7 +280,7 @@ export const TechnicianLiveTrackPage: React.FC = () => {
         },
       });
     }
-  }, [currentJob, hasValidJobCoords, jobLat, jobLng, myLocation, isLoaded, map]);
+  }, [currentJob, destinationCoords, myLocation, isLoaded, map]);
 
   // Center on My Location
   const handleCenterMyLocation = () => {
@@ -216,8 +304,8 @@ export const TechnicianLiveTrackPage: React.FC = () => {
       bounds.extend([myLocation.lng, myLocation.lat]);
       pointsAdded++;
     }
-    if (hasValidJobCoords && jobLng !== null && jobLat !== null) {
-      bounds.extend([jobLng, jobLat]);
+    if (destinationCoords) {
+      bounds.extend(destinationCoords);
       pointsAdded++;
     }
 
@@ -226,7 +314,7 @@ export const TechnicianLiveTrackPage: React.FC = () => {
     }
   };
 
-  // Status Action Progression
+  // Status Action Progression (Strictly adhering to valid backend enum)
   const handleStatusAction = (nextStatus: string) => {
     if (!currentJob) return;
     updateStatusMutation.mutate(
@@ -277,18 +365,39 @@ export const TechnicianLiveTrackPage: React.FC = () => {
     );
   };
 
+  // Switch selected job and update query parameter
+  const handleSelectJob = (jobId: string) => {
+    setSelectedJobId(jobId);
+    setSearchParams({ jobId });
+    const target = activeJobs.find((j) => j.id === jobId);
+    if (target) {
+      const lat = target.latitude ?? target.serviceLatitude;
+      const lng = target.longitude ?? target.serviceLongitude;
+      if (lat && lng && map && isLoaded) {
+        map.flyTo({ center: [Number(lng), Number(lat)], zoom: 15, duration: 900 });
+      }
+    }
+  };
+
   // Determine current progression stage
-  const currentStage: 'PENDING' | 'DISPATCHED' | 'EN_ROUTE' | 'ON_SITE' = (() => {
+  const currentStage: 'PENDING' | 'ACCEPTED' | 'EN_ROUTE' | 'ON_SCENE' = (() => {
     if (!currentJob) return 'PENDING';
     const disp = currentJob.dispositionNotes;
-    if (disp === 'ON_SCENE' || disp === 'ARRIVED' || currentJob.status === 'ON_SITE' || currentJob.status === 'IN_PROGRESS') {
-      return 'ON_SITE';
+    const st = currentJob.status;
+    if (
+      disp === 'ON_SCENE' ||
+      disp === 'ARRIVED' ||
+      st === 'ON_SCENE' ||
+      st === 'ARRIVED' ||
+      st === 'IN_PROGRESS'
+    ) {
+      return 'ON_SCENE';
     }
-    if (disp === 'EN_ROUTE' || currentJob.status === 'EN_ROUTE') {
+    if (disp === 'EN_ROUTE' || st === 'EN_ROUTE') {
       return 'EN_ROUTE';
     }
-    if (disp === 'ACCEPTED' || currentJob.status === 'DISPATCHED' || currentJob.status === 'ACCEPTED') {
-      return 'DISPATCHED';
+    if (disp === 'ACCEPTED' || st === 'ACCEPTED' || st === 'ASSIGNED') {
+      return 'ACCEPTED';
     }
     return 'PENDING';
   })();
@@ -301,14 +410,6 @@ export const TechnicianLiveTrackPage: React.FC = () => {
   const customerPhone = currentJob?.customer?.phone || currentJob?.recipientPhone;
   const addressText =
     currentJob?.locationAddress || currentJob?.serviceAddress || 'GPS Coordinates Pinned';
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5 p-3 sm:p-5 max-w-6xl mx-auto">
@@ -335,6 +436,11 @@ export const TechnicianLiveTrackPage: React.FC = () => {
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                 {isTracking ? 'GPS Live' : 'GPS Standby'}
               </span>
+              {isGeocoding && (
+                <span className="text-[11px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Resolving Address Pin...
+                </span>
+              )}
             </div>
 
             <p className="text-xs text-slate-500 mt-0.5">
@@ -344,6 +450,8 @@ export const TechnicianLiveTrackPage: React.FC = () => {
                       ? `${(distanceToJobMeters / 1000).toFixed(2)} km`
                       : `${distanceToJobMeters} m`
                   }`
+                : destinationCoords
+                ? 'Destination pinned. Acquiring your live position...'
                 : 'Acquiring live coordinates with Dispatch...'}
             </p>
           </div>
@@ -354,8 +462,8 @@ export const TechnicianLiveTrackPage: React.FC = () => {
           {activeJobs.length > 1 && (
             <select
               value={selectedJobId || currentJob?.id || ''}
-              onChange={(e) => setSelectedJobId(e.target.value)}
-              className="px-3 py-2 text-xs font-bold border border-slate-200 rounded-xl bg-slate-50 text-slate-800 focus:outline-none"
+              onChange={(e) => handleSelectJob(e.target.value)}
+              className="px-3 py-2 text-xs font-bold border border-slate-200 rounded-xl bg-slate-50 text-slate-800 focus:outline-none cursor-pointer"
             >
               {activeJobs.map((j) => (
                 <option key={j.id} value={j.id}>
@@ -387,7 +495,7 @@ export const TechnicianLiveTrackPage: React.FC = () => {
         </div>
       )}
 
-      {/* Interactive Map Section (Supports Full Screen Expansion) */}
+      {/* Interactive Map Section (Container always rendered in DOM so Mapbox initializes cleanly) */}
       <div
         className={
           isFullScreen
@@ -395,7 +503,14 @@ export const TechnicianLiveTrackPage: React.FC = () => {
             : 'relative w-full h-[420px] rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-900'
         }
       >
-        <div ref={containerRef} className="w-full h-full flex-1" />
+        <div ref={containerRef} className="w-full h-full" style={{ minHeight: '420px' }} />
+
+        {/* Loading overlay if jobs are still loading */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-20">
+            <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+          </div>
+        )}
 
         {/* Floating Map Controls */}
         <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
@@ -514,12 +629,12 @@ export const TechnicianLiveTrackPage: React.FC = () => {
 
             {/* Smart Dynamic Action Pipeline */}
             <div className="flex flex-col justify-end gap-2">
-              {/* Step 1: Start (Manual) -> Accept Job */}
+              {/* Step 1: Start (Manual) -> Accept Job (sets status to ACCEPTED) */}
               {currentStage === 'PENDING' && (
                 <button
                   type="button"
                   disabled={isUpdatingStatus}
-                  onClick={() => handleStatusAction('DISPATCHED')}
+                  onClick={() => handleStatusAction('ACCEPTED')}
                   className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm shadow-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {isUpdatingStatus ? (
@@ -532,7 +647,7 @@ export const TechnicianLiveTrackPage: React.FC = () => {
               )}
 
               {/* Step 2: Middle 1 (Auto or Manual Fallback) -> En Route */}
-              {currentStage === 'DISPATCHED' && (
+              {currentStage === 'ACCEPTED' && (
                 <button
                   type="button"
                   disabled={isUpdatingStatus}
@@ -548,12 +663,12 @@ export const TechnicianLiveTrackPage: React.FC = () => {
                 </button>
               )}
 
-              {/* Step 3: Middle 2 (Auto or Manual Fallback) -> Arrived / On Site */}
+              {/* Step 3: Middle 2 (Auto or Manual Fallback) -> Arrived On Scene */}
               {currentStage === 'EN_ROUTE' && (
                 <button
                   type="button"
                   disabled={isUpdatingStatus}
-                  onClick={() => handleStatusAction('ON_SITE')}
+                  onClick={() => handleStatusAction('ON_SCENE')}
                   className="w-full py-3.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold text-sm shadow-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {isUpdatingStatus ? (
@@ -566,7 +681,7 @@ export const TechnicianLiveTrackPage: React.FC = () => {
               )}
 
               {/* Step 4: End (Manual & Amount Required) -> Enter Amount & Complete Job */}
-              {currentStage === 'ON_SITE' && (
+              {currentStage === 'ON_SCENE' && (
                 <button
                   type="button"
                   disabled={isUpdatingStatus}
@@ -574,12 +689,12 @@ export const TechnicianLiveTrackPage: React.FC = () => {
                   className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm shadow-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <DollarSign className="w-4 h-4" />
-                  Arrived On Site — Enter Amount &amp; Complete Job
+                  Arrived On Scene — Enter Amount &amp; Complete Job
                 </button>
               )}
 
               <p className="text-[11px] text-center text-slate-500">
-                {currentStage === 'ON_SITE'
+                {currentStage === 'ON_SCENE'
                   ? 'Final completion requires entering payment amount.'
                   : autoStatusEnabled
                   ? 'Live GPS Auto-Status active: En-Route and Arrived update automatically as you move.'

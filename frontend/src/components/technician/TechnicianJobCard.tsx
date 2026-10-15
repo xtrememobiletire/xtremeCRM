@@ -9,7 +9,8 @@ import {
   Calendar, 
   Car, 
   CheckCircle,
-  Truck
+  Truck,
+  Navigation
 } from 'lucide-react';
 import { getNavigationUrl } from '../../utils/navigation';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
@@ -25,6 +26,7 @@ interface TechnicianJobCardProps {
   onProgressStage: (jobId: string, nextStatus: string) => void;
   onOpenPayment: (job: any) => void;
   onOpenChat: (job: any) => void;
+  onOpenMap?: (job: any) => void;
 }
 
 export default function TechnicianJobCard({
@@ -37,6 +39,7 @@ export default function TechnicianJobCard({
   onProgressStage,
   onOpenPayment,
   onOpenChat,
+  onOpenMap,
 }: TechnicianJobCardProps) {
   const [copied, setCopied] = useState(false);
 
@@ -241,6 +244,17 @@ export default function TechnicianJobCard({
               >
                 <CheckCircle className="w-4 h-4" />
                 <span>Complete Job</span>
+              </button>
+            )}
+
+            {onOpenMap && (
+              <button
+                type="button"
+                onClick={() => onOpenMap(job)}
+                className="p-2.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl border border-blue-200 transition cursor-pointer"
+                title="Open Live Tracking Map"
+              >
+                <Navigation className="w-4 h-4" />
               </button>
             )}
 

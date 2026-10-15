@@ -18,17 +18,24 @@ interface UseMapboxOptions {
 }
 
 export function useMapbox(options: UseMapboxOptions = {}) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerNodeRef = useRef<HTMLDivElement | null>(null);
+  const [containerNode, setContainerNode] = useState<HTMLDivElement | null>(null);
+  const containerRef = useCallback((node: HTMLDivElement | null) => {
+    containerNodeRef.current = node;
+    setContainerNode(node);
+  }, []);
+
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [map, setMap] = useState<mapboxgl.Map | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isEnabled = options.enabled !== false;
+  const targetElement = containerNode || containerNodeRef.current;
 
   useEffect(() => {
     if (!isEnabled) return;
-    if (!containerRef.current) return;
+    if (!targetElement) return;
     if (mapRef.current) {
       mapRef.current.resize();
       return;
@@ -44,7 +51,7 @@ export function useMapbox(options: UseMapboxOptions = {}) {
       mapboxgl.accessToken = token;
 
       const m = new mapboxgl.Map({
-        container: containerRef.current,
+        container: targetElement,
         style: options.style || DEFAULT_MAP_STYLE,
         center: options.center || DEFAULT_MAP_CENTER,
         zoom: options.zoom ?? 10,
@@ -83,7 +90,7 @@ export function useMapbox(options: UseMapboxOptions = {}) {
         setIsLoaded(false);
       }
     };
-  }, [isEnabled]);
+  }, [isEnabled, targetElement]);
 
   const flyTo = useCallback((coords: [number, number], zoom = 14) => {
     if (mapRef.current) {

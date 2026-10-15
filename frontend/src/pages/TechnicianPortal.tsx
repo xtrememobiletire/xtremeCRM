@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Inbox } from 'lucide-react';
@@ -16,6 +17,7 @@ import TechnicianPaymentModal from '../components/technician/TechnicianPaymentMo
 import JobChatModal from '../components/dispatch/JobChatModal';
 
 export default function TechnicianPortal() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { currencySymbol } = useTenant();
   const { socket } = useSocket();
@@ -101,16 +103,17 @@ export default function TechnicianPortal() {
     };
   }, [driverJobs]);
 
-  // Handler: Accept Job (moves job to ACTIVE and switches tab automatically)
+  // Handler: Accept Job (moves job to ACTIVE and opens Live Tracking Map)
   const handleAcceptJob = (jobId: string) => {
     setUpdatingJobId(jobId);
     updateStatusMutation.mutate(
       { id: jobId, status: 'ACCEPTED' },
       {
         onSuccess: () => {
-          toast.success('Assignment accepted! Status set to Accepted.');
+          toast.success('Assignment accepted! Opening Live Tracking Map...');
           setActiveTab('ACTIVE');
           refetch();
+          navigate(`/technician/live-map?jobId=${jobId}`);
         },
         onError: (err: any) => {
           toast.error(err?.response?.data?.message || 'Failed to accept job');
@@ -261,6 +264,7 @@ export default function TechnicianPortal() {
                 onProgressStage={handleProgressStage}
                 onOpenPayment={(j) => setPaymentModalJob(j)}
                 onOpenChat={(j) => setChatModalJob(j)}
+                onOpenMap={(j) => navigate(`/technician/live-map?jobId=${j.id}`)}
               />
             ))}
           </div>

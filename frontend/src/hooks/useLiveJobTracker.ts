@@ -18,13 +18,15 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
 
 interface UseLiveJobTrackerOptions {
   activeJob: any | null;
+  destinationCoords?: [number, number] | null; // [lng, lat]
   autoStatusEnabled?: boolean;
   movementThresholdMeters?: number; // Distance moved to trigger EN_ROUTE (default: 40m)
-  arrivalRadiusMeters?: number;     // Distance to job to trigger ON_SITE (default: 150m)
+  arrivalRadiusMeters?: number;     // Distance to job to trigger ON_SCENE (default: 150m)
 }
 
 export function useLiveJobTracker({
   activeJob,
+  destinationCoords,
   autoStatusEnabled = true,
   movementThresholdMeters = 40,
   arrivalRadiusMeters = 150,
@@ -117,17 +119,22 @@ export function useLiveJobTracker({
 
         if (!activeJob) return;
 
-        const destLat = activeJob.latitude ?? activeJob.serviceLatitude;
-        const destLng = activeJob.longitude ?? activeJob.serviceLongitude;
+        // Resolve destination coordinates from prop or job object
+        const destLat = destinationCoords
+          ? destinationCoords[1]
+          : activeJob.latitude ?? activeJob.serviceLatitude;
+        const destLng = destinationCoords
+          ? destinationCoords[0]
+          : activeJob.longitude ?? activeJob.serviceLongitude;
 
-        // Establish initial anchor point when job is accepted (DISPATCHED or ACCEPTED)
+        // Establish initial anchor point when job is accepted
         if (!initialAnchorRef.current) {
           initialAnchorRef.current = { lat, lng };
         }
 
-        // Calculate distance to job destination if job has valid coordinates
+        // Calculate distance to job destination if destination has valid coordinates
         let distToDest: number | null = null;
-        if (destLat && destLng) {
+        if (destLat && destLng && !isNaN(Number(destLat)) && !isNaN(Number(destLng))) {
           distToDest = getDistanceInMeters(lat, lng, Number(destLat), Number(destLng));
           setDistanceToJobMeters(Math.round(distToDest));
         }
@@ -136,14 +143,14 @@ export function useLiveJobTracker({
         // Accept and Complete are strictly manual; completion requires payment amount.
         if (!autoStatusEnabled) return;
 
-        // 2. AUTO-TRANSITION (Middle 1): DISPATCHED / ACCEPTED -> EN_ROUTE (When technician moves > 40m or speed > 2 m/s)
-        const isDispatchedStage =
-          activeJob.status === 'DISPATCHED' ||
+        // 2. AUTO-TRANSITION (Middle 1): ACCEPTED -> EN_ROUTE (When technician moves > 40m or speed > 2 m/s)
+        const isAcceptedStage =
           activeJob.status === 'ACCEPTED' ||
+          activeJob.status === 'ASSIGNED' ||
           activeJob.dispositionNotes === 'ACCEPTED';
 
         if (
-          isDispatchedStage &&
+          isAcceptedStage &&
           !transitionLockRef.current['EN_ROUTE'] &&
           initialAnchorRef.current
         ) {
@@ -168,22 +175,22 @@ export function useLiveJobTracker({
           }
         }
 
-        // 3. AUTO-TRANSITION (Middle 2): EN_ROUTE -> ON_SITE (When arriving at job location <= 150m)
+        // 3. AUTO-TRANSITION (Middle 2): EN_ROUTE -> ON_SCENE (When arriving at job location <= 150m)
         const isEnRouteStage =
           activeJob.status === 'EN_ROUTE' || activeJob.dispositionNotes === 'EN_ROUTE';
 
         if (
           isEnRouteStage &&
-          !transitionLockRef.current['ON_SITE'] &&
+          !transitionLockRef.current['ON_SCENE'] &&
           distToDest !== null &&
           distToDest <= arrivalRadiusMeters
         ) {
-          transitionLockRef.current['ON_SITE'] = true;
+          transitionLockRef.current['ON_SCENE'] = true;
           updateStatusMutation.mutate(
-            { id: activeJob.id, status: 'ON_SITE' },
+            { id: activeJob.id, status: 'ON_SCENE' },
             {
               onError: () => {
-                transitionLockRef.current['ON_SITE'] = false;
+                transitionLockRef.current['ON_SCENE'] = false;
               },
             }
           );
@@ -206,6 +213,7 @@ export function useLiveJobTracker({
     };
   }, [
     activeJob,
+    destinationCoords,
     autoStatusEnabled,
     movementThresholdMeters,
     arrivalRadiusMeters,
