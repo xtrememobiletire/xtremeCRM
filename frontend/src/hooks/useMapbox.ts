@@ -31,10 +31,10 @@ export function useMapbox(options: UseMapboxOptions = {}) {
   const [error, setError] = useState<string | null>(null);
 
   const isEnabled = options.enabled !== false;
-  const targetElement = containerNode || containerNodeRef.current;
 
   useEffect(() => {
     if (!isEnabled) return;
+    const targetElement = containerNode || containerNodeRef.current;
     if (!targetElement) return;
     if (mapRef.current) {
       mapRef.current.resize();
@@ -90,7 +90,7 @@ export function useMapbox(options: UseMapboxOptions = {}) {
         setIsLoaded(false);
       }
     };
-  }, [isEnabled, targetElement]);
+  }, [isEnabled, containerNode]);
 
   const flyTo = useCallback((coords: [number, number], zoom = 14) => {
     if (mapRef.current) {
