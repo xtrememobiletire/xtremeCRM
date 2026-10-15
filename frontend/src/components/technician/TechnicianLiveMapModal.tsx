@@ -1,0 +1,520 @@
+// frontend/src/components/technician/TechnicianLiveMapModal.tsx
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import {
+  X,
+  Maximize2,
+  Minimize2,
+  LocateFixed,
+  Navigation,
+  MapPin,
+  Phone,
+  Radio,
+  Loader2,
+  CheckCircle2,
+  ExternalLink,
+  Info,
+} from 'lucide-react';
+import { useMapbox } from '../../hooks/useMapbox';
+import { mapService } from '../../services/mapService';
+import { getNavigationUrl } from '../../utils/navigation';
+import { TechnicianJobDetailModal } from './TechnicianJobDetailModal';
+
+interface TechnicianLiveMapModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  job: any | null;
+  currencySymbol?: string;
+  onOpenPaymentModal: (job: any) => void;
+  onStatusUpdate: (jobId: string, status: string) => void;
+  myLocation?: { lat: number; lng: number; heading?: number | null; speed?: number | null } | null;
+  distanceToJobMeters?: number | null;
+  isTracking?: boolean;
+  gpsError?: string | null;
+  requestImmediateLocation?: () => void;
+}
+
+export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
+  isOpen,
+  onClose,
+  job,
+  currencySymbol = '$',
+  onOpenPaymentModal,
+  onStatusUpdate,
+  myLocation,
+  distanceToJobMeters,
+  isTracking = false,
+  gpsError,
+  requestImmediateLocation,
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [destinationCoords, setDestinationCoords] = useState<[number, number] | null>(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+
+  const techMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const jobMarkerRef = useRef<mapboxgl.Marker | null>(null);
+
+  // Initialize Mapbox map instance
+  const { containerRef, map, isLoaded } = useMapbox({
+    center: [-79.3832, 43.6532],
+    zoom: 13,
+    enabled: isOpen,
+  });
+
+  // Resolve Destination Coordinates (From job coords or geocoding fallback)
+  useEffect(() => {
+    if (!isOpen || !job) {
+      return;
+    }
+
+    const rawLat = job.latitude ?? job.serviceLatitude;
+    const rawLng = job.longitude ?? job.serviceLongitude;
+
+    if (
+      rawLat !== null &&
+      rawLat !== undefined &&
+      rawLng !== null &&
+      rawLng !== undefined &&
+      !isNaN(Number(rawLat)) &&
+      !isNaN(Number(rawLng)) &&
+      (Number(rawLat) !== 0 || Number(rawLng) !== 0)
+    ) {
+      setDestinationCoords([Number(rawLng), Number(rawLat)]);
+      return;
+    }
+
+    const address = job.locationAddress || job.serviceAddress;
+    if (address) {
+      setIsGeocoding(true);
+      let isMounted = true;
+      mapService
+        .geocode(address, job.countryCode)
+        .then((res) => {
+          if (isMounted && res && res.latitude && res.longitude) {
+            setDestinationCoords([res.longitude, res.latitude]);
+          }
+        })
+        .catch((err) => {
+          console.warn('[TechnicianLiveMapModal] Geocode fallback error:', err);
+        })
+        .finally(() => {
+          if (isMounted) setIsGeocoding(false);
+        });
+
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [
+    isOpen,
+    job?.id,
+    job?.latitude,
+    job?.longitude,
+    job?.serviceLatitude,
+    job?.serviceLongitude,
+    job?.locationAddress,
+    job?.serviceAddress,
+    job?.countryCode,
+  ]);
+
+  // Smoothly resize map canvas when toggling expanded mode or opening
+  useEffect(() => {
+    if (map && isLoaded) {
+      const timer = setTimeout(() => map.resize(), 120);
+      return () => clearTimeout(timer);
+    }
+  }, [isExpanded, isOpen, isLoaded, map]);
+
+  // Center/Fly to destination on initial load
+  useEffect(() => {
+    if (!map || !isLoaded || !destinationCoords) return;
+    map.flyTo({
+      center: destinationCoords,
+      zoom: 14,
+      essential: true,
+      duration: 1000,
+    });
+  }, [destinationCoords, map, isLoaded]);
+
+  // Update Technician Live Marker
+  useEffect(() => {
+    if (!map || !isLoaded || !myLocation) return;
+
+    if (!techMarkerRef.current) {
+      const el = document.createElement('div');
+      el.className = 'tech-live-marker';
+      el.innerHTML = `
+        <div style="position: relative; display: flex; align-items: center; justify-content: center;">
+          <div style="position: absolute; width: 34px; height: 34px; background: rgba(16, 185, 129, 0.4); border-radius: 9999px; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+          <div style="width: 18px; height: 18px; background: #10b981; border: 3px solid #ffffff; border-radius: 9999px; box-shadow: 0 2px 6px rgba(0,0,0,0.35);"></div>
+        </div>
+      `;
+
+      techMarkerRef.current = new mapboxgl.Marker({ element: el })
+        .setLngLat([myLocation.lng, myLocation.lat])
+        .setPopup(new mapboxgl.Popup({ offset: 16 }).setHTML('<strong>My Location</strong>'))
+        .addTo(map);
+    } else {
+      techMarkerRef.current.setLngLat([myLocation.lng, myLocation.lat]);
+    }
+  }, [myLocation, isLoaded, map]);
+
+  // Update Job Destination Marker & Dashed Route Line
+  useEffect(() => {
+    if (!map || !isLoaded) return;
+
+    if (jobMarkerRef.current) {
+      jobMarkerRef.current.remove();
+      jobMarkerRef.current = null;
+    }
+
+    if (destinationCoords) {
+      const el = document.createElement('div');
+      el.innerHTML = `
+        <div style="background: #ef4444; color: white; padding: 5px 10px; border-radius: 999px; font-weight: 700; font-size: 11px; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 4px; cursor: pointer;">
+          <span>#${job?.jobCode || job?.jobNumber || 'JOB'}</span>
+        </div>
+      `;
+
+      const customerLabel = job?.customer?.fullName || job?.customer?.name || job?.recipientName || 'Customer';
+      const addressLabel = job?.locationAddress || job?.serviceAddress || 'Job Location';
+
+      jobMarkerRef.current = new mapboxgl.Marker({ element: el })
+        .setLngLat(destinationCoords)
+        .setPopup(
+          new mapboxgl.Popup({ offset: 20 }).setHTML(
+            `<div style="font-size:12px; padding: 2px;"><strong>${customerLabel}</strong><br/>${addressLabel}</div>`
+          )
+        )
+        .addTo(map);
+    }
+
+    // Draw / Update Route
+    const sourceId = 'modal-tech-job-route';
+    const hasBothPoints = myLocation && destinationCoords;
+
+    const geojsonData: any = {
+      type: 'FeatureCollection',
+      features: hasBothPoints
+        ? [
+            {
+              type: 'Feature',
+              geometry: {
+                type: 'LineString',
+                coordinates: [
+                  [myLocation.lng, myLocation.lat],
+                  [destinationCoords[0], destinationCoords[1]],
+                ],
+              },
+              properties: {},
+            },
+          ]
+        : [],
+    };
+
+    const existingSource = map.getSource(sourceId) as mapboxgl.GeoJSONSource;
+    if (existingSource) {
+      existingSource.setData(geojsonData);
+    } else if (map.isStyleLoaded()) {
+      map.addSource(sourceId, { type: 'geojson', data: geojsonData });
+      map.addLayer({
+        id: sourceId,
+        type: 'line',
+        source: sourceId,
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': '#10b981',
+          'line-width': 3,
+          'line-dasharray': [2, 2],
+        },
+      });
+    }
+  }, [job, destinationCoords, myLocation, isLoaded, map]);
+
+  // Center on My Location
+  const handleCenterMyLocation = () => {
+    requestImmediateLocation?.();
+    if (myLocation && map) {
+      map.flyTo({
+        center: [myLocation.lng, myLocation.lat],
+        zoom: 15,
+        duration: 900,
+      });
+    }
+  };
+
+  // Fit Both Points
+  const handleFitBounds = () => {
+    if (!map) return;
+    const bounds = new mapboxgl.LngLatBounds();
+    let count = 0;
+    if (myLocation) {
+      bounds.extend([myLocation.lng, myLocation.lat]);
+      count++;
+    }
+    if (destinationCoords) {
+      bounds.extend(destinationCoords);
+      count++;
+    }
+    if (count > 0) {
+      map.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 800 });
+    }
+  };
+
+  // Determine Current Stage
+  const currentStage: 'PENDING' | 'ACCEPTED' | 'EN_ROUTE' | 'ON_SCENE' = useMemo(() => {
+    if (!job) return 'PENDING';
+    const disp = job.dispositionNotes;
+    const st = job.status;
+    if (disp === 'ON_SCENE' || disp === 'ARRIVED' || st === 'ON_SCENE' || st === 'ARRIVED' || st === 'IN_PROGRESS') {
+      return 'ON_SCENE';
+    }
+    if (disp === 'EN_ROUTE' || st === 'EN_ROUTE') {
+      return 'EN_ROUTE';
+    }
+    if (disp === 'ACCEPTED' || st === 'ACCEPTED' || st === 'ASSIGNED') {
+      return 'ACCEPTED';
+    }
+    return 'PENDING';
+  }, [job]);
+
+  if (!isOpen || !job) return null;
+
+  const customerName = job.customer?.fullName || job.customer?.name || job.recipientName || 'Customer';
+  const customerPhone = job.customer?.phone || job.recipientPhone;
+  const addressText = job.locationAddress || job.serviceAddress || 'No address specified';
+  const navUrl = getNavigationUrl({
+    latitude: job.serviceLatitude ?? job.latitude,
+    longitude: job.serviceLongitude ?? job.longitude,
+    address: addressText,
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/65 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
+      {/* Modal Dialog Container */}
+      <div className={`w-full bg-white sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
+        isExpanded 
+          ? 'h-full sm:h-[95vh] sm:max-w-6xl' 
+          : 'h-[92vh] sm:h-[86vh] sm:max-w-4xl rounded-t-3xl'
+      }`}>
+        {/* Top Header Bar */}
+        <div className="px-4 py-3 bg-white border-b border-slate-100 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
+              <Radio className={`w-4 h-4 ${isTracking ? 'animate-pulse' : ''}`} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                  #{job.jobCode || job.jobNumber}
+                </span>
+                <span className="text-xs font-bold text-slate-800 truncate">
+                  {customerName}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-500">
+                <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                  {isTracking ? 'GPS Active' : 'Standby'}
+                </span>
+                {typeof distanceToJobMeters === 'number' && (
+                  <>
+                    <span>•</span>
+                    <span className="font-medium text-slate-700">
+                      {distanceToJobMeters > 1000
+                        ? `${(distanceToJobMeters / 1000).toFixed(1)} km away`
+                        : `${Math.round(distanceToJobMeters)}m away`}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Header Action Controls */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+              title={isExpanded ? 'Balanced View' : 'Extend Map'}
+            >
+              {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+              title="Close Map"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Mapbox Section (Balanced mobile height: ~50vh, or 100% in expanded mode) */}
+        <div className={`relative w-full bg-slate-100 ${
+          isExpanded ? 'flex-1' : 'h-[46vh] sm:h-[480px] shrink-0'
+        }`}>
+          <div ref={containerRef} className="absolute inset-0 w-full h-full" />
+
+          {/* Map Floating Tools (Locate & Fit) */}
+          <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={handleCenterMyLocation}
+              className="p-2.5 bg-white/95 backdrop-blur-xs text-slate-700 hover:text-slate-900 rounded-xl shadow-md border border-slate-200/80 transition cursor-pointer active:scale-95"
+              title="Center on My Location"
+            >
+              <LocateFixed className="w-4 h-4 text-emerald-600" />
+            </button>
+            <button
+              type="button"
+              onClick={handleFitBounds}
+              className="p-2.5 bg-white/95 backdrop-blur-xs text-slate-700 hover:text-slate-900 rounded-xl shadow-md border border-slate-200/80 transition cursor-pointer active:scale-95"
+              title="Fit Both Locations"
+            >
+              <Navigation className="w-4 h-4 text-blue-600" />
+            </button>
+          </div>
+
+          {/* Geocoding indicator */}
+          {isGeocoding && (
+            <div className="absolute top-3 left-3 z-10 bg-white/95 backdrop-blur-xs px-3 py-1.5 rounded-xl shadow-md border border-slate-200 text-xs font-medium text-slate-700 flex items-center gap-1.5">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+              <span>Resolving address pin...</span>
+            </div>
+          )}
+
+          {/* GPS Error Alert */}
+          {gpsError && (
+            <div className="absolute bottom-3 left-3 right-3 z-10 bg-rose-50/95 backdrop-blur-xs p-2.5 rounded-xl border border-rose-200 text-xs text-rose-800 flex items-center gap-2 shadow-md">
+              <Info className="w-4 h-4 text-rose-600 shrink-0" />
+              <span className="truncate">GPS Warning: {gpsError}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Details & Action Pipeline (Scrollable on small mobile screens) */}
+        <div className={`bg-white border-t border-slate-100 flex flex-col justify-between overflow-y-auto ${
+          isExpanded ? 'max-h-[35vh] sm:max-h-56' : 'flex-1'
+        }`}>
+          <div className="p-4 sm:p-5 space-y-3.5">
+            {/* Row 1: Badges & More Details Trigger */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+                  #{job.jobCode || job.jobNumber}
+                </span>
+                <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full">
+                  Roadside
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsDetailModalOpen(true)}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 rounded-full transition cursor-pointer"
+                >
+                  <Info className="w-3 h-3" />
+                  <span>Show More Details</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-slate-400 font-medium">Status:</span>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  {currentStage}
+                </span>
+              </div>
+            </div>
+
+            {/* Row 2: Customer info & Address */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">{customerName}</h4>
+                {customerPhone && (
+                  <a
+                    href={`tel:${customerPhone}`}
+                    className="inline-flex items-center gap-1.5 text-xs text-blue-700 hover:text-blue-800 font-semibold mt-1"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>{customerPhone}</span>
+                  </a>
+                )}
+              </div>
+
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 flex items-start justify-between gap-2">
+                <div className="flex items-start gap-1.5 text-xs text-slate-800 font-medium">
+                  <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
+                  <span className="line-clamp-2">{addressText}</span>
+                </div>
+                <a
+                  href={navUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-1 text-slate-400 hover:text-blue-600 transition shrink-0"
+                  title="Open in Maps app"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+
+            {/* Row 3: Action Button Pipeline */}
+            <div className="pt-2">
+              {currentStage === 'PENDING' || currentStage === 'ACCEPTED' ? (
+                <button
+                  type="button"
+                  onClick={() => onStatusUpdate(job.id, 'EN_ROUTE')}
+                  className="w-full py-3.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
+                >
+                  <Navigation className="w-4 h-4" />
+                  <span>Job Accepted — Start Moving (Auto En-Route)</span>
+                </button>
+              ) : currentStage === 'EN_ROUTE' ? (
+                <button
+                  type="button"
+                  onClick={() => onStatusUpdate(job.id, 'ON_SCENE')}
+                  className="w-full py-3.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
+                >
+                  <MapPin className="w-4 h-4" />
+                  <span>En Route — Mark Arrived on Scene</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onOpenPaymentModal(job)}
+                  className="w-full py-3.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Enter Amount & Complete Job</span>
+                </button>
+              )}
+
+              <p className="text-[11px] text-slate-400 text-center mt-2">
+                Live GPS Auto-Status active: En-Route and Arrived update automatically as you move.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Standalone Job Detail Breakdown Modal */}
+      {isDetailModalOpen && (
+        <TechnicianJobDetailModal
+          isOpen={true}
+          job={job}
+          onClose={() => setIsDetailModalOpen(false)}
+          onOpenPaymentModal={() => {
+            setIsDetailModalOpen(false);
+            onOpenPaymentModal(job);
+          }}
+          currencySymbol={currencySymbol}
+        />
+      )}
+    </div>
+  );
+};
+
+export default TechnicianLiveMapModal;

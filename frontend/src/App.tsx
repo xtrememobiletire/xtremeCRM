@@ -37,7 +37,6 @@ const Invoices = lazyWithRetry(() => import('./pages/Invoices'));
 const Drivers = lazyWithRetry(() => import('./pages/Drivers'));
 const ExternalDriverDispatch = lazyWithRetry(() => import('./pages/ExternalDriverDispatch'));
 const DeveloperProfitPage = lazyWithRetry(() => import('./pages/DeveloperProfitPage'));
-const TechnicianLiveTrackPage = lazyWithRetry(() => import('./pages/TechnicianLiveTrackPage'));
 
 /** Return the role's home route, defaulting to /dashboard for missing or unknown roles. */
 function getRoleHome(role?: string) {
@@ -213,7 +212,7 @@ function AppRoutes() {
           <Route path="/inbound" element={<RoleRoute allowedRoles={['CALL_AGENT', 'DISPATCHER']}><Inbound /></RoleRoute>} />
           <Route path="/inbound-fleet" element={<RoleRoute allowedRoles={['CALL_AGENT', 'DISPATCHER']}><FleetInbound /></RoleRoute>} />
           <Route path="/technician" element={<RoleRoute allowedRoles={['DRIVER']}><TechnicianPortal /></RoleRoute>} />
-          <Route path="/technician/live-map" element={<RoleRoute allowedRoles={['DRIVER']}><TechnicianLiveTrackPage /></RoleRoute>} />
+          <Route path="/technician/live-map" element={<Navigate to="/technician" replace />} />
           <Route path="/history" element={<RoleRoute allowedRoles={['DRIVER']}><History /></RoleRoute>} />
           <Route path="/member-dashboard" element={<RoleRoute allowedRoles={['CUSTOMER_MEMBER']}><MemberDashboard /></RoleRoute>} />
         </Route>

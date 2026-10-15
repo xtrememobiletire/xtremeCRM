@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Inbox } from 'lucide-react';
@@ -14,10 +13,11 @@ import TechnicianTabs, { type TechnicianTabType } from '../components/technician
 import TechnicianJobCard from '../components/technician/TechnicianJobCard';
 import TechnicianDeclineModal from '../components/technician/TechnicianDeclineModal';
 import TechnicianPaymentModal from '../components/technician/TechnicianPaymentModal';
+import TechnicianLiveMapModal from '../components/technician/TechnicianLiveMapModal';
 import JobChatModal from '../components/dispatch/JobChatModal';
+import { useLiveJobTracker } from '../hooks/useLiveJobTracker';
 
 export default function TechnicianPortal() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { currencySymbol } = useTenant();
   const { socket } = useSocket();
@@ -27,6 +27,7 @@ export default function TechnicianPortal() {
   const [activeTab, setActiveTab] = useState<TechnicianTabType>('PENDING');
 
   // Modal States
+  const [mapModalJob, setMapModalJob] = useState<any | null>(null);
   const [declineModalJob, setDeclineModalJob] = useState<any | null>(null);
   const [paymentModalJob, setPaymentModalJob] = useState<any | null>(null);
   const [chatModalJob, setChatModalJob] = useState<JobItem | null>(null);
@@ -103,17 +104,38 @@ export default function TechnicianPortal() {
     };
   }, [driverJobs]);
 
-  // Handler: Accept Job (moves job to ACTIVE and opens Live Tracking Map)
+  // Continuous background GPS live tracker for active assignment
+  const primaryActiveJob = activeJobs[0] || null;
+  const currentTrackedJob = mapModalJob || primaryActiveJob;
+
+  const {
+    myLocation,
+    distanceToJobMeters,
+    gpsError,
+    isTracking,
+    requestImmediateLocation,
+  } = useLiveJobTracker({
+    activeJob: currentTrackedJob,
+    autoStatusEnabled: true,
+  });
+
+  // Handler: Accept Job (moves job to ACTIVE and opens Live Map Pop-up)
   const handleAcceptJob = (jobId: string) => {
     setUpdatingJobId(jobId);
+    const targetJob = pendingJobs.find((j: any) => j.id === jobId) || {
+      id: jobId,
+      status: 'ACCEPTED',
+      dispositionNotes: 'ACCEPTED',
+    };
+
     updateStatusMutation.mutate(
       { id: jobId, status: 'ACCEPTED' },
       {
         onSuccess: () => {
-          toast.success('Assignment accepted! Opening Live Tracking Map...');
+          toast.success('Assignment accepted! Opening Live Map...');
           setActiveTab('ACTIVE');
           refetch();
-          navigate(`/technician/live-map?jobId=${jobId}`);
+          setMapModalJob(targetJob);
         },
         onError: (err: any) => {
           toast.error(err?.response?.data?.message || 'Failed to accept job');
@@ -264,12 +286,32 @@ export default function TechnicianPortal() {
                 onProgressStage={handleProgressStage}
                 onOpenPayment={(j) => setPaymentModalJob(j)}
                 onOpenChat={(j) => setChatModalJob(j)}
-                onOpenMap={(j) => navigate(`/technician/live-map?jobId=${j.id}`)}
+                onOpenMap={(j) => setMapModalJob(j)}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Live Tracking Map Popup Modal (Balanced for Mobile & Desktop) */}
+      {mapModalJob && (
+        <TechnicianLiveMapModal
+          isOpen={true}
+          onClose={() => setMapModalJob(null)}
+          job={mapModalJob}
+          currencySymbol={currencySymbol}
+          onOpenPaymentModal={(j) => {
+            setMapModalJob(null);
+            setPaymentModalJob(j);
+          }}
+          onStatusUpdate={handleProgressStage}
+          myLocation={myLocation}
+          distanceToJobMeters={distanceToJobMeters}
+          isTracking={isTracking}
+          gpsError={gpsError}
+          requestImmediateLocation={requestImmediateLocation}
+        />
+      )}
 
       {/* Decline Reason Modal */}
       {declineModalJob && (

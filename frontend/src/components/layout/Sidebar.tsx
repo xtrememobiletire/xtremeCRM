@@ -21,7 +21,6 @@ import {
   FileText,
   UserCheck,
   Cpu,
-  MapPin
 } from 'lucide-react';
 
 const routeChunkLoaders: Record<string, () => Promise<any>> = {
@@ -42,7 +41,6 @@ const routeChunkLoaders: Record<string, () => Promise<any>> = {
   '/fleet-dashboard': () => import('../../pages/FleetDashboard'),
   '/member-dashboard': () => import('../../pages/MemberDashboard'),
   '/technician': () => import('../../pages/TechnicianPortal'),
-  '/technician/live-map': () => import('../../pages/TechnicianLiveTrackPage'),
   '/history': () => import('../../pages/History'),
 };
 
@@ -116,7 +114,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     : isDriver
     ? [
         { icon: Wrench, label: 'Orders', path: '/technician' },
-        { icon: MapPin, label: 'Live Track Map', path: '/technician/live-map' },
         { icon: History, label: 'Earnings & History', path: '/history' },
       ]
     : isAccountant
