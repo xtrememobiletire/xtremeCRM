@@ -39,5 +39,5 @@ EXPOSE 5000
 ENV PORT=5000
 ENV NODE_ENV=production
 
-# On container start, deploy database migrations safely and start express
-CMD ["sh", "-c", "pnpm exec prisma migrate deploy && node dist/server.js"]
+# On container start, push database schema to postgres and start express
+CMD ["sh", "-c", "pnpm exec prisma db push --accept-data-loss && node dist/server.js"]
