@@ -97,6 +97,7 @@ export default function Leads() {
 
   // Fleet conversion modal state
   const [convertingLead, setConvertingLead] = useState<Lead | null>(null);
+  const [newFleetCredentials, setNewFleetCredentials] = useState<{ email: string; tempPassword?: string; fleetCode?: string; companyName?: string } | null>(null);
 
   // Dispatcher Feasibility Notes modal state
   const [editingNotesLead, setEditingNotesLead] = useState<Lead | null>(null);
@@ -328,9 +329,17 @@ export default function Leads() {
   const convertMutation = useMutation({
     mutationFn: ({ id, customFleetCode, extraData }: { id: string; customFleetCode?: string; extraData?: any }) =>
       leadService.convertToFleet(id, customFleetCode, extraData),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       toast.success('Lead converted to Fleet Account! All 10 columns preserved.');
       setConvertingLead(null);
+      if (data?.tempCredentials?.email) {
+        setNewFleetCredentials({
+          email: data.tempCredentials.email,
+          tempPassword: data.tempCredentials.tempPassword,
+          fleetCode: data.fleet?.fleetCode,
+          companyName: data.fleet?.name || data.fleet?.companyName,
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['fleets'] });
       queryClient.invalidateQueries({ queryKey: ['management-batches'] });
@@ -495,7 +504,10 @@ export default function Leads() {
               lead={queueData.leads[0]}
               onDisposition={(params) => dispositionMutation.mutate(params)}
               isSubmitting={dispositionMutation.isPending}
-              onRefreshQueue={() => {
+              onRefreshQueue={async () => {
+                try {
+                  await leadService.claimNextLead(country, selectedBatchId || undefined);
+                } catch {}
                 refetchQueue();
                 refetchBatches();
               }}
@@ -2124,6 +2136,68 @@ export default function Leads() {
         }}
         isPending={convertMutation.isPending}
       />
+
+      {/* One-Time Fleet Credentials Modal */}
+      {newFleetCredentials && (
+        <Modal
+          isOpen={!!newFleetCredentials}
+          onClose={() => setNewFleetCredentials(null)}
+          title="Fleet Account Activated"
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900">
+              <div className="font-bold text-sm mb-1">🎉 Fleet Account Activated!</div>
+              <p className="text-slate-600 text-xs">
+                One-time portal login credentials generated for <strong>{newFleetCredentials.companyName}</strong>. Please copy and share these securely with the Fleet Manager.
+              </p>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5 font-mono text-xs">
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Portal URL</span>
+                <span className="text-slate-900 font-bold">{window.location.origin}/login</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Fleet Code</span>
+                <span className="text-slate-900 font-bold">{newFleetCredentials.fleetCode || '—'}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Login Email</span>
+                <span className="text-slate-900 font-bold">{newFleetCredentials.email}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Temporary Password</span>
+                <span className="text-red-600 font-bold select-all">{newFleetCredentials.tempPassword || '(Custom password set)'}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const txt = `🏢 Xtreme Mobile Tire — Fleet Manager Portal
+🔗 Portal: ${window.location.origin}/login
+🏷️ Fleet Code: ${newFleetCredentials.fleetCode}
+📧 Email: ${newFleetCredentials.email}
+🔑 Password: ${newFleetCredentials.tempPassword || '(Custom password set)'}`;
+                  navigator.clipboard.writeText(txt);
+                  toast.success('Credentials copied to clipboard!');
+                }}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs cursor-pointer shadow-xs"
+              >
+                Copy All Credentials
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewFleetCredentials(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
 
 

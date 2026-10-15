@@ -3,7 +3,6 @@ import { Truck, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { useTenant } from '../../context/TenantContext';
-import { useAuth } from '../../context/AuthContext';
 
 interface Fleet {
   id: string;
@@ -31,23 +30,20 @@ interface FleetTableProps {
 
 export default function FleetTable({ fleets, onSelectFleet }: FleetTableProps) {
   const { currencySymbol } = useTenant();
-  const { user } = useAuth();
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER' || user?.role?.toUpperCase().includes('ADMIN');
 
   if (!fleets || fleets.length === 0) return null;
 
-  const handleCopyCredentials = (f: Fleet, e: React.MouseEvent) => {
+  const handleCopyInvite = (f: Fleet, e: React.MouseEvent) => {
     e.stopPropagation();
     const inviteText = `🏢 Xtreme Mobile Tire — Fleet Manager Portal
 🔗 Portal: ${window.location.origin}/login
 📧 Login Email: ${f.email || '—'}
-🔑 Password: ${f.password || '(Contact Admin)'}
 🏷️ Fleet Code: ${f.fleetCode || f.id}`;
 
     navigator.clipboard.writeText(inviteText);
     setCopiedId(f.id);
-    toast.success(`Copied login credentials for ${f.companyName || f.name}`);
+    toast.success(`Copied portal link for ${f.companyName || f.name}`);
     setTimeout(() => setCopiedId(null), 2500);
   };
 
@@ -59,7 +55,6 @@ export default function FleetTable({ fleets, onSelectFleet }: FleetTableProps) {
             <th className="table-th">Fleet ID</th>
             <th className="table-th">Company Name</th>
             <th className="table-th">Portal Login</th>
-            {isAdmin && <th className="table-th">Password</th>}
             <th className="table-th">Primary Contact</th>
             <th className="table-th">Payment Terms</th>
             <th className="table-th">Enrolled Vehicles</th>
@@ -85,44 +80,28 @@ export default function FleetTable({ fleets, onSelectFleet }: FleetTableProps) {
                   <span>{f.companyName || f.name}</span>
                 </div>
               </td>
-              <td className="table-td">
-                {f.email ? (
+              <td className="table-td" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between gap-1.5">
                   <div>
-                    <span className="text-xs text-slate-800 font-semibold block">
-                      {f.email}
-                    </span>
-                    {f.poaEmail && (
-                      <span className="text-[10px] text-slate-500 block truncate" title={`Billing: ${f.poaEmail}`}>
-                        Billing: {f.poaEmail}
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <div>
-                    <span className="text-slate-400 text-xs italic">No login email</span>
-                    {f.poaEmail && (
-                      <span className="text-[10px] text-slate-500 block truncate" title={`Billing: ${f.poaEmail}`}>
-                        Billing: {f.poaEmail}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </td>
-              {isAdmin && (
-                <td className="table-td" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center gap-1.5">
-                    {f.password ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-xs bg-slate-100 text-slate-900 border border-slate-200 font-semibold select-all">
-                        {f.password}
+                    {f.email ? (
+                      <span className="text-xs text-slate-800 font-semibold block">
+                        {f.email}
                       </span>
                     ) : (
-                      <span className="text-slate-400 text-xs italic">—</span>
+                      <span className="text-slate-400 text-xs italic">No login email</span>
                     )}
+                    {f.poaEmail && (
+                      <span className="text-[10px] text-slate-500 block truncate" title={`Billing: ${f.poaEmail}`}>
+                        Billing: {f.poaEmail}
+                      </span>
+                    )}
+                  </div>
+                  {f.email && (
                     <button
                       type="button"
-                      onClick={(e) => handleCopyCredentials(f, e)}
-                      title="Copy portal URL & credentials"
-                      className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                      onClick={(e) => handleCopyInvite(f, e)}
+                      title="Copy portal URL & login info"
+                      className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer shrink-0"
                     >
                       {copiedId === f.id ? (
                         <Check size={13} className="text-emerald-600" />
@@ -130,9 +109,9 @@ export default function FleetTable({ fleets, onSelectFleet }: FleetTableProps) {
                         <Copy size={13} />
                       )}
                     </button>
-                  </div>
-                </td>
-              )}
+                  )}
+                </div>
+              </td>
               <td className="table-td">
                 <div className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
                   {f.fleetManager ? (

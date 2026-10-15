@@ -7,7 +7,7 @@ export const sseController = {
     const countryCode = (req.query.countryCode as string) || (req as any).countryCode || user?.countryCode || 'CA';
     const userId = user?.id || 'anonymous';
     const role = user?.role || 'GUEST';
-    const lastEventId = req.headers['last-event-id'] as string;
+    const lastEventId = (req.headers['last-event-id'] as string) || (req.query.lastEventId as string);
 
     // Standard SSE Headers
     res.setHeader('Content-Type', 'text/event-stream');

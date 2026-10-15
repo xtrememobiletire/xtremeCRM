@@ -24,7 +24,7 @@ export default function Dashboard() {
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [assignJob, setAssignJob] = useState<any>(null);
 
-  const { data: jobsData, isLoading } = useJobs({ page: 1, limit: 6 });
+  const { data: jobsData, isLoading } = useJobs({ page: 1, limit: 50 });
 
   if (user?.role === 'ACCOUNTANT') {
     return <Navigate to="/accounting" replace />;

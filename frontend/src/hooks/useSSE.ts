@@ -19,6 +19,7 @@ export function useSSE() {
   const { user } = useAuth();
   const { country } = useTenant();
   const eventSourceRef = useRef<EventSource | null>(null);
+  const lastEventIdRef = useRef<string | null>(null);
   const lastActivityRef = useRef<number>(0);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -190,7 +191,6 @@ export function useSSE() {
     };
 
     const targetCountry = country || user.countryCode || 'CA';
-    const sseUrl = `${BACKEND_ROOT_URL}/api/events/stream?countryCode=${targetCountry}`;
 
     /**
      * Replace the active SSE connection and subscribe to lead, job, and billing events.
@@ -210,6 +210,11 @@ export function useSSE() {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
+      }
+
+      let sseUrl = `${BACKEND_ROOT_URL}/api/events/stream?countryCode=${targetCountry}`;
+      if (lastEventIdRef.current) {
+        sseUrl += `&lastEventId=${encodeURIComponent(lastEventIdRef.current)}`;
       }
 
       const es = new EventSource(sseUrl, { withCredentials: true });
@@ -385,35 +390,45 @@ export function useSSE() {
         scheduleInvalidation(['invoices', 'accounting-invoices', 'fleet-billing-summary', 'accounting-reconciliation', 'accounting-summary']);
       };
 
+      const listen = (eventName: string, handler: (e: MessageEvent) => void) => {
+        es.addEventListener(eventName, (e: any) => {
+          if (e.lastEventId) {
+            lastEventIdRef.current = e.lastEventId;
+          }
+          handler(e);
+        });
+      };
+
       // Lead listeners
-      es.addEventListener('lead:updated', handleLeadUpdated);
-      es.addEventListener('lead:created', handleLeadCreated);
-      es.addEventListener('lead:replenished', handleLeadReplenished);
-      es.addEventListener('lead:uploaded', handleBulkLeadsChanged);
-      es.addEventListener('lead:stats_updated', handleLeadStatsUpdated);
-      es.addEventListener('lead:transferred', handleBulkLeadsChanged);
-      es.addEventListener('leads:distributed', handleBulkLeadsChanged);
-      es.addEventListener('campaign:batch_started', handleBulkLeadsChanged);
-      es.addEventListener('batch:activated', handleBulkLeadsChanged);
-      es.addEventListener('batch:completed', handleBulkLeadsChanged);
+      listen('lead:updated', handleLeadUpdated);
+      listen('lead:created', handleLeadCreated);
+      listen('lead:replenished', handleLeadReplenished);
+      listen('lead:uploaded', handleBulkLeadsChanged);
+      listen('lead:stats_updated', handleLeadStatsUpdated);
+      listen('lead:transferred', handleBulkLeadsChanged);
+      listen('leads:distributed', handleBulkLeadsChanged);
+      listen('campaign:batch_started', handleBulkLeadsChanged);
+      listen('batch:activated', handleBulkLeadsChanged);
+      listen('batch:completed', handleBulkLeadsChanged);
 
       // Job listeners
-      es.addEventListener('job:created', handleJobCreated);
-      es.addEventListener('job:status_updated', handleJobStatusUpdated);
-      es.addEventListener('job:assigned', handleJobStatusUpdated);
-      es.addEventListener('job:driver_assigned', handleJobStatusUpdated);
-      es.addEventListener('job:verified', handleJobStatusUpdated);
-      es.addEventListener('job:deleted', handleJobDeleted);
-      es.addEventListener('booking:created', handleBookingCreated);
-      es.addEventListener('jobs:bulk_updated', handleBulkJobsChanged);
+      listen('job:created', handleJobCreated);
+      listen('job:updated', handleJobStatusUpdated);
+      listen('job:status_updated', handleJobStatusUpdated);
+      listen('job:assigned', handleJobStatusUpdated);
+      listen('job:driver_assigned', handleJobStatusUpdated);
+      listen('job:verified', handleJobStatusUpdated);
+      listen('job:deleted', handleJobDeleted);
+      listen('booking:created', handleBookingCreated);
+      listen('jobs:bulk_updated', handleBulkJobsChanged);
 
       // Customer, Fleet, Invoice listeners
-      es.addEventListener('customer:created', handleCustomerChanged);
-      es.addEventListener('customer:updated', handleCustomerChanged);
-      es.addEventListener('fleet:created', handleFleetChanged);
-      es.addEventListener('fleet:updated', handleFleetChanged);
-      es.addEventListener('invoice:created', handleInvoiceChanged);
-      es.addEventListener('invoice:updated', handleInvoiceChanged);
+      listen('customer:created', handleCustomerChanged);
+      listen('customer:updated', handleCustomerChanged);
+      listen('fleet:created', handleFleetChanged);
+      listen('fleet:updated', handleFleetChanged);
+      listen('invoice:created', handleInvoiceChanged);
+      listen('invoice:updated', handleInvoiceChanged);
 
       es.onerror = () => {
         // If stream closed or errored, close instance and retry only if user remains logged in
@@ -423,7 +438,10 @@ export function useSSE() {
           if (!currentToken) return;
           if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
           reconnectTimeoutRef.current = setTimeout(() => {
-            connectSSE();
+            const tokenStillValid = typeof window !== 'undefined' ? localStorage.getItem('xtreme_token') : null;
+            if (tokenStillValid) {
+              connectSSE();
+            }
           }, 3500);
         }
       };

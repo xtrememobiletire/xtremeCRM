@@ -36,6 +36,7 @@ const FleetInbound = lazyWithRetry(() => import('./pages/FleetInbound'));
 const Invoices = lazyWithRetry(() => import('./pages/Invoices'));
 const Drivers = lazyWithRetry(() => import('./pages/Drivers'));
 const ExternalDriverDispatch = lazyWithRetry(() => import('./pages/ExternalDriverDispatch'));
+const DeveloperProfitPage = lazyWithRetry(() => import('./pages/DeveloperProfitPage'));
 
 /** Return the role's home route, defaulting to /dashboard for missing or unknown roles. */
 function getRoleHome(role?: string) {
@@ -207,6 +208,7 @@ function AppRoutes() {
           <Route path="/vehicles" element={<RoleRoute allowedRoles={['DISPATCHER']}><Vehicles /></RoleRoute>} />
           <Route path="/invoices" element={<RoleRoute allowedRoles={['ACCOUNTANT', 'DISPATCHER']}><Invoices /></RoleRoute>} />
           <Route path="/accounting" element={<RoleRoute allowedRoles={['ACCOUNTANT']}><Accounting /></RoleRoute>} />
+          <Route path="/developer-profit" element={<RoleRoute allowedRoles={['DEVELOPER', 'ADMIN', 'GENERAL_MANAGER']}><DeveloperProfitPage /></RoleRoute>} />
           <Route path="/inbound" element={<RoleRoute allowedRoles={['CALL_AGENT', 'DISPATCHER']}><Inbound /></RoleRoute>} />
           <Route path="/inbound-fleet" element={<RoleRoute allowedRoles={['CALL_AGENT', 'DISPATCHER']}><FleetInbound /></RoleRoute>} />
           <Route path="/technician" element={<RoleRoute allowedRoles={['DRIVER']}><TechnicianPortal /></RoleRoute>} />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Phone, 
   Mail, 
@@ -6,12 +6,17 @@ import {
   Wrench, 
   MapPin, 
   Calendar, 
-  AlertCircle 
+  AlertCircle,
+  Edit2,
+  Save,
+  X
 } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
 import { useTenant } from '../../context/TenantContext';
+import { useUpdateCustomer } from '../../hooks/useCustomers';
+import { toast } from 'sonner';
 
 interface VehicleItem {
   id: string;
@@ -48,13 +53,66 @@ export default function CustomerDetailModal({
   onClose,
 }: CustomerDetailModalProps) {
   const { currencySymbol } = useTenant();
+  const updateCustomerMutation = useUpdateCustomer();
   const [activeTab, setActiveTab] = useState<'jobs' | 'vehicles'>('jobs');
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Edit form state
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editCustomerType, setEditCustomerType] = useState<'RETAIL' | 'MEMBERSHIP'>('RETAIL');
+  const [editMembershipTier, setEditMembershipTier] = useState<'STANDARD' | 'GOLD' | 'PLATINUM'>('STANDARD');
+  const [editMembershipExpiresAt, setEditMembershipExpiresAt] = useState('');
+
+  useEffect(() => {
+    if (customer) {
+      setEditName(customer.fullName || customer.name || '');
+      setEditPhone(customer.phone || '');
+      setEditEmail(customer.email || '');
+      setEditAddress(customer.address || '');
+      setEditNotes(customer.notes || '');
+      setEditCustomerType(customer.customerType === 'MEMBERSHIP' ? 'MEMBERSHIP' : 'RETAIL');
+      setEditMembershipTier(customer.membershipTier || 'STANDARD');
+      setEditMembershipExpiresAt(customer.membershipExpiresAt ? customer.membershipExpiresAt.slice(0, 10) : '');
+      setIsEditing(false);
+    }
+  }, [customer]);
 
   if (!customer) return null;
 
   const vehicles: VehicleItem[] = customer.vehicles || [];
   const jobs: JobHistoryItem[] = customer.jobs || [];
   const totalSpendCents = customer.totalSpendCents ?? jobs.reduce((sum, j) => sum + (j.totalCents || 0), 0);
+
+  const handleSaveEdit = async () => {
+    if (!editName.trim() || !editPhone.trim()) {
+      toast.error('Name and phone are required');
+      return;
+    }
+
+    try {
+      await updateCustomerMutation.mutateAsync({
+        id: customer.id,
+        payload: {
+          fullName: editName.trim(),
+          phone: editPhone.trim(),
+          email: editEmail.trim() || null,
+          address: editAddress.trim() || null,
+          notes: editNotes.trim() || null,
+          customerType: editCustomerType,
+          membershipTier: editCustomerType === 'MEMBERSHIP' ? editMembershipTier : null,
+          membershipExpiresAt: editCustomerType === 'MEMBERSHIP' && editMembershipExpiresAt ? new Date(editMembershipExpiresAt).toISOString() : null,
+        },
+      });
+      toast.success('Customer profile updated successfully');
+      setIsEditing(false);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to update customer');
+    }
+  };
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
@@ -86,8 +144,14 @@ export default function CustomerDetailModal({
               <h3 className="text-base font-black tracking-tight text-white">
                 {customer.fullName || customer.name || 'Valued Customer'}
               </h3>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">
-                {customer.customerType || 'RETAIL'}
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wide ${
+                customer.customerType === 'MEMBERSHIP'
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+              }`}>
+                {customer.customerType === 'MEMBERSHIP'
+                  ? `★ ${customer.membershipTier || 'STANDARD'} MEMBER`
+                  : 'RETAIL MOTORIST'}
               </span>
             </div>
             <div className="flex items-center gap-3 text-xs text-slate-300 font-mono">
@@ -102,6 +166,12 @@ export default function CustomerDetailModal({
                 </span>
               )}
             </div>
+            {customer.address && (
+              <div className="text-[11px] text-slate-400 flex items-center gap-1 pt-0.5">
+                <MapPin size={11} className="text-slate-500" />
+                <span>{customer.address}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -118,8 +188,136 @@ export default function CustomerDetailModal({
                 {jobs.length}
               </strong>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setIsEditing(!isEditing)}
+              className={`p-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
+                isEditing
+                  ? 'bg-red-600/20 border-red-500/40 text-red-400 hover:bg-red-600/30'
+                  : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white'
+              }`}
+              title={isEditing ? 'Cancel Editing' : 'Edit Profile'}
+            >
+              {isEditing ? <X size={14} /> : <Edit2 size={14} />}
+              <span>{isEditing ? 'Cancel' : 'Edit'}</span>
+            </button>
           </div>
         </div>
+
+        {/* Inline Edit Form */}
+        {isEditing && (
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 text-xs">
+            <div className="font-bold text-slate-900 text-xs">Edit Customer Details</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="input-base"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Phone Number *</label>
+                <input
+                  type="text"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="input-base font-mono"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="input-base"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Home / Service Address</label>
+                <input
+                  type="text"
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  className="input-base"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Account Type</label>
+                <select
+                  value={editCustomerType}
+                  onChange={(e) => setEditCustomerType(e.target.value as any)}
+                  className="input-base"
+                >
+                  <option value="RETAIL">Retail Motorist</option>
+                  <option value="MEMBERSHIP">Membership Plan</option>
+                </select>
+              </div>
+
+              {editCustomerType === 'MEMBERSHIP' && (
+                <>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Tier</label>
+                    <select
+                      value={editMembershipTier}
+                      onChange={(e) => setEditMembershipTier(e.target.value as any)}
+                      className="input-base"
+                    >
+                      <option value="STANDARD">Standard</option>
+                      <option value="GOLD">Gold</option>
+                      <option value="PLATINUM">Platinum</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Expiration</label>
+                    <input
+                      type="date"
+                      value={editMembershipExpiresAt}
+                      onChange={(e) => setEditMembershipExpiresAt(e.target.value)}
+                      className="input-base font-mono"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Notes</label>
+              <textarea
+                rows={2}
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                className="textarea-base"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className="btn-secondary px-3 py-1.5"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={updateCustomerMutation.isPending}
+                className="btn-primary px-4 py-1.5 flex items-center gap-1.5"
+              >
+                <Save size={13} />
+                <span>{updateCustomerMutation.isPending ? 'Saving...' : 'Save Changes'}</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Tab Navigation */}
         <div className="flex items-center gap-2 border-b border-slate-200 pb-2">

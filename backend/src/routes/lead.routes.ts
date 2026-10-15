@@ -47,6 +47,7 @@ router.post('/distribute', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER'])
  * @access  Private
  */
 router.get('/agent-queue', authenticate, leadController.getAgentQueue);
+router.post('/agent-queue/claim', authenticate, leadController.claimNextLead);
 
 /**
  * @route   POST /api/leads/start-batch

@@ -19,7 +19,8 @@ import {
   PhoneOutgoing,
   Globe,
   FileText,
-  UserCheck
+  UserCheck,
+  Cpu
 } from 'lucide-react';
 
 const routeChunkLoaders: Record<string, () => Promise<any>> = {
@@ -35,6 +36,7 @@ const routeChunkLoaders: Record<string, () => Promise<any>> = {
   '/invoices': () => import('../../pages/Invoices'),
   '/drivers': () => import('../../pages/Drivers'),
   '/accounting': () => import('../../pages/Accounting'),
+  '/developer-profit': () => import('../../pages/DeveloperProfitPage'),
   '/leads': () => import('../../pages/Leads'),
   '/fleet-dashboard': () => import('../../pages/FleetDashboard'),
   '/member-dashboard': () => import('../../pages/MemberDashboard'),
@@ -126,6 +128,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
         { icon: PhoneOutgoing, label: 'Leads Queue', path: '/leads' },
       ]
+    : user?.role === 'DEVELOPER' || user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER'
+    ? [...baseNavItems, { icon: Cpu, label: 'Developer Royalties', path: '/developer-profit' }]
     : baseNavItems;
 
   const prefetchRoute = (path: string) => {

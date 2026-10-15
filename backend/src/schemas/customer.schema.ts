@@ -7,10 +7,12 @@ export const createCustomerSchema = z
     phone: z.string().min(7, 'Valid phone number is required'),
     altPhone: z.string().optional().or(z.literal('')),
     email: z.string().email('Invalid email format').optional().or(z.literal('')),
+    address: z.string().optional().or(z.literal('')),
     notes: z.string().optional().or(z.literal('')),
     countryCode: z.enum(['CA', 'US', 'UK']).optional().default('CA'),
     customerType: z.enum(['RETAIL', 'MEMBERSHIP']).optional().default('RETAIL'),
     membershipTier: z.enum(['STANDARD', 'GOLD', 'PLATINUM']).optional(),
+    membershipExpiresAt: z.string().or(z.date()).optional().nullable(),
   })
   .refine((data) => Boolean(data.fullName?.trim() || data.name?.trim()), {
     message: 'Full name is required',
@@ -24,10 +26,12 @@ export const updateCustomerSchema = z
     phone: z.string().min(7).optional(),
     altPhone: z.string().optional().or(z.literal('')),
     email: z.string().email().optional().or(z.literal('')),
+    address: z.string().optional().or(z.literal('')),
     notes: z.string().optional().or(z.literal('')),
     countryCode: z.enum(['CA', 'US', 'UK']).optional(),
     customerType: z.enum(['RETAIL', 'MEMBERSHIP']).optional(),
     membershipTier: z.enum(['STANDARD', 'GOLD', 'PLATINUM']).optional(),
+    membershipExpiresAt: z.string().or(z.date()).optional().nullable(),
   });
 
 export const customerQuerySchema = z.object({

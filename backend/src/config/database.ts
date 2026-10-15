@@ -2,10 +2,22 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import { config } from './env.js';
+import { logger } from '../utils/logger.js';
 
 const connectionString = config.DATABASE_URL;
 
-const pool = new pg.Pool({ connectionString });
+const pool = new pg.Pool({
+  connectionString,
+  max: 25,
+  connectionTimeoutMillis: 5000,
+  idleTimeoutMillis: 30000,
+  keepAlive: true,
+});
+
+pool.on('error', (err) => {
+  logger.error('[Database] Unexpected error on idle client', err);
+});
+
 const adapter = new PrismaPg(pool);
 
 declare global {

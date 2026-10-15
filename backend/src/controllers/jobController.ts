@@ -10,6 +10,7 @@ import {
   createPaginatedResponse,
   validateAndNormalizePhone,
   normalizePhoneNumber,
+  generateUniqueJobCode,
 } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
 import { geocodingService } from '../services/geocodingService.js';
@@ -294,7 +295,7 @@ export const jobController = {
       if (!creatorId) return sendError(res, 'No user found for job creation', 400);
 
       const country = data.country || data.countryCode || 'CA';
-      const jobCode = `JOB-${country}-${Math.floor(10000 + Math.random() * 90000)}`;
+      const jobCode = await generateUniqueJobCode(country, 'JOB');
 
       // 1. Auto-resolve or create Customer if nested details provided
       let customerId = data.customerId;
@@ -327,24 +328,26 @@ export const jobController = {
           let cust = matchingCustomers[0] || null;
 
           if (cust) {
-            // Reconcile and merge duplicates if more than one profile matches this phone
+            // Reconcile and merge duplicates transactionally if more than one profile matches this phone
             if (matchingCustomers.length > 1) {
               const duplicateIds = matchingCustomers.slice(1).map((c) => c.id);
-              await prisma.job.updateMany({
-                where: { customerId: { in: duplicateIds } },
-                data: { customerId: cust.id },
-              });
-              await prisma.vehicle.updateMany({
-                where: { customerId: { in: duplicateIds } },
-                data: { customerId: cust.id },
-              });
-              await prisma.invoice.updateMany({
-                where: { customerId: { in: duplicateIds } },
-                data: { customerId: cust.id },
-              });
-              await prisma.customer.deleteMany({
-                where: { id: { in: duplicateIds } },
-              });
+              await prisma.$transaction([
+                prisma.job.updateMany({
+                  where: { customerId: { in: duplicateIds } },
+                  data: { customerId: cust.id },
+                }),
+                prisma.vehicle.updateMany({
+                  where: { customerId: { in: duplicateIds } },
+                  data: { customerId: cust.id },
+                }),
+                prisma.invoice.updateMany({
+                  where: { customerId: { in: duplicateIds } },
+                  data: { customerId: cust.id },
+                }),
+                prisma.customer.deleteMany({
+                  where: { id: { in: duplicateIds } },
+                }),
+              ]);
             }
 
             // Keep primary customer normalized to standard E.164
@@ -1208,7 +1211,7 @@ export const jobController = {
     try {
       const data = req.body;
       const country = data.country || data.countryCode || 'CA';
-      const jobCode = `PUB-${country}-${Math.floor(10000 + Math.random() * 90000)}`;
+      const jobCode = await generateUniqueJobCode(country, 'PUB');
 
       const defaultUser = (await prisma.user.findFirst({ where: { role: 'ADMIN' } })) || (await prisma.user.findFirst());
       if (!defaultUser) return sendError(res, 'System user not configured', 500);

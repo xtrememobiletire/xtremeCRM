@@ -5,12 +5,30 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import passport from 'passport';
+import rateLimit from 'express-rate-limit';
 import './config/passport.js';
 import { config } from './config/env.js';
 import apiRouter from './routes/index.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 export const app: Application = express();
+
+// Trust reverse proxy (Dokploy / Traefik / Nginx) for accurate client IP resolution
+app.set('trust proxy', 1);
+
+// Global API rate limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path.startsWith('/sse'),
+  message: {
+    success: false,
+    error: 'Too many requests from this IP, please try again later',
+    timestamp: new Date().toISOString(),
+  },
+});
 
 // Security & Utility Middleware
 app.use(
@@ -61,7 +79,8 @@ app.get('/', (_req: Request, res: Response) => {
 // Static file hosting
 app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
-// Root API Router
+// Root API Router with rate limiting
+app.use('/api', apiLimiter);
 app.use('/api', apiRouter);
 
 // 404 Handler

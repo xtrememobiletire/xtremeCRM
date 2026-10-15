@@ -4,3 +4,4 @@ export * from './async.js';
 export * from './currency.js';
 export * from './pagination.js';
 export * from './validators.js';
+export * from './codeGenerator.js';

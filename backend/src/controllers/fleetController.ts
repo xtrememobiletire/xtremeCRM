@@ -7,6 +7,7 @@ import {
   sanitizePaginationParams,
   calculateSkip,
   createPaginatedResponse,
+  generateUniqueFleetCode,
 } from '../utils/index.js';
 import { geocodingService } from '../services/geocodingService.js';
 import { validateAndNormalizePhone } from '../utils/validators.js';
@@ -60,18 +61,7 @@ export const fleetController = {
         prisma.fleet.count({ where }),
       ]);
 
-      const userRole = (req.user as any)?.role;
-      const isAdmin = userRole === 'ADMIN' || userRole === 'GENERAL_MANAGER' || userRole?.toUpperCase().includes('ADMIN');
-
-      const sanitizedFleets = fleets.map((f: any) => {
-        if (!isAdmin) {
-          const { password: _p, ...rest } = f;
-          return rest;
-        }
-        return f;
-      });
-
-      const paginated = createPaginatedResponse(sanitizedFleets, page, limit, totalCount);
+      const paginated = createPaginatedResponse(fleets, page, limit, totalCount);
       return res.status(200).json(paginated);
     } catch (err: any) {
       return sendError(res, err.message);
@@ -172,13 +162,6 @@ export const fleetController = {
       });
 
       if (!fleet) return sendError(res, 'Fleet not found', 404);
-
-      const userRole = (req.user as any)?.role;
-      const isAdmin = userRole === 'ADMIN' || userRole === 'GENERAL_MANAGER' || userRole?.toUpperCase().includes('ADMIN');
-      if (!isAdmin) {
-        const { password: _p, ...rest } = fleet as any;
-        return sendSuccess(res, rest);
-      }
       return sendSuccess(res, fleet);
     } catch (err: any) {
       return sendError(res, err.message);
@@ -229,12 +212,7 @@ export const fleetController = {
         resolvedPhone = effectiveCountry === 'UK' ? '+442079460100' : '+14165550100';
       }
 
-      const code = (fleetCode || '').trim() || `XMT-${Math.floor(1000 + Math.random() * 9000)}`;
-
-      const existing = await prisma.fleet.findUnique({ where: { fleetCode: code } });
-      if (existing) {
-        return sendError(res, 'Fleet code already in use', 409);
-      }
+      const code = await generateUniqueFleetCode(fleetCode);
 
       let latitude = req.body.latitude !== undefined && req.body.latitude !== null ? Number(req.body.latitude) : null;
       let longitude = req.body.longitude !== undefined && req.body.longitude !== null ? Number(req.body.longitude) : null;
@@ -289,8 +267,8 @@ export const fleetController = {
           name: resolvedName,
           contactPerson: resolvedContact,
           phone: resolvedPhone,
+          altPhone: req.body.altPhone?.trim() || null,
           email: cleanEmail,
-          password: persistedPassword,
           poaEmail: req.body.poaEmail?.trim() || null,
           fleetManager: fleetManager?.trim() || null,
           address: address?.trim() || null,
@@ -300,9 +278,22 @@ export const fleetController = {
           status: status || 'APPROVED',
           numberOfUnits: req.body.numberOfUnits ? Number(req.body.numberOfUnits) : null,
           discountPercent: req.body.discountPercent ? Number(req.body.discountPercent) : 0,
-          contractSignedAt: new Date(),
+          billingContactName: req.body.billingContactName?.trim() || null,
+          paymentTerms: req.body.paymentTerms || 'DUE_ON_RECEIPT',
+          creditLimitCents: req.body.creditLimitCents !== undefined && req.body.creditLimitCents !== null ? Number(req.body.creditLimitCents) : null,
+          contractTermYears: req.body.contractTermYears !== undefined && req.body.contractTermYears !== null ? Number(req.body.contractTermYears) : null,
+          contractStartDate: req.body.contractStartDate ? new Date(req.body.contractStartDate) : null,
+          contractEndDate: req.body.contractEndDate ? new Date(req.body.contractEndDate) : null,
+          governingProvince: req.body.governingProvince?.trim() || null,
+          customerSignatoryName: req.body.customerSignatoryName?.trim() || null,
+          customerSignatoryTitle: req.body.customerSignatoryTitle?.trim() || null,
+          providerSignatoryName: req.body.providerSignatoryName?.trim() || null,
+          providerSignatoryTitle: req.body.providerSignatoryTitle?.trim() || null,
+          contractDocumentUrl: req.body.contractDocumentUrl?.trim() || null,
+          contractSignedAt: req.body.contractSignedAt ? new Date(req.body.contractSignedAt) : new Date(),
           virtualAssistantId: virtualAssistantId || null,
           managerUserId: managerUserIdToLink,
+          ceoOwnerName: ceoOwnerName?.trim() || null,
         },
       });
 
@@ -376,14 +367,12 @@ export const fleetController = {
         }
       }
 
-      const broadcastFleet = { ...fleet, password: null };
-      sseManager.broadcast(`sse:dispatch:${fleet.countryCode}`, 'fleet:created', broadcastFleet);
+      sseManager.broadcast(`sse:dispatch:${fleet.countryCode}`, 'fleet:created', fleet);
 
-      const userRole = (req.user as any)?.role;
-      const isAdmin = userRole === 'ADMIN' || userRole === 'GENERAL_MANAGER' || userRole?.toUpperCase().includes('ADMIN');
-      const responseFleet = isAdmin ? fleet : { ...fleet, password: null };
-
-      return sendSuccess(res, responseFleet, 'Fleet created successfully', 201);
+      return sendSuccess(res, {
+        ...fleet,
+        tempCredentials: cleanEmail ? { email: cleanEmail, tempPassword: persistedPassword } : null,
+      }, 'Fleet created successfully', 201);
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }
@@ -437,19 +426,14 @@ export const fleetController = {
         }
       }
       if (email !== undefined) data.email = email?.trim() || null;
-      if (password !== undefined) data.password = password?.trim() || null;
       if (poaEmail !== undefined) data.poaEmail = poaEmail?.trim() || null;
       if (fleetManager !== undefined) data.fleetManager = fleetManager?.trim() || null;
-      if (managerPhone !== undefined) data.managerPhone = managerPhone?.trim() || null;
       if (ceoOwnerName !== undefined) data.ceoOwnerName = ceoOwnerName?.trim() || null;
       if (website !== undefined) data.website = website?.trim() || null;
       if (countryCode !== undefined) data.countryCode = countryCode;
       if (status !== undefined) data.status = status;
       if (contractSignedAt !== undefined) data.contractSignedAt = contractSignedAt;
       if (virtualAssistantId !== undefined) data.virtualAssistantId = virtualAssistantId || null;
-      if (officeTimings !== undefined) data.officeTimings = officeTimings?.trim() || null;
-      if (businessType !== undefined) data.businessType = businessType?.trim() || null;
-      if (assignedDid !== undefined) data.assignedDid = assignedDid?.trim() || null;
       if (managerUserId !== undefined) data.managerUserId = managerUserId || null;
       if (req.body.numberOfUnits !== undefined) {
         data.numberOfUnits = req.body.numberOfUnits ? Number(req.body.numberOfUnits) : null;
@@ -457,6 +441,19 @@ export const fleetController = {
       if (req.body.discountPercent !== undefined) {
         data.discountPercent = Number(req.body.discountPercent) || 0;
       }
+      if (req.body.billingContactName !== undefined) data.billingContactName = req.body.billingContactName?.trim() || null;
+      if (req.body.paymentTerms !== undefined) data.paymentTerms = req.body.paymentTerms;
+      if (req.body.creditLimitCents !== undefined) data.creditLimitCents = req.body.creditLimitCents !== null ? Number(req.body.creditLimitCents) : null;
+      if (req.body.contractTermYears !== undefined) data.contractTermYears = req.body.contractTermYears !== null ? Number(req.body.contractTermYears) : null;
+      if (req.body.contractStartDate !== undefined) data.contractStartDate = req.body.contractStartDate ? new Date(req.body.contractStartDate) : null;
+      if (req.body.contractEndDate !== undefined) data.contractEndDate = req.body.contractEndDate ? new Date(req.body.contractEndDate) : null;
+      if (req.body.governingProvince !== undefined) data.governingProvince = req.body.governingProvince?.trim() || null;
+      if (req.body.customerSignatoryName !== undefined) data.customerSignatoryName = req.body.customerSignatoryName?.trim() || null;
+      if (req.body.customerSignatoryTitle !== undefined) data.customerSignatoryTitle = req.body.customerSignatoryTitle?.trim() || null;
+      if (req.body.providerSignatoryName !== undefined) data.providerSignatoryName = req.body.providerSignatoryName?.trim() || null;
+      if (req.body.providerSignatoryTitle !== undefined) data.providerSignatoryTitle = req.body.providerSignatoryTitle?.trim() || null;
+      if (req.body.contractDocumentUrl !== undefined) data.contractDocumentUrl = req.body.contractDocumentUrl?.trim() || null;
+      if (req.body.altPhone !== undefined) data.altPhone = req.body.altPhone?.trim() || null;
 
       // Sync password or email with User account
       const targetEmail = (email !== undefined ? email?.trim() : existingFleet.email) || null;
@@ -529,14 +526,9 @@ export const fleetController = {
         data,
       });
 
-      const broadcastUpdated = { ...updated, password: null };
-      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'fleet:updated', broadcastUpdated);
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'fleet:updated', updated);
 
-      const userRole = (req.user as any)?.role;
-      const isAdmin = userRole === 'ADMIN' || userRole === 'GENERAL_MANAGER' || userRole?.toUpperCase().includes('ADMIN');
-      const responseUpdated = isAdmin ? updated : { ...updated, password: null };
-
-      return sendSuccess(res, responseUpdated, 'Fleet updated successfully');
+      return sendSuccess(res, updated, 'Fleet updated successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }
