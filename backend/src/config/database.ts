@@ -9,7 +9,7 @@ const connectionString = config.DATABASE_URL;
 const pool = new pg.Pool({
   connectionString,
   max: 25,
-  connectionTimeoutMillis: 5000,
+  connectionTimeoutMillis: 15000,
   idleTimeoutMillis: 30000,
   keepAlive: true,
 });
