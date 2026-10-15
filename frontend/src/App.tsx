@@ -134,10 +134,10 @@ function AppRoutes() {
         />
 
         {/* Root Route: If authenticated -> Dashboard in MainLayout, else Landing */}
-        <Route
-          path="/"
-          element={
-            user ? (
+        {user ? (
+          <Route
+            path="/"
+            element={
               <ProtectedRoute>
                 {user.role === 'FLEET_MANAGER' ? (
                   <Navigate to="/fleet-dashboard" replace />
@@ -145,15 +145,20 @@ function AppRoutes() {
                   <MainLayout />
                 )}
               </ProtectedRoute>
-            ) : (
+            }
+          >
+            <Route index element={<Navigate to={getRoleHome(user.role)} replace />} />
+          </Route>
+        ) : (
+          <Route
+            path="/"
+            element={
               <Suspense fallback={<PageLoader />}>
                 <Landing />
               </Suspense>
-            )
-          }
-        >
-          {user && <Route index element={<Navigate to={getRoleHome(user.role)} replace />} />}
-        </Route>
+            }
+          />
+        )}
 
         {/* Public Sandboxed External Driver Portal */}
         <Route

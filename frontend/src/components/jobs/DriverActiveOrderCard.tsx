@@ -181,8 +181,12 @@ export default function DriverActiveOrderCard({ job, onCompleteOrder }: DriverAc
             </span>
             <span className="text-[10px] text-slate-400 font-medium">(2 decimal digits)</span>
           </label>
-          <div className="relative rounded-xl shadow-2xs">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 font-bold text-sm">
+          <div className={`flex items-stretch rounded-xl shadow-2xs border overflow-hidden transition-all ${
+            validationError 
+              ? 'border-rose-400 focus-within:ring-2 focus-within:ring-rose-200' 
+              : 'border-slate-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100'
+          }`}>
+            <span className="inline-flex items-center justify-center px-3 bg-slate-100 border-r border-slate-200 text-slate-600 font-bold font-mono text-xs select-none shrink-0">
               {currencySymbol}
             </span>
             <input
@@ -194,11 +198,7 @@ export default function DriverActiveOrderCard({ job, onCompleteOrder }: DriverAc
               onBlur={handleBlur}
               placeholder="0.00"
               disabled={isSubmitting}
-              className={`w-full pl-8 pr-3 py-2 text-sm font-mono font-bold text-slate-900 bg-slate-50 border rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 transition-all ${
-                validationError 
-                  ? 'border-rose-400 focus:ring-rose-200' 
-                  : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-100'
-              }`}
+              className="w-full px-3 py-2 text-sm font-mono font-bold text-slate-900 bg-white focus:outline-none"
             />
           </div>
           {validationError && (

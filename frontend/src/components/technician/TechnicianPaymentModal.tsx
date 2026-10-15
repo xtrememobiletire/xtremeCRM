@@ -154,8 +154,8 @@ export default function TechnicianPaymentModal({
         {/* Amount Input */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-slate-700">Amount Collected ({currencySymbol})</label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+          <div className="flex items-stretch rounded-xl border border-slate-200 bg-white shadow-2xs focus-within:ring-2 focus-within:ring-slate-900 overflow-hidden">
+            <span className="inline-flex items-center justify-center px-3 bg-slate-100 border-r border-slate-200 text-xs font-bold text-slate-600 select-none shrink-0">
               {currencySymbol}
             </span>
             <input
@@ -167,7 +167,7 @@ export default function TechnicianPaymentModal({
                 setValidationError(null);
               }}
               placeholder="0.00"
-              className="w-full pl-8 pr-3 py-2 text-xs font-mono font-bold bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+              className="w-full px-3 py-2 text-xs font-mono font-bold bg-white focus:outline-none"
             />
           </div>
         </div>

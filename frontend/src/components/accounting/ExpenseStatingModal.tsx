@@ -38,7 +38,9 @@ export default function ExpenseStatingModal({
   // Determine active job
   const activeJob = job || completedJobs.find((j) => j.id === selectedJobId) || null;
 
-  // Authentic currency symbol from the job's country
+  // Authentic currency code & symbol from the job's country
+  const jobCurrencyCode = activeJob?.currency || 
+    (activeJob?.countryCode === 'UK' ? 'GBP' : activeJob?.countryCode === 'US' ? 'USD' : 'CAD');
   const jobCurrencySymbol = activeJob?.currencySymbol || 
     (activeJob?.countryCode === 'UK' ? '£' : activeJob?.countryCode === 'CA' ? 'CA$' : '$');
   const jobCountryFlag = activeJob?.countryCode === 'UK' ? '🇬🇧' : activeJob?.countryCode === 'US' ? '🇺🇸' : '🇨🇦';
@@ -206,13 +208,13 @@ export default function ExpenseStatingModal({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              1. Material & Tire Purchase Cost ({jobCurrencySymbol}) *
+              1. Material & Tire Purchase Cost ({jobCurrencyCode}) *
             </label>
             <span className="text-[10px] text-slate-400">Alt+↓ to next</span>
           </div>
-          <div className="relative">
-            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-bold text-sm">
-              {jobCurrencySymbol}
+          <div className="flex items-stretch rounded-xl border border-slate-300 bg-white shadow-2xs focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 overflow-hidden transition">
+            <span className="inline-flex items-center justify-center px-3.5 bg-slate-50 border-r border-slate-300 text-slate-700 font-bold font-mono text-xs tracking-wider select-none shrink-0">
+              {jobCurrencyCode}
             </span>
             <input
               ref={materialInputRef}
@@ -222,7 +224,7 @@ export default function ExpenseStatingModal({
               placeholder="0.00"
               value={materialCost}
               onChange={(e) => setMaterialCost(e.target.value)}
-              className="w-full pl-8 pr-4 py-3 text-base font-bold font-mono text-slate-900 bg-white rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition shadow-2xs"
+              className="w-full px-3.5 py-3 text-base font-bold font-mono text-slate-900 bg-white outline-none placeholder:text-slate-300"
             />
           </div>
           <p className="text-[11px] text-slate-500">
@@ -234,13 +236,13 @@ export default function ExpenseStatingModal({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              2. Technician / Driver Labor Fee (DC) ({jobCurrencySymbol})
+              2. Technician / Driver Labor Fee (DC) ({jobCurrencyCode})
             </label>
             <span className="text-[10px] text-slate-400">Alt+↓ to other</span>
           </div>
-          <div className="relative">
-            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-bold text-sm">
-              {jobCurrencySymbol}
+          <div className="flex items-stretch rounded-xl border border-slate-300 bg-white shadow-2xs focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 overflow-hidden transition">
+            <span className="inline-flex items-center justify-center px-3.5 bg-slate-50 border-r border-slate-300 text-slate-700 font-bold font-mono text-xs tracking-wider select-none shrink-0">
+              {jobCurrencyCode}
             </span>
             <input
               ref={driverFeeInputRef}
@@ -250,7 +252,7 @@ export default function ExpenseStatingModal({
               placeholder="0.00"
               value={driverFee}
               onChange={(e) => setDriverFee(e.target.value)}
-              className="w-full pl-8 pr-4 py-2.5 text-base font-bold font-mono text-slate-900 bg-white rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition shadow-2xs"
+              className="w-full px-3.5 py-2.5 text-base font-bold font-mono text-slate-900 bg-white outline-none placeholder:text-slate-300"
             />
           </div>
           <p className="text-[11px] text-slate-500">
@@ -262,13 +264,13 @@ export default function ExpenseStatingModal({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              3. Other Direct Job Expenses ({jobCurrencySymbol})
+              3. Other Direct Job Expenses ({jobCurrencyCode})
             </label>
             <span className="text-[10px] text-slate-400">Alt+↓ to notes</span>
           </div>
-          <div className="relative">
-            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-bold text-sm">
-              {jobCurrencySymbol}
+          <div className="flex items-stretch rounded-xl border border-slate-300 bg-white shadow-2xs focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 overflow-hidden transition">
+            <span className="inline-flex items-center justify-center px-3.5 bg-slate-50 border-r border-slate-300 text-slate-700 font-bold font-mono text-xs tracking-wider select-none shrink-0">
+              {jobCurrencyCode}
             </span>
             <input
               ref={otherInputRef}
@@ -278,7 +280,7 @@ export default function ExpenseStatingModal({
               placeholder="0.00"
               value={otherExpense}
               onChange={(e) => setOtherExpense(e.target.value)}
-              className="w-full pl-8 pr-4 py-2.5 text-base font-bold font-mono text-slate-900 bg-white rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition shadow-2xs"
+              className="w-full px-3.5 py-2.5 text-base font-bold font-mono text-slate-900 bg-white outline-none placeholder:text-slate-300"
             />
           </div>
           <p className="text-[11px] text-slate-500">
