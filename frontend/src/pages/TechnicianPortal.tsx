@@ -307,6 +307,7 @@ export default function TechnicianPortal() {
           onStatusUpdate={handleProgressStage}
           myLocation={myLocation}
           distanceToJobMeters={distanceToJobMeters}
+          displacementMeters={distanceToJobMeters}
           isTracking={isTracking}
           gpsError={gpsError}
           requestImmediateLocation={requestImmediateLocation}

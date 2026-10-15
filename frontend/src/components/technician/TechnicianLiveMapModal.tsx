@@ -30,10 +30,34 @@ interface TechnicianLiveMapModalProps {
   onStatusUpdate: (jobId: string, status: string) => void;
   myLocation?: { lat: number; lng: number; heading?: number | null; speed?: number | null } | null;
   distanceToJobMeters?: number | null;
+  displacementMeters?: number | null;
   isTracking?: boolean;
   gpsError?: string | null;
   requestImmediateLocation?: () => void;
 }
+
+// Calculate straight-line geodesic displacement (shortest path magnitude in physics)
+const calculateDisplacementMeters = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371e3; // Earth radius in meters
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+const formatDisplacement = (meters: number | null): string => {
+  if (meters === null || isNaN(meters)) return '';
+  if (meters >= 1000) {
+    const km = (meters / 1000).toFixed(1);
+    const mi = (meters / 1609.34).toFixed(1);
+    return `${km} km (${mi} mi)`;
+  }
+  return `${Math.round(meters)} m`;
+};
 
 export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
   isOpen,
@@ -44,6 +68,7 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
   onStatusUpdate,
   myLocation,
   distanceToJobMeters,
+  displacementMeters: propDisplacementMeters,
   isTracking = false,
   gpsError,
   requestImmediateLocation,
@@ -55,6 +80,8 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
 
   const techMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const jobMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const displacementMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const hasAutoFittedRef = useRef<string | null>(null);
 
   // Initialize Mapbox map instance
   const { containerRef, map, isLoaded } = useMapbox({
@@ -62,6 +89,23 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
     zoom: 13,
     enabled: isOpen,
   });
+
+  // Shortest path displacement calculation (Euclidean/geodesic straight-line vector in physics)
+  const computedDisplacementMeters = useMemo(() => {
+    if (typeof propDisplacementMeters === 'number' && !isNaN(propDisplacementMeters)) {
+      return propDisplacementMeters;
+    }
+    if (typeof distanceToJobMeters === 'number' && !isNaN(distanceToJobMeters)) {
+      return distanceToJobMeters;
+    }
+    if (!myLocation || !destinationCoords) return null;
+    return calculateDisplacementMeters(
+      myLocation.lat,
+      myLocation.lng,
+      destinationCoords[1],
+      destinationCoords[0]
+    );
+  }, [propDisplacementMeters, distanceToJobMeters, myLocation, destinationCoords]);
 
   // Resolve Destination Coordinates (From job coords or geocoding fallback)
   useEffect(() => {
@@ -161,7 +205,7 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
     }
   }, [myLocation, isLoaded, map]);
 
-  // Update Job Destination Marker & Dashed Route Line
+  // Update Job Destination Marker & Highlighted Shortest Displacement Path
   useEffect(() => {
     if (!map || !isLoaded) return;
 
@@ -191,8 +235,11 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
         .addTo(map);
     }
 
-    // Draw / Update Route
+    // Draw / Highlight Shortest Path (Displacement vector between driver and customer)
     const sourceId = 'modal-tech-job-route';
+    const casingLayerId = 'modal-tech-job-route-casing';
+    const coreLayerId = 'modal-tech-job-route-core';
+    const dashLayerId = 'modal-tech-job-route-dash';
     const hasBothPoints = myLocation && destinationCoords;
 
     const geojsonData: any = {
@@ -208,30 +255,120 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
                   [destinationCoords[0], destinationCoords[1]],
                 ],
               },
-              properties: {},
+              properties: {
+                title: 'Shortest Path (Displacement)',
+                displacement: formatDisplacement(computedDisplacementMeters),
+              },
             },
           ]
         : [],
     };
 
-    const existingSource = map.getSource(sourceId) as mapboxgl.GeoJSONSource;
-    if (existingSource) {
-      existingSource.setData(geojsonData);
-    } else if (map.isStyleLoaded()) {
-      map.addSource(sourceId, { type: 'geojson', data: geojsonData });
-      map.addLayer({
-        id: sourceId,
-        type: 'line',
-        source: sourceId,
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: {
-          'line-color': '#10b981',
-          'line-width': 3,
-          'line-dasharray': [2, 2],
-        },
-      });
+    const applyLayers = () => {
+      const existingSource = map.getSource(sourceId) as mapboxgl.GeoJSONSource;
+      if (existingSource) {
+        existingSource.setData(geojsonData);
+      } else {
+        map.addSource(sourceId, { type: 'geojson', data: geojsonData });
+      }
+
+      // Layer 1: High-visibility glowing aura casing
+      if (!map.getLayer(casingLayerId)) {
+        map.addLayer({
+          id: casingLayerId,
+          type: 'line',
+          source: sourceId,
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': '#2563eb',
+            'line-width': 8,
+            'line-opacity': 0.4,
+            'line-blur': 2,
+          },
+        });
+      }
+
+      // Layer 2: Core solid shortest displacement line
+      if (!map.getLayer(coreLayerId)) {
+        map.addLayer({
+          id: coreLayerId,
+          type: 'line',
+          source: sourceId,
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': '#1d4ed8',
+            'line-width': 4,
+            'line-opacity': 0.95,
+          },
+        });
+      }
+
+      // Layer 3: Contrasting bright animated/directional dash accent
+      if (!map.getLayer(dashLayerId)) {
+        map.addLayer({
+          id: dashLayerId,
+          type: 'line',
+          source: sourceId,
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': '#93c5fd',
+            'line-width': 2,
+            'line-dasharray': [2, 3],
+          },
+        });
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      applyLayers();
+    } else {
+      map.once('style.load', applyLayers);
     }
-  }, [job, destinationCoords, myLocation, isLoaded, map]);
+
+    // Update midpoint displacement badge marker directly on the path
+    if (displacementMarkerRef.current) {
+      displacementMarkerRef.current.remove();
+      displacementMarkerRef.current = null;
+    }
+
+    if (hasBothPoints && computedDisplacementMeters !== null) {
+      const midLng = (myLocation.lng + destinationCoords[0]) / 2;
+      const midLat = (myLocation.lat + destinationCoords[1]) / 2;
+
+      const midEl = document.createElement('div');
+      midEl.className = 'displacement-midpoint-marker';
+      midEl.innerHTML = `
+        <div style="background: rgba(15, 23, 42, 0.92); color: #ffffff; padding: 3px 8px; border-radius: 9999px; font-weight: 800; font-size: 10px; border: 1.5px solid #60a5fa; box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; gap: 4px; white-space: nowrap; pointer-events: none; backdrop-filter: blur(4px);">
+          <span style="color: #60a5fa; font-weight: 900;">⚡ Shortest:</span>
+          <span style="letter-spacing: 0.02em;">${formatDisplacement(computedDisplacementMeters)}</span>
+        </div>
+      `;
+
+      displacementMarkerRef.current = new mapboxgl.Marker({ element: midEl })
+        .setLngLat([midLng, midLat])
+        .addTo(map);
+    }
+
+    return () => {
+      if (displacementMarkerRef.current) {
+        displacementMarkerRef.current.remove();
+        displacementMarkerRef.current = null;
+      }
+    };
+  }, [job, destinationCoords, myLocation, computedDisplacementMeters, isLoaded, map]);
+
+  // Auto-fit bounds on initial load so both driver and job with shortest path are visible
+  useEffect(() => {
+    if (!map || !isLoaded || !myLocation || !destinationCoords) return;
+    const fitKey = `${job?.id}_${destinationCoords[0].toFixed(4)}_${destinationCoords[1].toFixed(4)}`;
+    if (hasAutoFittedRef.current === fitKey) return;
+    hasAutoFittedRef.current = fitKey;
+
+    const bounds = new mapboxgl.LngLatBounds();
+    bounds.extend([myLocation.lng, myLocation.lat]);
+    bounds.extend(destinationCoords);
+    map.fitBounds(bounds, { padding: 45, maxZoom: 15, duration: 1000 });
+  }, [map, isLoaded, myLocation, destinationCoords, job?.id]);
 
   // Center on My Location
   const handleCenterMyLocation = () => {
@@ -259,7 +396,7 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
       count++;
     }
     if (count > 0) {
-      map.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 800 });
+      map.fitBounds(bounds, { padding: 45, maxZoom: 15, duration: 800 });
     }
   };
 
@@ -319,13 +456,12 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                   {isTracking ? 'GPS Active' : 'Standby'}
                 </span>
-                {typeof distanceToJobMeters === 'number' && (
+                {computedDisplacementMeters !== null && (
                   <>
                     <span>•</span>
-                    <span className="font-medium text-slate-700">
-                      {distanceToJobMeters > 1000
-                        ? `${(distanceToJobMeters / 1000).toFixed(1)} km away`
-                        : `${Math.round(distanceToJobMeters)}m away`}
+                    <span className="inline-flex items-center gap-1 font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded text-[10px]">
+                      <span>Displacement:</span>
+                      <span className="font-mono">{formatDisplacement(computedDisplacementMeters)}</span>
                     </span>
                   </>
                 )}
@@ -380,6 +516,21 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
             </button>
           </div>
 
+          {/* Shortest Displacement Overlay HUD on Map */}
+          {computedDisplacementMeters !== null && !isGeocoding && (
+            <div className="absolute top-2.5 left-2.5 z-10 bg-slate-950/85 backdrop-blur-xs text-white px-2.5 py-1.5 rounded-lg border border-blue-500/40 shadow-md flex items-center gap-2 pointer-events-none">
+              <div className="w-2 h-2 rounded-full bg-blue-400 animate-ping shrink-0" />
+              <div className="flex flex-col leading-none">
+                <span className="text-[9px] uppercase font-bold text-blue-300 tracking-wider">
+                  Displacement (Shortest)
+                </span>
+                <span className="text-xs font-black font-mono text-white mt-0.5">
+                  {formatDisplacement(computedDisplacementMeters)}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Geocoding indicator */}
           {isGeocoding && (
             <div className="absolute top-2.5 left-2.5 z-10 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-lg shadow-md border border-slate-200 text-xs font-medium text-slate-700 flex items-center gap-1.5">
@@ -404,13 +555,19 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
           <div className="p-3.5 sm:p-4 space-y-2.5 sm:space-y-3">
             {/* Row 1: Badges & More Details Trigger */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-mono text-xs font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
                   #{job.jobCode || job.jobNumber}
                 </span>
                 <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full">
                   Roadside
                 </span>
+                {computedDisplacementMeters !== null && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                    <span className="text-blue-500">⚡</span>
+                    <span>Displacement: {formatDisplacement(computedDisplacementMeters)}</span>
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => setIsDetailModalOpen(true)}

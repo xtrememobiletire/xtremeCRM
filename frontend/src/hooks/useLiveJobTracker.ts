@@ -224,6 +224,7 @@ export function useLiveJobTracker({
   return {
     myLocation,
     distanceToJobMeters,
+    displacementMeters: distanceToJobMeters,
     gpsError,
     isTracking,
     isUpdatingStatus: updateStatusMutation.isPending,

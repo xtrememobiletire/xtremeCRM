@@ -43,6 +43,7 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
   const { containerRef, map, isLoaded, flyTo } = useMapbox({ zoom: 14 });
   const jobMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const driverMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const displacementMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const hasFittedBoundsRef = useRef(false);
   const [coords, setCoords] = useState<[number, number] | null>(
     latitude && longitude ? [longitude, latitude] : null
@@ -208,7 +209,7 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
         map.fitBounds(bounds, { padding: 60, duration: 1000 });
       }
 
-      // Draw direct route dash-line between driver and breakdown
+      // Draw / Highlight shortest displacement path between driver and customer
       const routeData: any = {
         type: 'Feature',
         properties: {},
@@ -218,33 +219,83 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
         },
       };
 
-      if (map.getSource('driver-travel-route')) {
-        (map.getSource('driver-travel-route') as mapboxgl.GeoJSONSource).setData(routeData);
+      const sourceId = 'driver-travel-route';
+      const casingId = 'driver-travel-route-casing';
+      const coreId = 'driver-travel-route-core';
+      const dashId = 'driver-travel-route-dash';
+
+      if (map.getSource(sourceId)) {
+        (map.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(routeData);
       } else {
-        map.addSource('driver-travel-route', {
+        map.addSource(sourceId, {
           type: 'geojson',
           data: routeData,
         });
 
+        // Layer 1: Glowing outer aura
         map.addLayer({
-          id: 'driver-travel-route-layer',
+          id: casingId,
           type: 'line',
-          source: 'driver-travel-route',
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round',
-          },
+          source: sourceId,
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: {
-            'line-color': '#10b981',
-            'line-width': 4,
-            'line-dasharray': [2, 2],
+            'line-color': '#2563eb',
+            'line-width': 8,
+            'line-opacity': 0.4,
+            'line-blur': 2,
           },
         });
+
+        // Layer 2: Core solid displacement line
+        map.addLayer({
+          id: coreId,
+          type: 'line',
+          source: sourceId,
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': '#1d4ed8',
+            'line-width': 4,
+            'line-opacity': 0.95,
+          },
+        });
+
+        // Layer 3: Contrasting bright dash accent
+        map.addLayer({
+          id: dashId,
+          type: 'line',
+          source: sourceId,
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': '#93c5fd',
+            'line-width': 2,
+            'line-dasharray': [2, 3],
+          },
+        });
+      }
+
+      // Midpoint displacement badge marker
+      if (displacementMarkerRef.current) {
+        displacementMarkerRef.current.remove();
+        displacementMarkerRef.current = null;
+      }
+      if (distanceKm !== null) {
+        const midLng = (driverCoords[0] + coords[0]) / 2;
+        const midLat = (driverCoords[1] + coords[1]) / 2;
+        const midEl = document.createElement('div');
+        midEl.innerHTML = `
+          <div style="background: rgba(15, 23, 42, 0.92); color: white; padding: 2px 7px; border-radius: 9999px; font-weight: 800; font-size: 10px; border: 1.5px solid #60a5fa; box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; gap: 4px; pointer-events: none;">
+            <span style="color: #60a5fa;">⚡ Shortest:</span>
+            <span>${distanceKm} KM</span>
+          </div>
+        `;
+        displacementMarkerRef.current = new mapboxgl.Marker({ element: midEl })
+          .setLngLat([midLng, midLat])
+          .addTo(map);
       }
     } else if (coords) {
       flyTo(coords, 14);
     }
-  }, [map, isLoaded, coords, driverCoords, address, customerName, customerPhone, jobCode, flyTo]);
+  }, [map, isLoaded, coords, driverCoords, distanceKm, address, customerName, customerPhone, jobCode, flyTo]);
 
   useEffect(() => {
     syncMapVisuals();
@@ -268,8 +319,8 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
 
           <div className="flex items-center gap-2 flex-wrap">
             {distanceKm !== null && (
-              <div className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-lg flex items-center gap-1.5">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Travel Distance:</span>
+              <div className="bg-blue-500/20 text-blue-300 border border-blue-500/40 px-2.5 py-0.5 rounded-lg flex items-center gap-1.5">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Displacement (Shortest):</span>
                 <span className="text-xs font-black font-mono">{distanceKm} KM</span>
               </div>
             )}
