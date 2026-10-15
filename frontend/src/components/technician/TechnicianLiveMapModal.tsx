@@ -17,6 +17,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useMapbox } from '../../hooks/useMapbox';
+import { MAPBOX_TOKEN } from '../../constants/mapboxConfig';
 import { mapService } from '../../services/mapService';
 import { getNavigationUrl } from '../../utils/navigation';
 import { TechnicianJobDetailModal } from './TechnicianJobDetailModal';
@@ -77,11 +78,15 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [destinationCoords, setDestinationCoords] = useState<[number, number] | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [roadRouteCoords, setRoadRouteCoords] = useState<[number, number][] | null>(null);
+  const [roadDistanceMeters, setRoadDistanceMeters] = useState<number | null>(null);
+  const [roadDurationSeconds, setRoadDurationSeconds] = useState<number | null>(null);
 
   const techMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const jobMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const displacementMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const hasAutoFittedRef = useRef<string | null>(null);
+  const lastFetchedRouteOriginRef = useRef<[number, number] | null>(null);
 
   // Initialize Mapbox map instance
   const { containerRef, map, isLoaded } = useMapbox({
@@ -106,6 +111,60 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
       destinationCoords[0]
     );
   }, [propDisplacementMeters, distanceToJobMeters, myLocation, destinationCoords]);
+
+  // Fetch actual driving road route from Mapbox Directions API (following streets, not in the air)
+  useEffect(() => {
+    if (!myLocation || !destinationCoords || !MAPBOX_TOKEN) {
+      setRoadRouteCoords(null);
+      return;
+    }
+
+    const startLng = myLocation.lng;
+    const startLat = myLocation.lat;
+    const destLng = destinationCoords[0];
+    const destLat = destinationCoords[1];
+
+    // Throttle: if origin moved < 35 meters and we already have route coords, don't re-query
+    if (lastFetchedRouteOriginRef.current && roadRouteCoords && roadRouteCoords.length > 0) {
+      const movedMeters = calculateDisplacementMeters(
+        lastFetchedRouteOriginRef.current[1],
+        lastFetchedRouteOriginRef.current[0],
+        startLat,
+        startLng
+      );
+      if (movedMeters < 35) {
+        return;
+      }
+    }
+
+    const abortController = new AbortController();
+
+    const dirUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${startLng},${startLat};${destLng},${destLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
+
+    fetch(dirUrl, { signal: abortController.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Directions error: ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        const route = data?.routes?.[0];
+        if (route?.geometry?.coordinates && route.geometry.coordinates.length > 1) {
+          lastFetchedRouteOriginRef.current = [startLng, startLat];
+          setRoadRouteCoords(route.geometry.coordinates as [number, number][]);
+          setRoadDistanceMeters(typeof route.distance === 'number' ? route.distance : null);
+          setRoadDurationSeconds(typeof route.duration === 'number' ? route.duration : null);
+        }
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          console.warn('[TechnicianLiveMapModal] Failed to fetch driving route:', err);
+        }
+      });
+
+    return () => {
+      abortController.abort();
+    };
+  }, [myLocation?.lat, myLocation?.lng, destinationCoords?.[0], destinationCoords?.[1]]);
 
   // Resolve Destination Coordinates (From job coords or geocoding fallback)
   useEffect(() => {
@@ -235,29 +294,39 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
         .addTo(map);
     }
 
-    // Draw / Highlight Shortest Path (Displacement vector between driver and customer)
+    // Draw / Highlight Shortest Driving Way (Following roads/streets, NOT in the air)
     const sourceId = 'modal-tech-job-route';
     const casingLayerId = 'modal-tech-job-route-casing';
     const coreLayerId = 'modal-tech-job-route-core';
     const dashLayerId = 'modal-tech-job-route-dash';
     const hasBothPoints = myLocation && destinationCoords;
 
+    // Use actual road network coordinates from Mapbox Directions API
+    const routeCoords: [number, number][] =
+      roadRouteCoords && roadRouteCoords.length > 1
+        ? roadRouteCoords
+        : hasBothPoints
+        ? [
+            [myLocation.lng, myLocation.lat],
+            [destinationCoords[0], destinationCoords[1]],
+          ]
+        : [];
+
     const geojsonData: any = {
       type: 'FeatureCollection',
-      features: hasBothPoints
+      features: routeCoords.length > 0
         ? [
             {
               type: 'Feature',
               geometry: {
                 type: 'LineString',
-                coordinates: [
-                  [myLocation.lng, myLocation.lat],
-                  [destinationCoords[0], destinationCoords[1]],
-                ],
+                coordinates: routeCoords,
               },
               properties: {
-                title: 'Shortest Path (Displacement)',
-                displacement: formatDisplacement(computedDisplacementMeters),
+                title: 'Shortest Driving Route',
+                roadDistance: roadDistanceMeters
+                  ? `${(roadDistanceMeters / 1000).toFixed(1)} km`
+                  : formatDisplacement(computedDisplacementMeters),
               },
             },
           ]
@@ -288,7 +357,7 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
         });
       }
 
-      // Layer 2: Core solid shortest displacement line
+      // Layer 2: Core solid shortest road path line
       if (!map.getLayer(coreLayerId)) {
         map.addLayer({
           id: coreLayerId,
@@ -325,22 +394,26 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
       map.once('style.load', applyLayers);
     }
 
-    // Update midpoint displacement badge marker directly on the path
+    // Update midpoint route badge marker directly on the road
     if (displacementMarkerRef.current) {
       displacementMarkerRef.current.remove();
       displacementMarkerRef.current = null;
     }
 
-    if (hasBothPoints && computedDisplacementMeters !== null) {
-      const midLng = (myLocation.lng + destinationCoords[0]) / 2;
-      const midLat = (myLocation.lat + destinationCoords[1]) / 2;
+    if (routeCoords.length > 0) {
+      const midIndex = Math.floor(routeCoords.length / 2);
+      const [midLng, midLat] = routeCoords[midIndex];
+
+      const displayText = roadDistanceMeters
+        ? `${(roadDistanceMeters / 1000).toFixed(1)} km (~${Math.max(1, Math.round((roadDurationSeconds || 0) / 60))} min)`
+        : formatDisplacement(computedDisplacementMeters);
 
       const midEl = document.createElement('div');
-      midEl.className = 'displacement-midpoint-marker';
+      midEl.className = 'road-route-marker';
       midEl.innerHTML = `
         <div style="background: rgba(15, 23, 42, 0.92); color: #ffffff; padding: 3px 8px; border-radius: 9999px; font-weight: 800; font-size: 10px; border: 1.5px solid #60a5fa; box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; gap: 4px; white-space: nowrap; pointer-events: none; backdrop-filter: blur(4px);">
-          <span style="color: #60a5fa; font-weight: 900;">⚡ Shortest:</span>
-          <span style="letter-spacing: 0.02em;">${formatDisplacement(computedDisplacementMeters)}</span>
+          <span style="color: #60a5fa; font-weight: 900;">🚗 Shortest Way:</span>
+          <span style="letter-spacing: 0.02em;">${displayText}</span>
         </div>
       `;
 
@@ -355,9 +428,19 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
         displacementMarkerRef.current = null;
       }
     };
-  }, [job, destinationCoords, myLocation, computedDisplacementMeters, isLoaded, map]);
+  }, [
+    job,
+    destinationCoords,
+    myLocation,
+    roadRouteCoords,
+    roadDistanceMeters,
+    roadDurationSeconds,
+    computedDisplacementMeters,
+    isLoaded,
+    map,
+  ]);
 
-  // Auto-fit bounds on initial load so both driver and job with shortest path are visible
+  // Auto-fit bounds on initial load so both driver and job with road route are visible
   useEffect(() => {
     if (!map || !isLoaded || !myLocation || !destinationCoords) return;
     const fitKey = `${job?.id}_${destinationCoords[0].toFixed(4)}_${destinationCoords[1].toFixed(4)}`;
@@ -365,10 +448,14 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
     hasAutoFittedRef.current = fitKey;
 
     const bounds = new mapboxgl.LngLatBounds();
-    bounds.extend([myLocation.lng, myLocation.lat]);
-    bounds.extend(destinationCoords);
+    if (roadRouteCoords && roadRouteCoords.length > 1) {
+      roadRouteCoords.forEach((pt) => bounds.extend(pt));
+    } else {
+      bounds.extend([myLocation.lng, myLocation.lat]);
+      bounds.extend(destinationCoords);
+    }
     map.fitBounds(bounds, { padding: 45, maxZoom: 15, duration: 1000 });
-  }, [map, isLoaded, myLocation, destinationCoords, job?.id]);
+  }, [map, isLoaded, myLocation, destinationCoords, roadRouteCoords, job?.id]);
 
   // Center on My Location
   const handleCenterMyLocation = () => {
@@ -456,7 +543,15 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                   {isTracking ? 'GPS Active' : 'Standby'}
                 </span>
-                {computedDisplacementMeters !== null && (
+                {roadDistanceMeters !== null ? (
+                  <>
+                    <span>•</span>
+                    <span className="inline-flex items-center gap-1 font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded text-[10px]">
+                      <span>Road Way:</span>
+                      <span className="font-mono">{(roadDistanceMeters / 1000).toFixed(1)} km (~{Math.max(1, Math.round((roadDurationSeconds || 0) / 60))}m)</span>
+                    </span>
+                  </>
+                ) : computedDisplacementMeters !== null ? (
                   <>
                     <span>•</span>
                     <span className="inline-flex items-center gap-1 font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded text-[10px]">
@@ -464,7 +559,7 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
                       <span className="font-mono">{formatDisplacement(computedDisplacementMeters)}</span>
                     </span>
                   </>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
@@ -516,16 +611,18 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
             </button>
           </div>
 
-          {/* Shortest Displacement Overlay HUD on Map */}
-          {computedDisplacementMeters !== null && !isGeocoding && (
+          {/* Shortest Driving Way Overlay HUD on Map */}
+          {!isGeocoding && (roadDistanceMeters !== null || computedDisplacementMeters !== null) && (
             <div className="absolute top-2.5 left-2.5 z-10 bg-slate-950/85 backdrop-blur-xs text-white px-2.5 py-1.5 rounded-lg border border-blue-500/40 shadow-md flex items-center gap-2 pointer-events-none">
               <div className="w-2 h-2 rounded-full bg-blue-400 animate-ping shrink-0" />
               <div className="flex flex-col leading-none">
                 <span className="text-[9px] uppercase font-bold text-blue-300 tracking-wider">
-                  Displacement (Shortest)
+                  Shortest Driving Way
                 </span>
                 <span className="text-xs font-black font-mono text-white mt-0.5">
-                  {formatDisplacement(computedDisplacementMeters)}
+                  {roadDistanceMeters !== null
+                    ? `${(roadDistanceMeters / 1000).toFixed(1)} km (~${Math.max(1, Math.round((roadDurationSeconds || 0) / 60))} min)`
+                    : formatDisplacement(computedDisplacementMeters)}
                 </span>
               </div>
             </div>
@@ -562,12 +659,17 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
                 <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full">
                   Roadside
                 </span>
-                {computedDisplacementMeters !== null && (
+                {roadDistanceMeters !== null ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                    <span className="text-blue-500">🚗</span>
+                    <span>Shortest Way: {(roadDistanceMeters / 1000).toFixed(1)} km (~{Math.max(1, Math.round((roadDurationSeconds || 0) / 60))} min)</span>
+                  </span>
+                ) : computedDisplacementMeters !== null ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
                     <span className="text-blue-500">⚡</span>
-                    <span>Displacement: {formatDisplacement(computedDisplacementMeters)}</span>
+                    <span>Shortest Way: {formatDisplacement(computedDisplacementMeters)}</span>
                   </span>
-                )}
+                ) : null}
                 <button
                   type="button"
                   onClick={() => setIsDetailModalOpen(true)}

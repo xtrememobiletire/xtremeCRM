@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { useMapbox } from '../../hooks/useMapbox';
+import { MAPBOX_TOKEN } from '../../constants/mapboxConfig';
 import { Navigation, Locate, ExternalLink } from 'lucide-react';
 import { mapService } from '../../services/mapService';
 
@@ -51,6 +52,7 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
   const [driverCoords, setDriverCoords] = useState<[number, number] | null>(null);
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [driveEtaMins, setDriveEtaMins] = useState<number | null>(null);
+  const [roadRouteCoords, setRoadRouteCoords] = useState<[number, number][] | null>(null);
   const [isTrackingDriver, setIsTrackingDriver] = useState(false);
   const [trackingError, setTrackingError] = useState<string | null>(null);
 
@@ -118,14 +120,43 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
     };
   }, []);
 
-  // Recalculate distance when customer coords change
+  // Fetch driving route along actual road network (following streets, not in the air)
   useEffect(() => {
-    if (driverCoords && coords) {
+    if (!driverCoords || !coords || !MAPBOX_TOKEN) {
+      setRoadRouteCoords(null);
+      return;
+    }
+
+    const abortController = new AbortController();
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${driverCoords[0]},${driverCoords[1]};${coords[0]},${coords[1]}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
+
+    fetch(url, { signal: abortController.signal })
+      .then((res) => res.json())
+      .then((data) => {
+        const route = data?.routes?.[0];
+        if (route?.geometry?.coordinates && route.geometry.coordinates.length > 1) {
+          setRoadRouteCoords(route.geometry.coordinates as [number, number][]);
+          if (typeof route.distance === 'number') {
+            setDistanceKm(Math.round((route.distance / 1000) * 10) / 10);
+          }
+          if (typeof route.duration === 'number') {
+            setDriveEtaMins(Math.max(2, Math.round(route.duration / 60)));
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => abortController.abort();
+  }, [driverCoords, coords]);
+
+  // Fallback Haversine calculation when road routing is loading
+  useEffect(() => {
+    if (driverCoords && coords && distanceKm === null) {
       const d = calculateDistanceKm(driverCoords[0], driverCoords[1], coords[0], coords[1]);
       setDistanceKm(d);
       setDriveEtaMins(Math.max(2, Math.round(d * 2.2)));
     }
-  }, [driverCoords, coords]);
+  }, [driverCoords, coords, distanceKm]);
 
   // 3. Render markers & live connection line on Mapbox
   const syncMapVisuals = useCallback(() => {
@@ -209,13 +240,18 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
         map.fitBounds(bounds, { padding: 60, duration: 1000 });
       }
 
-      // Draw / Highlight shortest displacement path between driver and customer
+      // Draw / Highlight shortest driving road path between driver and customer (following streets, not in the air)
+      const routeCoords =
+        roadRouteCoords && roadRouteCoords.length > 1
+          ? roadRouteCoords
+          : [driverCoords, coords];
+
       const routeData: any = {
         type: 'Feature',
         properties: {},
         geometry: {
           type: 'LineString',
-          coordinates: [driverCoords, coords],
+          coordinates: routeCoords,
         },
       };
 
@@ -273,18 +309,18 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
         });
       }
 
-      // Midpoint displacement badge marker
+      // Midpoint displacement badge marker directly on the road path
       if (displacementMarkerRef.current) {
         displacementMarkerRef.current.remove();
         displacementMarkerRef.current = null;
       }
-      if (distanceKm !== null) {
-        const midLng = (driverCoords[0] + coords[0]) / 2;
-        const midLat = (driverCoords[1] + coords[1]) / 2;
+      if (distanceKm !== null && routeCoords.length > 0) {
+        const midIndex = Math.floor(routeCoords.length / 2);
+        const [midLng, midLat] = routeCoords[midIndex];
         const midEl = document.createElement('div');
         midEl.innerHTML = `
           <div style="background: rgba(15, 23, 42, 0.92); color: white; padding: 2px 7px; border-radius: 9999px; font-weight: 800; font-size: 10px; border: 1.5px solid #60a5fa; box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; gap: 4px; pointer-events: none;">
-            <span style="color: #60a5fa;">⚡ Shortest:</span>
+            <span style="color: #60a5fa;">🚗 Shortest Way:</span>
             <span>${distanceKm} KM</span>
           </div>
         `;
@@ -295,7 +331,7 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
     } else if (coords) {
       flyTo(coords, 14);
     }
-  }, [map, isLoaded, coords, driverCoords, distanceKm, address, customerName, customerPhone, jobCode, flyTo]);
+  }, [map, isLoaded, coords, driverCoords, roadRouteCoords, distanceKm, driveEtaMins, address, customerName, customerPhone, jobCode, flyTo]);
 
   useEffect(() => {
     syncMapVisuals();
@@ -320,7 +356,7 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             {distanceKm !== null && (
               <div className="bg-blue-500/20 text-blue-300 border border-blue-500/40 px-2.5 py-0.5 rounded-lg flex items-center gap-1.5">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Displacement (Shortest):</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400">Shortest Driving Way:</span>
                 <span className="text-xs font-black font-mono">{distanceKm} KM</span>
               </div>
             )}
