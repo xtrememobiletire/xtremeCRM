@@ -294,16 +294,16 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/65 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
       {/* Modal Dialog Container */}
-      <div className={`w-full bg-white sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
+      <div className={`w-full bg-white sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
         isExpanded 
-          ? 'h-full sm:h-[95vh] sm:max-w-6xl' 
-          : 'h-[92vh] sm:h-[86vh] sm:max-w-4xl rounded-t-3xl'
+          ? 'h-full sm:h-[95vh] sm:max-w-5xl' 
+          : 'max-h-[95vh] sm:max-w-2xl rounded-t-2xl'
       }`}>
         {/* Top Header Bar */}
-        <div className="px-4 py-3 bg-white border-b border-slate-100 flex items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
-              <Radio className={`w-4 h-4 ${isTracking ? 'animate-pulse' : ''}`} />
+        <div className="px-4 py-2.5 bg-white border-b border-slate-100 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
+              <Radio className={`w-3.5 h-3.5 ${isTracking ? 'animate-pulse' : ''}`} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -314,7 +314,7 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
                   {customerName}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-500">
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
                 <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                   {isTracking ? 'GPS Active' : 'Standby'}
@@ -334,11 +334,11 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
           </div>
 
           {/* Header Action Controls */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+              className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition cursor-pointer"
               title={isExpanded ? 'Balanced View' : 'Extend Map'}
             >
               {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -346,7 +346,7 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
               title="Close Map"
             >
               <X className="w-5 h-5" />
@@ -354,18 +354,18 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
           </div>
         </div>
 
-        {/* Mapbox Section (Balanced mobile height: ~50vh, or 100% in expanded mode) */}
+        {/* Mapbox Section (Decreased height, responsive for mobile) */}
         <div className={`relative w-full bg-slate-100 ${
-          isExpanded ? 'flex-1' : 'h-[46vh] sm:h-[480px] shrink-0'
+          isExpanded ? 'flex-1 min-h-[350px]' : 'h-[200px] sm:h-[230px] md:h-[250px] shrink-0'
         }`}>
           <div ref={containerRef} className="absolute inset-0 w-full h-full" />
 
           {/* Map Floating Tools (Locate & Fit) */}
-          <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
+          <div className="absolute top-2.5 right-2.5 z-10 flex flex-col gap-1.5">
             <button
               type="button"
               onClick={handleCenterMyLocation}
-              className="p-2.5 bg-white/95 backdrop-blur-xs text-slate-700 hover:text-slate-900 rounded-xl shadow-md border border-slate-200/80 transition cursor-pointer active:scale-95"
+              className="p-2 bg-white/95 backdrop-blur-xs text-slate-700 hover:text-slate-900 rounded-lg shadow-md border border-slate-200/80 transition cursor-pointer active:scale-95"
               title="Center on My Location"
             >
               <LocateFixed className="w-4 h-4 text-emerald-600" />
@@ -373,7 +373,7 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
             <button
               type="button"
               onClick={handleFitBounds}
-              className="p-2.5 bg-white/95 backdrop-blur-xs text-slate-700 hover:text-slate-900 rounded-xl shadow-md border border-slate-200/80 transition cursor-pointer active:scale-95"
+              className="p-2 bg-white/95 backdrop-blur-xs text-slate-700 hover:text-slate-900 rounded-lg shadow-md border border-slate-200/80 transition cursor-pointer active:scale-95"
               title="Fit Both Locations"
             >
               <Navigation className="w-4 h-4 text-blue-600" />
@@ -382,7 +382,7 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
 
           {/* Geocoding indicator */}
           {isGeocoding && (
-            <div className="absolute top-3 left-3 z-10 bg-white/95 backdrop-blur-xs px-3 py-1.5 rounded-xl shadow-md border border-slate-200 text-xs font-medium text-slate-700 flex items-center gap-1.5">
+            <div className="absolute top-2.5 left-2.5 z-10 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-lg shadow-md border border-slate-200 text-xs font-medium text-slate-700 flex items-center gap-1.5">
               <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
               <span>Resolving address pin...</span>
             </div>
@@ -390,18 +390,18 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
 
           {/* GPS Error Alert */}
           {gpsError && (
-            <div className="absolute bottom-3 left-3 right-3 z-10 bg-rose-50/95 backdrop-blur-xs p-2.5 rounded-xl border border-rose-200 text-xs text-rose-800 flex items-center gap-2 shadow-md">
+            <div className="absolute bottom-2.5 left-2.5 right-2.5 z-10 bg-rose-50/95 backdrop-blur-xs p-2 rounded-lg border border-rose-200 text-xs text-rose-800 flex items-center gap-2 shadow-md">
               <Info className="w-4 h-4 text-rose-600 shrink-0" />
               <span className="truncate">GPS Warning: {gpsError}</span>
             </div>
           )}
         </div>
 
-        {/* Bottom Details & Action Pipeline (Scrollable on small mobile screens) */}
-        <div className={`bg-white border-t border-slate-100 flex flex-col justify-between overflow-y-auto ${
-          isExpanded ? 'max-h-[35vh] sm:max-h-56' : 'flex-1'
+        {/* Bottom Details & Action Pipeline (Zero slider / fully visible) */}
+        <div className={`bg-white border-t border-slate-100 flex flex-col justify-between shrink-0 ${
+          isExpanded ? 'max-h-[35vh] overflow-y-auto' : ''
         }`}>
-          <div className="p-4 sm:p-5 space-y-3.5">
+          <div className="p-3.5 sm:p-4 space-y-2.5 sm:space-y-3">
             {/* Row 1: Badges & More Details Trigger */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
@@ -414,7 +414,7 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsDetailModalOpen(true)}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 rounded-full transition cursor-pointer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full transition cursor-pointer"
                 >
                   <Info className="w-3 h-3" />
                   <span>Show More Details</span>
@@ -430,24 +430,26 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
             </div>
 
             {/* Row 2: Customer info & Address */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">{customerName}</h4>
-                {customerPhone && (
-                  <a
-                    href={`tel:${customerPhone}`}
-                    className="inline-flex items-center gap-1.5 text-xs text-blue-700 hover:text-blue-800 font-semibold mt-1"
-                  >
-                    <Phone className="w-3.5 h-3.5" />
-                    <span>{customerPhone}</span>
-                  </a>
-                )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              <div className="flex items-center justify-between sm:block">
+                <div>
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">{customerName}</h4>
+                  {customerPhone && (
+                    <a
+                      href={`tel:${customerPhone}`}
+                      className="inline-flex items-center gap-1.5 text-xs text-blue-700 hover:text-blue-800 font-semibold mt-0.5"
+                    >
+                      <Phone className="w-3 h-3 text-blue-600" />
+                      <span>{customerPhone}</span>
+                    </a>
+                  )}
+                </div>
               </div>
 
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 flex items-start justify-between gap-2">
-                <div className="flex items-start gap-1.5 text-xs text-slate-800 font-medium">
+              <div className="bg-slate-50 p-2 rounded-xl border border-slate-200/70 flex items-center justify-between gap-2">
+                <div className="flex items-start gap-1.5 text-xs text-slate-800 font-medium min-w-0">
                   <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
-                  <span className="line-clamp-2">{addressText}</span>
+                  <span className="line-clamp-1 truncate">{addressText}</span>
                 </div>
                 <a
                   href={navUrl}
@@ -462,12 +464,12 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
             </div>
 
             {/* Row 3: Action Button Pipeline */}
-            <div className="pt-2">
+            <div className="pt-1">
               {currentStage === 'PENDING' || currentStage === 'ACCEPTED' ? (
                 <button
                   type="button"
                   onClick={() => onStatusUpdate(job.id, 'EN_ROUTE')}
-                  className="w-full py-3.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
                 >
                   <Navigation className="w-4 h-4" />
                   <span>Job Accepted — Start Moving (Auto En-Route)</span>
@@ -476,7 +478,7 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
                 <button
                   type="button"
                   onClick={() => onStatusUpdate(job.id, 'ON_SCENE')}
-                  className="w-full py-3.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
                 >
                   <MapPin className="w-4 h-4" />
                   <span>En Route — Mark Arrived on Scene</span>
@@ -485,14 +487,14 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
                 <button
                   type="button"
                   onClick={() => onOpenPaymentModal(job)}
-                  className="w-full py-3.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Enter Amount & Complete Job</span>
                 </button>
               )}
 
-              <p className="text-[11px] text-slate-400 text-center mt-2">
+              <p className="text-[10px] sm:text-[11px] text-slate-400 text-center mt-1.5">
                 Live GPS Auto-Status active: En-Route and Arrived update automatically as you move.
               </p>
             </div>
