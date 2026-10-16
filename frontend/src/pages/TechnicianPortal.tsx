@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Inbox } from 'lucide-react';
-import { jobService, type JobItem } from '../services/jobService';
+import { jobService } from '../services/jobService';
 import { useAuth } from '../context/AuthContext';
 import { useTenant } from '../context/TenantContext';
 import { useSocket } from '../context/SocketContext';
@@ -14,7 +14,7 @@ import TechnicianJobCard from '../components/technician/TechnicianJobCard';
 import TechnicianDeclineModal from '../components/technician/TechnicianDeclineModal';
 import TechnicianPaymentModal from '../components/technician/TechnicianPaymentModal';
 import TechnicianLiveMapModal from '../components/technician/TechnicianLiveMapModal';
-import JobChatModal from '../components/dispatch/JobChatModal';
+import { TechnicianJobDetailModal } from '../components/technician/TechnicianJobDetailModal';
 import { useLiveJobTracker } from '../hooks/useLiveJobTracker';
 
 export default function TechnicianPortal() {
@@ -30,7 +30,7 @@ export default function TechnicianPortal() {
   const [mapModalJob, setMapModalJob] = useState<any | null>(null);
   const [declineModalJob, setDeclineModalJob] = useState<any | null>(null);
   const [paymentModalJob, setPaymentModalJob] = useState<any | null>(null);
-  const [chatModalJob, setChatModalJob] = useState<JobItem | null>(null);
+  const [detailModalJob, setDetailModalJob] = useState<any | null>(null);
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
 
   // Fetch driver assigned jobs
@@ -285,7 +285,7 @@ export default function TechnicianPortal() {
                 onDecline={(j) => setDeclineModalJob(j)}
                 onProgressStage={handleProgressStage}
                 onOpenPayment={(j) => setPaymentModalJob(j)}
-                onOpenChat={(j) => setChatModalJob(j)}
+                onViewDetails={(j) => setDetailModalJob(j)}
                 onOpenMap={(j) => setMapModalJob(j)}
               />
             ))}
@@ -337,14 +337,17 @@ export default function TechnicianPortal() {
         />
       )}
 
-      {/* Two-Way Dispatcher Chat Modal */}
-      {chatModalJob && (
-        <JobChatModal
-          jobId={chatModalJob.id}
-          jobCode={chatModalJob.jobCode || chatModalJob.jobNumber}
-          driverName={chatModalJob.driver?.fullName || 'Technician'}
+      {/* Full Job Details Modal */}
+      {detailModalJob && (
+        <TechnicianJobDetailModal
           isOpen={true}
-          onClose={() => setChatModalJob(null)}
+          job={detailModalJob}
+          onClose={() => setDetailModalJob(null)}
+          currencySymbol={currencySymbol}
+          onOpenPaymentModal={(j) => {
+            setDetailModalJob(null);
+            setPaymentModalJob(j);
+          }}
         />
       )}
     </div>

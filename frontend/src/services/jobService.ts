@@ -56,6 +56,14 @@ export interface JobItem {
     phone?: string;
   } | null;
   lineItems?: Array<{ serviceName: string; price: number; quantity?: number }>;
+  serviceItems?: Array<{
+    id?: string;
+    serviceName: string;
+    category?: string;
+    unitPriceCents?: number;
+    quantity?: number;
+    notes?: string;
+  }>;
   services?: string[];
   problemNotes?: string;
   notes?: string;

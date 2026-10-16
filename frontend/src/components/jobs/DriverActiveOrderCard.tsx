@@ -8,7 +8,8 @@ import {
   Clock, 
   DollarSign, 
   Navigation,
-  Loader2 
+  Loader2,
+  Wrench
 } from 'lucide-react';
 import { useTenant } from '../../context/TenantContext';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
@@ -92,6 +93,22 @@ export default function DriverActiveOrderCard({ job, onCompleteOrder }: DriverAc
   const vehicleText = job.vehicle ? `${job.vehicle.year || ''} ${job.vehicle.make} ${job.vehicle.model}`.trim() : 'No Vehicle Specified';
   const tireSize = job.vehicle?.tireSize || '';
 
+  const rawServices = job.serviceItems || job.services || job.lineItems || [];
+  const services: Array<{ serviceName: string; quantity?: number }> = Array.isArray(rawServices)
+    ? rawServices.map((item: any) =>
+        typeof item === 'string'
+          ? { serviceName: item, quantity: 1 }
+          : {
+              serviceName: item.serviceName || item.name || 'Service',
+              quantity: item.quantity || 1,
+            }
+      )
+    : job.serviceType
+    ? String(job.serviceType)
+        .split(',')
+        .map((s) => ({ serviceName: s.trim(), quantity: 1 }))
+    : [];
+
   return (
     <div className={`bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 p-5 flex flex-col justify-between border-l-[6px] ${leftLineColor}`}>
       {/* Top Header Row */}
@@ -99,7 +116,7 @@ export default function DriverActiveOrderCard({ job, onCompleteOrder }: DriverAc
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div className="text-left">
             <span className="font-mono font-bold text-sm text-red-600 tracking-wide">
-              {job.jobCode || job.jobNumber}
+              #{job.jobCode || job.jobNumber}
             </span>
             <div className="flex items-center gap-1 text-[11px] text-slate-400 font-medium mt-0.5">
               <Clock className="w-3 h-3 text-slate-400 shrink-0" />
@@ -142,6 +159,26 @@ export default function DriverActiveOrderCard({ job, onCompleteOrder }: DriverAc
               </span>
             )}
           </div>
+
+          {/* Services Required */}
+          {services.length > 0 && (
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                <Wrench className="w-3 h-3 text-slate-500" />
+                <span>Services Required</span>
+              </span>
+              <div className="mt-1 space-y-1">
+                {services.map((si, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200/60 px-2.5 py-1.5 rounded-lg">
+                    <span className="truncate">{si.serviceName}</span>
+                    <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-200/80 px-1.5 py-0.5 rounded ml-2 shrink-0">
+                      Qty: {si.quantity || 1}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Service Address */}
           {serviceAddress && (

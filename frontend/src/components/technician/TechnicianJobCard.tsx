@@ -4,13 +4,14 @@ import {
   Phone, 
   Copy, 
   Check, 
-  MessageSquare, 
   Zap, 
   Calendar, 
   Car, 
   CheckCircle,
   Truck,
-  Navigation
+  Navigation,
+  Wrench,
+  Info
 } from 'lucide-react';
 import { getNavigationUrl } from '../../utils/navigation';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
@@ -25,8 +26,9 @@ interface TechnicianJobCardProps {
   onDecline: (job: any) => void;
   onProgressStage: (jobId: string, nextStatus: string) => void;
   onOpenPayment: (job: any) => void;
-  onOpenChat: (job: any) => void;
+  onOpenChat?: (job: any) => void;
   onOpenMap?: (job: any) => void;
+  onViewDetails?: (job: any) => void;
 }
 
 export default function TechnicianJobCard({
@@ -38,14 +40,32 @@ export default function TechnicianJobCard({
   onDecline,
   onProgressStage,
   onOpenPayment,
-  onOpenChat,
+  onOpenChat: _onOpenChat,
   onOpenMap,
+  onViewDetails,
 }: TechnicianJobCardProps) {
   const [copied, setCopied] = useState(false);
 
   const isUrgent = job.urgency === 'URGENT' || job.urgency === 'EMERGENCY' || job.urgency === 'HIGH';
   const hasFee = Boolean(job.repairerFeeCents && job.repairerFeeCents > 0);
   const feeDollars = hasFee ? centsToDollars(job.repairerFeeCents) : null;
+
+  const rawServices = job.serviceItems || job.services || job.lineItems || [];
+  const services: Array<{ serviceName: string; quantity?: number; category?: string }> = Array.isArray(rawServices)
+    ? rawServices.map((item: any) =>
+        typeof item === 'string'
+          ? { serviceName: item, quantity: 1 }
+          : {
+              serviceName: item.serviceName || item.name || 'Service',
+              quantity: item.quantity || 1,
+              category: item.category,
+            }
+      )
+    : job.serviceType
+    ? String(job.serviceType)
+        .split(',')
+        .map((s) => ({ serviceName: s.trim(), quantity: 1 }))
+    : [];
 
   const handleCopyAddress = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -81,9 +101,17 @@ export default function TechnicianJobCard({
       <div>
         <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
-              #{job.jobCode || job.jobNumber}
-            </span>
+            <button
+              type="button"
+              onClick={() => onViewDetails?.(job)}
+              className={`font-mono text-xs font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200 flex items-center gap-1.5 transition ${
+                onViewDetails ? 'hover:bg-slate-200 hover:border-slate-300 cursor-pointer' : ''
+              }`}
+              title={onViewDetails ? 'Click to view full job details' : undefined}
+            >
+              <span>#{job.jobCode || job.jobNumber}</span>
+              {onViewDetails && <Info className="w-3 h-3 text-slate-400" />}
+            </button>
             {isUrgent ? (
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full">
                 <Zap className="w-2.5 h-2.5 text-amber-600" />
@@ -156,27 +184,14 @@ export default function TechnicianJobCard({
             </span>
           </a>
 
-          <div className="flex items-center gap-1 shrink-0">
-            {onOpenMap && (
-              <button
-                type="button"
-                onClick={() => onOpenMap(job)}
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg border border-blue-200 transition cursor-pointer"
-                title="Extend Map & View Tracking"
-              >
-                <Navigation className="w-3 h-3 text-blue-600" />
-                <span>Extend Map</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handleCopyAddress}
-              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition cursor-pointer"
-              title="Copy address"
-            >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleCopyAddress}
+            className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition cursor-pointer shrink-0"
+            title="Copy address"
+          >
+            {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
         </div>
 
         {/* Vehicle & Tires */}
@@ -193,6 +208,53 @@ export default function TechnicianJobCard({
             </span>
           )}
         </div>
+
+        {/* Services to Resolve */}
+        {services.length > 0 ? (
+          <div className="mt-2.5 p-2.5 bg-amber-50/70 rounded-xl border border-amber-200/80 text-xs">
+            <div className="flex items-center justify-between pb-1.5 border-b border-amber-200/60">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-900">
+                <Wrench className="w-3 h-3 text-amber-600" />
+                <span>Services to Resolve ({services.length})</span>
+              </div>
+              {onViewDetails && (
+                <button
+                  type="button"
+                  onClick={() => onViewDetails(job)}
+                  className="text-[10px] font-bold text-amber-800 hover:text-amber-950 underline underline-offset-2 cursor-pointer"
+                >
+                  Full Details →
+                </button>
+              )}
+            </div>
+            <div className="mt-1.5 space-y-1">
+              {services.map((si, idx) => (
+                <div key={idx} className="flex items-center justify-between text-xs font-semibold text-slate-800">
+                  <span className="truncate">{si.serviceName}</span>
+                  <span className="font-mono text-[10px] font-bold text-amber-900 bg-amber-100/90 border border-amber-200/60 px-1.5 py-0.5 rounded ml-2 shrink-0">
+                    Qty: {si.quantity || 1}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-2.5 p-2 bg-slate-50 rounded-xl border border-slate-200/60 text-xs flex items-center justify-between text-slate-500">
+            <div className="flex items-center gap-1.5">
+              <Wrench className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span className="text-[11px] font-medium text-slate-700">Roadside Assistance / General Dispatch</span>
+            </div>
+            {onViewDetails && (
+              <button
+                type="button"
+                onClick={() => onViewDetails(job)}
+                className="text-[10px] font-bold text-blue-600 hover:text-blue-800 underline underline-offset-2 cursor-pointer shrink-0"
+              >
+                Details
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Problem notes if any */}
         {job.problemNotes && (
@@ -271,15 +333,6 @@ export default function TechnicianJobCard({
                 <span className="hidden sm:inline">Map</span>
               </button>
             )}
-
-            <button
-              type="button"
-              onClick={() => onOpenChat(job)}
-              className="p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl border border-slate-200 transition cursor-pointer"
-              title="Chat with dispatcher"
-            >
-              <MessageSquare className="w-4 h-4" />
-            </button>
           </div>
         )}
 
