@@ -84,7 +84,7 @@ export function useUpdateJobStatus() {
         const declineReason = driverDeclineReason;
         queryClient.setQueriesData({ queryKey: ['technician-jobs'] }, (old: any) => {
           if (!old || !old.data) return old;
-          if (nextStatus === 'CANCELLED') {
+          if (nextStatus === 'CANCELLED' || nextStatus === 'COMPLETED') {
             return {
               ...old,
               data: old.data.filter((j: any) => j.id !== id && j.jobId !== id),
@@ -97,7 +97,10 @@ export function useUpdateJobStatus() {
               j.id === id
                 ? {
                     ...j,
-                    status: nextStatus,
+                    status: nextStatus === 'ACCEPTED' ? 'ASSIGNED' : nextStatus,
+                    dispositionNotes: ['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(nextStatus)
+                      ? (nextStatus === 'ARRIVED' ? 'ON_SCENE' : nextStatus)
+                      : j.dispositionNotes,
                     driverDeclineReason: declineReason || j.driverDeclineReason,
                     lastDeclinedDriverId: j.driverId || j.lastDeclinedDriverId,
                     driverId: j.driverId,
@@ -115,7 +118,10 @@ export function useUpdateJobStatus() {
               j.id === id
                 ? {
                     ...j,
-                    status: nextStatus,
+                    status: nextStatus === 'ACCEPTED' ? 'ASSIGNED' : nextStatus,
+                    dispositionNotes: ['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(nextStatus)
+                      ? (nextStatus === 'ARRIVED' ? 'ON_SCENE' : nextStatus)
+                      : j.dispositionNotes,
                     driverDeclineReason: declineReason || j.driverDeclineReason,
                     lastDeclinedDriverId: j.driverId || j.lastDeclinedDriverId,
                     driverId: nextStatus === 'CANCELLED' ? null : j.driverId,

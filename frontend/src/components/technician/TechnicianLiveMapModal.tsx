@@ -6,11 +6,9 @@ import {
   X,
   Maximize2,
   Minimize2,
-  LocateFixed,
   Navigation,
   MapPin,
   Phone,
-  Radio,
   Loader2,
   CheckCircle2,
   ExternalLink,
@@ -29,6 +27,8 @@ interface TechnicianLiveMapModalProps {
   currencySymbol?: string;
   onOpenPaymentModal: (job: any) => void;
   onStatusUpdate: (jobId: string, status: string) => void;
+  onAccept?: (jobId: string) => void;
+  onDecline?: (job: any) => void;
   myLocation?: { lat: number; lng: number; heading?: number | null; speed?: number | null } | null;
   distanceToJobMeters?: number | null;
   displacementMeters?: number | null;
@@ -67,12 +67,14 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
   currencySymbol = '$',
   onOpenPaymentModal,
   onStatusUpdate,
+  onAccept,
+  onDecline,
   myLocation,
   distanceToJobMeters,
   displacementMeters: propDisplacementMeters,
-  isTracking = false,
+  isTracking: _isTracking = false,
   gpsError,
-  requestImmediateLocation,
+  requestImmediateLocation: _requestImmediateLocation,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -88,11 +90,12 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
   const hasAutoFittedRef = useRef<string | null>(null);
   const lastFetchedRouteOriginRef = useRef<[number, number] | null>(null);
 
-  // Initialize Mapbox map instance
+  // Initialize Mapbox map instance without default system controls
   const { containerRef, map, isLoaded } = useMapbox({
     center: [-79.3832, 43.6532],
     zoom: 13,
     enabled: isOpen,
+    showControls: false,
   });
 
   // Shortest path displacement calculation (Euclidean/geodesic straight-line vector in physics)
@@ -505,18 +508,6 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
     map.fitBounds(bounds, { padding: 45, maxZoom: 15, duration: 1000 });
   }, [map, isLoaded, myLocation, destinationCoords, roadRouteCoords, job?.id]);
 
-  // Center on My Location
-  const handleCenterMyLocation = () => {
-    requestImmediateLocation?.();
-    if (myLocation && map) {
-      map.flyTo({
-        center: [myLocation.lng, myLocation.lat],
-        zoom: 15,
-        duration: 900,
-      });
-    }
-  };
-
   // Determine Current Stage
   const currentStage: 'PENDING' | 'ACCEPTED' | 'EN_ROUTE' | 'ON_SCENE' = useMemo(() => {
     if (!job) return 'PENDING';
@@ -546,7 +537,7 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
   });
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/65 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex flex-col sm:items-center sm:justify-center p-0 sm:p-4 transition-all">
       {/* Modal Dialog Container */}
       <div 
         onTransitionEnd={() => {
@@ -557,47 +548,24 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
         className={`w-full bg-white sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
           isExpanded 
             ? 'h-full sm:h-[95vh] sm:max-w-5xl' 
-            : 'max-h-[95vh] sm:max-w-2xl rounded-t-2xl'
+            : 'h-full sm:h-auto sm:max-h-[90vh] sm:max-w-2xl'
         }`}
       >
         {/* Top Header Bar */}
-        <div className="px-4 py-2.5 bg-white border-b border-slate-100 flex items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
-              <Radio className={`w-3.5 h-3.5 ${isTracking ? 'animate-pulse' : ''}`} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                  #{job.jobCode || job.jobNumber}
-                </span>
-                <span className="text-xs font-bold text-slate-800 truncate">
-                  {customerName}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                  {isTracking ? 'GPS Active' : 'Standby'}
-                </span>
-                {roadDistanceMeters !== null ? (
-                  <>
-                    <span>•</span>
-                    <span className="inline-flex items-center gap-1 font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded text-[10px]">
-                      <span>Road Way:</span>
-                      <span className="font-mono">{(roadDistanceMeters / 1000).toFixed(1)} km (~{Math.max(1, Math.round((roadDurationSeconds || 0) / 60))}m)</span>
-                    </span>
-                  </>
-                ) : computedDisplacementMeters !== null ? (
-                  <>
-                    <span>•</span>
-                    <span className="inline-flex items-center gap-1 font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded text-[10px]">
-                      <span>Displacement:</span>
-                      <span className="font-mono">{formatDisplacement(computedDisplacementMeters)}</span>
-                    </span>
-                  </>
-                ) : null}
-              </div>
+        <div className="px-4 py-3 bg-white border-b border-slate-100 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="font-mono text-xs font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+              #{job.jobCode || job.jobNumber}
+            </span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs font-bold text-slate-900 truncate">
+                {customerName}
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {currentStage}
+              </span>
             </div>
           </div>
 
@@ -606,8 +574,8 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition cursor-pointer"
-              title={isExpanded ? 'Balanced View' : 'Extend Map'}
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+              title={isExpanded ? 'Balanced View' : 'Expand Map'}
             >
               {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
@@ -622,179 +590,164 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
           </div>
         </div>
 
-        {/* Mapbox Section (Decreased height, responsive for mobile) */}
-        <div className={`relative w-full overflow-hidden bg-slate-100 ${
-          isExpanded ? 'flex-1 min-h-[350px]' : 'h-[200px] sm:h-[230px] md:h-[250px] shrink-0'
-        }`}>
-          <div ref={containerRef} className="absolute inset-0 w-full h-full" />
+        {/* Scrollable Body */}
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+          {/* Map Section */}
+          <div className={`relative w-full overflow-hidden bg-slate-100 shrink-0 ${
+            isExpanded ? 'h-[50vh] sm:h-[60vh]' : 'h-[240px] sm:h-[280px]'
+          }`}>
+            <div ref={containerRef} className="absolute inset-0 w-full h-full" />
 
-          {/* Map Floating Tools (Locate & Fit) */}
-          <div className="absolute top-2.5 right-2.5 z-10 flex flex-col gap-1.5">
-            <button
-              type="button"
-              onClick={handleCenterMyLocation}
-              className="p-2 bg-white/95 backdrop-blur-xs text-slate-700 hover:text-slate-900 rounded-lg shadow-md border border-slate-200/80 transition cursor-pointer active:scale-95"
-              title="Center on My Location"
-            >
-              <LocateFixed className="w-4 h-4 text-emerald-600" />
-            </button>
-            <button
-              type="button"
-              onClick={handleFitBounds}
-              className="p-2 bg-white/95 backdrop-blur-xs text-slate-700 hover:text-slate-900 rounded-lg shadow-md border border-slate-200/80 transition cursor-pointer active:scale-95"
-              title="Fit Both Locations"
-            >
-              <Navigation className="w-4 h-4 text-blue-600" />
-            </button>
-          </div>
 
-          {/* Shortest Driving Way Overlay HUD on Map */}
-          {!isGeocoding && (roadDistanceMeters !== null || computedDisplacementMeters !== null) && (
-            <div className="absolute top-2.5 left-2.5 z-10 bg-slate-950/85 backdrop-blur-xs text-white px-2.5 py-1.5 rounded-lg border border-blue-500/40 shadow-md flex items-center gap-2 pointer-events-none">
-              <div className="w-2 h-2 rounded-full bg-blue-400 animate-ping shrink-0" />
-              <div className="flex flex-col leading-none">
-                <span className="text-[9px] uppercase font-bold text-blue-300 tracking-wider">
-                  Shortest Driving Way
-                </span>
-                <span className="text-xs font-black font-mono text-white mt-0.5">
+
+            {/* Route Info Floating Pill */}
+            {!isGeocoding && (roadDistanceMeters !== null || computedDisplacementMeters !== null) && (
+              <div className="absolute top-3 left-3 z-10 bg-white/95 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-slate-200/90 shadow-sm flex items-center gap-2 text-xs font-bold text-slate-800">
+                <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0 animate-pulse" />
+                <span>
                   {roadDistanceMeters !== null
-                    ? `${(roadDistanceMeters / 1000).toFixed(1)} km (~${Math.max(1, Math.round((roadDurationSeconds || 0) / 60))} min)`
+                    ? `${(roadDistanceMeters / 1000).toFixed(1)} km`
                     : formatDisplacement(computedDisplacementMeters)}
                 </span>
+                {roadDurationSeconds !== null && (
+                  <>
+                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-600 font-semibold">
+                      ~{Math.max(1, Math.round(roadDurationSeconds / 60))} min drive
+                    </span>
+                  </>
+                )}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Geocoding indicator */}
-          {isGeocoding && (
-            <div className="absolute top-2.5 left-2.5 z-10 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-lg shadow-md border border-slate-200 text-xs font-medium text-slate-700 flex items-center gap-1.5">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
-              <span>Resolving address pin...</span>
-            </div>
-          )}
-
-          {/* GPS Error Alert */}
-          {gpsError && (!myLocation || gpsError.toLowerCase().includes('denied') || gpsError.toLowerCase().includes('permission')) && (
-            <div className="absolute bottom-2.5 left-2.5 right-2.5 z-10 bg-rose-50/95 backdrop-blur-xs p-2 rounded-lg border border-rose-200 text-xs text-rose-800 flex items-center gap-2 shadow-md">
-              <Info className="w-4 h-4 text-rose-600 shrink-0" />
-              <span className="truncate">GPS Warning: {gpsError}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Bottom Details & Action Pipeline (Zero slider / fully visible) */}
-        <div className={`bg-white border-t border-slate-100 flex flex-col justify-between shrink-0 ${
-          isExpanded ? 'max-h-[35vh] overflow-y-auto' : ''
-        }`}>
-          <div className="p-3.5 sm:p-4 space-y-2.5 sm:space-y-3">
-            {/* Row 1: Badges & More Details Trigger */}
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-mono text-xs font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
-                  #{job.jobCode || job.jobNumber}
-                </span>
-                <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full">
-                  Roadside
-                </span>
-                {roadDistanceMeters !== null ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                    <span className="text-blue-500">🚗</span>
-                    <span>Shortest Way: {(roadDistanceMeters / 1000).toFixed(1)} km (~{Math.max(1, Math.round((roadDurationSeconds || 0) / 60))} min)</span>
-                  </span>
-                ) : computedDisplacementMeters !== null ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                    <span className="text-blue-500">⚡</span>
-                    <span>Shortest Way: {formatDisplacement(computedDisplacementMeters)}</span>
-                  </span>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => setIsDetailModalOpen(true)}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full transition cursor-pointer"
-                >
-                  <Info className="w-3 h-3" />
-                  <span>Show More Details</span>
-                </button>
+            {/* Geocoding indicator */}
+            {isGeocoding && (
+              <div className="absolute top-3 left-3 z-10 bg-white/95 backdrop-blur-xs px-3 py-1.5 rounded-xl shadow-sm border border-slate-200 text-xs font-medium text-slate-700 flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                <span>Resolving destination pin...</span>
               </div>
+            )}
 
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-slate-400 font-medium">Status:</span>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                  {currentStage}
-                </span>
+            {/* GPS Error Alert */}
+            {gpsError && (!myLocation || gpsError.toLowerCase().includes('denied') || gpsError.toLowerCase().includes('permission')) && (
+              <div className="absolute bottom-3 left-3 right-3 z-10 bg-rose-50/95 backdrop-blur-xs p-2.5 rounded-xl border border-rose-200 text-xs text-rose-800 flex items-center gap-2 shadow-sm">
+                <Info className="w-4 h-4 text-rose-600 shrink-0" />
+                <span className="truncate">GPS Warning: {gpsError}</span>
               </div>
-            </div>
+            )}
+          </div>
 
-            {/* Row 2: Customer info & Address */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-              <div className="flex items-center justify-between sm:block">
-                <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">{customerName}</h4>
+          {/* Job Details Section (Single clean white surface, divide-y) */}
+          <div className="p-4 sm:p-5 space-y-3.5 bg-white flex-1">
+            {/* Customer & Destination Card */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-slate-900">{customerName}</h3>
                   {customerPhone && (
                     <a
                       href={`tel:${customerPhone}`}
-                      className="inline-flex items-center gap-1.5 text-xs text-blue-700 hover:text-blue-800 font-semibold mt-0.5"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition"
                     >
-                      <Phone className="w-3 h-3 text-blue-600" />
-                      <span>{customerPhone}</span>
+                      <Phone className="w-3 h-3 text-slate-500" />
+                      {customerPhone}
                     </a>
                   )}
                 </div>
-              </div>
-
-              <div className="bg-slate-50 p-2 rounded-xl border border-slate-200/70 flex items-center justify-between gap-2">
-                <div className="flex items-start gap-1.5 text-xs text-slate-800 font-medium min-w-0">
+                <div className="flex items-start gap-1.5 text-xs text-slate-600 mt-1.5">
                   <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
-                  <span className="line-clamp-1 truncate">{addressText}</span>
+                  <span className="leading-relaxed">{addressText}</span>
                 </div>
-                <a
-                  href={navUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-1 text-slate-400 hover:text-blue-600 transition shrink-0"
-                  title="Open in Maps app"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
               </div>
-            </div>
 
-            {/* Row 3: Action Button Pipeline */}
-            <div className="pt-1">
-              {currentStage === 'PENDING' || currentStage === 'ACCEPTED' ? (
-                <button
-                  type="button"
-                  onClick={() => onStatusUpdate(job.id, 'EN_ROUTE')}
-                  className="w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
-                >
-                  <Navigation className="w-4 h-4" />
-                  <span>Job Accepted — Start Moving (Auto En-Route)</span>
-                </button>
-              ) : currentStage === 'EN_ROUTE' ? (
-                <button
-                  type="button"
-                  onClick={() => onStatusUpdate(job.id, 'ON_SCENE')}
-                  className="w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
-                >
-                  <MapPin className="w-4 h-4" />
-                  <span>En Route — Mark Arrived on Scene</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => onOpenPaymentModal(job)}
-                  className="w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Enter Amount & Complete Job</span>
-                </button>
-              )}
-
-              <p className="text-[10px] sm:text-[11px] text-slate-400 text-center mt-1.5">
-                Live GPS Auto-Status active: En-Route and Arrived update automatically as you move.
-              </p>
+              {/* View details modal button */}
+              <button
+                type="button"
+                onClick={() => setIsDetailModalOpen(true)}
+                className="self-start sm:self-center inline-flex items-center gap-1 text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-xl transition cursor-pointer shrink-0"
+              >
+                <Info className="w-3.5 h-3.5 text-slate-500" />
+                <span>Job Details</span>
+              </button>
             </div>
           </div>
+        </div>
+
+        {/* Fixed Action Footer */}
+        <div className="p-3.5 sm:p-4 bg-white border-t border-slate-100 shrink-0 space-y-2">
+          <div className="flex items-center gap-2.5">
+            {/* Primary Action Button */}
+            {currentStage === 'PENDING' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onAccept?.(job.id);
+                  }}
+                  className="flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Accept Job</span>
+                </button>
+                {onDecline && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onDecline(job);
+                    }}
+                    className="py-2.5 px-3.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-red-700 hover:bg-red-50 border border-slate-200 transition cursor-pointer"
+                  >
+                    Decline
+                  </button>
+                )}
+              </>
+            ) : currentStage === 'ACCEPTED' ? (
+              <button
+                type="button"
+                onClick={() => onStatusUpdate(job.id, 'EN_ROUTE')}
+                className="flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition cursor-pointer shadow-xs flex items-center justify-center gap-2"
+              >
+                <Navigation className="w-4 h-4" />
+                <span>Start Moving (En Route)</span>
+              </button>
+            ) : currentStage === 'EN_ROUTE' ? (
+              <button
+                type="button"
+                onClick={() => onStatusUpdate(job.id, 'ON_SCENE')}
+                className="flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition cursor-pointer shadow-xs flex items-center justify-center gap-2"
+              >
+                <MapPin className="w-4 h-4" />
+                <span>Mark Arrived on Scene</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onOpenPaymentModal(job)}
+                className="flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition cursor-pointer shadow-xs flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Enter Amount & Complete Job</span>
+              </button>
+            )}
+
+            {/* Navigation Companion Button (Native Google/Apple Maps) */}
+            <a
+              href={navUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="py-2.5 px-3.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition flex items-center gap-1.5 shrink-0"
+              title="Open turn-by-turn navigation in Maps"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+              <span>Maps</span>
+            </a>
+          </div>
+
+          <p className="text-[10px] text-slate-400 text-center">
+            Live GPS Auto-Status active: En-Route and Arrived update automatically as you move.
+          </p>
         </div>
       </div>
 

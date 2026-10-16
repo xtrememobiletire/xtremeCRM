@@ -15,6 +15,7 @@ interface UseMapboxOptions {
   style?: string;
   interactive?: boolean;
   enabled?: boolean;
+  showControls?: boolean;
 }
 
 export function useMapbox(options: UseMapboxOptions = {}) {
@@ -59,7 +60,7 @@ export function useMapbox(options: UseMapboxOptions = {}) {
         attributionControl: false,
       });
 
-      if (options.interactive !== false) {
+      if (options.interactive !== false && options.showControls !== false) {
         m.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right');
         m.addControl(new mapboxgl.FullscreenControl(), 'top-right');
       }

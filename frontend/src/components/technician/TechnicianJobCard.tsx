@@ -285,6 +285,17 @@ export default function TechnicianJobCard({
             >
               Decline
             </button>
+            {onOpenMap && (
+              <button
+                type="button"
+                onClick={() => onOpenMap(job)}
+                className="py-2.5 px-3 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                title="View Map & Location"
+              >
+                <Navigation className="w-4 h-4 text-blue-600" />
+                <span className="hidden sm:inline">Map</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -295,7 +306,7 @@ export default function TechnicianJobCard({
                 type="button"
                 disabled={isUpdating}
                 onClick={() => onProgressStage(job.id, 'EN_ROUTE')}
-                className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 active:bg-black transition cursor-pointer disabled:opacity-50 shadow-xs flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition cursor-pointer disabled:opacity-50 shadow-xs flex items-center justify-center gap-2"
               >
                 <Truck className="w-4 h-4" />
                 <span>Mark En Route</span>

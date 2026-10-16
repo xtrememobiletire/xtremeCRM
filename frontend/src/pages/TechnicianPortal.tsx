@@ -84,12 +84,16 @@ export default function TechnicianPortal() {
       }
 
       const disp = job.dispositionNotes;
+      const st = job.status;
       const isAlreadyAccepted =
         disp === 'ACCEPTED' ||
         disp === 'EN_ROUTE' ||
         disp === 'ON_SCENE' ||
         disp === 'ARRIVED' ||
-        job.status === 'IN_PROGRESS';
+        st === 'ACCEPTED' ||
+        st === 'EN_ROUTE' ||
+        st === 'ON_SCENE' ||
+        st === 'IN_PROGRESS';
 
       if (isAlreadyAccepted) {
         active.push(job);
@@ -134,7 +138,6 @@ export default function TechnicianPortal() {
         onSuccess: () => {
           toast.success('Assignment accepted! Opening Live Map...');
           setActiveTab('ACTIVE');
-          refetch();
           setMapModalJob(targetJob);
         },
         onError: (err: any) => {
@@ -161,7 +164,6 @@ export default function TechnicianPortal() {
         onSuccess: () => {
           toast.success('Assignment declined. Job returned to dispatch.');
           setDeclineModalJob(null);
-          refetch();
         },
         onError: (err: any) => {
           toast.error(err?.response?.data?.message || 'Failed to decline assignment');
@@ -182,7 +184,6 @@ export default function TechnicianPortal() {
         onSuccess: () => {
           const label = nextStatus === 'EN_ROUTE' ? 'En Route' : 'Arrived on Scene';
           toast.success(`Job stage updated: ${label}`);
-          refetch();
         },
         onError: (err: any) => {
           toast.error(err?.response?.data?.message || 'Failed to update stage');
@@ -220,7 +221,6 @@ export default function TechnicianPortal() {
         onSuccess: () => {
           toast.success('Job marked completed! Payout recorded in History.');
           setPaymentModalJob(null);
-          refetch();
         },
         onError: (err: any) => {
           toast.error(err?.response?.data?.message || 'Failed to complete job');
@@ -305,6 +305,14 @@ export default function TechnicianPortal() {
             setPaymentModalJob(j);
           }}
           onStatusUpdate={handleProgressStage}
+          onAccept={(jobId) => {
+            setMapModalJob(null);
+            handleAcceptJob(jobId);
+          }}
+          onDecline={(j) => {
+            setMapModalJob(null);
+            setDeclineModalJob(j);
+          }}
           myLocation={myLocation}
           distanceToJobMeters={distanceToJobMeters}
           displacementMeters={distanceToJobMeters}
