@@ -92,6 +92,29 @@ export function useMapbox(options: UseMapboxOptions = {}) {
     };
   }, [isEnabled, containerNode]);
 
+  // Keep map canvas synchronized with container dimensions whenever container resizes
+  useEffect(() => {
+    const targetElement = containerNode || containerNodeRef.current;
+    if (!targetElement || !map) return;
+
+    let rafId: number | null = null;
+    const resizeObserver = new ResizeObserver(() => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        if (mapRef.current) {
+          mapRef.current.resize();
+        }
+      });
+    });
+
+    resizeObserver.observe(targetElement);
+
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+    };
+  }, [containerNode, map]);
+
   const flyTo = useCallback((coords: [number, number], zoom = 14) => {
     if (mapRef.current) {
       mapRef.current.flyTo({

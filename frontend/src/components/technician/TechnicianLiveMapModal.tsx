@@ -222,13 +222,61 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
     job?.countryCode,
   ]);
 
-  // Smoothly resize map canvas when toggling expanded mode or opening
-  useEffect(() => {
-    if (map && isLoaded) {
-      const timer = setTimeout(() => map.resize(), 120);
-      return () => clearTimeout(timer);
+  // Fit Both Points & Road Route
+  const handleFitBounds = useCallback(() => {
+    if (!map) return;
+    const bounds = new mapboxgl.LngLatBounds();
+    let hasCoords = false;
+
+    if (roadRouteCoords && roadRouteCoords.length > 1) {
+      roadRouteCoords.forEach((pt) => bounds.extend(pt));
+      hasCoords = true;
+    } else {
+      if (myLocation) {
+        bounds.extend([myLocation.lng, myLocation.lat]);
+        hasCoords = true;
+      }
+      if (destinationCoords) {
+        bounds.extend(destinationCoords);
+        hasCoords = true;
+      }
     }
-  }, [isExpanded, isOpen, isLoaded, map]);
+
+    if (hasCoords) {
+      map.fitBounds(bounds, { padding: 45, maxZoom: 15, duration: 600 });
+    }
+  }, [map, roadRouteCoords, myLocation, destinationCoords]);
+
+  // Smoothly resize map canvas when toggling expanded mode, opening, or during modal transitions
+  useEffect(() => {
+    if (!map || !isLoaded) return;
+
+    // Immediate resize
+    map.resize();
+
+    // Multi-interval resize during and after the 300ms CSS transition to eliminate any canvas blank gap
+    const delays = [50, 100, 150, 200, 250, 300, 350, 420, 550];
+    const timers = delays.map((ms) =>
+      setTimeout(() => {
+        if (map) {
+          map.resize();
+        }
+      }, ms)
+    );
+
+    // After expansion animation completes, re-fit bounds to optimize view for the new aspect ratio
+    const fitTimer = setTimeout(() => {
+      if (map) {
+        map.resize();
+        handleFitBounds();
+      }
+    }, 320);
+
+    return () => {
+      timers.forEach(clearTimeout);
+      clearTimeout(fitTimer);
+    };
+  }, [isExpanded, isOpen, isLoaded, map, handleFitBounds]);
 
   // Center/Fly to destination on initial load
   useEffect(() => {
@@ -469,24 +517,6 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
     }
   };
 
-  // Fit Both Points
-  const handleFitBounds = () => {
-    if (!map) return;
-    const bounds = new mapboxgl.LngLatBounds();
-    let count = 0;
-    if (myLocation) {
-      bounds.extend([myLocation.lng, myLocation.lat]);
-      count++;
-    }
-    if (destinationCoords) {
-      bounds.extend(destinationCoords);
-      count++;
-    }
-    if (count > 0) {
-      map.fitBounds(bounds, { padding: 45, maxZoom: 15, duration: 800 });
-    }
-  };
-
   // Determine Current Stage
   const currentStage: 'PENDING' | 'ACCEPTED' | 'EN_ROUTE' | 'ON_SCENE' = useMemo(() => {
     if (!job) return 'PENDING';
@@ -518,11 +548,18 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/65 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
       {/* Modal Dialog Container */}
-      <div className={`w-full bg-white sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
-        isExpanded 
-          ? 'h-full sm:h-[95vh] sm:max-w-5xl' 
-          : 'max-h-[95vh] sm:max-w-2xl rounded-t-2xl'
-      }`}>
+      <div 
+        onTransitionEnd={() => {
+          if (map) {
+            map.resize();
+          }
+        }}
+        className={`w-full bg-white sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
+          isExpanded 
+            ? 'h-full sm:h-[95vh] sm:max-w-5xl' 
+            : 'max-h-[95vh] sm:max-w-2xl rounded-t-2xl'
+        }`}
+      >
         {/* Top Header Bar */}
         <div className="px-4 py-2.5 bg-white border-b border-slate-100 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
@@ -586,7 +623,7 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
         </div>
 
         {/* Mapbox Section (Decreased height, responsive for mobile) */}
-        <div className={`relative w-full bg-slate-100 ${
+        <div className={`relative w-full overflow-hidden bg-slate-100 ${
           isExpanded ? 'flex-1 min-h-[350px]' : 'h-[200px] sm:h-[230px] md:h-[250px] shrink-0'
         }`}>
           <div ref={containerRef} className="absolute inset-0 w-full h-full" />
