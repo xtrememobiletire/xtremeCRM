@@ -1,5 +1,5 @@
-import { useState, lazy, Suspense } from 'react';
-import { useSearchParams, Navigate } from 'react-router-dom';
+import { useState, lazy, Suspense, useMemo } from 'react';
+import { useSearchParams, Navigate, Link } from 'react-router-dom';
 import { Plus, RefreshCw, CheckCircle2, MapPin } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import JobFilters from '../components/pages/jobs/JobFilters';
@@ -24,6 +24,7 @@ export default function Jobs() {
   const [searchParams, setSearchParams] = useSearchParams();
   const intakePhoneParam = searchParams.get('intakePhone') || '';
 
+  const [lifecycleTab, setLifecycleTab] = useState<'ACTIVE' | 'COMPLETED'>('ACTIVE');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [urgency, setUrgency] = useState('');
@@ -35,10 +36,16 @@ export default function Jobs() {
   const [assignJob, setAssignJob] = useState<any>(null);
   const [cogsJob, setCogsJob] = useState<any>(null);
 
+  const effectiveStatus = isAccountant
+    ? 'COMPLETED'
+    : lifecycleTab === 'COMPLETED'
+    ? 'COMPLETED'
+    : (status || 'ACTIVE');
+
   const { data: jobsResponse, isLoading, refetch } = useJobs({
     page: isDriver ? 1 : page,
     limit: isDriver ? 50 : 20,
-    status: isAccountant ? 'COMPLETED' : (status || undefined),
+    status: effectiveStatus,
     urgency: urgency || undefined,
     search: search || undefined,
     driverId: isDriver ? user?.id : undefined,
@@ -46,19 +53,30 @@ export default function Jobs() {
     isFleetJob: 'false',
   });
 
-  if (isAccountant) {
-    return <Navigate to="/accounting" replace />;
-  }
-
   const rawJobs = jobsResponse?.data || [];
   // Strict retail roadside isolation: never display commercial fleets, trial runs, or unverified bookings on /jobs
-  const retailJobs = rawJobs.filter(
-    (j: any) => !j.fleetId && !j.isTestService && j.status !== 'UNVERIFIED_PUBLIC'
-  );
+  // Also enforce tab isolation: never show completed in ACTIVE tab, never show active in COMPLETED tab
+  const retailJobs = rawJobs.filter((j: any) => {
+    if (j.fleetId || j.isTestService || j.status === 'UNVERIFIED_PUBLIC') return false;
+    if (!isDriver) {
+      if (lifecycleTab === 'ACTIVE' && j.status === 'COMPLETED') return false;
+      if (lifecycleTab === 'COMPLETED' && j.status !== 'COMPLETED') return false;
+    }
+    return true;
+  });
   // Strict driver isolation: only show jobs where driverId matches current user ID
   const jobs = isDriver && user?.id
     ? retailJobs.filter((j: any) => j.driverId === user.id || j.driver?.id === user.id)
     : retailJobs;
+
+  const liveSelectedJob = useMemo(
+    () => jobs.find((j: any) => j.id === selectedJob?.id) || selectedJob,
+    [jobs, selectedJob]
+  );
+
+  if (isAccountant) {
+    return <Navigate to="/accounting" replace />;
+  }
 
   // For driver, only show fresh/active orders (not completed, not cancelled)
   const activeJobs = isDriver
@@ -109,13 +127,13 @@ export default function Jobs() {
         subtitle={pageSubtitle}
         actions={
           <div className="flex items-center gap-2">
-            <a
-              href="/jobs/map"
+            <Link
+              to="/jobs/map"
               className="btn-secondary text-xs flex items-center gap-1.5"
             >
               <MapPin size={14} className="text-red-600" />
               <span>Map View</span>
-            </a>
+            </Link>
             <button
               type="button"
               onClick={() => refetch()}
@@ -207,6 +225,8 @@ export default function Jobs() {
               onStatusChange={(v) => { setStatus(v); setPage(1); }}
               urgency={urgency}
               onUrgencyChange={(v) => { setUrgency(v); setPage(1); }}
+              lifecycleTab={lifecycleTab}
+              onLifecycleTabChange={(tab) => { setLifecycleTab(tab); setPage(1); }}
             />
           )}
 
@@ -242,7 +262,7 @@ export default function Jobs() {
           <JobDetailModal
             isOpen={!!selectedJob}
             onClose={() => setSelectedJob(null)}
-            job={selectedJob}
+            job={liveSelectedJob}
           />
         </Suspense>
       )}

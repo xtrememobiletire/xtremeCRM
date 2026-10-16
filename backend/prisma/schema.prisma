@@ -636,6 +636,7 @@ model Job {
   fleetCommissions FleetCommissionLedger[]
 
   @@index([countryCode, status])
+  @@index([countryCode, status, createdAt])
   @@index([countryCode, createdAt])
   @@index([status, createdAt])
   @@index([driverId, status])
@@ -794,12 +795,14 @@ model Lead {
   updatedAt          DateTime          @updatedAt @db.Timestamptz @map("updated_at")
 
   @@index([countryCode, status])
+  @@index([countryCode, stage, status])
   @@index([stage])
   @@index([disqualifiedAtStage])
   @@index([assignedAgentId, status])
   @@index([assignedDispatcherId])
   @@index([callbackDate, status])
   @@index([batchId])
+  @@index([batchId, stage])
   @@index([uploadedById])
   @@index([assignedById])
   @@index([lastCalledByVaId])

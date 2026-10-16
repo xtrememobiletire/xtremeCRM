@@ -4,7 +4,7 @@ export const PaginationQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(100).optional().default(20),
   search: z.string().optional(),
-  status: z.enum(['PENDING', 'UNVERIFIED_PUBLIC', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
+  status: z.enum(['PENDING', 'UNVERIFIED_PUBLIC', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'ACTIVE']).optional(),
   countryCode: z.enum(['CA', 'US', 'UK', 'ALL']).optional(),
   urgency: z.preprocess(
     (val) => (val === 'NORMAL' ? 'STANDARD' : val === 'EMERGENCY' ? 'URGENT' : val),

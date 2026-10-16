@@ -41,42 +41,52 @@ export const leadController = {
         },
       });
 
-      const batchesWithMetrics = await Promise.all(
-        batches.map(async (b) => {
-          const [unassignedLeads, heldLeads, completedLeads] = await Promise.all([
-            prisma.lead.count({
-              where: {
-                batchId: b.id,
-                assignedAgentId: null,
-                status: { in: ['NEW', 'CALLED'] },
-                stage: 'VA_OUTREACH',
-              },
-            }),
-            prisma.lead.count({
-              where: {
-                batchId: b.id,
-                assignedAgentId: { not: null },
-                status: { in: ['NEW', 'CALLED'] },
-                stage: { in: ['VA_OUTREACH', 'AGENT_CALLBACK'] },
-              },
-            }),
-            prisma.lead.count({
-              where: {
-                batchId: b.id,
-                status: { in: ['CONVERTED', 'DEAD'] },
-              },
-            }),
-          ]);
+      if (batches.length === 0) {
+        return sendSuccess(res, [], 'Batches retrieved successfully');
+      }
 
-          return {
-            ...b,
-            totalLeads: b._count.leads || b.totalLeads,
-            unassignedLeads,
-            heldLeads,
-            completedLeads,
-          };
-        })
-      );
+      const batchIds = batches.map((b) => b.id);
+      const leads = await prisma.lead.findMany({
+        where: { batchId: { in: batchIds } },
+        select: {
+          batchId: true,
+          assignedAgentId: true,
+          status: true,
+          stage: true,
+        },
+      });
+
+      const metricsMap = new Map<string, { unassignedLeads: number; heldLeads: number; completedLeads: number }>();
+      for (const bId of batchIds) {
+        metricsMap.set(bId, { unassignedLeads: 0, heldLeads: 0, completedLeads: 0 });
+      }
+
+      for (const lead of leads) {
+        if (!lead.batchId) continue;
+        const m = metricsMap.get(lead.batchId);
+        if (!m) continue;
+
+        if (!lead.assignedAgentId && ['NEW', 'CALLED'].includes(lead.status) && lead.stage === 'VA_OUTREACH') {
+          m.unassignedLeads++;
+        }
+        if (lead.assignedAgentId && ['NEW', 'CALLED'].includes(lead.status) && ['VA_OUTREACH', 'AGENT_CALLBACK'].includes(lead.stage)) {
+          m.heldLeads++;
+        }
+        if (['CONVERTED', 'DEAD'].includes(lead.status)) {
+          m.completedLeads++;
+        }
+      }
+
+      const batchesWithMetrics = batches.map((b) => {
+        const m = metricsMap.get(b.id) || { unassignedLeads: 0, heldLeads: 0, completedLeads: 0 };
+        return {
+          ...b,
+          totalLeads: b._count.leads || b.totalLeads,
+          unassignedLeads: m.unassignedLeads,
+          heldLeads: m.heldLeads,
+          completedLeads: m.completedLeads,
+        };
+      });
 
       return sendSuccess(res, batchesWithMetrics, 'Batches retrieved successfully');
     } catch (err: any) {

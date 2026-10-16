@@ -13,9 +13,26 @@ const opts: StrategyOptions = {
   secretOrKey: config.JWT_SECRET,
 };
 
+const userCache = new Map<string, { user: any; expiresAt: number }>();
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+export const invalidateUserAuthCache = (userId?: string) => {
+  if (userId) {
+    userCache.delete(userId);
+  } else {
+    userCache.clear();
+  }
+};
+
 passport.use(
   new JwtStrategy(opts, async (jwtPayload, done) => {
     try {
+      const now = Date.now();
+      const cached = userCache.get(jwtPayload.id);
+      if (cached && cached.expiresAt > now) {
+        return done(null, cached.user);
+      }
+
       const user = await prisma.user.findUnique({
         where: { id: jwtPayload.id },
         select: {
@@ -32,8 +49,10 @@ passport.use(
       });
 
       if (user && !user.deletedAt) {
+        userCache.set(jwtPayload.id, { user, expiresAt: now + CACHE_TTL_MS });
         return done(null, user);
       }
+      userCache.delete(jwtPayload.id);
       return done(null, false);
     } catch (error) {
       return done(error, false);

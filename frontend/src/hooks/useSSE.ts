@@ -90,11 +90,36 @@ export function useSSE() {
       const jobId = jobPayload?.id || jobPayload?.jobId;
       if (!jobId) return;
 
+      const effectiveStatus = (jobPayload.dispositionNotes && ['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(jobPayload.dispositionNotes) && (jobPayload.status === 'IN_PROGRESS' || jobPayload.status === 'ASSIGNED'))
+        ? (jobPayload.dispositionNotes === 'ARRIVED' ? 'ON_SCENE' : (jobPayload.dispositionNotes === 'ACCEPTED' ? 'ASSIGNED' : jobPayload.dispositionNotes))
+        : jobPayload.status;
+
+      const normalizedPayload = {
+        ...jobPayload,
+        ...(effectiveStatus ? { status: effectiveStatus } : {}),
+        ...(jobPayload.totalCents !== undefined ? { totalAmount: jobPayload.totalCents } : {}),
+      };
+
       const updateJobItem = (job: any) =>
-        (job.id === jobId || job.jobId === jobId) ? { ...job, ...jobPayload, id: job.id || jobId } : job;
+        (job.id === jobId || job.jobId === jobId) ? { ...job, ...normalizedPayload, id: job.id || jobId } : job;
 
       // 1. General jobs list
       queryClient.setQueriesData({ queryKey: ['jobs'] }, (oldData: any) => {
+        if (!oldData) return oldData;
+        if (Array.isArray(oldData.data)) {
+          return {
+            ...oldData,
+            data: oldData.data.map(updateJobItem),
+          };
+        }
+        if (Array.isArray(oldData)) {
+          return oldData.map(updateJobItem);
+        }
+        return oldData;
+      });
+
+      // 2. Commercial Fleet jobs list
+      queryClient.setQueriesData({ queryKey: ['fleet-jobs'] }, (oldData: any) => {
         if (!oldData) return oldData;
         if (Array.isArray(oldData.data)) {
           return {

@@ -1,6 +1,8 @@
 const STATUS_CONFIGS: Record<string, { label: string; bg: string; text: string; border: string }> = {
   // Job Statuses
   PENDING: { label: 'Pending', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+  ASSIGNED: { label: 'Assigned', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+  ACCEPTED: { label: 'Accepted', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
   DISPATCHED: { label: 'Dispatched', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
   EN_ROUTE: { label: 'En Route', bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
   ON_SCENE: { label: 'On Scene', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },

@@ -18,12 +18,15 @@ const AssignDriverModal = lazy(() => import('../components/pages/jobs/AssignDriv
 const CreateFleetJobModal = lazy(() => import('../components/pages/jobs/CreateFleetJobModal'));
 import EmptyState from '../components/ui/EmptyState';
 import Pagination from '../components/common/Pagination';
+import StatusBadge from '../components/ui/StatusBadge';
+import JobLifecycleTabs from '../components/common/JobLifecycleTabs';
 import { jobService } from '../services/jobService';
 import { fleetService } from '../services/fleetService';
 import { useTenant } from '../context/TenantContext';
 
 export default function FleetJobs() {
   const { country: tenantCountry } = useTenant();
+  const [lifecycleTab, setLifecycleTab] = useState<'ACTIVE' | 'COMPLETED'>('ACTIVE');
   const [selectedCountry, setSelectedCountry] = useState<string>(tenantCountry || 'CA');
   const [selectedFleetId, setSelectedFleetId] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -34,18 +37,22 @@ export default function FleetJobs() {
   const [assignJob, setAssignJob] = useState<any>(null);
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
 
+  const effectiveStatus = lifecycleTab === 'COMPLETED'
+    ? 'COMPLETED'
+    : (statusFilter === 'ALL' ? 'ACTIVE' : statusFilter);
+
   // 1. Fetch Fleet Work Orders
   const { 
     data: jobsResponse, 
     isLoading, 
     refetch 
   } = useQuery({
-    queryKey: ['fleet-jobs', selectedCountry, selectedFleetId, statusFilter, search, page],
+    queryKey: ['fleet-jobs', selectedCountry, selectedFleetId, effectiveStatus, search, page],
     queryFn: () => jobService.getJobs({
       page,
       limit: 25,
       countryCode: selectedCountry,
-      status: statusFilter === 'ALL' ? undefined : statusFilter,
+      status: effectiveStatus,
       search: search || undefined,
       fleetId: selectedFleetId || undefined,
       isFleetJob: 'true' as any,
@@ -62,19 +69,52 @@ export default function FleetJobs() {
   });
 
   const rawJobs = (jobsResponse?.data || []).filter(
-    (j: any) => Boolean(j.fleetId || j.isTestService)
+    (j: any) => {
+      if (!j.fleetId && !j.isTestService) return false;
+      if (lifecycleTab === 'ACTIVE' && j.status === 'COMPLETED') return false;
+      if (lifecycleTab === 'COMPLETED' && j.status !== 'COMPLETED') return false;
+      return true;
+    }
   );
   const meta = jobsResponse?.pagination || { page: 1, totalPages: 1, total: 0 };
 
+  const liveSelectedJob = useMemo(
+    () => rawJobs.find((j: any) => j.id === selectedJob?.id) || selectedJob,
+    [rawJobs, selectedJob]
+  );
+
+  // Dedicated regional summary counters across all fleet jobs (independent of current tab filter)
+  const { data: summaryResponse } = useQuery({
+    queryKey: ['fleet-jobs-summary', selectedCountry, selectedFleetId],
+    queryFn: () => jobService.getJobs({
+      page: 1,
+      limit: 100,
+      countryCode: selectedCountry,
+      fleetId: selectedFleetId || undefined,
+      isFleetJob: 'true' as any,
+    } as any),
+    staleTime: 30000,
+  });
+
+  const summaryJobs = useMemo(() => {
+    return (summaryResponse?.data || []).filter(
+      (j: any) => Boolean(j.fleetId || j.isTestService)
+    );
+  }, [summaryResponse]);
+
   // Calculate high-level summary counters
   const counters = useMemo(() => {
+    const total = summaryResponse?.pagination?.total ?? summaryJobs.length;
+    const pending = summaryJobs.filter((j: any) => j.status === 'PENDING').length;
+    const inProgress = summaryJobs.filter((j: any) => ['ASSIGNED', 'IN_PROGRESS'].includes(j.status)).length;
+    const completed = summaryJobs.filter((j: any) => j.status === 'COMPLETED').length;
     return {
-      total: meta.total,
-      pending: rawJobs.filter((j: any) => j.status === 'PENDING').length,
-      inProgress: rawJobs.filter((j: any) => ['ASSIGNED', 'IN_PROGRESS'].includes(j.status)).length,
-      completed: rawJobs.filter((j: any) => j.status === 'COMPLETED').length,
+      total,
+      pending,
+      inProgress,
+      completed,
     };
-  }, [rawJobs, meta.total]);
+  }, [summaryJobs, summaryResponse]);
 
   return (
     <div className="space-y-6">
@@ -160,25 +200,54 @@ export default function FleetJobs() {
 
       {/* Filter and Search Controls */}
       <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Status Pills */}
-          {(['ALL', 'PENDING', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED'] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => {
-                setStatusFilter(s);
+        <div className="flex flex-wrap items-center gap-3">
+          <JobLifecycleTabs
+            activeTab={lifecycleTab}
+            onChangeTab={(tab) => {
+              setLifecycleTab(tab);
+              setStatusFilter(tab === 'COMPLETED' ? 'COMPLETED' : 'ALL');
+              setPage(1);
+            }}
+            activeLabel="Active Fleet Jobs"
+            completedLabel="Completed"
+          />
+
+          {/* Status Dropdown */}
+          <div className="relative min-w-[170px]">
+            <select
+              value={lifecycleTab === 'COMPLETED' ? 'COMPLETED' : (statusFilter === 'ACTIVE' ? 'ALL' : statusFilter)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'COMPLETED') {
+                  setLifecycleTab('COMPLETED');
+                  setStatusFilter('COMPLETED');
+                } else if (val === 'ALL') {
+                  setLifecycleTab('ACTIVE');
+                  setStatusFilter('ALL');
+                } else {
+                  setLifecycleTab('ACTIVE');
+                  setStatusFilter(val);
+                }
                 setPage(1);
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                statusFilter === s
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
+              className="w-full text-xs py-1.5 px-3 rounded-lg border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500/20 cursor-pointer"
             >
-              {s.replace('_', ' ')}
-            </button>
-          ))}
+              {lifecycleTab === 'COMPLETED' ? (
+                <>
+                  <option value="COMPLETED">Completed Orders</option>
+                  <option value="ALL">← Back to Active Orders</option>
+                </>
+              ) : (
+                <>
+                  <option value="ALL">All Active Statuses</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="ASSIGNED">Assigned</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="COMPLETED">Completed Orders →</option>
+                </>
+              )}
+            </select>
+          </div>
 
           {/* Fleet Account Dropdown */}
           <div className="relative min-w-[200px]">
@@ -333,19 +402,7 @@ export default function FleetJobs() {
                         )}
                       </td>
                       <td className="py-3.5 px-4">
-                        <span
-                          className={`inline-block px-2.5 py-1 rounded-full font-bold text-[10px] tracking-wide ${
-                            job.status === 'COMPLETED'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : job.status === 'IN_PROGRESS'
-                              ? 'bg-blue-100 text-blue-800'
-                              : job.status === 'ASSIGNED'
-                              ? 'bg-purple-100 text-purple-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {job.status}
-                        </span>
+                        <StatusBadge status={job.status} />
                       </td>
                       <td className="py-3.5 px-4 text-right space-x-1.5">
                         {!job.driverId && job.status === 'PENDING' && (
@@ -392,7 +449,7 @@ export default function FleetJobs() {
           <FleetJobDetailModal
             isOpen={Boolean(selectedJob)}
             onClose={() => setSelectedJob(null)}
-            job={selectedJob}
+            job={liveSelectedJob}
           />
         </Suspense>
       )}

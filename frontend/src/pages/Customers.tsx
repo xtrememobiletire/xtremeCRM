@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Users, Plus, Search } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import CustomerTable from '../components/customers/CustomerTable';
@@ -24,6 +25,11 @@ export default function Customers() {
   const customers = customerResponse?.data || [];
   const pagination = customerResponse?.pagination || { total: 0, totalPages: 1, page: 1 };
 
+  const activeCustomer = useMemo(
+    () => (selectedCustomer ? customers.find((c: any) => c.id === selectedCustomer.id) || selectedCustomer : null),
+    [customers, selectedCustomer]
+  );
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -31,13 +37,13 @@ export default function Customers() {
         subtitle="Manage personal vehicle owners and commercial roadside accounts"
         actions={
           <div className="flex items-center gap-2">
-            <a
-              href="/customers/map"
+            <Link
+              to="/customers/map"
               className="btn-secondary text-xs flex items-center gap-1.5"
             >
               <Users size={14} className="text-emerald-600" />
               <span>Map View</span>
-            </a>
+            </Link>
             <button
               type="button"
               onClick={() => setIsAddOpen(true)}
@@ -99,8 +105,8 @@ export default function Customers() {
       <AddCustomerModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
       
       <CustomerDetailModal
-        customer={selectedCustomer}
-        isOpen={Boolean(selectedCustomer)}
+        customer={activeCustomer}
+        isOpen={Boolean(activeCustomer)}
         onClose={() => setSelectedCustomer(null)}
       />
     </div>

@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import { jobService } from '../../services/jobService';
+import { fleetService } from '../../services/fleetService';
+import { customerService } from '../../services/customerService';
 import { 
   BarChart3, 
   Wrench, 
@@ -158,6 +160,31 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         queryFn: () => jobService.getJobs({ page: 1, limit: 20, isFleetJob: 'false', countryCode: 'ALL' }),
         staleTime: 60000,
       });
+    } else if (path === '/fleet-jobs') {
+      queryClient.prefetchQuery({
+        queryKey: ['fleet-jobs', country || 'CA', '', 'ACTIVE', '', 1],
+        queryFn: () =>
+          jobService.getJobs({
+            page: 1,
+            limit: 25,
+            countryCode: country || 'CA',
+            status: 'ACTIVE',
+            isFleetJob: 'true' as any,
+          }),
+        staleTime: 60000,
+      });
+    } else if (path === '/fleets') {
+      queryClient.prefetchQuery({
+        queryKey: ['fleets', country || 'CA', 1, '', 'ALL'],
+        queryFn: () => fleetService.getFleets({ countryCode: country || 'CA' }),
+        staleTime: 60000,
+      });
+    } else if (path === '/customers') {
+      queryClient.prefetchQuery({
+        queryKey: ['customers', country || 'CA', 1, ''],
+        queryFn: () => customerService.getCustomers({ page: 1, limit: 25, countryCode: country || 'CA' }),
+        staleTime: 60000,
+      });
     } else if (path === '/bookings') {
       queryClient.prefetchQuery({
         queryKey: ['bookings-queue', country, '', 1],
@@ -173,7 +200,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     }
   };
 
-  // Pre-warm top 3 role routes in background when browser is idle
+  // Pre-warm all role routes in background when browser is idle
   useEffect(() => {
     const idleCallback =
       typeof window !== 'undefined' && 'requestIdleCallback' in window
@@ -181,7 +208,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         : (cb: any) => setTimeout(cb, 1200);
 
     const handle = idleCallback(() => {
-      navItems.slice(0, 3).forEach((item) => {
+      navItems.forEach((item) => {
         routeChunkLoaders[item.path]?.();
       });
     });

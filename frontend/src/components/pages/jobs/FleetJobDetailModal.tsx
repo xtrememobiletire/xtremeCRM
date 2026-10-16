@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Building2, 
   Truck, 
@@ -63,6 +63,19 @@ export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDe
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notesInput, setNotesInput] = useState<string>(job?.problemNotes || job?.notes || '');
 
+  // Keep modal state in sync with incoming reactive job updates
+  useEffect(() => {
+    if (job) {
+      if (!isEditingUpfront) {
+        setUpfrontDollars(job.upfrontAmountCents ? (job.upfrontAmountCents / 100).toFixed(2) : '0.00');
+      }
+      setStatus(job.status || 'PENDING');
+      if (!isEditingNotes) {
+        setNotesInput(job.problemNotes || job.notes || '');
+      }
+    }
+  }, [job, isEditingUpfront, isEditingNotes]);
+
   if (!job) return null;
 
   const totalCents = job.totalCents || job.totalAmount || 0;
@@ -98,6 +111,20 @@ export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDe
         });
       }
 
+      // Synchronously patch cache for immediate UI feedback
+      queryClient.setQueriesData({ queryKey: ['fleet-jobs'] }, (old: any) => {
+        if (!old) return old;
+        if (Array.isArray(old)) return old.map((j: any) => j.id === job.id ? { ...j, upfrontAmountCents: cents } : j);
+        if (old.data && Array.isArray(old.data)) {
+          return {
+            ...old,
+            data: old.data.map((j: any) => j.id === job.id ? { ...j, upfrontAmountCents: cents } : j),
+          };
+        }
+        return old;
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ['fleet-jobs'] });
       await queryClient.invalidateQueries({ queryKey: ['jobs'] });
       await queryClient.invalidateQueries({ queryKey: ['job', job.id] });
       setIsEditingUpfront(false);
@@ -122,6 +149,7 @@ export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDe
         })),
       });
 
+      await queryClient.invalidateQueries({ queryKey: ['fleet-jobs'] });
       await queryClient.invalidateQueries({ queryKey: ['jobs'] });
       await queryClient.invalidateQueries({ queryKey: ['job', job.id] });
       setShowEditServicesModal(false);
@@ -139,6 +167,7 @@ export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDe
       await jobService.updateJobStatus(job.id, {
         problemNotes: notesInput,
       });
+      await queryClient.invalidateQueries({ queryKey: ['fleet-jobs'] });
       await queryClient.invalidateQueries({ queryKey: ['jobs'] });
       await queryClient.invalidateQueries({ queryKey: ['job', job.id] });
       setIsEditingNotes(false);
@@ -445,10 +474,18 @@ export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDe
                 {isManagement && (
                   <button
                     type="button"
-                    onClick={() => setIsEditingUpfront(!isEditingUpfront)}
+                    onClick={() => {
+                      if (!isEditingUpfront && (job.upfrontAmountCents || 0) > 0) {
+                        const confirmed = window.confirm(
+                          `An advance deposit of ${formatCurrency(job.upfrontAmountCents / 100, currencySymbol)} is currently recorded. Do you want to unlock and edit the deposit?`
+                        );
+                        if (!confirmed) return;
+                      }
+                      setIsEditingUpfront(!isEditingUpfront);
+                    }}
                     className="text-[10px] text-blue-600 hover:underline font-bold cursor-pointer"
                   >
-                    {isEditingUpfront ? 'Cancel' : 'Edit'}
+                    {isEditingUpfront ? 'Cancel' : (job.upfrontAmountCents || 0) > 0 ? 'Override' : 'Edit'}
                   </button>
                 )}
               </div>

@@ -13,11 +13,12 @@ import { useTenant } from '../../context/TenantContext';
 interface AddFleetModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: (createdFleet: any) => void;
 }
 
 type TabType = 'details' | 'vehicles' | 'drivers';
 
-export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
+export default function AddFleetModal({ isOpen, onClose, onSuccess }: AddFleetModalProps) {
   const { country: tenantCountry } = useTenant();
   const createFleetMutation = useCreateFleet();
 
@@ -122,7 +123,7 @@ export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
     }
 
     try {
-      await createFleetMutation.mutateAsync({
+      const createdFleet = await createFleetMutation.mutateAsync({
         fleetCode: formData.customFleetCode.trim() || undefined,
         name: cleanCompanyName,
         companyName: cleanCompanyName,
@@ -141,6 +142,11 @@ export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
         discountPercent: formData.discountPercent || 0,
         paymentTerms: formData.paymentTerms || 'NET_30',
         creditLimitCents: formData.creditLimit ? Number(formData.creditLimit) * 100 : undefined,
+        contractTermYears: formData.contractTermYears ? Number(formData.contractTermYears) : undefined,
+        contractStartDate: formData.contractStartDate || undefined,
+        contractEndDate: formData.contractEndDate || undefined,
+        governingProvince: formData.governingProvince?.trim() || undefined,
+        billingContactName: formData.billingContactName?.trim() || undefined,
         countryCode: activeCountry,
         vehicles,
         drivers,
@@ -148,6 +154,9 @@ export default function AddFleetModal({ isOpen, onClose }: AddFleetModalProps) {
 
       toast.success(`Commercial Fleet "${cleanCompanyName}" registered with ${vehicles.length} vehicles and ${drivers.length} drivers`);
       onClose();
+      if (onSuccess && createdFleet) {
+        onSuccess(createdFleet);
+      }
     } catch (err: any) {
       const fieldErrors = err.response?.data?.errors;
       let errorMsg = err.response?.data?.message || err.response?.data?.error || 'Failed to create fleet account';

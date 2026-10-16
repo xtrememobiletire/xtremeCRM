@@ -41,10 +41,12 @@ export const customerController = {
           take: limit,
           orderBy: { createdAt: 'desc' },
           include: {
+            _count: { select: { jobs: true } },
             vehicles: {
               orderBy: { createdAt: 'desc' },
             },
             jobs: {
+              take: 10,
               orderBy: { createdAt: 'desc' },
               select: {
                 id: true,
@@ -70,14 +72,21 @@ export const customerController = {
         prisma.customer.count({ where }),
       ]);
 
-      const enriched = customers.map((c) => {
-        const totalSpendCents = (c.jobs || []).reduce((sum, j) => sum + (j.totalCents || 0), 0);
-        return {
-          ...c,
-          totalSpendCents,
-          jobsCount: c.jobs?.length || 0,
-        };
-      });
+      const customerIds = customers.map((c) => c.id);
+      const spendByCustomer = customerIds.length > 0
+        ? await prisma.job.groupBy({
+            by: ['customerId'],
+            where: { customerId: { in: customerIds } },
+            _sum: { totalCents: true },
+          })
+        : [];
+      const spendMap = new Map(spendByCustomer.map((s) => [s.customerId, s._sum.totalCents || 0]));
+
+      const enriched = customers.map((c) => ({
+        ...c,
+        totalSpendCents: spendMap.get(c.id) || 0,
+        jobsCount: c._count?.jobs ?? (c.jobs?.length || 0),
+      }));
 
       const paginated = createPaginatedResponse(enriched, page, limit, totalCount);
       return res.status(200).json(paginated);
@@ -288,11 +297,13 @@ export const customerController = {
           altPhone: altPhone?.trim() || null,
           email: email?.trim() || null,
           address: address?.trim() || null,
+          notes: req.body.notes?.trim() || null,
           latitude,
           longitude,
           countryCode: effectiveCountry,
           customerType: customerType || 'RETAIL',
           membershipTier: membershipTier || null,
+          membershipExpiresAt: req.body.membershipExpiresAt ? new Date(req.body.membershipExpiresAt) : null,
         },
         include: {
           vehicles: true,
@@ -317,6 +328,7 @@ export const customerController = {
         altPhone,
         email,
         address,
+        notes,
         countryCode,
         customerType,
         membershipTier,
@@ -351,10 +363,13 @@ export const customerController = {
       }
       if (altPhone !== undefined) data.altPhone = altPhone?.trim() || null;
       if (email !== undefined) data.email = email?.trim() || null;
+      if (notes !== undefined) data.notes = notes?.trim() || null;
       if (countryCode) data.countryCode = countryCode;
       if (customerType) data.customerType = customerType;
       if (membershipTier !== undefined) data.membershipTier = membershipTier;
-      if (membershipExpiresAt !== undefined) data.membershipExpiresAt = membershipExpiresAt;
+      if (membershipExpiresAt !== undefined) {
+        data.membershipExpiresAt = membershipExpiresAt ? new Date(membershipExpiresAt) : null;
+      }
 
       if (address !== undefined) {
         data.address = address?.trim() || null;

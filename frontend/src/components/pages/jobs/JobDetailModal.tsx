@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Phone, 
   Car, 
@@ -64,6 +64,19 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notesInput, setNotesInput] = useState<string>(job?.problemNotes || job?.notes || '');
 
+  // Keep modal state in sync with incoming reactive job updates
+  useEffect(() => {
+    if (job) {
+      if (!isEditingUpfront) {
+        setUpfrontDollars(job.upfrontAmountCents ? (job.upfrontAmountCents / 100).toFixed(2) : '0.00');
+      }
+      setStatus(job.status || 'PENDING');
+      if (!isEditingNotes) {
+        setNotesInput(job.problemNotes || job.notes || '');
+      }
+    }
+  }, [job, isEditingUpfront, isEditingNotes]);
+
   // Accountant expense stating local state
   const itPlatformFeeCents = country === 'CA' ? 150 : 100;
   const [materialCost, setMaterialCost] = useState<string>(
@@ -119,6 +132,19 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
           upfrontAmountCents: cents,
         });
       }
+
+      // Synchronously patch cache for instant UI feedback
+      queryClient.setQueriesData({ queryKey: ['jobs'] }, (old: any) => {
+        if (!old) return old;
+        if (Array.isArray(old)) return old.map((j: any) => j.id === job.id ? { ...j, upfrontAmountCents: cents } : j);
+        if (old.data && Array.isArray(old.data)) {
+          return {
+            ...old,
+            data: old.data.map((j: any) => j.id === job.id ? { ...j, upfrontAmountCents: cents } : j),
+          };
+        }
+        return old;
+      });
 
       await queryClient.invalidateQueries({ queryKey: ['jobs'] });
       await queryClient.invalidateQueries({ queryKey: ['job', job.id] });
@@ -466,10 +492,18 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
                 {isManagement && (
                   <button
                     type="button"
-                    onClick={() => setIsEditingUpfront(!isEditingUpfront)}
+                    onClick={() => {
+                      if (!isEditingUpfront && (job.upfrontAmountCents || 0) > 0) {
+                        const confirmed = window.confirm(
+                          `A deposit of ${formatCurrency(job.upfrontAmountCents / 100, currencySymbol)} is currently recorded. Do you want to unlock and edit the deposit?`
+                        );
+                        if (!confirmed) return;
+                      }
+                      setIsEditingUpfront(!isEditingUpfront);
+                    }}
                     className="text-[10px] text-blue-600 hover:underline font-bold cursor-pointer"
                   >
-                    {isEditingUpfront ? 'Cancel' : 'Edit'}
+                    {isEditingUpfront ? 'Cancel' : (job.upfrontAmountCents || 0) > 0 ? 'Override' : 'Edit'}
                   </button>
                 )}
               </div>

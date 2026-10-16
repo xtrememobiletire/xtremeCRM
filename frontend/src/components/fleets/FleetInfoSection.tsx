@@ -17,6 +17,11 @@ export interface FleetFormData {
   discountPercent: number;
   paymentTerms?: string;
   creditLimit?: string | number;
+  contractTermYears?: string | number;
+  contractStartDate?: string;
+  contractEndDate?: string;
+  governingProvince?: string;
+  billingContactName?: string;
 }
 
 interface FleetInfoSectionProps {
@@ -221,6 +226,7 @@ export default function FleetInfoSection({ formData, onChange, countryCode = 'CA
               className="select-base"
             >
               <option value="DUE_ON_RECEIPT">Due on Receipt (Credit Card)</option>
+              <option value="NET_7">Net 7 Days</option>
               <option value="NET_15">Net 15 Days</option>
               <option value="NET_30">Net 30 Days (Standard Invoice)</option>
               <option value="NET_60">Net 60 Days</option>
@@ -259,6 +265,62 @@ export default function FleetInfoSection({ formData, onChange, countryCode = 'CA
               value={formData.discountPercent}
               onChange={(e) => onChange('discountPercent', Number(e.target.value))}
               placeholder="0"
+              className="input-base font-mono"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Contract Term</label>
+            <select
+              value={formData.contractTermYears || ''}
+              onChange={(e) => onChange('contractTermYears', e.target.value ? Number(e.target.value) : undefined)}
+              className="select-base"
+            >
+              <option value="">Select term...</option>
+              <option value="1">1 Year</option>
+              <option value="3">3 Years</option>
+              <option value="5">5 Years</option>
+              <option value="10">10 Years</option>
+            </select>
+          </div>
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Governing Province / State</label>
+            <input
+              type="text"
+              value={formData.governingProvince || ''}
+              onChange={(e) => onChange('governingProvince', e.target.value)}
+              placeholder="e.g. Ontario"
+              className="input-base"
+            />
+          </div>
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Billing Contact Name</label>
+            <input
+              type="text"
+              value={formData.billingContactName || ''}
+              onChange={(e) => onChange('billingContactName', e.target.value)}
+              placeholder="e.g. John Doe"
+              className="input-base"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Contract Start Date</label>
+            <input
+              type="date"
+              value={formData.contractStartDate || ''}
+              onChange={(e) => onChange('contractStartDate', e.target.value)}
+              className="input-base font-mono"
+            />
+          </div>
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Contract End Date</label>
+            <input
+              type="date"
+              value={formData.contractEndDate || ''}
+              onChange={(e) => onChange('contractEndDate', e.target.value)}
               className="input-base font-mono"
             />
           </div>

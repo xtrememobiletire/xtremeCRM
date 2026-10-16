@@ -72,7 +72,11 @@ export const jobController = {
 
       const where: any = {};
       if (countryCode && countryCode !== 'ALL') where.countryCode = countryCode;
-      if (status) where.status = status;
+      if (status === 'ACTIVE') {
+        where.status = { not: 'COMPLETED' };
+      } else if (status) {
+        where.status = status;
+      }
       if (urgency) where.urgency = urgency;
       if (driverId) where.driverId = driverId;
 
@@ -135,7 +139,11 @@ export const jobController = {
         andConditions.push({
           fleetId: null,
           isTestService: false,
-          ...(status ? {} : { status: { not: 'UNVERIFIED_PUBLIC' } }),
+          ...(status === 'ACTIVE'
+            ? { status: { notIn: ['COMPLETED', 'UNVERIFIED_PUBLIC'] } }
+            : status
+            ? {}
+            : { status: { not: 'UNVERIFIED_PUBLIC' } }),
         });
       }
 
@@ -871,6 +879,11 @@ export const jobController = {
           paymentMethod: updated.paymentMethod,
           paymentStatus: updated.paymentStatus,
           totalCents: updated.totalCents,
+          upfrontAmountCents: updated.upfrontAmountCents,
+          upfrontReceiptUrl: updated.upfrontReceiptUrl,
+          problemNotes: updated.problemNotes,
+          serviceItems: (updated as any).serviceItems,
+          actorId: (req.user as any)?.id,
           updatedAt: updated.updatedAt ? updated.updatedAt.toISOString() : new Date().toISOString(),
         };
 
@@ -891,7 +904,7 @@ export const jobController = {
           io.to(`user:${updated.createdById}`).emit('job:status_updated', statusPayload);
         }
 
-        // When a job completes, notify Accountant & Dispatch for expense audit handoff (PRD FR-6.1)
+        // When a job completes, notify Accountant for expense audit handoff (PRD FR-6.1)
         if (updated.status === 'COMPLETED') {
           const completionNotification = {
             type: 'JOB_COMPLETED',
@@ -908,7 +921,6 @@ export const jobController = {
           };
 
           io.to(`accounting:${updated.countryCode}`).emit('accounting:job_completed', completionNotification);
-          io.to(`dispatch:${updated.countryCode}`).emit('notification:toast', completionNotification);
         }
       } catch {}
 
@@ -1172,13 +1184,10 @@ export const jobController = {
       });
 
       try {
-        const io = getIO();
-        io.to(`dispatch:${updated.countryCode}`).emit('job:status_updated', updated);
+        // Broadcast over SSE for zero-refetch UI sync without triggering dispatch alert chimes
         sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:status_updated', updated);
         if (updated.driverId) {
           const strippedForDriver = stripDriverFinancials(updated);
-          io.to(`driver:${updated.driverId}`).emit('job:status_updated', strippedForDriver);
-          io.to(`user:${updated.driverId}`).emit('job:status_updated', strippedForDriver);
           sseManager.broadcast(`sse:driver:${updated.driverId}`, 'job:status_updated', strippedForDriver);
         }
       } catch {}
@@ -1758,6 +1767,7 @@ export const jobController = {
           customer: true,
           fleet: true,
           driver: true,
+          serviceItems: true,
           lastDeclinedDriver: {
             select: {
               id: true,
@@ -1768,10 +1778,44 @@ export const jobController = {
         },
       });
 
-      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:status_updated', updated);
-      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:updated', updated);
+      const effectiveStatus = (updated.dispositionNotes && ['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(updated.dispositionNotes) && (updated.status === 'IN_PROGRESS' || updated.status === 'ASSIGNED'))
+        ? (updated.dispositionNotes === 'ARRIVED' ? 'ON_SCENE' : (updated.dispositionNotes === 'ACCEPTED' ? 'ASSIGNED' : updated.dispositionNotes))
+        : updated.status;
 
-      return sendSuccess(res, { status: updated.status, externalDispatchStatus: updated.externalDispatchStatus }, 'Dispatch status updated successfully');
+      const enrichedJob = {
+        ...updated,
+        jobId: updated.id,
+        jobNumber: updated.jobCode,
+        totalAmount: updated.totalCents,
+        status: effectiveStatus,
+        rawStatus: updated.status,
+        technicianStatus: effectiveStatus,
+        driverName: updated.externalCompanyName || (updated as any).driver?.fullName || 'External Contractor',
+      };
+
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:status_updated', enrichedJob);
+
+      try {
+        const io = getIO();
+        if (action === 'DECLINE' || action === 'COMPLETE') {
+          io.to(`dispatch:${updated.countryCode}`).emit('job:status_updated', enrichedJob);
+        }
+        if (action === 'COMPLETE') {
+          io.to(`accounting:${updated.countryCode}`).emit('accounting:job_completed', {
+            type: 'JOB_COMPLETED',
+            title: 'Job Completed — Audit Ready',
+            jobId: updated.id,
+            jobCode: updated.jobCode,
+            driverName: enrichedJob.driverName,
+            totalCents: updated.totalCents,
+            paymentMethod: updated.paymentMethod,
+            timestamp: new Date().toISOString(),
+            message: `Job #${updated.jobCode} completed by ${enrichedJob.driverName}. Ready for expense audit.`,
+          });
+        }
+      } catch {}
+
+      return sendSuccess(res, { status: effectiveStatus, rawStatus: updated.status, externalDispatchStatus: updated.externalDispatchStatus }, 'Dispatch status updated successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }

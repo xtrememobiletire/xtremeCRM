@@ -6,7 +6,7 @@ import { logger } from '../utils/logger.js';
 
 const connectionString = config.DATABASE_URL;
 
-const pool = new pg.Pool({
+export const pool = new pg.Pool({
   connectionString,
   max: 25,
   connectionTimeoutMillis: 15000,

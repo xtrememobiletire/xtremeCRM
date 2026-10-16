@@ -109,31 +109,33 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     } catch {}
   };
 
-  const addNotification = (item: Omit<AppNotification, 'id' | 'read'>) => {
+  const addNotification = (item: Omit<AppNotification, 'id' | 'read'> & { silent?: boolean }) => {
     const newNotification: AppNotification = {
       ...item,
       id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       read: false,
     };
     setNotifications((prev) => [newNotification, ...prev.slice(0, 49)]); // keep last 50
-    playChime();
-    toast.info(newNotification.title, {
-      description: newNotification.message,
-      action: newNotification.jobId
-        ? {
-            label: 'Open Ticket',
-            onClick: () => {
-              if (newNotification.type === 'CHAT_MESSAGE') {
-                setActiveChatJob({
-                  id: newNotification.jobId!,
-                  jobCode: newNotification.jobCode,
-                  driverName: newNotification.driverName,
-                });
-              }
-            },
-          }
-        : undefined,
-    });
+    if (!item.silent) {
+      playChime();
+      toast.info(newNotification.title, {
+        description: newNotification.message,
+        action: newNotification.jobId
+          ? {
+              label: 'Open Ticket',
+              onClick: () => {
+                if (newNotification.type === 'CHAT_MESSAGE') {
+                  setActiveChatJob({
+                    id: newNotification.jobId!,
+                    jobCode: newNotification.jobCode,
+                    driverName: newNotification.driverName,
+                  });
+                }
+              },
+            }
+          : undefined,
+      });
+    }
   };
 
   useEffect(() => {
@@ -240,9 +242,16 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     // Real-Time Job Status Alerts (data cache patched via useSSE)
     s.on('job:status_updated', (data: any) => {
-      // Suppress generic status alerts for drivers (drivers only get assigned notices & direct chat)
-      const isDriver = userRef.current?.role === 'DRIVER';
-      if (!isDriver && data?.jobCode && data?.status) {
+      // Suppress status alerts if current user triggered this action (prevent self-spam)
+      const myId = userRef.current?.id;
+      if (data?.actorId && myId && data.actorId === myId) {
+        return;
+      }
+
+      // Suppress generic status alerts for non-ops roles (drivers only get assigned notices & direct chat; accountants get accounting:job_completed)
+      const role = userRef.current?.role;
+      const isOps = ['DISPATCHER', 'ADMIN', 'GENERAL_MANAGER', 'DEVELOPER'].includes(role || '');
+      if (isOps && data?.jobCode && data?.status) {
         addNotification({
           type: 'STATUS_UPDATED',
           title: `Status: #${data.jobCode}`,
