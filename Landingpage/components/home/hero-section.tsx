@@ -21,7 +21,7 @@ export default function HeroSection({
   ctaHref = "#booking",
 }: HeroSectionProps) {
   return (
-    <main className="relative max-w-4xl mx-auto px-4 sm:px-6 pt-12 sm:pt-20 lg:pt-24 pb-20 sm:pb-28 text-center my-auto flex flex-col items-center">
+    <main className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 pt-12 sm:pt-20 lg:pt-24 pb-20 sm:pb-28 text-center my-auto flex flex-col items-center">
       {/* "Now Available +" Pill Badge */}
       <HeroBadge text={badgeText} href={badgeHref} />
 

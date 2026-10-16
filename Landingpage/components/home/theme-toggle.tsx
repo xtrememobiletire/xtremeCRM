@@ -1,14 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function ThemeToggle() {
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("theme");
+      if (saved === "light") {
+        setIsDark(false);
+        document.documentElement.classList.remove("dark");
+      } else if (saved === "dark") {
+        setIsDark(true);
+        document.documentElement.classList.add("dark");
+      }
+    } catch {}
+  }, []);
 
   const toggleTheme = () => {
-    setIsDark(!isDark);
+    const next = !isDark;
+    setIsDark(next);
+    try {
+      sessionStorage.setItem("theme", next ? "dark" : "light");
+    } catch {}
     if (typeof document !== "undefined") {
-      document.documentElement.classList.toggle("dark");
+      document.documentElement.classList.toggle("dark", next);
     }
   };
 

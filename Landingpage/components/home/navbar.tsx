@@ -139,48 +139,70 @@ export default function Navbar({
             onAnimationComplete={() => setRevealed(true)}
             className="relative mx-auto -top-[2px] isolate [transform:translateZ(0)] [backface-visibility:hidden]"
           >
-            {/* Top 3px Continuous Black Bleed Strip (Covers any subpixel rounding gap) */}
-            <div className="absolute -top-[2px] left-0 right-0 h-[4px] bg-[#050811] pointer-events-none z-10" />
+            {/* Top 3px Continuous Bleed Strip (Covers any subpixel rounding gap) */}
+            <div className="absolute -top-[2px] left-0 right-0 h-[4px] bg-[#050811] dark:bg-white/[0.08] pointer-events-none z-10" />
 
-            {/* Left Inverted Wing (Fillet) with G2 smooth curvature */}
+            {/* Left Inverted Wing (Fillet) with smooth curvature */}
             <div
-              className="hidden lg:block absolute -top-[2px] -left-[40px] w-[42px] h-[44px] pointer-events-none z-10"
+              className="hidden lg:block absolute -top-[2px] -left-[30px] w-[32px] h-[32px] pointer-events-none z-10 dark:backdrop-blur-2xl"
             >
               <svg
-                className="w-full h-full fill-[#050811] text-[#050811]"
-                viewBox="0 -2 42 44"
+                className="w-full h-full text-[#050811]"
+                viewBox="0 -2 32 34"
                 preserveAspectRatio="none"
                 shapeRendering="geometricPrecision"
               >
-                <path d="M42,-2 L0,-2 L0,0 C26,0 42,16 42,42 Z" />
+                <path
+                  d="M0,-2 L32,-2 L32,30 L30,30 C30,12 18,0 0,0 Z"
+                  className="fill-[#050811] dark:fill-white/[0.08]"
+                />
+                <path
+                  d="M30,30 C30,12 18,0 0,0"
+                  fill="none"
+                  strokeWidth="1"
+                  className="hidden dark:block stroke-white/15"
+                />
               </svg>
             </div>
 
-            {/* Right Inverted Wing (Fillet) with G2 smooth curvature */}
+            {/* Right Inverted Wing (Fillet) with smooth curvature */}
             <div
-              className="hidden lg:block absolute -top-[2px] -right-[40px] w-[42px] h-[44px] pointer-events-none z-10"
+              className="hidden lg:block absolute -top-[2px] -right-[30px] w-[32px] h-[32px] pointer-events-none z-10 dark:backdrop-blur-2xl"
             >
               <svg
-                className="w-full h-full fill-[#050811] text-[#050811]"
-                viewBox="0 -2 42 44"
+                className="w-full h-full text-[#050811]"
+                viewBox="0 -2 32 34"
                 preserveAspectRatio="none"
                 shapeRendering="geometricPrecision"
               >
-                <path d="M0,-2 L42,-2 L42,0 C16,0 0,16 0,42 Z" />
+                <path
+                  d="M0,-2 L32,-2 L32,0 C14,0 2,12 2,30 L0,30 Z"
+                  className="fill-[#050811] dark:fill-white/[0.08]"
+                />
+                <path
+                  d="M2,30 C2,12 14,0 32,0"
+                  fill="none"
+                  strokeWidth="1"
+                  className="hidden dark:block stroke-white/15"
+                />
               </svg>
             </div>
 
             {/* 
               MAIN NAVBAR CONTAINER:
-              - In its iconic curved notch form (rounded-b-[30px] sm:rounded-b-[36px] lg:rounded-b-[42px]).
-              - Descends from above with the wings in 100% permanent geometric lockstep.
+              - Flush on top with rounded-t-none across all breakpoints
+              - Calibrated rounded-b-[26px] / lg:rounded-b-[28px] ensuring the bottom convex curve
+                never collides with the top concave fillet, permanently eliminating white slivers.
+              - In Light Mode: Solid #050811 black notch against light card.
+              - In Dark Mode: Elevated frosted glass notch (bg-white/[0.08] backdrop-blur-2xl border-white/15)
+                so the notch curves pop with luminous contrast against the dark card.
             */}
             <nav
               aria-label="Main Navigation"
-              className={`relative bg-[#050811] text-white shadow-2xl shadow-black/40 rounded-b-[30px] sm:rounded-b-[36px] lg:rounded-b-[42px] ${
+              className={`relative bg-[#050811] dark:bg-white/[0.08] dark:backdrop-blur-2xl text-white shadow-2xl shadow-black/40 dark:shadow-[0_15px_35px_rgba(0,0,0,0.5)] dark:border-b dark:border-x dark:border-white/15 rounded-t-none rounded-b-2xl sm:rounded-b-[26px] lg:rounded-b-[28px] ${
                 scrolled
-                  ? "py-2 sm:py-2.5 px-5 sm:px-7 shadow-black/60"
-                  : "py-2.5 sm:py-3 lg:py-3.5 px-6 sm:px-8"
+                  ? "py-2 sm:py-2.5 px-4 sm:px-6 shadow-black/60 dark:shadow-[0_15px_35px_rgba(0,0,0,0.7)]"
+                  : "py-2.5 sm:py-3 lg:py-3 px-5 sm:px-7"
               }`}
             >
               <div className="flex items-center justify-between gap-3">
@@ -227,7 +249,11 @@ export default function Navbar({
                     >
                       <a
                         href={item.href}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs xl:text-[13px] font-medium text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--brand-primary)]"
+                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs xl:text-[13px] font-medium transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--brand-primary)] ${
+                          desktopDropdown === item.label
+                            ? "text-white bg-white/[0.08] dark:bg-white/[0.12]"
+                            : "text-zinc-400 hover:text-white hover:bg-white/[0.06] dark:hover:bg-white/[0.1]"
+                        }`}
                       >
                         <span>{item.label}</span>
                         {item.hasDropdown && (
@@ -247,7 +273,7 @@ export default function Navbar({
                         )}
                       </a>
 
-                      {/* Desktop Dropdown Menu with Invisible Hover Bridge */}
+                      {/* Desktop Dropdown Menu with solid matching dark tone */}
                       <AnimatePresence>
                         {item.hasDropdown && item.children && desktopDropdown === item.label && (
                           <motion.div
@@ -255,19 +281,19 @@ export default function Navbar({
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 4, scale: 0.98 }}
                             transition={{ duration: 0.18, ease: "easeOut" }}
-                            className="absolute top-full left-0 mt-2 w-64 p-2 bg-[#050811] border border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl z-50 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                            className="absolute top-full left-0 mt-2 w-64 p-2 bg-[#050811] dark:bg-[#2d2022] border border-white/10 dark:border-white/15 rounded-2xl shadow-2xl shadow-black/90 dark:shadow-[0_20px_50px_rgba(0,0,0,0.95)] z-50 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
                           >
                             {item.children.map((subItem) => (
                               <a
                                 key={subItem.label}
                                 href={subItem.href}
-                                className="block p-2.5 rounded-xl hover:bg-white/[0.06] transition-colors group"
+                                className="block p-2.5 rounded-xl hover:bg-white/[0.06] dark:hover:bg-white/[0.08] transition-colors group"
                               >
                                 <div className="text-xs font-semibold text-white group-hover:text-[var(--brand-primary)] transition-colors">
                                   {subItem.label}
                                 </div>
                                 {subItem.description && (
-                                  <div className="text-[11px] text-zinc-400 mt-0.5 line-clamp-1">
+                                  <div className="text-[11px] text-zinc-400 dark:text-zinc-300 mt-0.5 line-clamp-1">
                                     {subItem.description}
                                   </div>
                                 )}
@@ -330,7 +356,7 @@ export default function Navbar({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -14, scale: 0.98 }}
                   transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute top-0 left-0 right-0 z-50 lg:hidden bg-[#050811]/98 backdrop-blur-2xl text-white rounded-b-[28px] sm:rounded-b-[32px] p-4 sm:p-5 shadow-2xl shadow-black/90 border-b border-x border-white/[0.06]"
+                  className="absolute top-0 left-0 right-0 z-50 lg:hidden bg-[#050811] dark:bg-[#2d2022] text-white rounded-t-none rounded-b-2xl sm:rounded-b-[28px] p-4 sm:p-5 shadow-2xl shadow-black/90 border-b border-x border-white/[0.06] dark:border-white/15"
                 >
                   {/* Top Row: Logo on left, Close '✕' on right */}
                   <div className="flex items-center justify-between gap-3 pb-3 border-b border-white/[0.08]">

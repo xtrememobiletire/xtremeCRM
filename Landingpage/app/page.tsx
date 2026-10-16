@@ -1,24 +1,32 @@
 import Header from "@/components/home/header";
 import HeroSection from "@/components/home/hero-section";
 import ThemeToggle from "@/components/home/theme-toggle";
+import GhostFibersBackground from "@/components/home/ghost-fibers-bg";
 
 export default function HomePage() {
   return (
     /* 
       Outer Frame Viewport:
       - bg-[#050811] matches the navbar background with 100% exact hex equality.
-      - pt-0 ensures the navbar is flush at top: 0 without any awkward top padding strip.
+      - relative and overflow-hidden guarantees the GhostFibers WebGL canvas stays strictly contained.
+      - px-2 pb-2 pt-0 ensures the navbar is flush at top: 0 on mobile while keeping a subtle frame revealing fiber glow.
     */
-    <div className="min-h-screen bg-[#050811] p-0 sm:px-3 sm:pb-3 md:px-4 md:pb-4 lg:px-5 lg:pb-5 flex flex-col justify-start transition-colors selection:bg-[var(--brand-primary)] selection:text-white">
+    <div className="relative min-h-screen bg-[#050811] p-0 sm:px-4 sm:pb-4 md:px-5 md:pb-5 lg:px-6 lg:pb-6 flex flex-col justify-start transition-colors selection:bg-[var(--brand-primary)] selection:text-white overflow-hidden">
       
       {/* 
         INNER CANVAS CONTAINER (THE MASK):
-        - Rounded on outer corners: rounded-[24px] sm:rounded-[36px] lg:rounded-[44px]
+        - Full edge-to-edge on mobile (rounded-none, mt-0)
+        - Elevated card with margins on tablet/desktop (sm:rounded-[36px] lg:rounded-[44px], sm:mt-3.5 lg:mt-4)
         - Light neutral background from globals.css
         - The black navbar notch cuts down from the top edge like an integrated mask.
-        - mt-2 sm:mt-3.5 lg:mt-4 provides subtle top breathing room framing the card.
       */}
-      <div className="relative w-full min-h-screen sm:min-h-[calc(100vh-2.5rem)] mt-2 sm:mt-3.5 lg:mt-4 bg-[var(--neutral-light)] text-[var(--neutral-dark)] rounded-[24px] sm:rounded-[36px] lg:rounded-[44px] overflow-hidden shadow-2xl flex flex-col">
+      <div className="relative z-10 w-full min-h-screen sm:min-h-[calc(100vh-2.5rem)] mt-0 sm:mt-3.5 lg:mt-4 bg-[var(--neutral-light)] text-[var(--neutral-dark)] sm:dark:border sm:dark:border-white/10 rounded-none sm:rounded-[36px] lg:rounded-[44px] overflow-hidden shadow-2xl dark:shadow-none sm:dark:shadow-[0_0_50px_-5px_rgba(255,255,255,0.07)] flex flex-col">
+        
+        {/* 
+          GHOST FIBERS BACKGROUND:
+          Placed directly inside the hero container and strictly contained by overflow-hidden.
+        */}
+        <GhostFibersBackground />
         
         {/* Soft Ambient Texture inside canvas */}
         <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
