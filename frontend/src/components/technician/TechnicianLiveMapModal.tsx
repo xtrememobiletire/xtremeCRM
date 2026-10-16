@@ -19,6 +19,7 @@ import { MAPBOX_TOKEN } from '../../constants/mapboxConfig';
 import { mapService } from '../../services/mapService';
 import { getNavigationUrl } from '../../utils/navigation';
 import { TechnicianJobDetailModal } from './TechnicianJobDetailModal';
+import { toast } from 'sonner';
 
 interface TechnicianLiveMapModalProps {
   isOpen: boolean;
@@ -536,6 +537,13 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
     address: addressText,
   });
 
+  const handleCopyPhone = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!customerPhone) return;
+    navigator.clipboard.writeText(customerPhone);
+    toast.success('Phone number copied to clipboard');
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex flex-col sm:items-center sm:justify-center p-0 sm:p-4 transition-all">
       {/* Modal Dialog Container */}
@@ -645,13 +653,15 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-bold text-slate-900">{customerName}</h3>
                   {customerPhone && (
-                    <a
-                      href={`tel:${customerPhone}`}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition"
+                    <button
+                      type="button"
+                      onClick={handleCopyPhone}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition cursor-pointer"
+                      title="Click to copy phone number"
                     >
                       <Phone className="w-3 h-3 text-slate-500" />
                       {customerPhone}
-                    </a>
+                    </button>
                   )}
                 </div>
                 <div className="flex items-start gap-1.5 text-xs text-slate-600 mt-1.5">

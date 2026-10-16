@@ -101,9 +101,9 @@ export function useUpdateJobStatus() {
                     dispositionNotes: ['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(nextStatus)
                       ? (nextStatus === 'ARRIVED' ? 'ON_SCENE' : nextStatus)
                       : j.dispositionNotes,
-                    driverDeclineReason: declineReason || j.driverDeclineReason,
-                    lastDeclinedDriverId: j.driverId || j.lastDeclinedDriverId,
-                    driverId: j.driverId,
+                    driverDeclineReason: nextStatus === 'CANCELLED' ? (declineReason || j.driverDeclineReason) : j.driverDeclineReason,
+                    lastDeclinedDriverId: nextStatus === 'CANCELLED' ? (j.driverId || j.lastDeclinedDriverId) : j.lastDeclinedDriverId,
+                    driverId: nextStatus === 'CANCELLED' ? null : j.driverId,
                   }
                 : j
             ),
@@ -122,8 +122,8 @@ export function useUpdateJobStatus() {
                     dispositionNotes: ['EN_ROUTE', 'ON_SCENE', 'ARRIVED', 'ACCEPTED'].includes(nextStatus)
                       ? (nextStatus === 'ARRIVED' ? 'ON_SCENE' : nextStatus)
                       : j.dispositionNotes,
-                    driverDeclineReason: declineReason || j.driverDeclineReason,
-                    lastDeclinedDriverId: j.driverId || j.lastDeclinedDriverId,
+                    driverDeclineReason: nextStatus === 'CANCELLED' ? (declineReason || j.driverDeclineReason) : j.driverDeclineReason,
+                    lastDeclinedDriverId: nextStatus === 'CANCELLED' ? (j.driverId || j.lastDeclinedDriverId) : j.lastDeclinedDriverId,
                     driverId: nextStatus === 'CANCELLED' ? null : j.driverId,
                   }
                 : j

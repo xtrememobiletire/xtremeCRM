@@ -10,6 +10,7 @@ import {
   User,
 } from 'lucide-react';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
+import { toast } from 'sonner';
 
 interface TechnicianJobDetailModalProps {
   isOpen: boolean;
@@ -94,6 +95,13 @@ export const TechnicianJobDetailModal: React.FC<TechnicianJobDetailModalProps> =
     job.problemNotes ||
     null;
 
+  const handleCopyPhone = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!customerPhone) return;
+    navigator.clipboard.writeText(customerPhone);
+    toast.success('Phone number copied to clipboard');
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto">
@@ -132,13 +140,15 @@ export const TechnicianJobDetailModal: React.FC<TechnicianJobDetailModalProps> =
                   <span>{customerName}</span>
                 </div>
                 {customerPhone && (
-                  <a
-                    href={`tel:${customerPhone}`}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 border border-slate-200 hover:bg-slate-200 transition"
+                  <button
+                    type="button"
+                    onClick={handleCopyPhone}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 border border-slate-200 hover:bg-slate-200 transition cursor-pointer"
+                    title="Click to copy phone number"
                   >
                     <Phone className="w-3 h-3 text-slate-500" />
-                    {customerPhone}
-                  </a>
+                    <span>{customerPhone}</span>
+                  </button>
                 )}
               </div>
               <div className="flex items-start gap-2 text-xs text-slate-600">

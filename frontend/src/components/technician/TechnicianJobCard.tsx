@@ -76,6 +76,14 @@ export default function TechnicianJobCard({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleCopyPhone = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const phone = job.customer?.phone || job.recipientPhone;
+    if (!phone) return;
+    navigator.clipboard.writeText(phone);
+    toast.success('Phone number copied to clipboard');
+  };
+
   const navUrl = getNavigationUrl({
     latitude: job.serviceLatitude,
     longitude: job.serviceLongitude,
@@ -145,13 +153,15 @@ export default function TechnicianJobCard({
           <div>
             <h3 className="text-sm font-bold text-slate-900 line-clamp-1">{customerName}</h3>
             {customerPhone && (
-              <a
-                href={`tel:${customerPhone}`}
-                className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900 mt-0.5 transition"
+              <button
+                type="button"
+                onClick={handleCopyPhone}
+                className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900 mt-0.5 transition cursor-pointer"
+                title="Click to copy phone number"
               >
                 <Phone className="w-3 h-3 text-slate-400" />
                 <span>{customerPhone}</span>
-              </a>
+              </button>
             )}
           </div>
 

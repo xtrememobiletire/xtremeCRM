@@ -123,22 +123,16 @@ export default function TechnicianPortal() {
     autoStatusEnabled: true,
   });
 
-  // Handler: Accept Job (moves job to ACTIVE and opens Live Map Pop-up)
+  // Handler: Accept Job (moves job to ACTIVE)
   const handleAcceptJob = (jobId: string) => {
     setUpdatingJobId(jobId);
-    const targetJob = pendingJobs.find((j: any) => j.id === jobId) || {
-      id: jobId,
-      status: 'ACCEPTED',
-      dispositionNotes: 'ACCEPTED',
-    };
 
     updateStatusMutation.mutate(
       { id: jobId, status: 'ACCEPTED' },
       {
         onSuccess: () => {
-          toast.success('Assignment accepted! Opening Live Map...');
+          toast.success('Assignment accepted!');
           setActiveTab('ACTIVE');
-          setMapModalJob(targetJob);
         },
         onError: (err: any) => {
           toast.error(err?.response?.data?.message || 'Failed to accept job');
