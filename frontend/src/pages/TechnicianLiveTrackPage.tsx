@@ -488,7 +488,7 @@ export const TechnicianLiveTrackPage: React.FC = () => {
         </div>
       </div>
 
-      {gpsError && (
+      {gpsError && (!myLocation || gpsError.toLowerCase().includes('denied') || gpsError.toLowerCase().includes('permission')) && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-xl text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
           <span>GPS Notice: {gpsError}. Manual stage progression is enabled below.</span>

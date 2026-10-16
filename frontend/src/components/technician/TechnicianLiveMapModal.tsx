@@ -674,7 +674,7 @@ export const TechnicianLiveMapModal: React.FC<TechnicianLiveMapModalProps> = ({
           )}
 
           {/* GPS Error Alert */}
-          {gpsError && (
+          {gpsError && (!myLocation || gpsError.toLowerCase().includes('denied') || gpsError.toLowerCase().includes('permission')) && (
             <div className="absolute bottom-2.5 left-2.5 right-2.5 z-10 bg-rose-50/95 backdrop-blur-xs p-2 rounded-lg border border-rose-200 text-xs text-rose-800 flex items-center gap-2 shadow-md">
               <Info className="w-4 h-4 text-rose-600 shrink-0" />
               <span className="truncate">GPS Warning: {gpsError}</span>

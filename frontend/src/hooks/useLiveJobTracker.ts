@@ -40,6 +40,10 @@ export function useLiveJobTracker({
     heading?: number | null;
     speed?: number | null;
   } | null>(null);
+  const myLocationRef = useRef(myLocation);
+  useEffect(() => {
+    myLocationRef.current = myLocation;
+  }, [myLocation]);
 
   const [distanceToJobMeters, setDistanceToJobMeters] = useState<number | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(() => {
@@ -78,8 +82,33 @@ export function useLiveJobTracker({
         });
         setGpsError(null);
       },
-      (err) => setGpsError(err.message),
-      { enableHighAccuracy: true, timeout: 10000 }
+      (err) => {
+        // Fallback to standard network/wifi accuracy if high accuracy times out (e.g. desktop/laptop or indoors)
+        if (err.code === err.TIMEOUT) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              setMyLocation({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                heading: pos.coords.heading,
+                speed: pos.coords.speed,
+              });
+              setGpsError(null);
+            },
+            (fallbackErr) => {
+              if (!myLocationRef.current) {
+                setGpsError(fallbackErr.message);
+              }
+            },
+            { enableHighAccuracy: false, timeout: 20000, maximumAge: 30000 }
+          );
+          return;
+        }
+        if (!myLocationRef.current) {
+          setGpsError(err.message);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 10000 }
     );
   }, []);
 
@@ -197,13 +226,48 @@ export function useLiveJobTracker({
         }
       },
       (error) => {
-        setGpsError(error.message);
-        setIsTracking(false);
+        // Timeout expired is normal during idle/stationary intervals or weak satellite reception
+        if (error.code === error.TIMEOUT) {
+          // If we already have a valid position, keep tracking and do not alarm user
+          if (myLocationRef.current) {
+            return;
+          }
+          // Try acquiring with standard accuracy as fallback
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              setMyLocation({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                heading: pos.coords.heading,
+                speed: pos.coords.speed,
+              });
+              setGpsError(null);
+            },
+            () => {},
+            { enableHighAccuracy: false, timeout: 15000, maximumAge: 30000 }
+          );
+          return;
+        }
+
+        if (error.code === error.PERMISSION_DENIED) {
+          setGpsError('Location permission denied. Please allow GPS access in browser settings.');
+          setIsTracking(false);
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          if (!myLocationRef.current) {
+            setGpsError('GPS signal unavailable. Searching for satellite or network fix...');
+            setIsTracking(false);
+          }
+        } else {
+          if (!myLocationRef.current) {
+            setGpsError(error.message);
+            setIsTracking(false);
+          }
+        }
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 3000,
-        timeout: 15000,
+        maximumAge: 10000,
+        timeout: 30000,
       }
     );
 
