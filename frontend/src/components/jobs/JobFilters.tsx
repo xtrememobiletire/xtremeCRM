@@ -71,11 +71,9 @@ export default function JobFilters({
                 onChange={(e) => onJobCategoryChange(e.target.value)}
                 className="select-base py-1.5 text-xs font-semibold cursor-pointer w-full bg-slate-50 border-slate-300 text-slate-800"
               >
-                <option value="ALL">All Job Types</option>
+                <option value="ALL">All Roadside Orders</option>
                 <option value="RETAIL">Retail Roadside</option>
-                <option value="MEMBER">👑 VIP Members</option>
-                <option value="FLEET">🏢 Fleet Accounts</option>
-                <option value="TRIAL">⚡ Trial Runs</option>
+                <option value="MEMBER">VIP Members</option>
               </select>
             </div>
           )}

@@ -52,13 +52,15 @@ export default function Jobs() {
     driverId: isDriver ? user?.id : undefined,
     countryCode: selectedCountry,
     jobCategory: jobCategory,
+    isFleetJob: 'false',
   });
 
   const rawJobs = jobsResponse?.data || [];
-  // Universal job visibility: shows all jobs matching category, excluding unverified public bookings
+  // Strict non-fleet job visibility for /jobs: fleet jobs belong exclusively to /fleet-jobs
   // Tab isolation: never show completed in ACTIVE tab, never show active in COMPLETED tab
   const visibleJobs = rawJobs.filter((j: any) => {
     if (j.status === 'UNVERIFIED_PUBLIC') return false;
+    if (j.fleetId || j.isFleetJob || j.fleet || j.isTestService) return false;
     if (!isDriver) {
       if (lifecycleTab === 'ACTIVE' && j.status === 'COMPLETED') return false;
       if (lifecycleTab === 'COMPLETED' && j.status !== 'COMPLETED') return false;

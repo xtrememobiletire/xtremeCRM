@@ -131,8 +131,31 @@ export const jobController = {
       if (source) where.source = source;
 
       const andConditions: any[] = [];
-      const jobCategory = req.query.jobCategory as string; // 'ALL' | 'RETAIL' | 'MEMBER' | 'FLEET' | 'TRIAL'
+      const jobCategory = req.query.jobCategory as string;
 
+      // 1. Fleet vs Non-Fleet isolation (strict separation between /fleet-jobs and /jobs)
+      if (isFleetJob === 'false' || isFleetJob === '0') {
+        andConditions.push({
+          fleetId: null,
+          isTestService: false,
+        });
+      } else if (isFleetJob === 'true' || isFleetJob === '1') {
+        andConditions.push({
+          OR: [
+            { fleetId: { not: null } },
+            { isTestService: true },
+          ],
+        });
+      }
+
+      // 2. Active / Unverified status isolation
+      if (status === 'ACTIVE') {
+        andConditions.push({ status: { notIn: ['COMPLETED', 'UNVERIFIED_PUBLIC'] } });
+      } else if (!status) {
+        andConditions.push({ status: { not: 'UNVERIFIED_PUBLIC' } });
+      }
+
+      // 3. Job Category refinement
       if (jobCategory === 'MEMBER') {
         andConditions.push({
           OR: [
@@ -157,30 +180,6 @@ export const jobController = {
       } else if (jobCategory === 'TRIAL') {
         andConditions.push({
           isTestService: true,
-        });
-      } else if (jobCategory === 'ALL') {
-        // Universal view across all job types
-        if (status === 'ACTIVE') {
-          andConditions.push({ status: { notIn: ['COMPLETED', 'UNVERIFIED_PUBLIC'] } });
-        } else if (!status) {
-          andConditions.push({ status: { not: 'UNVERIFIED_PUBLIC' } });
-        }
-      } else if (isFleetJob === 'true' || isFleetJob === '1') {
-        andConditions.push({
-          OR: [
-            { fleetId: { not: null } },
-            { isTestService: true },
-          ],
-        });
-      } else if (isFleetJob === 'false' || isFleetJob === '0') {
-        andConditions.push({
-          fleetId: null,
-          isTestService: false,
-          ...(status === 'ACTIVE'
-            ? { status: { notIn: ['COMPLETED', 'UNVERIFIED_PUBLIC'] } }
-            : status
-            ? {}
-            : { status: { not: 'UNVERIFIED_PUBLIC' } }),
         });
       }
 
