@@ -158,7 +158,7 @@ router.post('/vehicles', async (req: Request, res: Response) => {
     const fleet = await getScopedFleet(req);
     if (!fleet) return sendError(res, 'Fleet not found', 404);
 
-    const { year, make, model, licensePlate, tireSize, vin } = req.body;
+    const { year, make, model, licensePlate, tireSize, vin, unitNumber } = req.body;
     if (!make || !model || !tireSize) {
       return sendError(res, 'Make, Model, and Tire Size are required', 400);
     }
@@ -170,6 +170,7 @@ router.post('/vehicles', async (req: Request, res: Response) => {
         year: Number(year) || new Date().getFullYear(),
         make: make.trim(),
         model: model.trim(),
+        unitNumber: unitNumber ? String(unitNumber).trim() : null,
         licensePlate: licensePlate ? licensePlate.trim().toUpperCase() : null,
         tireSize: tireSize.trim(),
         vin: vin ? vin.trim().toUpperCase() : null,
@@ -337,30 +338,47 @@ const PORTAL_SERVICE_MAP: Record<
   string,
   { category: 'TIRE_SERVICE' | 'ROADSIDE_ASSISTANCE' | 'MAINTENANCE'; priceCents: number }
 > = {
+  // Tire Services
   'Flat Tire Repair': { category: 'TIRE_SERVICE', priceCents: 12000 },
+  'Flat Tire Repair (Plug)': { category: 'TIRE_SERVICE', priceCents: 12000 },
   'Tire Repair (plug)': { category: 'TIRE_SERVICE', priceCents: 12000 },
+  'Tire Repair (Plug)': { category: 'TIRE_SERVICE', priceCents: 12000 },
   'Tire Patch': { category: 'TIRE_SERVICE', priceCents: 8500 },
+  'Tire Patch Repair': { category: 'TIRE_SERVICE', priceCents: 8500 },
+  'Stem Valve Replacement': { category: 'TIRE_SERVICE', priceCents: 8500 },
+  'Valve Stem Replacement': { category: 'TIRE_SERVICE', priceCents: 8500 },
   'New Tire Replacement': { category: 'TIRE_SERVICE', priceCents: 24000 },
   'Used Tire Replacement': { category: 'TIRE_SERVICE', priceCents: 14000 },
   'Used tire replacement': { category: 'TIRE_SERVICE', priceCents: 14000 },
+  'New RIM Replacement': { category: 'TIRE_SERVICE', priceCents: 22000 },
+  'Used RIM Replacement': { category: 'TIRE_SERVICE', priceCents: 13000 },
   'Seasonal Tire Swap (On-Rim)': { category: 'TIRE_SERVICE', priceCents: 11000 },
   'Tire Swap (ON RIM)': { category: 'TIRE_SERVICE', priceCents: 11000 },
   'Seasonal Tire Swap (Off-Rim)': { category: 'TIRE_SERVICE', priceCents: 16000 },
-  'Spare Tire Change': { category: 'TIRE_SERVICE', priceCents: 12000 },
-  'Rim Repair': { category: 'TIRE_SERVICE', priceCents: 17500 },
-  'Valve Stem Replacement': { category: 'TIRE_SERVICE', priceCents: 6500 },
+  'Tire Swap (OFF RIM)': { category: 'TIRE_SERVICE', priceCents: 16000 },
+  'Spare Tire Change': { category: 'TIRE_SERVICE', priceCents: 10000 },
   'Wheel Balance': { category: 'TIRE_SERVICE', priceCents: 9000 },
+  'Rim Repair': { category: 'TIRE_SERVICE', priceCents: 17500 },
+
+  // Roadside Assistance
   'Jump Start': { category: 'ROADSIDE_ASSISTANCE', priceCents: 9500 },
   'Battery Booster': { category: 'ROADSIDE_ASSISTANCE', priceCents: 9500 },
+  'Jump Start / Battery Booster': { category: 'ROADSIDE_ASSISTANCE', priceCents: 9500 },
   'Battery Replacement': { category: 'ROADSIDE_ASSISTANCE', priceCents: 21000 },
-  'Lockout Service': { category: 'ROADSIDE_ASSISTANCE', priceCents: 12500 },
+  'Lockout Service': { category: 'ROADSIDE_ASSISTANCE', priceCents: 13500 },
   'Lock Smith Service': { category: 'ROADSIDE_ASSISTANCE', priceCents: 13500 },
+  'Lockout / Lock Smith Service': { category: 'ROADSIDE_ASSISTANCE', priceCents: 13500 },
   'Fuel Delivery': { category: 'ROADSIDE_ASSISTANCE', priceCents: 10500 },
-  'Towing Service': { category: 'ROADSIDE_ASSISTANCE', priceCents: 18500 },
-  'Emergency Roadside Assistance': { category: 'ROADSIDE_ASSISTANCE', priceCents: 18000 },
+  'Towing Service': { category: 'ROADSIDE_ASSISTANCE', priceCents: 18000 },
   'Winch Out': { category: 'ROADSIDE_ASSISTANCE', priceCents: 16500 },
-  'Brake Inspection': { category: 'MAINTENANCE', priceCents: 9500 },
+  'Winch Out Service': { category: 'ROADSIDE_ASSISTANCE', priceCents: 16500 },
+  'Emergency Roadside Assistance': { category: 'ROADSIDE_ASSISTANCE', priceCents: 18000 },
+
+  // Maintenance & Inspections
+  'Battery Installation': { category: 'MAINTENANCE', priceCents: 15000 },
+  'Tire Rotation': { category: 'MAINTENANCE', priceCents: 8000 },
   'Oil Change': { category: 'MAINTENANCE', priceCents: 11000 },
+  'Brake Inspection': { category: 'MAINTENANCE', priceCents: 9500 },
 };
 
 /**
@@ -452,6 +470,19 @@ router.post('/request-service', async (req: Request, res: Response) => {
       finalVehicleId = v.id;
     }
 
+    let vehicleObj = null;
+    if (finalVehicleId) {
+      vehicleObj = await prisma.vehicle.findUnique({ where: { id: finalVehicleId } });
+    }
+    const vehNoteParts: string[] = [];
+    if (vehicleObj?.unitNumber) vehNoteParts.push(`Unit ${vehicleObj.unitNumber}`);
+    if (vehicleObj?.licensePlate) vehNoteParts.push(`Plate: ${vehicleObj.licensePlate}`);
+    if (vehicleObj?.year || vehicleObj?.make || vehicleObj?.model) {
+      vehNoteParts.push(`${vehicleObj.year || ''} ${vehicleObj.make || ''} ${vehicleObj.model || ''}`.trim());
+    }
+    const vehNote = vehNoteParts.length > 0 ? `[${vehNoteParts.join(' | ')}] ` : '';
+    const finalTireSize = tireSize || vehicleObj?.tireSize || 'N/A';
+
     let driverPhone = contactPhone?.trim() || fleet.phone;
     let driverName = fleet.contactPerson || fleet.name;
     if (driverId) {
@@ -484,7 +515,7 @@ router.post('/request-service', async (req: Request, res: Response) => {
         estimatedArrivalAt: scheduledDateObj,
         recipientName: driverName,
         recipientPhone: driverPhone,
-        problemNotes: `[Fleet Self-Request] Tire Spec: ${tireSize || 'N/A'}. ${notes || problemNotes || ''}`.trim(),
+        problemNotes: `[Fleet Self-Request] ${vehNote}Tire Spec: ${finalTireSize}. ${notes || problemNotes || ''}`.trim(),
         currency: currency as any,
         subtotalCents,
         taxRateBps,

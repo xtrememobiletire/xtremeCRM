@@ -96,12 +96,35 @@ export const invoiceController = {
       if (countryCode && countryCode !== 'ALL') where.countryCode = countryCode;
       if (status) where.status = status;
       if (invoiceType) {
-        where.invoiceType = invoiceType;
-        if (invoiceType === 'MEMBER') {
-          where.customer = { customerType: 'MEMBERSHIP' };
+        if (invoiceType === 'FLEET') {
+          where.OR = [
+            { invoiceType: 'FLEET' },
+            { fleetId: { not: null } },
+          ];
+        } else if (invoiceType === 'MEMBER') {
+          where.OR = [
+            { invoiceType: 'MEMBER' },
+            { customer: { customerType: 'MEMBERSHIP' } },
+          ];
+        } else if (invoiceType === 'CUSTOMER') {
+          where.OR = [
+            { invoiceType: 'CUSTOMER' },
+            {
+              AND: [
+                { customerId: { not: null } },
+                { fleetId: null },
+                { customer: { customerType: { not: 'MEMBERSHIP' } } },
+              ],
+            },
+          ];
+        } else {
+          where.invoiceType = invoiceType;
         }
       }
-      if (fleetId) where.fleetId = fleetId;
+      if (fleetId) {
+        delete where.OR;
+        where.fleetId = fleetId;
+      }
       if (customerId) where.customerId = customerId;
       if (search) {
         where.OR = [

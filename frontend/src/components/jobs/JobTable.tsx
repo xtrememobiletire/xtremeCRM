@@ -134,11 +134,23 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                 )}
               </td>
               <td className="table-td">
-                <div className="text-xs font-semibold text-slate-800">
-                  {job.vehicle ? `${job.vehicle.year || ''} ${job.vehicle.make} ${job.vehicle.model}`.trim() : 'N/A'}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {job.vehicle?.licensePlate && (
+                    <span className="font-mono font-bold px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] text-slate-800">
+                      {job.vehicle.licensePlate}
+                    </span>
+                  )}
+                  {job.vehicle?.unitNumber && (
+                    <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-1 py-0.5 rounded border border-slate-200">
+                      U-{job.vehicle.unitNumber}
+                    </span>
+                  )}
+                  <span className="text-xs font-semibold text-slate-800">
+                    {job.vehicle ? `${job.vehicle.year || ''} ${job.vehicle.make} ${job.vehicle.model}`.trim() : (job.vehicleMakeModel || 'N/A')}
+                  </span>
                 </div>
                 {job.vehicle?.tireSize && (
-                  <span className="inline-block mt-0.5 px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-mono text-slate-600">
+                  <span className="inline-block mt-0.5 px-1.5 py-0.5 bg-red-50 border border-red-100 rounded text-[10px] font-mono font-semibold text-red-700">
                     {job.vehicle.tireSize}
                   </span>
                 )}

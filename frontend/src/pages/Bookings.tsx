@@ -226,10 +226,29 @@ export default function Bookings() {
                       <span>{customerPhone}</span>
                     </a>
 
-                    {b.vehicle && (
-                      <div className="flex items-center gap-1 text-slate-500">
-                        <Car size={13} />
-                        <span>{b.vehicle.year} {b.vehicle.make} {b.vehicle.model}</span>
+                    {(b.vehicle || b.vehicleMakeModel || b.licensePlate) && (
+                      <div className="flex items-center gap-1.5 text-slate-700 bg-slate-100/90 px-2 py-0.5 rounded-md text-[11px] flex-wrap">
+                        <Car size={13} className="text-slate-500 shrink-0" />
+                        {(b.vehicle?.unitNumber || b.unitNumber) && (
+                          <span className="font-bold text-[10px] px-1 bg-slate-200 text-slate-800 rounded">
+                            Unit {b.vehicle?.unitNumber || b.unitNumber}
+                          </span>
+                        )}
+                        {(b.vehicle?.licensePlate || b.licensePlate) && (
+                          <span className="font-mono font-bold bg-white px-1.5 py-0.2 border border-slate-300 rounded text-slate-900 text-[10px]">
+                            {b.vehicle?.licensePlate || b.licensePlate}
+                          </span>
+                        )}
+                        <span className="font-semibold text-slate-900">
+                          {b.vehicle
+                            ? `${b.vehicle.year || ''} ${b.vehicle.make} ${b.vehicle.model}`.trim()
+                            : (b.vehicleMakeModel || 'Vehicle')}
+                        </span>
+                        {(b.vehicle?.tireSize || b.tireSize) && (
+                          <span className="font-mono text-red-700 font-semibold text-[10px] bg-red-50 border border-red-200 px-1 rounded">
+                            {b.vehicle?.tireSize || b.tireSize}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>

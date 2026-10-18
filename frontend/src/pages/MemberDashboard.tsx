@@ -25,18 +25,42 @@ import AddressAutocompleteInput from '../components/common/AddressAutocompleteIn
 import InvoicePdfModal from '../components/invoices/InvoicePdfModal';
 import { toast } from 'sonner';
 
-const MEMBER_SERVICE_OPTIONS: Array<{
+export interface MemberServiceOption {
   name: string;
   category: 'TIRE_SERVICE' | 'ROADSIDE_ASSISTANCE' | 'MAINTENANCE';
   priceCents: number;
-}> = [
-  { name: 'Flat Tire Repair', category: 'TIRE_SERVICE', priceCents: 10800 },
-  { name: 'New Tire Replacement', category: 'TIRE_SERVICE', priceCents: 21600 },
-  { name: 'Seasonal Tire Swap (On-Rim)', category: 'TIRE_SERVICE', priceCents: 9900 },
-  { name: 'Jump Start', category: 'ROADSIDE_ASSISTANCE', priceCents: 8550 },
-  { name: 'Lock Smith Service', category: 'ROADSIDE_ASSISTANCE', priceCents: 12150 },
-  { name: 'Fuel Delivery', category: 'ROADSIDE_ASSISTANCE', priceCents: 9450 },
-  { name: 'Towing Service', category: 'ROADSIDE_ASSISTANCE', priceCents: 16650 },
+  group: 'Tire Services' | 'Roadside Assistance' | 'Maintenance & Inspections';
+}
+
+const MEMBER_SERVICE_OPTIONS: MemberServiceOption[] = [
+  // Tire Services
+  { name: 'Flat Tire Repair (Plug)', category: 'TIRE_SERVICE', priceCents: 10800, group: 'Tire Services' },
+  { name: 'New Tire Replacement', category: 'TIRE_SERVICE', priceCents: 21600, group: 'Tire Services' },
+  { name: 'Used Tire Replacement', category: 'TIRE_SERVICE', priceCents: 12600, group: 'Tire Services' },
+  { name: 'Tire Patch Repair', category: 'TIRE_SERVICE', priceCents: 7650, group: 'Tire Services' },
+  { name: 'Stem Valve Replacement', category: 'TIRE_SERVICE', priceCents: 7650, group: 'Tire Services' },
+  { name: 'New RIM Replacement', category: 'TIRE_SERVICE', priceCents: 19800, group: 'Tire Services' },
+  { name: 'Used RIM Replacement', category: 'TIRE_SERVICE', priceCents: 11700, group: 'Tire Services' },
+  { name: 'Seasonal Tire Swap (On-Rim)', category: 'TIRE_SERVICE', priceCents: 9900, group: 'Tire Services' },
+  { name: 'Seasonal Tire Swap (Off-Rim)', category: 'TIRE_SERVICE', priceCents: 14400, group: 'Tire Services' },
+  { name: 'Spare Tire Change', category: 'TIRE_SERVICE', priceCents: 9000, group: 'Tire Services' },
+  { name: 'Wheel Balance', category: 'TIRE_SERVICE', priceCents: 8100, group: 'Tire Services' },
+  { name: 'Rim Repair', category: 'TIRE_SERVICE', priceCents: 15750, group: 'Tire Services' },
+
+  // Roadside Assistance
+  { name: 'Jump Start / Battery Booster', category: 'ROADSIDE_ASSISTANCE', priceCents: 8550, group: 'Roadside Assistance' },
+  { name: 'Battery Replacement', category: 'ROADSIDE_ASSISTANCE', priceCents: 18900, group: 'Roadside Assistance' },
+  { name: 'Lockout / Lock Smith Service', category: 'ROADSIDE_ASSISTANCE', priceCents: 12150, group: 'Roadside Assistance' },
+  { name: 'Fuel Delivery', category: 'ROADSIDE_ASSISTANCE', priceCents: 9450, group: 'Roadside Assistance' },
+  { name: 'Towing Service', category: 'ROADSIDE_ASSISTANCE', priceCents: 16200, group: 'Roadside Assistance' },
+  { name: 'Winch Out Service', category: 'ROADSIDE_ASSISTANCE', priceCents: 14850, group: 'Roadside Assistance' },
+  { name: 'Emergency Roadside Assistance', category: 'ROADSIDE_ASSISTANCE', priceCents: 16200, group: 'Roadside Assistance' },
+
+  // Maintenance & Inspections
+  { name: 'Battery Installation', category: 'MAINTENANCE', priceCents: 13500, group: 'Maintenance & Inspections' },
+  { name: 'Tire Rotation', category: 'MAINTENANCE', priceCents: 7200, group: 'Maintenance & Inspections' },
+  { name: 'Oil Change', category: 'MAINTENANCE', priceCents: 9900, group: 'Maintenance & Inspections' },
+  { name: 'Brake Inspection', category: 'MAINTENANCE', priceCents: 8550, group: 'Maintenance & Inspections' },
 ];
 
 export default function MemberDashboard() {
@@ -86,6 +110,16 @@ export default function MemberDashboard() {
       return res.data?.data || [];
     },
   });
+
+  // Sync selected vehicle from navigation or default to first registered vehicle
+  useEffect(() => {
+    const navVehId = (location.state as any)?.selectedVehicleId;
+    if (navVehId) {
+      setVehicleId(navVehId);
+    } else if (!vehicleId && vehicles.length > 0) {
+      setVehicleId(vehicles[0].id);
+    }
+  }, [location.state, vehicles]);
 
   // 2. Job History
   const { data: jobs = [] } = useQuery({
@@ -190,6 +224,15 @@ export default function MemberDashboard() {
       serviceLatitude: coords?.latitude || null,
       serviceLongitude: coords?.longitude || null,
       urgency: 'URGENT',
+      vehicle: selectedVeh ? {
+        make: selectedVeh.make,
+        model: selectedVeh.model,
+        year: selectedVeh.year,
+        tireSize: selectedVeh.tireSize,
+        licensePlate: selectedVeh.licensePlate,
+      } : undefined,
+      vehicleMakeModel: selectedVeh ? `${selectedVeh.year || ''} ${selectedVeh.make} ${selectedVeh.model}`.trim() : undefined,
+      tireSize: selectedVeh?.tireSize,
       serviceItems: [
         {
           serviceName: selectedSvc.name,
@@ -198,7 +241,7 @@ export default function MemberDashboard() {
           unitPriceCents: selectedSvc.priceCents,
         },
       ],
-      problemNotes: `[Member Request] Tire: ${selectedVeh?.tireSize || 'N/A'}. ${notes}`.trim(),
+      problemNotes: `[Member Priority Request] Plate: ${selectedVeh?.licensePlate || 'N/A'}. Tire: ${selectedVeh?.tireSize || 'N/A'}. ${notes}`.trim(),
       source: 'MEMBER_PORTAL',
     });
   };
@@ -615,19 +658,52 @@ export default function MemberDashboard() {
                 </option>
               ))}
             </select>
+
+            {/* Selected Vehicle Detail Card */}
+            {(() => {
+              const selectedVeh = vehicles.find((v: any) => v.id === vehicleId);
+              if (!selectedVeh) return null;
+              return (
+                <div className="mt-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold px-2 py-0.5 bg-white border border-slate-200 rounded text-slate-800">
+                        {selectedVeh.licensePlate || 'NO PLATE'}
+                      </span>
+                      <span className="font-bold text-slate-900 text-sm">
+                        {selectedVeh.year} {selectedVeh.make} {selectedVeh.model}
+                      </span>
+                    </div>
+                    <div className="text-slate-500 text-[11px] mt-1 flex flex-wrap items-center gap-2">
+                      <span>Tire Spec: <strong className="font-mono text-red-700 font-semibold">{selectedVeh.tireSize || 'TBD'}</strong></span>
+                      {selectedVeh.color && <span>&bull; Color: {selectedVeh.color}</span>}
+                      {selectedVeh.vin && <span>&bull; VIN: <span className="font-mono">{selectedVeh.vin}</span></span>}
+                    </div>
+                  </div>
+                  <div className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg font-semibold text-[11px] shrink-0 flex items-center gap-1">
+                    <ShieldCheck size={13} />
+                    <span>Selected Garage Vehicle</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <div>
-            <label className="font-semibold text-slate-700">Roadside Service (10% VIP Rate)</label>
+            <label className="font-semibold text-slate-700">Roadside Service (10% VIP Member Rate Applied)</label>
             <select
               value={serviceName}
               onChange={(e) => setServiceName(e.target.value)}
               className="select-base mt-1"
             >
-              {MEMBER_SERVICE_OPTIONS.map((svc) => (
-                <option key={svc.name} value={svc.name}>
-                  {svc.name} &bull; {formatCurrency(centsToDollars(svc.priceCents), currencySymbol)}
-                </option>
+              {['Tire Services', 'Roadside Assistance', 'Maintenance & Inspections'].map((groupName) => (
+                <optgroup key={groupName} label={groupName}>
+                  {MEMBER_SERVICE_OPTIONS.filter((s) => s.group === groupName).map((svc) => (
+                    <option key={svc.name} value={svc.name}>
+                      {svc.name} — {formatCurrency(centsToDollars(svc.priceCents), currencySymbol)} (VIP Rate)
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>
@@ -701,6 +777,22 @@ export default function MemberDashboard() {
                     <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>{j.serviceAddress}</span>
                   </div>
+                  {j.vehicle && (
+                    <div className="text-slate-700 font-medium text-[11px] mt-1 flex items-center gap-1.5 flex-wrap">
+                      <Car size={13} className="text-slate-400 shrink-0" />
+                      {j.vehicle.licensePlate && (
+                        <span className="font-mono font-bold px-1.5 py-0.2 bg-slate-100 border border-slate-200 rounded text-slate-800 text-[10px]">
+                          {j.vehicle.licensePlate}
+                        </span>
+                      )}
+                      <span>{j.vehicle.year} {j.vehicle.make} {j.vehicle.model}</span>
+                      {j.vehicle.tireSize && (
+                        <span className="font-mono text-red-700 bg-red-50 border border-red-200 px-1 rounded text-[10px] font-semibold">
+                          {j.vehicle.tireSize}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {j.problemNotes && (
                     <div className="text-slate-500 text-[11px] mt-0.5 italic">
                       "{j.problemNotes}"

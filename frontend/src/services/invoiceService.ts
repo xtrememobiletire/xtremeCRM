@@ -52,12 +52,15 @@ export interface InvoiceRecord {
   paidAt?: string | null;
   paymentMethod?: string | null;
   notes?: string | null;
+  customerId?: string | null;
   customer?: {
     id: string;
     fullName: string;
     phone?: string;
     email?: string;
+    customerType?: string;
   } | null;
+  fleetId?: string | null;
   fleet?: {
     id: string;
     name?: string;

@@ -44,6 +44,7 @@ export default function FleetDashboard() {
 
   // New vehicle form state
   const [newVehicle, setNewVehicle] = useState({
+    unitNumber: '',
     year: new Date().getFullYear(),
     make: '',
     model: '',
@@ -201,6 +202,7 @@ export default function FleetDashboard() {
       queryClient.invalidateQueries({ queryKey: ['fleet-portal-dashboard'] });
       setIsAddVehicleOpen(false);
       setNewVehicle({
+        unitNumber: '',
         year: new Date().getFullYear(),
         make: '',
         model: '',
@@ -299,11 +301,26 @@ export default function FleetDashboard() {
       toast.error('Please enter a breakdown / service location address');
       return;
     }
+    const selectedVeh = vehicles.find((v: any) => v.id === bookingForm.vehicleId);
     bookServiceMutation.mutate({
       ...bookingForm,
       address: finalAddress,
       serviceAddress: finalAddress,
       fleetId: fleet?.id,
+      vehicleMake: selectedVeh?.make,
+      vehicleModel: selectedVeh?.model,
+      vehicleYear: selectedVeh?.year,
+      licensePlate: selectedVeh?.licensePlate,
+      unitNumber: selectedVeh?.unitNumber,
+      tireSize: selectedVeh?.tireSize || bookingForm.tireSize,
+      vehicle: selectedVeh ? {
+        make: selectedVeh.make,
+        model: selectedVeh.model,
+        year: selectedVeh.year,
+        tireSize: selectedVeh.tireSize,
+        licensePlate: selectedVeh.licensePlate,
+        unitNumber: selectedVeh.unitNumber,
+      } : undefined,
     });
   };
 
@@ -785,9 +802,16 @@ export default function FleetDashboard() {
                 {vehicles.map((v: any) => (
                   <div key={v.id} className="card-surface p-5 space-y-3 relative group hover:border-slate-300 hover:shadow-md transition">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-bold px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-slate-800">
-                        {v.licensePlate || 'NO PLATE'}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {v.unitNumber && (
+                          <span className="text-xs font-bold px-2 py-0.5 bg-slate-200 text-slate-800 rounded-lg">
+                            Unit {v.unitNumber}
+                          </span>
+                        )}
+                        <span className="text-xs font-mono font-bold px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-slate-800">
+                          {v.licensePlate || 'NO PLATE'}
+                        </span>
+                      </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-slate-500 font-mono">{v.year}</span>
                         <button
@@ -965,9 +989,19 @@ export default function FleetDashboard() {
 
                 {/* VEHICLE */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Select Fleet Vehicle
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Select Fleet Vehicle
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddVehicleOpen(true)}
+                      className="text-[11px] text-red-600 hover:text-red-700 font-semibold inline-flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <Plus size={12} />
+                      <span>Register New Unit</span>
+                    </button>
+                  </div>
                   <select
                     value={bookingForm.vehicleId}
                     onChange={(e) => handleVehicleSelect(e.target.value)}
@@ -976,10 +1010,64 @@ export default function FleetDashboard() {
                     <option value="">Select a registered vehicle...</option>
                     {vehicles.map((v: any) => (
                       <option key={v.id} value={v.id}>
-                        {v.licensePlate ? `[${v.licensePlate}] ` : ''}{v.year} {v.make} {v.model} ({v.tireSize || '11R22.5'})
+                        {v.unitNumber ? `[Unit ${v.unitNumber}] ` : ''}{v.licensePlate ? `[${v.licensePlate}] ` : ''}{v.year} {v.make} {v.model} • {v.tireSize || '11R22.5'}
                       </option>
                     ))}
                   </select>
+
+                  {/* Selected Vehicle Detail Card */}
+                  {(() => {
+                    const selectedVeh = vehicles.find((v: any) => v.id === bookingForm.vehicleId);
+                    if (!selectedVeh) return null;
+                    const assignedDriver = drivers.find((d: any) => d.licensePlate && d.licensePlate === selectedVeh.licensePlate);
+                    return (
+                      <div className="mt-2.5 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {selectedVeh.unitNumber && (
+                              <span className="font-bold text-[11px] px-2 py-0.5 bg-slate-200 text-slate-800 rounded">
+                                Unit {selectedVeh.unitNumber}
+                              </span>
+                            )}
+                            <span className="font-mono font-bold px-2 py-0.5 bg-white border border-slate-200 rounded text-slate-900">
+                              {selectedVeh.licensePlate || 'NO PLATE'}
+                            </span>
+                            <span className="font-bold text-slate-900 text-sm">
+                              {selectedVeh.year} {selectedVeh.make} {selectedVeh.model}
+                            </span>
+                          </div>
+                          <div className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg font-semibold text-[11px] shrink-0 flex items-center gap-1">
+                            <ShieldCheck size={13} />
+                            <span>Fleet Unit</span>
+                          </div>
+                        </div>
+
+                        <div className="text-slate-500 text-[11px] flex flex-wrap items-center gap-3 pt-1 border-t border-slate-200/60">
+                          <span>Tire Spec: <strong className="font-mono text-red-700 font-semibold">{selectedVeh.tireSize || '11R22.5'}</strong></span>
+                          {selectedVeh.unitType && <span>&bull; Type: <span className="font-medium text-slate-700">{selectedVeh.unitType}</span></span>}
+                          {selectedVeh.color && <span>&bull; Color: <span className="font-medium text-slate-700">{selectedVeh.color}</span></span>}
+                          {selectedVeh.vin && <span>&bull; VIN: <span className="font-mono">{selectedVeh.vin}</span></span>}
+                        </div>
+
+                        {assignedDriver && (
+                          <div className="mt-1 pt-1.5 border-t border-slate-200/60 flex items-center justify-between gap-2 text-[11px]">
+                            <span className="text-slate-600">
+                              Assigned Driver: <strong className="text-slate-900">{assignedDriver.fullName}</strong> ({assignedDriver.phone})
+                            </span>
+                            {bookingForm.contactPhone !== assignedDriver.phone && (
+                              <button
+                                type="button"
+                                onClick={() => setBookingForm((prev) => ({ ...prev, contactPhone: assignedDriver.phone }))}
+                                className="text-blue-600 hover:text-blue-700 font-semibold underline text-[10px] cursor-pointer"
+                              >
+                                Use Driver Phone
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* SELECT SERVICE & SERVICE TYPE */}
@@ -994,25 +1082,35 @@ export default function FleetDashboard() {
                       className="select-base mt-1.5 py-2.5 text-xs text-slate-800"
                       required
                     >
-                      <option value="Flat Tire Repair">Flat Tire Repair</option>
-                      <option value="New Tire Replacement">New Tire Replacement</option>
-                      <option value="Used tire replacement">Used Tire Replacement</option>
-                      <option value="Tire Repair (plug)">Tire Repair (plug)</option>
-                      <option value="Tire Swap (ON RIM)">Seasonal Tire Swap (On-Rim)</option>
-                      <option value="Seasonal Tire Swap (Off-Rim)">Seasonal Tire Swap (Off-Rim)</option>
-                      <option value="Spare Tire Change">Spare Tire Change</option>
-                      <option value="Wheel Balance">Wheel Balance</option>
-                      <option value="Rim Repair">Rim Repair</option>
-                      <option value="Battery Booster">Jump Start / Battery Booster</option>
-                      <option value="Battery Replacement">Battery Replacement</option>
-                      <option value="Lockout Service">Lockout Service</option>
-                      <option value="Lock Smith Service">Lock Smith Service</option>
-                      <option value="Fuel Delivery">Fuel Delivery</option>
-                      <option value="Towing Service">Towing Service</option>
-                      <option value="Winch Out">Winch Out</option>
-                      <option value="Emergency Roadside Assistance">Emergency Roadside Assistance</option>
-                      <option value="Oil Change">Oil Change</option>
-                      <option value="Brake Inspection">Brake Inspection</option>
+                      <optgroup label="Tire Services">
+                        <option value="Flat Tire Repair (Plug)">Flat Tire Repair (Plug)</option>
+                        <option value="New Tire Replacement">New Tire Replacement</option>
+                        <option value="Used Tire Replacement">Used Tire Replacement</option>
+                        <option value="Tire Patch Repair">Tire Patch Repair</option>
+                        <option value="Stem Valve Replacement">Stem Valve Replacement</option>
+                        <option value="New RIM Replacement">New RIM Replacement</option>
+                        <option value="Used RIM Replacement">Used RIM Replacement</option>
+                        <option value="Seasonal Tire Swap (On-Rim)">Seasonal Tire Swap (On-Rim)</option>
+                        <option value="Seasonal Tire Swap (Off-Rim)">Seasonal Tire Swap (Off-Rim)</option>
+                        <option value="Spare Tire Change">Spare Tire Change</option>
+                        <option value="Wheel Balance">Wheel Balance</option>
+                        <option value="Rim Repair">Rim Repair</option>
+                      </optgroup>
+                      <optgroup label="Roadside Assistance">
+                        <option value="Jump Start / Battery Booster">Jump Start / Battery Booster</option>
+                        <option value="Battery Replacement">Battery Replacement</option>
+                        <option value="Lockout / Lock Smith Service">Lockout / Lock Smith Service</option>
+                        <option value="Fuel Delivery">Fuel Delivery</option>
+                        <option value="Towing Service">Towing Service</option>
+                        <option value="Winch Out Service">Winch Out Service</option>
+                        <option value="Emergency Roadside Assistance">Emergency Roadside Assistance</option>
+                      </optgroup>
+                      <optgroup label="Maintenance & Inspections">
+                        <option value="Battery Installation">Battery Installation</option>
+                        <option value="Tire Rotation">Tire Rotation</option>
+                        <option value="Oil Change">Oil Change</option>
+                        <option value="Brake Inspection">Brake Inspection</option>
+                      </optgroup>
                     </select>
                   </div>
 
@@ -1137,8 +1235,8 @@ export default function FleetDashboard() {
                     {jobs.map((j: any, index: number) => {
                       const serviceTitle = j.serviceItems?.[0]?.serviceName || 'Tire Service';
                       const vehicleDesc = j.vehicle
-                        ? `${j.vehicle.make} ${j.vehicle.model} (${j.vehicle.licensePlate || 'NONE'})`
-                        : '(NONE)';
+                        ? `${j.vehicle.unitNumber ? `[Unit ${j.vehicle.unitNumber}] ` : ''}${j.vehicle.year ? `${j.vehicle.year} ` : ''}${j.vehicle.make} ${j.vehicle.model}`
+                        : (j.vehicleMakeModel || '(NONE)');
                       const tireSize = j.vehicle?.tireSize || '11R22.5';
                       const apptNum = `#${jobs.length - index}`;
                       const formattedDate = j.scheduledFor || j.appointmentDate || j.createdAt
@@ -1169,7 +1267,14 @@ export default function FleetDashboard() {
                             </span>
                           </td>
                           <td className="py-3.5 px-4 text-slate-700 font-medium">
-                            {vehicleDesc}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {j.vehicle?.licensePlate && (
+                                <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-800">
+                                  {j.vehicle.licensePlate}
+                                </span>
+                              )}
+                              <span>{vehicleDesc}</span>
+                            </div>
                           </td>
                           <td className="py-3.5 px-4 font-mono text-slate-700">
                             {tireSize}
@@ -1394,12 +1499,13 @@ export default function FleetDashboard() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">Year</label>
+                  <label className="text-xs font-semibold text-slate-700">Unit # (Optional)</label>
                   <input
-                    type="number"
-                    value={newVehicle.year}
-                    onChange={(e) => setNewVehicle({ ...newVehicle, year: Number(e.target.value) })}
-                    className="input-base mt-1 py-2 text-xs"
+                    type="text"
+                    placeholder="e.g. Unit 18"
+                    value={newVehicle.unitNumber}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, unitNumber: e.target.value })}
+                    className="input-base mt-1 py-2 text-xs font-mono"
                   />
                 </div>
                 <div>
@@ -1414,16 +1520,27 @@ export default function FleetDashboard() {
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-slate-700">Tire Size *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. 11R22.5 or 235/65R17"
-                  value={newVehicle.tireSize}
-                  onChange={(e) => setNewVehicle({ ...newVehicle, tireSize: e.target.value })}
-                  className="input-base mt-1 py-2 text-xs font-mono"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Year</label>
+                  <input
+                    type="number"
+                    value={newVehicle.year}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, year: Number(e.target.value) })}
+                    className="input-base mt-1 py-2 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Tire Size *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 11R22.5 or 235/65R17"
+                    value={newVehicle.tireSize}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, tireSize: e.target.value })}
+                    className="input-base mt-1 py-2 text-xs font-mono"
+                  />
+                </div>
               </div>
 
               <div>
