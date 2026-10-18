@@ -131,7 +131,41 @@ export const jobController = {
       if (source) where.source = source;
 
       const andConditions: any[] = [];
-      if (isFleetJob === 'true' || isFleetJob === '1') {
+      const jobCategory = req.query.jobCategory as string; // 'ALL' | 'RETAIL' | 'MEMBER' | 'FLEET' | 'TRIAL'
+
+      if (jobCategory === 'MEMBER') {
+        andConditions.push({
+          OR: [
+            { source: 'MEMBER_PORTAL' },
+            { customer: { customerType: 'MEMBERSHIP' } },
+          ],
+        });
+      } else if (jobCategory === 'RETAIL') {
+        andConditions.push({
+          fleetId: null,
+          isTestService: false,
+          source: { not: 'MEMBER_PORTAL' },
+          OR: [
+            { customerId: null },
+            { customer: { customerType: 'RETAIL' } },
+          ],
+        });
+      } else if (jobCategory === 'FLEET') {
+        andConditions.push({
+          fleetId: { not: null },
+        });
+      } else if (jobCategory === 'TRIAL') {
+        andConditions.push({
+          isTestService: true,
+        });
+      } else if (jobCategory === 'ALL') {
+        // Universal view across all job types
+        if (status === 'ACTIVE') {
+          andConditions.push({ status: { notIn: ['COMPLETED', 'UNVERIFIED_PUBLIC'] } });
+        } else if (!status) {
+          andConditions.push({ status: { not: 'UNVERIFIED_PUBLIC' } });
+        }
+      } else if (isFleetJob === 'true' || isFleetJob === '1') {
         andConditions.push({
           OR: [
             { fleetId: { not: null } },
@@ -313,9 +347,40 @@ export const jobController = {
       const authUser = (req as any).user;
 
       if (!customerId && authUser?.id) {
-        const memberCustomer = await prisma.customer.findUnique({
+        let memberCustomer = await prisma.customer.findUnique({
           where: { userId: authUser.id },
         });
+        if (!memberCustomer && (authUser.email || authUser.phone)) {
+          memberCustomer = await prisma.customer.findFirst({
+            where: {
+              OR: [
+                ...(authUser.email ? [{ email: { equals: String(authUser.email), mode: 'insensitive' as const } }] : []),
+                ...(authUser.phone ? [{ phone: String(authUser.phone) }] : []),
+              ],
+            },
+          });
+          if (memberCustomer && !memberCustomer.userId) {
+            await prisma.customer.update({
+              where: { id: memberCustomer.id },
+              data: { userId: authUser.id },
+            });
+          }
+        }
+        if (!memberCustomer && authUser.role === 'CUSTOMER_MEMBER') {
+          const fallbackPhone = authUser.phone || `+14165550${Math.floor(100 + Math.random() * 900)}`;
+          memberCustomer = await prisma.customer.create({
+            data: {
+              userId: authUser.id,
+              fullName: authUser.fullName || 'Member Customer',
+              email: authUser.email,
+              phone: fallbackPhone,
+              countryCode: (['CA', 'US', 'UK'].includes(country) ? country : 'CA') as any,
+              customerType: 'MEMBERSHIP',
+              membershipTier: 'GOLD',
+              membershipExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+            },
+          });
+        }
         if (memberCustomer) {
           customerId = memberCustomer.id;
           if (!data.recipientName) data.recipientName = memberCustomer.fullName;
@@ -630,7 +695,7 @@ export const jobController = {
           repairerFeeCents,
           paymentMethod: validPaymentMethod(data.paymentMethod),
           paymentStatus: initialPaymentStatus,
-          status: data.source === 'LANDING_PAGE_SELF_BOOK'
+          status: (data.source === 'LANDING_PAGE_SELF_BOOK' || data.source === 'MEMBER_PORTAL')
             ? 'UNVERIFIED_PUBLIC'
             : validatedDriverId
               ? 'ASSIGNED'

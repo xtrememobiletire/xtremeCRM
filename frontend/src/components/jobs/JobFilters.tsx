@@ -9,6 +9,8 @@ interface JobFiltersProps {
   onStatusChange: (value: string) => void;
   urgency: string;
   onUrgencyChange: (value: string) => void;
+  jobCategory?: string;
+  onJobCategoryChange?: (value: string) => void;
   lifecycleTab: JobLifecycleTabType;
   onLifecycleTabChange: (tab: JobLifecycleTabType) => void;
 }
@@ -20,6 +22,8 @@ export default function JobFilters({
   onStatusChange,
   urgency,
   onUrgencyChange,
+  jobCategory = 'ALL',
+  onJobCategoryChange,
   lifecycleTab,
   onLifecycleTabChange,
 }: JobFiltersProps) {
@@ -58,7 +62,24 @@ export default function JobFilters({
           completedLabel="Completed"
         />
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Job Type / Category Dropdown */}
+          {onJobCategoryChange && (
+            <div className="min-w-[150px]">
+              <select
+                value={jobCategory}
+                onChange={(e) => onJobCategoryChange(e.target.value)}
+                className="select-base py-1.5 text-xs font-semibold cursor-pointer w-full bg-slate-50 border-slate-300 text-slate-800"
+              >
+                <option value="ALL">All Job Types</option>
+                <option value="RETAIL">Retail Roadside</option>
+                <option value="MEMBER">👑 VIP Members</option>
+                <option value="FLEET">🏢 Fleet Accounts</option>
+                <option value="TRIAL">⚡ Trial Runs</option>
+              </select>
+            </div>
+          )}
+
           {/* Status Dropdown */}
           <div className="flex items-center gap-1.5 min-w-[170px]">
             <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0 hidden sm:block" />

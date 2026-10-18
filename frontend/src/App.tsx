@@ -50,7 +50,7 @@ function getRoleHome(role?: string) {
     case 'FLEET_MANAGER':
       return '/fleet-dashboard';
     case 'CUSTOMER_MEMBER':
-      return '/member-dashboard';
+      return '/member/dashboard';
     case 'ACCOUNTANT':
       return '/accounting';
     case 'DISPATCHER':
@@ -214,7 +214,12 @@ function AppRoutes() {
           <Route path="/technician" element={<RoleRoute allowedRoles={['DRIVER']}><TechnicianPortal /></RoleRoute>} />
           <Route path="/technician/live-map" element={<Navigate to="/technician" replace />} />
           <Route path="/history" element={<RoleRoute allowedRoles={['DRIVER']}><History /></RoleRoute>} />
-          <Route path="/member-dashboard" element={<RoleRoute allowedRoles={['CUSTOMER_MEMBER']}><MemberDashboard /></RoleRoute>} />
+          <Route path="/member-dashboard" element={<Navigate to="/member/dashboard" replace />} />
+          <Route path="/member/dashboard" element={<RoleRoute allowedRoles={['CUSTOMER_MEMBER']}><MemberDashboard /></RoleRoute>} />
+          <Route path="/member/garage" element={<RoleRoute allowedRoles={['CUSTOMER_MEMBER']}><MemberDashboard /></RoleRoute>} />
+          <Route path="/member/request" element={<RoleRoute allowedRoles={['CUSTOMER_MEMBER']}><MemberDashboard /></RoleRoute>} />
+          <Route path="/member/history" element={<RoleRoute allowedRoles={['CUSTOMER_MEMBER']}><MemberDashboard /></RoleRoute>} />
+          <Route path="/member/invoices" element={<RoleRoute allowedRoles={['CUSTOMER_MEMBER']}><MemberDashboard /></RoleRoute>} />
         </Route>
 
         <Route path="*" element={<Navigate to={user ? getRoleHome(user.role) : "/"} replace />} />

@@ -59,11 +59,26 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
             return (
               <tr key={job.id} className="hover:bg-slate-50/70 transition-colors">
                 <td className="table-td whitespace-nowrap">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <span className="font-mono font-bold text-red-600 text-xs">{job.jobNumber}</span>
                     {(job as any).isTestService && (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
-                        TRIAL RUN
+                        ⚡ TRIAL RUN
+                      </span>
+                    )}
+                    {((job as any).source === 'MEMBER_PORTAL' || (job as any).customer?.customerType === 'MEMBERSHIP') && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-300">
+                        👑 VIP MEMBER
+                      </span>
+                    )}
+                    {((job as any).fleet || (job as any).fleetId) && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-800 border border-blue-200">
+                        🏢 {(job as any).fleet?.fleetCode || 'FLEET'}
+                      </span>
+                    )}
+                    {((job as any).source === 'WEBSITE' || (job as any).source === 'LANDING_PAGE_SELF_BOOK') && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-purple-50 text-purple-800 border border-purple-200">
+                        🌐 WEB
                       </span>
                     )}
                   </div>
@@ -103,10 +118,16 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                   </div>
                 ) : (
                   <>
-                    <div className="font-semibold text-slate-900 text-xs sm:text-sm">
-                      {job.customer?.fullName || job.customer?.name || job.recipientName || 'Walk-in'}
+                    <div className="font-semibold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
+                      <span>{job.fleet?.name || job.customer?.fullName || job.customer?.name || job.recipientName || 'Walk-in'}</span>
+                      {job.customer?.customerType === 'MEMBERSHIP' && (
+                        <span className="px-1 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                          {job.customer.membershipTier || 'Gold'}
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] font-mono text-slate-500">
+                      {job.fleet && job.recipientName ? `${job.recipientName} • ` : ''}
                       {job.customer?.phone || job.recipientPhone || ''}
                     </div>
                   </>

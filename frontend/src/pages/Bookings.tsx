@@ -123,9 +123,9 @@ export default function Bookings() {
       <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-200 text-xs text-blue-900 flex items-start gap-3">
         <AlertTriangle size={18} className="text-blue-600 shrink-0 mt-0.5" />
         <div>
-          <span className="font-bold">Two-Step Address Verification Active:</span>
+          <span className="font-bold">Dispatch Inbound Triage Queue Active:</span>
           <p className="text-blue-800 mt-0.5">
-            Public website forms submit un-geocoded customer text to protect Mapbox tokens. Call the customer to confirm their location, then click <strong>"Verify Address"</strong> to select the canonical Mapbox address and release the job to the active Dispatch queue.
+            Incoming service requests from public website bookings, VIP member portals, and commercial fleet managers land in this triage queue. Confirm customer details and address, then click <strong>"Verify & Dispatch"</strong> to release the ticket to active dispatching.
           </p>
         </div>
       </div>
@@ -160,8 +160,8 @@ export default function Bookings() {
         ) : rawBookings.length === 0 ? (
           <div className="p-12 bg-white rounded-xl border border-slate-200">
             <EmptyState
-              title="All Website Bookings Verified"
-              description={`There are currently zero unverified public bookings in region ${selectedCountry}.`}
+              title="All Requests & Bookings Verified"
+              description={`There are currently zero unverified bookings in region ${selectedCountry}.`}
               action={
                 <button
                   type="button"
@@ -175,8 +175,8 @@ export default function Bookings() {
           </div>
         ) : (
           rawBookings.map((b: any) => {
-            const customerName = b.recipientName || b.customer?.fullName || 'Online Customer';
-            const customerPhone = b.recipientPhone || b.customer?.phone || 'No Phone';
+            const customerName = b.recipientName || b.customer?.fullName || (b.fleet ? b.fleet.name : 'Online Customer');
+            const customerPhone = b.recipientPhone || b.customer?.phone || (b.fleet ? b.fleet.phone : 'No Phone');
             const rawAddress = b.serviceAddress || b.locationAddress || 'No address provided';
 
             return (
@@ -186,12 +186,25 @@ export default function Bookings() {
               >
                 {/* Left: Booking Details */}
                 <div className="space-y-2 min-w-0">
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono font-bold text-slate-900 text-sm">
                       {b.jobCode || b.jobNumber}
                     </span>
-                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold tracking-wide">
-                      UNVERIFIED PUBLIC
+                    {b.source === 'MEMBER_PORTAL' || b.customer?.customerType === 'MEMBERSHIP' ? (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-extrabold tracking-wide flex items-center gap-1 shadow-2xs">
+                        👑 VIP MEMBER REQUEST
+                      </span>
+                    ) : b.source === 'FLEET_PORTAL' || b.fleetId ? (
+                      <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-300 text-[10px] font-extrabold tracking-wide flex items-center gap-1 shadow-2xs">
+                        🏢 FLEET: {b.fleet?.name || 'COMMERCIAL ACCOUNT'}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-bold tracking-wide">
+                        🌐 WEBSITE INBOUND
+                      </span>
+                    )}
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">
+                      AWAITING TRIAGE
                     </span>
                     <span className="text-[11px] text-slate-400 flex items-center gap-1">
                       <Clock size={12} />

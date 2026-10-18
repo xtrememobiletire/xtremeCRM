@@ -18,6 +18,7 @@ export const PaginationQuerySchema = z.object({
     z.enum(['true', 'false', '1', '0'])
   ).optional(),
   source: z.string().optional(),
+  jobCategory: z.enum(['ALL', 'RETAIL', 'MEMBER', 'FLEET', 'TRIAL']).optional(),
   sortBy: z.enum(['createdAt', 'updatedAt', 'scheduledFor']).optional().default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 }).passthrough();

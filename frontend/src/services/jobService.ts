@@ -104,6 +104,7 @@ export const jobService = {
     driverId?: string;
     fleetId?: string;
     isFleetJob?: boolean | string;
+    jobCategory?: string;
     source?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
