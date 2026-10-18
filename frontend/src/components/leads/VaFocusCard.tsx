@@ -264,38 +264,38 @@ export default function VaFocusCard({
   return (
     <div className="max-w-2xl mx-auto bg-white border border-slate-200/90 rounded-3xl shadow-sm overflow-hidden">
       {/* CARD HEADER */}
-      <div className="bg-slate-900 text-white p-4 sm:p-5">
+      <div className="bg-slate-50/90 border-b border-slate-200/90 p-4 sm:p-5 text-slate-900">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-300 font-mono text-[10px] font-bold uppercase tracking-wider border border-red-500/30">
+              <span className="px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 font-mono text-[10px] font-bold uppercase tracking-wider border border-red-200">
                 1-Lead Focus Mode
               </span>
               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider border ${
                 attempts >= 2 
-                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' 
-                  : 'bg-slate-800 text-slate-300 border-slate-700'
+                  ? 'bg-rose-50 text-rose-700 border-rose-200' 
+                  : 'bg-slate-100 text-slate-700 border-slate-200'
               }`}>
                 Attempt {attempts + 1} of 3
               </span>
               {lead.numberOfUnits && (
-                <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-mono text-[10px] font-bold border border-blue-500/30">
+                <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono text-[10px] font-bold border border-blue-200">
                   {lead.numberOfUnits} Units
                 </span>
               )}
             </div>
 
             <div className="flex items-center gap-2 mt-2">
-              <h2 className="text-lg sm:text-xl font-bold truncate text-white">
+              <h2 className="text-lg sm:text-xl font-bold truncate text-slate-900">
                 {lead.companyName}
               </h2>
               <button
                 type="button"
                 onClick={() => copyToClipboard(lead.companyName, 'Company Name')}
                 title="Copy Company Name"
-                className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer"
+                className="p-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 transition cursor-pointer shadow-2xs"
               >
-                {copiedField === 'Company Name' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                {copiedField === 'Company Name' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
               </button>
             </div>
           </div>
@@ -306,10 +306,10 @@ export default function VaFocusCard({
               type="button"
               disabled={isSubmitting}
               onClick={handleCommitDisposition}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl font-bold text-xs shadow-md transition cursor-pointer active:scale-95 disabled:opacity-50 ${
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl font-bold text-xs shadow-xs transition cursor-pointer active:scale-95 disabled:opacity-50 ${
                 selectedDisposition
                   ? 'bg-blue-600 hover:bg-blue-500 text-white ring-2 ring-blue-400/50'
-                  : 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'
+                  : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 shadow-2xs'
               }`}
             >
               <Calendar size={14} />
@@ -321,7 +321,7 @@ export default function VaFocusCard({
             </button>
             <a
               href={`tel:${lead.phone}`}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-md transition shrink-0 active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-xs transition shrink-0 active:scale-95"
             >
               <PhoneCall size={16} />
               <span className="hidden sm:inline">Dial Prospect</span>

@@ -9,7 +9,6 @@ import {
   Truck, 
   ClipboardCheck, 
   Calendar, 
-  Zap, 
   Wrench, 
   XCircle, 
   Layers,
@@ -101,9 +100,6 @@ export default function Leads() {
   // Dispatcher Feasibility Notes modal state
   const [editingNotesLead, setEditingNotesLead] = useState<Lead | null>(null);
   const [dispatcherNotesText, setDispatcherNotesText] = useState('');
-
-  // Auto-dialer toggle
-  const [autoDialEnabled, setAutoDialEnabled] = useState(false);
 
   // Filters & search
   const [search, setSearch] = useState('');
@@ -308,19 +304,6 @@ export default function Leads() {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['management-batches'] });
       queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
-
-      if (autoDialEnabled && isAgent) {
-        setTimeout(async () => {
-          const freshQueue: any = await queryClient.fetchQuery({
-            queryKey: ['agent-queue', country],
-            queryFn: () => leadService.getAgentQueue(country),
-          });
-          const nextLead = freshQueue?.scheduledCallbacks?.[0] || freshQueue?.leads?.[0];
-          if (nextLead && nextLead.phone) {
-            handleCallLead(nextLead);
-          }
-        }, 1200);
-      }
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to record disposition');
@@ -481,7 +464,7 @@ export default function Leads() {
               <button
                 type="button"
                 onClick={() => setAgentWorkflowMode('COLD_OUTREACH')}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition bg-slate-900 text-white shadow-2xs cursor-pointer"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer bg-red-600 text-white shadow-xs"
               >
                 <Layers size={13} />
                 <span>Cold Outreach Hub</span>
@@ -493,7 +476,7 @@ export default function Leads() {
                   setActiveTab('callbacks');
                   setCurrentPage(1);
                 }}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700"
               >
                 <Calendar size={13} />
                 <span>My Callbacks Pool</span>
@@ -502,6 +485,32 @@ export default function Leads() {
                     {queueData.scheduledCallbacks.length}
                   </span>
                 )}
+              </button>
+            </div>
+
+            {/* Shifted to upper tab as requested */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsUploadModalOpen(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 border border-slate-200 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                title="Upload leads spreadsheet to an existing batch"
+              >
+                <UploadCloud size={13} className="text-slate-500" />
+                <span>Upload CSV</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  refetchQueue();
+                  refetchBatches();
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 border border-slate-200 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                title="Sync Queue"
+              >
+                <RefreshCw size={13} className={`text-slate-500 ${isLoadingQueue ? 'animate-spin' : ''}`} />
+                <span>Sync Queue</span>
               </button>
             </div>
           </div>
@@ -519,8 +528,8 @@ export default function Leads() {
           />
         ) : (
           <div className="space-y-4">
-            {/* VA Session Header: Switch Campaign + Active Slot status */}
-            <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-md flex flex-wrap items-center justify-between gap-4 border border-slate-800">
+            {/* VA Session Header: Clean theme matching CRM color scheme */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -528,95 +537,41 @@ export default function Leads() {
                     setVaInSession(false);
                     setSelectedBatchId(null);
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 border border-slate-200 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
                 >
                   <ArrowLeft size={13} />
                   <span>Switch Campaign</span>
                 </button>
 
                 <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-400 bg-red-950/80 px-2.5 py-0.5 rounded-full border border-red-800">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-700 bg-red-50 px-2.5 py-0.5 rounded-full border border-red-200">
                       1-Cap Focus Replenishment
                     </span>
-                    <span className="text-xs text-slate-300">
+                    <span className="text-xs text-slate-600">
                       Active Campaign:{' '}
-                      <strong className="text-white font-bold">
+                      <strong className="text-slate-900 font-bold">
                         {selectedBatchId
                           ? availableBatches.find((b) => b.id === selectedBatchId)?.batchName || 'Selected Campaign'
                           : 'All Active Campaigns (Auto FIFO)'}
                       </strong>
                     </span>
-                    <span className="text-xs text-slate-300 ml-2">
-                      Active Slot Load: <strong className="text-white font-bold">{queueData.activeCount} / 1</strong>
+                    <span className="text-xs text-slate-500 ml-1">
+                      • Active Slot Load: <strong className="text-slate-900 font-bold">{queueData.activeCount} / 1</strong>
                     </span>
                   </div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-slate-500">
                     {queueData.unassignedPoolCount > 0 ? (
                       <span>
-                        🚀 <strong className="text-emerald-400 font-bold">{queueData.unassignedPoolCount} unassigned cold leads</strong> waiting in queue. Next lead replenishes instantly upon call outcome!
+                        🚀 <strong className="text-emerald-700 font-bold">{queueData.unassignedPoolCount} unassigned cold leads</strong> waiting in queue. Next lead replenishes instantly upon call outcome!
                       </span>
                     ) : (
-                      <span className="text-slate-400">
+                      <span className="text-slate-500">
                         No unassigned leads remaining in this campaign. Click &quot;Switch Campaign&quot; to pick another active batch.
                       </span>
                     )}
                   </div>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2.5 flex-wrap">
-                {/* Quick Campaign Switch Dropdown */}
-                <div className="flex items-center gap-1.5">
-                  <Layers size={13} className="text-slate-400" />
-                  <select
-                    value={selectedBatchId || ''}
-                    onChange={(e) => setSelectedBatchId(e.target.value || null)}
-                    className="bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold rounded-xl px-3 py-1.5 outline-none focus:ring-1 focus:ring-red-500 cursor-pointer max-w-[280px]"
-                  >
-                    <option value="">All Active Campaigns (Auto FIFO)</option>
-                    {availableBatches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        [{b.countryCode}] {b.batchName} ({b.unassignedLeads} leads left)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Auto-Dialer Toggle for Call Agents / VAs */}
-                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-bold text-slate-300 cursor-pointer select-none">
-                  <Zap size={13} className={autoDialEnabled ? 'text-amber-400 fill-amber-400' : 'text-slate-400'} />
-                  <span>Auto-Dial</span>
-                  <input
-                    type="checkbox"
-                    checked={autoDialEnabled}
-                    onChange={(e) => setAutoDialEnabled(e.target.checked)}
-                    className="rounded text-red-600 focus:ring-red-500 ml-0.5 cursor-pointer"
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  onClick={() => setIsUploadModalOpen(true)}
-                  className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                  title="Upload leads spreadsheet to an existing batch"
-                >
-                  <UploadCloud size={12} className="text-slate-400" />
-                  <span>Upload Leads</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    refetchQueue();
-                    refetchBatches();
-                  }}
-                  className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
-                  title="Sync Queue"
-                >
-                  <RefreshCw size={12} className={isLoadingQueue ? 'animate-spin' : ''} />
-                  <span>Sync Queue</span>
-                </button>
               </div>
             </div>
 
