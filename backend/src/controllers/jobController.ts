@@ -15,6 +15,7 @@ import {
 import { getIO } from '../config/socket.js';
 import { geocodingService } from '../services/geocodingService.js';
 import { sseManager } from '../services/sseManager.js';
+import tzlookup from '@photostructure/tz-lookup';
 
 const stripDriverFinancials = (job: any) => {
   const isAudited = Boolean(job.auditedById || job.expenseStatedById);
@@ -44,11 +45,13 @@ const normalizeUrgency = (u?: string | null): 'URGENT' | 'STANDARD' | 'FUTURE' =
   return 'STANDARD';
 };
 
-const validPaymentMethod = (pm?: string | null): 'E_TRANSFER' | 'POS' | 'CASH' | 'MOTO' | 'STRIPE' | null => {
+const validPaymentMethod = (
+  pm?: string | null
+): 'E_TRANSFER' | 'POS' | 'CASH' | 'MOTO' | 'STRIPE' | 'INVOICE_NET30' | null => {
   if (!pm) return null;
   const upper = String(pm).toUpperCase();
   if (upper === 'CREDIT_CARD' || upper === 'PHONE') return 'MOTO';
-  if (['E_TRANSFER', 'POS', 'CASH', 'MOTO', 'STRIPE'].includes(upper)) {
+  if (['E_TRANSFER', 'POS', 'CASH', 'MOTO', 'STRIPE', 'INVOICE_NET30'].includes(upper)) {
     return upper as any;
   }
   return null;
@@ -371,7 +374,7 @@ export const jobController = {
               data: {
                 fullName: name || 'Valued Customer',
                 phone: normalizedContactPhone,
-                email: data.customer?.email || data.email,
+                email: data.customer?.email || data.customerEmail || data.email,
                 countryCode: country as any,
               },
             });
@@ -448,6 +451,7 @@ export const jobController = {
               make: make || 'Standard',
               model: model || 'Vehicle',
               licensePlate: plate || undefined,
+              unitNumber: data.vehicle?.unitNumber || undefined,
               tireSize: tireSize,
             },
           });
@@ -523,6 +527,22 @@ export const jobController = {
         initialPaymentStatus = upfrontAmountCents >= totalCents ? 'PAID_PENDING_VERIFICATION' : 'PARTIAL';
       }
 
+      const defaultTz = country === 'UK' ? 'Europe/London' : country === 'US' ? 'America/New_York' : 'America/Toronto';
+      let serviceTimezone = data.serviceTimezone || defaultTz;
+      if (serviceLatitude !== null && serviceLongitude !== null) {
+        try {
+          serviceTimezone = tzlookup(serviceLatitude, serviceLongitude) || serviceTimezone;
+        } catch {}
+      }
+
+      let validatedDriverId: string | undefined = undefined;
+      if (data.driverId) {
+        const drv = await prisma.user.findUnique({ where: { id: data.driverId } });
+        if (drv && drv.countryCode === country) {
+          validatedDriverId = drv.id;
+        }
+      }
+
       const job = await prisma.job.create({
         data: {
           jobCode,
@@ -535,6 +555,9 @@ export const jobController = {
           serviceAddress,
           serviceLatitude,
           serviceLongitude,
+          serviceTimezone,
+          driverId: validatedDriverId,
+          assignedAt: validatedDriverId ? new Date() : undefined,
           recipientName: data.recipientName || data.customer?.name || data.customer?.fullName || data.customerName || name,
           recipientPhone: normalizedContactPhone || (data.recipientPhone ? normalizePhoneNumber(data.recipientPhone, country) : undefined),
           problemNotes: data.problemNotes || data.notes,
@@ -564,7 +587,11 @@ export const jobController = {
           repairerFeeCents,
           paymentMethod: validPaymentMethod(data.paymentMethod),
           paymentStatus: initialPaymentStatus,
-          status: data.source === 'LANDING_PAGE_SELF_BOOK' ? 'UNVERIFIED_PUBLIC' : 'PENDING',
+          status: data.source === 'LANDING_PAGE_SELF_BOOK'
+            ? 'UNVERIFIED_PUBLIC'
+            : validatedDriverId
+              ? 'ASSIGNED'
+              : 'PENDING',
           serviceItems: {
             create: serviceItemsCreate,
           },
@@ -582,6 +609,11 @@ export const jobController = {
         const io = getIO();
         io.to(`dispatch:${country}`).emit('job:created', job);
         sseManager.broadcast(`sse:dispatch:${country}`, 'job:created', job);
+
+        if (validatedDriverId) {
+          io.to(`driver:${validatedDriverId}`).emit('job:assigned', job);
+          sseManager.broadcast(`sse:user:${validatedDriverId}`, 'job:assigned', job);
+        }
       } catch {}
 
       return sendSuccess(res, job, 'Job created successfully', 201);

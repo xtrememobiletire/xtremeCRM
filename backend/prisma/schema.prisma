@@ -188,6 +188,7 @@ enum PaymentMethod {
   CASH
   MOTO
   STRIPE
+  INVOICE_NET30
 }
 
 enum PaymentStatus {
@@ -561,6 +562,7 @@ model Job {
   serviceAddress     String    @map("service_address")
   serviceLatitude    Float?    @map("service_latitude")
   serviceLongitude   Float?    @map("service_longitude")
+  serviceTimezone    String    @default("America/Toronto") @map("service_timezone")
   estimatedArrivalAt DateTime? @db.Timestamptz @map("estimated_arrival_at") // ponytail: replaces stale etaMinutes — UI computes live countdown
   appointmentDate    DateTime? @db.Timestamptz @map("appointment_date") // Scheduled booking date/time
   arrivalWindowStart DateTime? @db.Timestamptz @map("arrival_window_start") // Contractual arrival window start (e.g. 6:00 PM)

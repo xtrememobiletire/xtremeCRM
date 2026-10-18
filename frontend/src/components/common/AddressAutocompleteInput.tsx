@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Search, Loader2, X } from 'lucide-react';
 import { MAPBOX_TOKEN } from '../../constants/mapboxConfig';
+import { resolveTimezoneFromCoords } from '../../utils/date';
 
 export interface GeocodeLocation {
   address: string;
   latitude: number;
   longitude: number;
+  timezone: string;
 }
 
 interface AddressAutocompleteInputProps {
@@ -61,7 +63,8 @@ export default function AddressAutocompleteInput({
 
     setIsLoading(true);
     try {
-      const cc = (countryCode || 'CA').toLowerCase();
+      const rawCc = (countryCode || 'CA').toLowerCase();
+      const cc = rawCc === 'uk' ? 'gb' : rawCc;
       const token = MAPBOX_TOKEN;
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query.trim())}.json?access_token=${token}&country=${cc}&limit=5`;
       const res = await fetch(url);
@@ -105,10 +108,14 @@ export default function AddressAutocompleteInput({
     setSuggestions([]);
 
     if (onSelectLocation && item.center && item.center.length === 2) {
+      const longitude = item.center[0];
+      const latitude = item.center[1];
+      const timezone = resolveTimezoneFromCoords(latitude, longitude, countryCode);
       onSelectLocation({
         address: item.place_name,
-        longitude: item.center[0],
-        latitude: item.center[1],
+        longitude,
+        latitude,
+        timezone,
       });
     }
   };

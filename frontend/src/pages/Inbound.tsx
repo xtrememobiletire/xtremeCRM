@@ -20,7 +20,11 @@ export default function Inbound() {
   const [callerName, setCallerName] = useState('');
   const [leadSource, setLeadSource] = useState('DIRECT_CALL');
   const [serviceAddress, setServiceAddress] = useState('');
-  const [serviceCoords, setServiceCoords] = useState<{ latitude: number | null; longitude: number | null }>({
+  const [serviceCoords, setServiceCoords] = useState<{
+    latitude: number | null;
+    longitude: number | null;
+    timezone?: string;
+  }>({
     latitude: null,
     longitude: null,
   });
@@ -101,6 +105,7 @@ export default function Inbound() {
         serviceAddress,
         serviceLatitude: serviceCoords.latitude ?? undefined,
         serviceLongitude: serviceCoords.longitude ?? undefined,
+        serviceTimezone: serviceCoords.timezone,
         notes,
         problemNotes: notes || undefined,
         upfrontAmountCents: upfrontCents,
@@ -176,7 +181,11 @@ export default function Inbound() {
           serviceAddress={serviceAddress}
           setServiceAddress={setServiceAddress}
           onSelectLocation={(loc: GeocodeLocation) => {
-            setServiceCoords({ latitude: loc.latitude, longitude: loc.longitude });
+            setServiceCoords({
+              latitude: loc.latitude,
+              longitude: loc.longitude,
+              timezone: loc.timezone,
+            });
           }}
           vehicleMakeModel={vehicleMakeModel}
           setVehicleMakeModel={setVehicleMakeModel}
@@ -192,6 +201,7 @@ export default function Inbound() {
           setUrgency={setUrgency}
           arrivalWindow={arrivalWindow}
           setArrivalWindow={setArrivalWindow}
+          timezone={serviceCoords.timezone}
           notes={notes}
           setNotes={setNotes}
           upfrontAmountDollars={upfrontAmountDollars}

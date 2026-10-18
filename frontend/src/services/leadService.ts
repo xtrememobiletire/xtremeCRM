@@ -48,6 +48,8 @@ export interface Lead {
   uploadedBy?: { id: string; fullName: string; role: string } | null;
   assignedAgentId?: string | null;
   assignedAgent?: { id: string; fullName: string; role: string } | null;
+  lastCalledByVaId?: string | null;
+  lastCalledByVa?: { id: string; fullName: string; role: string } | null;
   assignedDispatcherId?: string | null;
   assignedDispatcher?: { id: string; fullName: string; role: string } | null;
   dispatcherNotes?: string | null;
@@ -208,11 +210,22 @@ export const leadService = {
     return res.data.data;
   },
 
+  async claimCallbackLead(id: string): Promise<Lead> {
+    const res = await api.post(`/leads/${id}/claim-callback`);
+    return res.data.data;
+  },
+
   async setDisposition(
     id: string,
     disposition: string,
     notes?: string,
-    callbackData?: { callbackDate?: string; callbackDay?: string; callbackTime?: string; disqualificationReason?: DisqualificationReason }
+    callbackData?: { 
+      callbackDate?: string; 
+      callbackDay?: string; 
+      callbackTime?: string; 
+      callbackTimezone?: string; 
+      disqualificationReason?: DisqualificationReason 
+    }
   ) {
     const res = await api.patch(`/leads/${id}/disposition`, {
       disposition,

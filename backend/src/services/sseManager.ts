@@ -106,9 +106,14 @@ class SSEManager {
     if (channel === `sse:driver:${client.userId}`) return true;
     if (channel === `sse:user:${client.userId}`) return true;
 
-    // Administrative dispatch and jobs channels restricted to internal ops roles (cross-region live feed)
-    const isOpsRole = ['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER', 'ACCOUNTANT', 'CALL_AGENT', 'DEVELOPER'].includes(client.role);
-    if (isOpsRole && (channel.startsWith('sse:dispatch:') || channel.startsWith('sse:jobs:'))) {
+    // Administrative dispatch and jobs channels
+    const isGlobalOpsRole = ['ADMIN', 'GENERAL_MANAGER', 'DEVELOPER'].includes(client.role);
+    if (isGlobalOpsRole && (channel.startsWith('sse:dispatch:') || channel.startsWith('sse:jobs:'))) {
+      return true;
+    }
+
+    const isRegionalOpsRole = ['DISPATCHER', 'ACCOUNTANT', 'CALL_AGENT'].includes(client.role);
+    if (isRegionalOpsRole && (channel === `sse:dispatch:${client.countryCode}` || channel === `sse:jobs:${client.countryCode}` || client.countryCode === 'ALL')) {
       return true;
     }
 

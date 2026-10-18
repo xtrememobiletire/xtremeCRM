@@ -27,6 +27,7 @@ import { useKeyboardShortcuts } from '../../../hooks/useKeyboardShortcuts';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { formatAsYouType, validateAndNormalizePhone } from '../../../utils/phone';
+import { resolveTimezoneFromCoords } from '../../../utils/date';
 
 interface CreateFleetJobModalProps {
   isOpen: boolean;
@@ -86,7 +87,11 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
 
   // Location & Geocoding
   const [serviceAddress, setServiceAddress] = useState('');
-  const [serviceCoords, setServiceCoords] = useState<{ latitude: number | null; longitude: number | null }>({
+  const [serviceCoords, setServiceCoords] = useState<{
+    latitude: number | null;
+    longitude: number | null;
+    timezone?: string;
+  }>({
     latitude: null,
     longitude: null,
   });
@@ -143,8 +148,16 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
     setDriverPhone('');
 
     const f = fleets.find((item: any) => item.id === fleetId);
-    if (f && Array.isArray(f.vehicles) && f.vehicles.length === 1) {
-      handleSelectVehicle(f.vehicles[0].id, f.vehicles);
+    if (f) {
+      if (f.latitude && f.longitude) {
+        setServiceCoords((prev) => ({
+          ...prev,
+          timezone: resolveTimezoneFromCoords(f.latitude, f.longitude, formCountry),
+        }));
+      }
+      if (Array.isArray(f.vehicles) && f.vehicles.length === 1) {
+        handleSelectVehicle(f.vehicles[0].id, f.vehicles);
+      }
     }
   };
 
@@ -258,6 +271,7 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
         serviceAddress,
         serviceLatitude: serviceCoords.latitude,
         serviceLongitude: serviceCoords.longitude,
+        serviceTimezone: serviceCoords.timezone,
         vehicleId: isManualVehicle ? undefined : selectedVehicleId || undefined,
         urgency,
         paymentMethod: 'INVOICE_NET30',
@@ -568,7 +582,11 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
             onChange={setServiceAddress}
             onSelectLocation={(loc: GeocodeLocation) => {
               setServiceAddress(loc.address);
-              setServiceCoords({ latitude: loc.latitude, longitude: loc.longitude });
+              setServiceCoords({
+                latitude: loc.latitude,
+                longitude: loc.longitude,
+                timezone: loc.timezone,
+              });
             }}
             countryCode={formCountry}
             placeholder={`Enter yard, dock, highway mile marker in ${formCountry}...`}
@@ -613,6 +631,8 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
           </label>
           <ArrivalWindowSelector
             value={arrivalWindow}
+            timezone={serviceCoords.timezone}
+            countryCode={formCountry}
             onChange={(data) => {
               setArrivalWindow(data);
               if (data.mode === 'ETA') {

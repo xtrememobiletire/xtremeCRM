@@ -29,6 +29,7 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { formatAsYouType, validateAndNormalizePhone } from '../utils/phone';
+import { resolveTimezoneFromCoords } from '../utils/date';
 
 const COMMON_COMMERCIAL_TIRE_SIZES = ['11R22.5', '295/75R22.5', '275/65R18', '225/65R17'];
 
@@ -67,7 +68,11 @@ export default function FleetInbound() {
 
   // Location & Geocoding
   const [serviceAddress, setServiceAddress] = useState('');
-  const [serviceCoords, setServiceCoords] = useState<{ latitude: number | null; longitude: number | null }>({
+  const [serviceCoords, setServiceCoords] = useState<{
+    latitude: number | null;
+    longitude: number | null;
+    timezone?: string;
+  }>({
     latitude: null,
     longitude: null,
   });
@@ -125,8 +130,16 @@ export default function FleetInbound() {
     setDriverPhone('');
 
     const f = fleets.find((item: any) => item.id === fleetId);
-    if (f && Array.isArray(f.vehicles) && f.vehicles.length === 1) {
-      handleSelectVehicle(f.vehicles[0].id, f.vehicles);
+    if (f) {
+      if (f.latitude && f.longitude) {
+        setServiceCoords((prev) => ({
+          ...prev,
+          timezone: resolveTimezoneFromCoords(f.latitude, f.longitude, formCountry),
+        }));
+      }
+      if (Array.isArray(f.vehicles) && f.vehicles.length === 1) {
+        handleSelectVehicle(f.vehicles[0].id, f.vehicles);
+      }
     }
   };
 
@@ -240,6 +253,7 @@ export default function FleetInbound() {
         serviceAddress,
         serviceLatitude: serviceCoords.latitude ?? undefined,
         serviceLongitude: serviceCoords.longitude ?? undefined,
+        serviceTimezone: serviceCoords.timezone,
         vehicleId: isManualVehicle ? undefined : selectedVehicleId || undefined,
         urgency,
         paymentMethod: 'INVOICE_NET30',
@@ -579,7 +593,11 @@ export default function FleetInbound() {
               onChange={setServiceAddress}
               onSelectLocation={(loc: GeocodeLocation) => {
                 setServiceAddress(loc.address);
-                setServiceCoords({ latitude: loc.latitude, longitude: loc.longitude });
+                setServiceCoords({
+                  latitude: loc.latitude,
+                  longitude: loc.longitude,
+                  timezone: loc.timezone,
+                });
               }}
               countryCode={formCountry}
               placeholder={`Enter yard, dock, highway mile marker in ${formCountry}...`}
@@ -624,6 +642,8 @@ export default function FleetInbound() {
             </label>
             <ArrivalWindowSelector
               value={arrivalWindow}
+              timezone={serviceCoords.timezone}
+              countryCode={formCountry}
               onChange={(data) => {
                 setArrivalWindow(data);
                 if (data.mode === 'ETA') {

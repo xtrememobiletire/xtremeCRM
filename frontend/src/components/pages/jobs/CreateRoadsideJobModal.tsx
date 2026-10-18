@@ -63,7 +63,11 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
 
   // 3. Address & Geocoding
   const [serviceAddress, setServiceAddress] = useState('');
-  const [serviceCoords, setServiceCoords] = useState<{ latitude: number | null; longitude: number | null }>({
+  const [serviceCoords, setServiceCoords] = useState<{
+    latitude: number | null;
+    longitude: number | null;
+    timezone?: string;
+  }>({
     latitude: null,
     longitude: null,
   });
@@ -231,6 +235,7 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
         serviceAddress,
         serviceLatitude: serviceCoords.latitude,
         serviceLongitude: serviceCoords.longitude,
+        serviceTimezone: serviceCoords.timezone,
         urgency,
         paymentMethod,
         driverId: assignedDriverId || undefined,
@@ -444,7 +449,11 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
             onChange={setServiceAddress}
             onSelectLocation={(loc: GeocodeLocation) => {
               setServiceAddress(loc.address);
-              setServiceCoords({ latitude: loc.latitude, longitude: loc.longitude });
+              setServiceCoords({
+                latitude: loc.latitude,
+                longitude: loc.longitude,
+                timezone: loc.timezone,
+              });
             }}
             countryCode={formCountry}
             placeholder={`Enter street address, highway mile marker in ${formCountry}...`}
@@ -570,6 +579,8 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
           </label>
           <ArrivalWindowSelector
             value={arrivalWindow}
+            timezone={serviceCoords.timezone}
+            countryCode={formCountry}
             onChange={(data) => {
               setArrivalWindow(data);
               if (data.mode === 'ETA') {

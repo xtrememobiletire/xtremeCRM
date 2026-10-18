@@ -135,10 +135,11 @@ export default function ConvertFleetModal({
     >
       <div className="space-y-4">
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab('details')}
+        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('details')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
               activeTab === 'details'
                 ? 'bg-slate-900 text-white shadow-xs'
@@ -193,6 +194,12 @@ export default function ConvertFleetModal({
             </span>
           </button>
         </div>
+
+        <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg text-xs">
+          <span className="text-slate-500 font-semibold">Lead Est. Units:</span>
+          <span className="font-mono font-bold text-slate-800">{lead.numberOfUnits || 'N/A'}</span>
+        </div>
+      </div>
 
         {/* Tab Content Panes */}
         <div className="max-h-[60vh] overflow-y-auto pr-1">

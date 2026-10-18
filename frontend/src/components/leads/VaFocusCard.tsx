@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   User, 
   Phone, 
@@ -12,9 +12,15 @@ import {
   RotateCcw, 
   Sparkles, 
   Calendar,
+  Clock,
   UploadCloud 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { 
+  resolveLeadTimezone, 
+  zonedWallTimeToUtc, 
+  formatDualPktAndCustomerTime 
+} from '../../utils/date';
 
 interface VaFocusCardProps {
   lead: any;
@@ -25,6 +31,8 @@ interface VaFocusCardProps {
     callbackDate?: string;
     callbackDay?: string;
     callbackTime?: string;
+    callbackTimezone?: string;
+    callbackData?: any;
     disqualificationReason?: string;
   }) => void;
   isSubmitting: boolean;
@@ -45,6 +53,26 @@ export default function VaFocusCard({
   const [callbackDate, setCallbackDate] = useState('');
   const [callbackDay, setCallbackDay] = useState('');
   const [callbackTime, setCallbackTime] = useState('');
+  const [callbackTimezone, setCallbackTimezone] = useState('America/Toronto');
+
+  useEffect(() => {
+    if (lead) {
+      setCallbackTimezone(resolveLeadTimezone(lead));
+    }
+  }, [lead]);
+
+  const dualClockPreview = useMemo(() => {
+    if (!lead || !callbackDate || !callbackTime) return null;
+    const timeParts = callbackTime.match(/(\d{1,2}):(\d{2})/);
+    if (!timeParts) return null;
+    let hour = parseInt(timeParts[1], 10);
+    const minute = parseInt(timeParts[2], 10);
+    if (/pm/i.test(callbackTime) && hour < 12) hour += 12;
+    if (/am/i.test(callbackTime) && hour === 12) hour = 0;
+    const tz = callbackTimezone || resolveLeadTimezone(lead);
+    const utcDate = zonedWallTimeToUtc(callbackDate, hour, minute, tz);
+    return formatDualPktAndCustomerTime(utcDate, tz);
+  }, [callbackDate, callbackTime, callbackTimezone, lead]);
 
   if (!lead) {
     return (
@@ -107,11 +135,38 @@ export default function VaFocusCard({
     setNotes('');
   };
 
+  const setQuickCallback = (hoursFromNow: number) => {
+    const tz = callbackTimezone || resolveLeadTimezone(lead);
+    const target = new Date(Date.now() + hoursFromNow * 3600 * 1000);
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(target);
+    const y = parts.find((p) => p.type === 'year')?.value;
+    const m = parts.find((p) => p.type === 'month')?.value;
+    const d = parts.find((p) => p.type === 'day')?.value;
+    const hr = parts.find((p) => p.type === 'hour')?.value || '10';
+    const min = parts.find((p) => p.type === 'minute')?.value || '00';
+    if (y && m && d) {
+      setCallbackDate(`${y}-${m}-${d}`);
+      const dt = new Date(`${y}-${m}-${d}T00:00:00`);
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      setCallbackDay(days[dt.getDay()]);
+    }
+    setCallbackTime(`${hr}:${min}`);
+  };
+
   const handleSaveCallback = () => {
     if (!callbackDate) {
       toast.error('Please pick a callback date');
       return;
     }
+    const tz = callbackTimezone || resolveLeadTimezone(lead);
     onDisposition({
       id: lead.id,
       disposition: 'CALLBACK',
@@ -119,6 +174,13 @@ export default function VaFocusCard({
       callbackDate,
       callbackDay: callbackDay || undefined,
       callbackTime: callbackTime || undefined,
+      callbackTimezone: tz,
+      callbackData: {
+        callbackDate,
+        callbackDay: callbackDay || undefined,
+        callbackTime: callbackTime || undefined,
+        callbackTimezone: tz,
+      },
     });
     setShowCallbackPicker(false);
     setNotes('');
@@ -475,7 +537,7 @@ export default function VaFocusCard({
 
         {/* Callback Date Picker Slide-Down */}
         {showCallbackPicker && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl space-y-3 mt-3 animate-in fade-in duration-200">
+          <div className="p-4 bg-blue-50/90 border border-blue-200 rounded-2xl space-y-3 mt-3 animate-in fade-in duration-200">
             <div className="flex items-center justify-between">
               <span className="font-bold text-blue-900 text-xs flex items-center gap-1.5">
                 <Calendar size={14} /> Schedule Follow-up Callback
@@ -488,7 +550,34 @@ export default function VaFocusCard({
                 Cancel
               </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+
+            {/* Quick Presets */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] uppercase font-bold text-blue-700 font-mono">Quick:</span>
+              <button
+                type="button"
+                onClick={() => setQuickCallback(2)}
+                className="px-2 py-0.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 text-[11px] font-semibold transition"
+              >
+                +2 Hours
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuickCallback(24)}
+                className="px-2 py-0.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 text-[11px] font-semibold transition"
+              >
+                +24 Hours
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuickCallback(48)}
+                className="px-2 py-0.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 text-[11px] font-semibold transition"
+              >
+                +2 Days
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
               <div>
                 <label className="block text-[11px] font-semibold text-blue-800 mb-1">Date</label>
                 <input
@@ -518,16 +607,48 @@ export default function VaFocusCard({
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-semibold text-blue-800 mb-1">Time</label>
+                <label className="block text-[11px] font-semibold text-blue-800 mb-1">Time (24h)</label>
                 <input
-                  type="text"
-                  placeholder="e.g. 2:00 PM EST"
+                  type="time"
                   value={callbackTime}
                   onChange={(e) => setCallbackTime(e.target.value)}
                   className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-blue-200 bg-white"
                 />
               </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-blue-800 mb-1">Timezone</label>
+                <select
+                  value={callbackTimezone}
+                  onChange={(e) => setCallbackTimezone(e.target.value)}
+                  className="w-full px-2 py-1.5 text-xs rounded-xl border border-blue-200 bg-white"
+                >
+                  <option value="America/Toronto">Eastern (Toronto/NY)</option>
+                  <option value="America/Chicago">Central (Chicago/Winnipeg)</option>
+                  <option value="America/Denver">Mountain (Denver/Calgary)</option>
+                  <option value="America/Phoenix">Mountain (Arizona)</option>
+                  <option value="America/Los_Angeles">Pacific (LA/Vancouver)</option>
+                  <option value="America/Halifax">Atlantic (Halifax)</option>
+                  <option value="Europe/London">UK (London GMT/BST)</option>
+                </select>
+              </div>
             </div>
+
+            {/* Dual Clock Preview Banner */}
+            {dualClockPreview && (
+              <div className="p-2.5 rounded-xl bg-blue-100/70 border border-blue-300/80 text-xs text-blue-950 space-y-1">
+                <div className="flex items-center justify-between font-semibold">
+                  <span className="flex items-center gap-1">
+                    <Clock size={12} className="text-blue-700" /> Customer Local:
+                  </span>
+                  <span className="font-mono text-blue-900 font-bold">{dualClockPreview.customerLabel}</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-700">
+                  <span>🇵🇰 Pakistan Shift (PKT):</span>
+                  <span className="font-mono font-semibold text-slate-900">{dualClockPreview.pktLabel}</span>
+                </div>
+              </div>
+            )}
+
             <button
               type="button"
               disabled={isSubmitting}

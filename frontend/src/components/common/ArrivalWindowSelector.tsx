@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Calendar, Zap, Sun, Sunset, Moon } from 'lucide-react';
+import {
+  getDefaultTimezoneForCountry,
+  getTodayInTz,
+  getCurrentHourInTz,
+  zonedWallTimeToUtc,
+  formatTimeInTz,
+} from '../../utils/date';
 
 export interface ArrivalWindowData {
   arrivalWindowStart?: string; // ISO string
@@ -15,6 +22,8 @@ interface ArrivalWindowSelectorProps {
   onChange: (data: ArrivalWindowData) => void;
   className?: string;
   onModeChange?: (mode: 'ETA' | 'WINDOW') => void;
+  timezone?: string;
+  countryCode?: string;
 }
 
 const ETA_PRESETS = [
@@ -31,7 +40,17 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
   onChange,
   className = '',
   onModeChange,
+  timezone,
+  countryCode,
 }) => {
+  const activeTz = timezone || getDefaultTimezoneForCountry(countryCode);
+  const todayStr = getTodayInTz(activeTz);
+  const [windowDate, setWindowDate] = useState<string>(todayStr);
+
+  useEffect(() => {
+    setWindowDate(getTodayInTz(activeTz));
+  }, [activeTz]);
+
   const [mode, setMode] = useState<'ETA' | 'WINDOW'>(
     value?.mode || (value?.arrivalWindowStart && !value?.estimatedArrivalMinutes ? 'WINDOW' : 'ETA')
   );
@@ -43,9 +62,6 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
     }
   }, [value?.mode]);
 
-  // Scheduled window state
-  const todayStr = new Date().toISOString().split('T')[0];
-  const [windowDate, setWindowDate] = useState<string>(todayStr);
   const [startHour, setStartHour] = useState<number>(6);
   const [startMinute, setStartMinute] = useState<string>('00');
   const [startAmPm, setStartAmPm] = useState<'AM' | 'PM'>('PM');
@@ -73,7 +89,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
       appointmentDate: arrivalTime.toISOString(),
       arrivalWindowStart: arrivalTime.toISOString(),
       arrivalWindowEnd: windowEnd.toISOString(),
-      displayLabel: `ETA ~${minutes}m (${arrivalTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })})`,
+      displayLabel: `ETA ~${minutes}m (${formatTimeInTz(arrivalTime, activeTz)})`,
       mode: 'ETA',
     });
     if (onModeChange) onModeChange('ETA');
@@ -90,18 +106,16 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
     eAmpm: 'AM' | 'PM'
   ) => {
     try {
-      const [year, month, day] = dateStr.split('-').map(Number);
-
       const sHour24 = to24Hour(sH, sAmpm);
-      const startDate = new Date(year, month - 1, day, sHour24, parseInt(sM, 10), 0);
+      const startDate = zonedWallTimeToUtc(dateStr, sHour24, parseInt(sM, 10), activeTz);
 
       const eHour24 = to24Hour(eH, eAmpm);
-      const endDate = new Date(year, month - 1, day, eHour24, parseInt(eM, 10), 0);
+      const endDate = zonedWallTimeToUtc(dateStr, eHour24, parseInt(eM, 10), activeTz);
 
-      // If end time is before or equal to start time, push end time to next day or +1 hr
+      // If end time is before or equal to start time, push end time to +1 hr
       const finalEndDate = endDate <= startDate ? new Date(startDate.getTime() + 60 * 60000) : endDate;
-
-      const label = `${sH}:${sM} ${sAmpm} – ${eH}:${eM} ${eAmpm}`;
+      const tzShort = activeTz.split('/')[1]?.replace(/_/g, ' ') || activeTz;
+      const label = `${sH}:${sM} ${sAmpm} – ${eH}:${eM} ${eAmpm} (${tzShort})`;
 
       onChange({
         arrivalWindowStart: startDate.toISOString(),
@@ -123,8 +137,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
     let eH = 10, eM = '00', eAmpm: 'AM' | 'PM' = 'AM';
 
     if (preset === '1HR') {
-      const now = new Date();
-      const currentHour = now.getHours();
+      const currentHour = getCurrentHourInTz(activeTz);
       const nextHour = (currentHour + 1) % 24;
       const afterNext = (currentHour + 2) % 24;
 
@@ -134,8 +147,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
       eAmpm = afterNext >= 12 ? 'PM' : 'AM';
       eH = afterNext % 12 === 0 ? 12 : afterNext % 12;
     } else if (preset === '2HR') {
-      const now = new Date();
-      const currentHour = now.getHours();
+      const currentHour = getCurrentHourInTz(activeTz);
       const nextHour = (currentHour + 1) % 24;
       const afterTwo = (currentHour + 3) % 24;
 
@@ -439,7 +451,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
               Driver Promised Arrival Window:
             </span>
             <span className="font-bold bg-white px-2 py-0.5 rounded border border-blue-200 text-blue-700">
-              {startHour}:{startMinute} {startAmPm} – {endHour}:{endMinute} {endAmPm}
+              {startHour}:{startMinute} {startAmPm} – {endHour}:{endMinute} {endAmPm} ({activeTz.split('/')[1]?.replace(/_/g, ' ') || activeTz})
             </span>
           </div>
         </div>
