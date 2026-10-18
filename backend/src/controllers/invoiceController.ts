@@ -833,6 +833,10 @@ export const invoiceController = {
       const id = String(req.params.id);
       const { status, paymentMethod, paidAt } = req.body;
 
+      const existing = await prisma.invoice.findUnique({ where: { id } });
+      if (!existing) return sendError(res, 'Invoice not found', 404);
+      const fullNetPayable = Math.max(0, existing.totalCents - (existing.depositCents || 0));
+
       const updated = await prisma.$transaction(async (tx) => {
         const inv = await tx.invoice.update({
           where: { id },
@@ -842,7 +846,7 @@ export const invoiceController = {
             ...(status === 'PAID' && {
               paidAt: paidAt ? new Date(paidAt) : new Date(),
               balanceDueCents: 0,
-              amountPaidCents: { set: undefined }, // will preserve existing or match
+              amountPaidCents: fullNetPayable,
             }),
           },
           include: {
@@ -891,6 +895,30 @@ export const invoiceController = {
       });
 
       if (!invoice) return sendError(res, 'Invoice not found', 404);
+
+      const authUser = (req as any).user;
+      if (authUser?.role === 'FLEET_MANAGER') {
+        const fleet = await prisma.fleet.findFirst({
+          where: {
+            OR: [
+              { managerUserId: authUser.id },
+              ...(authUser.email ? [{ email: authUser.email.toLowerCase() }] : []),
+            ],
+          },
+        });
+        if (!fleet || invoice.fleetId !== fleet.id) {
+          return sendError(res, 'Forbidden: Invoice does not belong to your fleet account', 403);
+        }
+      } else if (authUser?.role === 'CUSTOMER_MEMBER') {
+        const customer = await prisma.customer.findUnique({ where: { userId: authUser.id } });
+        const isOwner =
+          customer &&
+          (invoice.customerId === customer.id ||
+            invoice.jobs?.some((j: any) => j.customerId === customer.id));
+        if (!customer || !isOwner) {
+          return sendError(res, 'Forbidden: Invoice does not belong to your member account', 403);
+        }
+      }
 
       const regionalHub = invoice.countryCode === 'US'
         ? {

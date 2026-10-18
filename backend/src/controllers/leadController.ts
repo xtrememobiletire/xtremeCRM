@@ -1689,9 +1689,11 @@ export const leadController = {
       const scheduledCallbacks = await prisma.lead.findMany({
         where: {
           stage: 'AGENT_CALLBACK',
+          status: 'CALLBACK',
+          callbackDate: { lte: now },
           OR: [
             { assignedAgentId: agentId },
-            { assignedAgentId: null, callbackDate: { lte: now } },
+            { assignedAgentId: null },
           ],
           ...(countryCode ? { countryCode } : {}),
         },
@@ -1831,8 +1833,9 @@ export const leadController = {
         updateData.callbackDate = parsedCallbackDate;
         updateData.callbackDay = callbackDay || undefined;
         updateData.callbackTime = callbackTime || undefined;
-        // Sticky VA assignment: retain current or caller agent
-        updateData.assignedAgentId = agentId || lead.assignedAgentId || null;
+        // Keep unassigned in Callback Pool until callbackDate arrives (lastCalledByVaId stores sticky VA)
+        const isFutureCallback = parsedCallbackDate && parsedCallbackDate.getTime() > Date.now();
+        updateData.assignedAgentId = isFutureCallback ? null : (agentId || lead.assignedAgentId || null);
       } else if (disposition === 'INTERESTED' || disposition === 'WARM_TRANSFER') {
         newStatus = 'CALLED';
         newStage = 'DISPATCHER_REVIEW';
@@ -1915,7 +1918,10 @@ export const leadController = {
           try {
             await boss.send(
               QUEUES.CALLBACK_DUE_TRIGGER,
-              { leadId: updated.id, preferredAgentId: updated.assignedAgentId || undefined },
+              {
+                leadId: updated.id,
+                preferredAgentId: agentId || lead.lastCalledByVaId || lead.assignedAgentId || undefined,
+              },
               { startAfter: parsedCallbackDate }
             );
           } catch (qErr) {

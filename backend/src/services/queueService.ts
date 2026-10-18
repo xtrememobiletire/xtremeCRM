@@ -293,8 +293,14 @@ export async function assignDueCallbackAtomic(
   try {
     return await prisma.$transaction(async (tx) => {
       // Lock lead row
-      const leads: Array<{ id: string; status: string; stage: string; countryCode: string }> = await tx.$queryRaw`
-        SELECT id, status, stage, country_code as "countryCode"
+      const leads: Array<{
+        id: string;
+        status: string;
+        stage: string;
+        countryCode: string;
+        assignedAgentId: string | null;
+      }> = await tx.$queryRaw`
+        SELECT id, status, stage, country_code as "countryCode", assigned_agent_id as "assignedAgentId"
         FROM leads
         WHERE id = ${leadId}
         FOR UPDATE
@@ -306,6 +312,16 @@ export async function assignDueCallbackAtomic(
       // If lead is no longer in CALLBACK / AGENT_CALLBACK status, skip
       if (lead.status !== 'CALLBACK' && lead.stage !== 'AGENT_CALLBACK') {
         return false;
+      }
+
+      // If Admin/GM/Dispatcher already manually assigned an agent, preserve and notify
+      if (lead.assignedAgentId) {
+        sseManager.broadcast(`sse:leads:${lead.countryCode}`, 'lead:callback_due', {
+          leadId,
+          assignedAgentId: lead.assignedAgentId,
+          countryCode: lead.countryCode,
+        });
+        return true;
       }
 
       let targetAgentId: string | null = null;

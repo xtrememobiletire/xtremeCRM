@@ -329,7 +329,7 @@ export default function Leads() {
 
   const reassignMutation = useMutation({
     mutationFn: ({ id, assignedAgentId }: { id: string; assignedAgentId: string | null }) =>
-      leadService.updateLead(id, { assignedAgentId: assignedAgentId || undefined }),
+      leadService.updateLead(id, { assignedAgentId } as any),
     onSuccess: () => {
       toast.success('Lead assignment updated');
       queryClient.invalidateQueries({ queryKey: ['leads'] });

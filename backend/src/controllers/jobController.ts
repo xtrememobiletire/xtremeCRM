@@ -310,6 +310,35 @@ export const jobController = {
 
       // 1. Auto-resolve or create Customer if nested details provided
       let customerId = data.customerId;
+      const authUser = (req as any).user;
+
+      if (!customerId && authUser?.id) {
+        const memberCustomer = await prisma.customer.findUnique({
+          where: { userId: authUser.id },
+        });
+        if (memberCustomer) {
+          customerId = memberCustomer.id;
+          if (!data.recipientName) data.recipientName = memberCustomer.fullName;
+          if (!data.recipientPhone) data.recipientPhone = memberCustomer.phone;
+        }
+      }
+
+      if (!customerId && data.vehicleId) {
+        const existingVeh = await prisma.vehicle.findUnique({
+          where: { id: String(data.vehicleId) },
+          include: { customer: true },
+        });
+        if (existingVeh?.customerId) {
+          customerId = existingVeh.customerId;
+          if (!data.recipientName && existingVeh.customer?.fullName) {
+            data.recipientName = existingVeh.customer.fullName;
+          }
+          if (!data.recipientPhone && existingVeh.customer?.phone) {
+            data.recipientPhone = existingVeh.customer.phone;
+          }
+        }
+      }
+
       const rawPhone = data.customer?.phone || data.customerPhone || data.recipientPhone || data.phone;
       const name = data.customer?.name || data.customer?.fullName || data.customerName || data.recipientName || data.name;
       let normalizedContactPhone = '';

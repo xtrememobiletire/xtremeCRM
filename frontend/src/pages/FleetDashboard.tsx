@@ -17,6 +17,7 @@ import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
 import StatCard from '../components/ui/StatCard';
 import InvoicePdfModal from '../components/invoices/InvoicePdfModal';
+import AddressAutocompleteInput from '../components/common/AddressAutocompleteInput';
 import { toast } from 'sonner';
 
 type Tab = 'dashboard' | 'vehicles' | 'drivers' | 'request' | 'status' | 'pending-invoices' | 'paid-invoices';
@@ -24,7 +25,7 @@ type Tab = 'dashboard' | 'vehicles' | 'drivers' | 'request' | 'status' | 'pendin
 export default function FleetDashboard() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { country, currencySymbol } = useTenant();
+  const { country: tenantCountry, currencySymbol: tenantCurrencySymbol } = useTenant();
   const { socket } = useSocket();
   const queryClient = useQueryClient();
 
@@ -62,11 +63,13 @@ export default function FleetDashboard() {
   const [bookingForm, setBookingForm] = useState({
     appointmentDate: '',
     vehicleId: '',
-    serviceName: 'New Tire Replacement',
+    serviceName: 'Flat Tire Repair',
     serviceType: 'STANDARD' as 'STANDARD' | 'EMERGENCY',
     contactPhone: '',
     tireSize: '11R22.5',
-    address: '10100 Richmond Hwy, Lorton, VA 22079',
+    address: '',
+    serviceLatitude: null as number | null,
+    serviceLongitude: null as number | null,
     notes: '',
   });
 
@@ -81,6 +84,8 @@ export default function FleetDashboard() {
   });
 
   const fleet = dashboardData?.fleet;
+  const fleetCountry = (fleet?.countryCode || tenantCountry || 'CA') as 'CA' | 'US' | 'UK';
+  const currencySymbol = fleetCountry === 'US' ? '$' : fleetCountry === 'UK' ? '£' : (tenantCurrencySymbol || 'CA$');
 
   // 2. Vehicles Query
   const { data: vehicles = [] } = useQuery({
@@ -276,9 +281,15 @@ export default function FleetDashboard() {
       toast.error('Please choose an appointment date and time');
       return;
     }
+    const finalAddress = (bookingForm.address || fleet?.address || '').trim();
+    if (!finalAddress) {
+      toast.error('Please enter a breakdown / service location address');
+      return;
+    }
     bookServiceMutation.mutate({
       ...bookingForm,
-      serviceAddress: bookingForm.address,
+      address: finalAddress,
+      serviceAddress: finalAddress,
       fleetId: fleet?.id,
     });
   };
@@ -305,7 +316,7 @@ export default function FleetDashboard() {
 
   // KPI Calculations
   const pendingAmountCents = useMemo(() => {
-    return pendingInvoices.reduce((sum: number, inv: any) => sum + (inv.totalCents || 0), 0);
+    return pendingInvoices.reduce((sum: number, inv: any) => sum + (inv.balanceDueCents ?? inv.totalCents ?? 0), 0);
   }, [pendingInvoices]);
 
   const activeJobsCount = useMemo(() => {
@@ -462,7 +473,7 @@ export default function FleetDashboard() {
 
             {/* Fleet / Region Pill */}
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold font-mono">
-              <span>{country || 'US'}</span>
+              <span>{fleetCountry}</span>
               <span>•</span>
               <span className="text-red-600">{fleet?.accountCode || 'XMT-5132'}</span>
             </div>
@@ -970,13 +981,25 @@ export default function FleetDashboard() {
                       className="select-base mt-1.5 py-2.5 text-xs text-slate-800"
                       required
                     >
+                      <option value="Flat Tire Repair">Flat Tire Repair</option>
                       <option value="New Tire Replacement">New Tire Replacement</option>
-                      <option value="Used tire replacement">Used tire replacement</option>
+                      <option value="Used tire replacement">Used Tire Replacement</option>
                       <option value="Tire Repair (plug)">Tire Repair (plug)</option>
-                      <option value="Tire Swap (ON RIM)">Tire Swap (ON RIM)</option>
+                      <option value="Tire Swap (ON RIM)">Seasonal Tire Swap (On-Rim)</option>
+                      <option value="Seasonal Tire Swap (Off-Rim)">Seasonal Tire Swap (Off-Rim)</option>
                       <option value="Spare Tire Change">Spare Tire Change</option>
-                      <option value="Battery Booster">Jump Start / Booster</option>
+                      <option value="Wheel Balance">Wheel Balance</option>
+                      <option value="Rim Repair">Rim Repair</option>
+                      <option value="Battery Booster">Jump Start / Battery Booster</option>
+                      <option value="Battery Replacement">Battery Replacement</option>
+                      <option value="Lockout Service">Lockout Service</option>
+                      <option value="Lock Smith Service">Lock Smith Service</option>
+                      <option value="Fuel Delivery">Fuel Delivery</option>
+                      <option value="Towing Service">Towing Service</option>
+                      <option value="Winch Out">Winch Out</option>
                       <option value="Emergency Roadside Assistance">Emergency Roadside Assistance</option>
+                      <option value="Oil Change">Oil Change</option>
+                      <option value="Brake Inspection">Brake Inspection</option>
                     </select>
                   </div>
 
@@ -1029,14 +1052,23 @@ export default function FleetDashboard() {
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Breakdown / Service Address *
                   </label>
-                  <input
-                    type="text"
-                    value={bookingForm.address}
-                    onChange={(e) => setBookingForm({ ...bookingForm, address: e.target.value })}
-                    placeholder="Enter street address, highway exit, or depot location"
-                    className="input-base mt-1.5 py-2.5 text-xs text-slate-800"
-                    required
-                  />
+                  <div className="mt-1.5">
+                    <AddressAutocompleteInput
+                      value={bookingForm.address}
+                      countryCode={fleetCountry}
+                      onChange={(val) => setBookingForm((prev) => ({ ...prev, address: val }))}
+                      onSelectLocation={(loc) => {
+                        setBookingForm((prev) => ({
+                          ...prev,
+                          address: loc.address,
+                          serviceLatitude: loc.latitude,
+                          serviceLongitude: loc.longitude,
+                        }));
+                      }}
+                      placeholder="Enter street address, highway exit, or depot location"
+                      required
+                    />
+                  </div>
                 </div>
 
                 {/* NOTES */}

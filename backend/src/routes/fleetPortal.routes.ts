@@ -4,11 +4,14 @@ import { authorize } from '../middleware/authorize.js';
 import { prisma } from '../config/database.js';
 import { sendSuccess, sendError, generateUniqueJobCode } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
+import { geocodingService } from '../services/geocodingService.js';
+import { sseManager } from '../services/sseManager.js';
+import { resolveTimezoneFromCoords } from '../utils/timezone.js';
 
 const router = Router();
 
 router.use(authenticate);
-router.use(authorize(['FLEET_MANAGER', 'ADMIN']));
+router.use(authorize(['FLEET_MANAGER', 'ADMIN', 'GENERAL_MANAGER']));
 
 async function getScopedFleet(req: Request) {
   const userId = (req.user as any)?.id;
@@ -59,7 +62,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
 
     const [pendingCount, paidCount] = await Promise.all([
       prisma.invoice.count({
-        where: { fleetId: fleet.id, status: { in: ['DRAFT', 'PENDING', 'OVERDUE'] } },
+        where: { fleetId: fleet.id, status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] } },
       }),
       prisma.invoice.count({
         where: { fleetId: fleet.id, status: 'PAID' },
@@ -320,6 +323,36 @@ router.get('/jobs', async (req: Request, res: Response) => {
   }
 });
 
+const PORTAL_SERVICE_MAP: Record<
+  string,
+  { category: 'TIRE_SERVICE' | 'ROADSIDE_ASSISTANCE' | 'MAINTENANCE'; priceCents: number }
+> = {
+  'Flat Tire Repair': { category: 'TIRE_SERVICE', priceCents: 12000 },
+  'Tire Repair (plug)': { category: 'TIRE_SERVICE', priceCents: 12000 },
+  'Tire Patch': { category: 'TIRE_SERVICE', priceCents: 8500 },
+  'New Tire Replacement': { category: 'TIRE_SERVICE', priceCents: 24000 },
+  'Used Tire Replacement': { category: 'TIRE_SERVICE', priceCents: 14000 },
+  'Used tire replacement': { category: 'TIRE_SERVICE', priceCents: 14000 },
+  'Seasonal Tire Swap (On-Rim)': { category: 'TIRE_SERVICE', priceCents: 11000 },
+  'Tire Swap (ON RIM)': { category: 'TIRE_SERVICE', priceCents: 11000 },
+  'Seasonal Tire Swap (Off-Rim)': { category: 'TIRE_SERVICE', priceCents: 16000 },
+  'Spare Tire Change': { category: 'TIRE_SERVICE', priceCents: 12000 },
+  'Rim Repair': { category: 'TIRE_SERVICE', priceCents: 17500 },
+  'Valve Stem Replacement': { category: 'TIRE_SERVICE', priceCents: 6500 },
+  'Wheel Balance': { category: 'TIRE_SERVICE', priceCents: 9000 },
+  'Jump Start': { category: 'ROADSIDE_ASSISTANCE', priceCents: 9500 },
+  'Battery Booster': { category: 'ROADSIDE_ASSISTANCE', priceCents: 9500 },
+  'Battery Replacement': { category: 'ROADSIDE_ASSISTANCE', priceCents: 21000 },
+  'Lockout Service': { category: 'ROADSIDE_ASSISTANCE', priceCents: 12500 },
+  'Lock Smith Service': { category: 'ROADSIDE_ASSISTANCE', priceCents: 13500 },
+  'Fuel Delivery': { category: 'ROADSIDE_ASSISTANCE', priceCents: 10500 },
+  'Towing Service': { category: 'ROADSIDE_ASSISTANCE', priceCents: 18500 },
+  'Emergency Roadside Assistance': { category: 'ROADSIDE_ASSISTANCE', priceCents: 18000 },
+  'Winch Out': { category: 'ROADSIDE_ASSISTANCE', priceCents: 16500 },
+  'Brake Inspection': { category: 'MAINTENANCE', priceCents: 9500 },
+  'Oil Change': { category: 'MAINTENANCE', priceCents: 11000 },
+};
+
 /**
  * @route   POST /api/fleet-portal/request-service
  * @desc    Book a new service request directly from the Fleet Manager Portal
@@ -331,14 +364,20 @@ router.post('/request-service', async (req: Request, res: Response) => {
 
     const {
       vehicleId,
+      driverId,
       serviceName = 'Tire Repair (plug)',
       serviceType = 'STANDARD',
+      serviceCategory,
       serviceAddress: explicitAddress,
       address,
+      serviceLatitude,
+      serviceLongitude,
       appointmentDate,
+      scheduledAt,
       contactPhone,
       tireSize,
       notes,
+      problemNotes,
     } = req.body;
 
     const serviceAddress = (explicitAddress || address || fleet.address || '').trim();
@@ -350,7 +389,42 @@ router.post('/request-service', async (req: Request, res: Response) => {
       return sendError(res, 'Service / breakdown location is required', 400);
     }
 
-    const country = fleet.countryCode || 'US';
+    const country = (fleet.countryCode || 'CA') as 'CA' | 'US' | 'UK';
+    const currency = country === 'US' ? 'USD' : country === 'UK' ? 'GBP' : 'CAD';
+    const taxRateBps = country === 'CA' ? 1300 : country === 'UK' ? 2000 : 800;
+
+    let lat = typeof serviceLatitude === 'number' ? serviceLatitude : null;
+    let lng = typeof serviceLongitude === 'number' ? serviceLongitude : null;
+    if ((lat === null || lng === null) && serviceAddress) {
+      try {
+        const geo = await geocodingService.geocodeAddress(serviceAddress, country);
+        if (geo) {
+          lat = geo.latitude;
+          lng = geo.longitude;
+        }
+      } catch {
+        // geocode fallback
+      }
+    }
+
+    const serviceTimezone = resolveTimezoneFromCoords(lat, lng, country);
+
+    const rawServiceKey = String(serviceCategory || serviceName || '').trim();
+    const catalogEntry = PORTAL_SERVICE_MAP[rawServiceKey];
+    const isEmergency = serviceType === 'EMERGENCY';
+    const resolvedCategory = catalogEntry?.category || (isEmergency ? 'ROADSIDE_ASSISTANCE' : 'TIRE_SERVICE');
+    const basePriceCents = catalogEntry?.priceCents ?? (isEmergency ? 18000 : 12000);
+    const discountFactor = Math.max(0, 100 - (fleet.discountPercent || 0)) / 100;
+    const unitPriceCents = Math.round(basePriceCents * discountFactor);
+    const subtotalCents = unitPriceCents;
+    const taxAmountCents = Math.round((subtotalCents * taxRateBps) / 10000);
+    const totalCents = subtotalCents + taxAmountCents;
+    const itPlatformFeeCents = country === 'CA' ? 150 : 100;
+
+    const rawScheduled = scheduledAt || appointmentDate;
+    const scheduledDateObj = !isEmergency && rawScheduled ? new Date(rawScheduled) : new Date(Date.now() + 30 * 60000);
+    const windowEndObj = new Date(scheduledDateObj.getTime() + 60 * 60000);
+
     const jobCode = await generateUniqueJobCode(country, 'JOB');
 
     let finalVehicleId = vehicleId;
@@ -368,8 +442,16 @@ router.post('/request-service', async (req: Request, res: Response) => {
       finalVehicleId = v.id;
     }
 
-    const urgency = serviceType === 'EMERGENCY' ? 'URGENT' : 'STANDARD';
-    const scheduledDate = appointmentDate ? new Date(appointmentDate) : new Date();
+    let driverPhone = contactPhone?.trim() || fleet.phone;
+    let driverName = fleet.contactPerson || fleet.name;
+    if (driverId) {
+      const d = await prisma.fleetDriver.findUnique({ where: { id: String(driverId) } });
+      if (d) {
+        driverName = d.fullName;
+        if (d.phone) driverPhone = d.phone;
+      }
+    }
+
     const creatorId = (req.user as any)?.id || fleet.managerUserId || (await prisma.user.findFirst())?.id;
 
     const createdJob = await prisma.job.create({
@@ -381,18 +463,32 @@ router.post('/request-service', async (req: Request, res: Response) => {
         countryCode: country,
         source: 'FLEET_PORTAL',
         status: 'PENDING',
-        urgency,
+        urgency: isEmergency ? 'URGENT' : 'STANDARD',
         serviceAddress,
-        recipientName: fleet.contactPerson || fleet.name,
-        recipientPhone: contactPhone?.trim() || fleet.phone,
-        appointmentDate: scheduledDate,
-        problemNotes: `[Fleet Self-Request] Tire Spec: ${tireSize || 'N/A'}. ${notes || ''}`.trim(),
+        serviceLatitude: lat,
+        serviceLongitude: lng,
+        serviceTimezone,
+        appointmentDate: scheduledDateObj,
+        arrivalWindowStart: scheduledDateObj,
+        arrivalWindowEnd: windowEndObj,
+        estimatedArrivalAt: scheduledDateObj,
+        recipientName: driverName,
+        recipientPhone: driverPhone,
+        problemNotes: `[Fleet Self-Request] Tire Spec: ${tireSize || 'N/A'}. ${notes || problemNotes || ''}`.trim(),
+        currency: currency as any,
+        subtotalCents,
+        taxRateBps,
+        taxAmountCents,
+        totalCents,
+        itPlatformFeeCents,
+        paymentMethod: 'INVOICE_NET30',
+        paymentStatus: 'UNPAID',
         serviceItems: {
           create: [
             {
-              serviceName,
-              category: 'TIRE_SERVICE',
-              unitPriceCents: serviceType === 'EMERGENCY' ? 18000 : 12000,
+              serviceName: rawServiceKey || 'Commercial Fleet Service',
+              category: resolvedCategory as any,
+              unitPriceCents,
               quantity: 1,
               notes: `Requested via Fleet Portal: ${tireSize || ''}`,
             },
@@ -405,6 +501,12 @@ router.post('/request-service', async (req: Request, res: Response) => {
         driver: { select: { id: true, fullName: true, phone: true } },
       },
     });
+
+    try {
+      sseManager.broadcast(`sse:dispatch:${country}`, 'job:created', createdJob);
+    } catch {
+      // sse ignore
+    }
 
     try {
       const io = getIO();
@@ -432,7 +534,7 @@ router.get('/invoices', async (req: Request, res: Response) => {
 
     const status = req.query.status as string;
     const where: any = { fleetId: fleet.id };
-    if (status === 'PENDING') where.status = { in: ['DRAFT', 'PENDING', 'OVERDUE'] };
+    if (status === 'PENDING') where.status = { in: ['PENDING', 'PARTIAL', 'OVERDUE'] };
     if (status === 'PAID') where.status = 'PAID';
 
     const invoices = await prisma.invoice.findMany({
