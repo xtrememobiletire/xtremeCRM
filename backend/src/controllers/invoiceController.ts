@@ -329,11 +329,17 @@ export const invoiceController = {
           quantity: Math.max(1, Math.round(Number(item.quantity || 1))),
         }));
       } else if (job.serviceItems.length > 0) {
-        itemsData = job.serviceItems.map((item) => ({
-          itemDetails: `${item.serviceName} (${job.vehicle ? `${job.vehicle.year || ''} ${job.vehicle.make || ''} ${job.vehicle.model || ''}`.trim() : 'Standard Vehicle'})`,
-          unitPriceCents: item.unitPriceCents,
-          quantity: item.quantity,
-        }));
+        itemsData = job.serviceItems.map((item) => {
+          const vehDesc = job.vehicle
+            ? `${job.vehicle.unitNumber ? `[Unit ${job.vehicle.unitNumber}] ` : ''}${job.vehicle.year || ''} ${job.vehicle.make || ''} ${job.vehicle.model || ''}`.trim()
+            : 'Standard Vehicle';
+          const notesDesc = item.notes ? ` • ${item.notes}` : '';
+          return {
+            itemDetails: `${item.serviceName} (${vehDesc})${notesDesc}`,
+            unitPriceCents: item.unitPriceCents,
+            quantity: item.quantity,
+          };
+        });
       } else {
         itemsData = [
           {
@@ -345,7 +351,16 @@ export const invoiceController = {
       }
 
       const subtotalCents = itemsData.reduce((sum, it) => sum + it.unitPriceCents * it.quantity, 0);
-      const discountAmountCents = Math.max(0, Math.round(Number(discountCents || 0)));
+      let discountAmountCents = Math.max(0, Math.round(Number(discountCents || 0)));
+      if (!discountAmountCents) {
+        if (job.fleet?.discountPercent && job.fleet.discountPercent > 0) {
+          discountAmountCents = Math.round(subtotalCents * (job.fleet.discountPercent / 100));
+        } else if (job.customer?.customerType === 'MEMBERSHIP') {
+          discountAmountCents = Math.round(subtotalCents * 0.10);
+        } else if (job.subtotalCents > 0 && (job.subtotalCents + job.taxAmountCents) > job.totalCents) {
+          discountAmountCents = (job.subtotalCents + job.taxAmountCents) - job.totalCents;
+        }
+      }
       const depositCents = creditDeposit ? (job.upfrontAmountCents || 0) : 0;
 
       const { taxAmountCents, totalCents, balanceDueCents } = calculateTaxAndTotals(

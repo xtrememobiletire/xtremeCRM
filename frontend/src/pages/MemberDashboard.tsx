@@ -23,45 +23,10 @@ import { formatCurrency, centsToDollars } from '../utils/currency';
 import PageHeader from '../components/ui/PageHeader';
 import AddressAutocompleteInput from '../components/common/AddressAutocompleteInput';
 import InvoicePdfModal from '../components/invoices/InvoicePdfModal';
+import MultiServiceSelector, { type SelectedServiceItem } from '../components/common/MultiServiceSelector';
 import { toast } from 'sonner';
 
-export interface MemberServiceOption {
-  name: string;
-  category: 'TIRE_SERVICE' | 'ROADSIDE_ASSISTANCE' | 'MAINTENANCE';
-  priceCents: number;
-  group: 'Tire Services' | 'Roadside Assistance' | 'Maintenance & Inspections';
-}
 
-const MEMBER_SERVICE_OPTIONS: MemberServiceOption[] = [
-  // Tire Services
-  { name: 'Flat Tire Repair (Plug)', category: 'TIRE_SERVICE', priceCents: 10800, group: 'Tire Services' },
-  { name: 'New Tire Replacement', category: 'TIRE_SERVICE', priceCents: 21600, group: 'Tire Services' },
-  { name: 'Used Tire Replacement', category: 'TIRE_SERVICE', priceCents: 12600, group: 'Tire Services' },
-  { name: 'Tire Patch Repair', category: 'TIRE_SERVICE', priceCents: 7650, group: 'Tire Services' },
-  { name: 'Stem Valve Replacement', category: 'TIRE_SERVICE', priceCents: 7650, group: 'Tire Services' },
-  { name: 'New RIM Replacement', category: 'TIRE_SERVICE', priceCents: 19800, group: 'Tire Services' },
-  { name: 'Used RIM Replacement', category: 'TIRE_SERVICE', priceCents: 11700, group: 'Tire Services' },
-  { name: 'Seasonal Tire Swap (On-Rim)', category: 'TIRE_SERVICE', priceCents: 9900, group: 'Tire Services' },
-  { name: 'Seasonal Tire Swap (Off-Rim)', category: 'TIRE_SERVICE', priceCents: 14400, group: 'Tire Services' },
-  { name: 'Spare Tire Change', category: 'TIRE_SERVICE', priceCents: 9000, group: 'Tire Services' },
-  { name: 'Wheel Balance', category: 'TIRE_SERVICE', priceCents: 8100, group: 'Tire Services' },
-  { name: 'Rim Repair', category: 'TIRE_SERVICE', priceCents: 15750, group: 'Tire Services' },
-
-  // Roadside Assistance
-  { name: 'Jump Start / Battery Booster', category: 'ROADSIDE_ASSISTANCE', priceCents: 8550, group: 'Roadside Assistance' },
-  { name: 'Battery Replacement', category: 'ROADSIDE_ASSISTANCE', priceCents: 18900, group: 'Roadside Assistance' },
-  { name: 'Lockout / Lock Smith Service', category: 'ROADSIDE_ASSISTANCE', priceCents: 12150, group: 'Roadside Assistance' },
-  { name: 'Fuel Delivery', category: 'ROADSIDE_ASSISTANCE', priceCents: 9450, group: 'Roadside Assistance' },
-  { name: 'Towing Service', category: 'ROADSIDE_ASSISTANCE', priceCents: 16200, group: 'Roadside Assistance' },
-  { name: 'Winch Out Service', category: 'ROADSIDE_ASSISTANCE', priceCents: 14850, group: 'Roadside Assistance' },
-  { name: 'Emergency Roadside Assistance', category: 'ROADSIDE_ASSISTANCE', priceCents: 16200, group: 'Roadside Assistance' },
-
-  // Maintenance & Inspections
-  { name: 'Battery Installation', category: 'MAINTENANCE', priceCents: 13500, group: 'Maintenance & Inspections' },
-  { name: 'Tire Rotation', category: 'MAINTENANCE', priceCents: 7200, group: 'Maintenance & Inspections' },
-  { name: 'Oil Change', category: 'MAINTENANCE', priceCents: 9900, group: 'Maintenance & Inspections' },
-  { name: 'Brake Inspection', category: 'MAINTENANCE', priceCents: 8550, group: 'Maintenance & Inspections' },
-];
 
 export default function MemberDashboard() {
   const location = useLocation();
@@ -84,10 +49,18 @@ export default function MemberDashboard() {
 
   // Booking state (prefills if passed via navigation state)
   const [vehicleId, setVehicleId] = useState('');
-  const [serviceName, setServiceName] = useState('Flat Tire Repair');
   const [address, setAddress] = useState('');
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [notes, setNotes] = useState('');
+  const [serviceItems, setServiceItems] = useState<SelectedServiceItem[]>([
+    {
+      serviceId: 'TIRE_REPAIR',
+      serviceName: 'Flat Tire Repair (Plug)',
+      category: 'TIRE_SERVICE',
+      unitPriceCents: 12000,
+      quantity: 1,
+    },
+  ]);
 
   // Modals & Invoices
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -213,9 +186,18 @@ export default function MemberDashboard() {
       toast.error('Vehicle and breakdown location are required');
       return;
     }
+    if (serviceItems.length === 0) {
+      toast.error('Please add at least one service to your request');
+      return;
+    }
 
     const selectedVeh = vehicles.find((v: any) => v.id === vehicleId);
-    const selectedSvc = MEMBER_SERVICE_OPTIONS.find((s) => s.name === serviceName) || MEMBER_SERVICE_OPTIONS[0];
+    const subtotalCents = serviceItems.reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0);
+    const discountCents = Math.round(subtotalCents * 0.10); // 10% VIP discount
+    const netSubtotalCents = Math.max(0, subtotalCents - discountCents);
+    const taxRate = country === 'CA' ? 0.13 : country === 'UK' ? 0.20 : 0.08;
+    const taxAmountCents = Math.round((netSubtotalCents * taxRate));
+    const totalCents = netSubtotalCents + taxAmountCents;
 
     bookMemberService.mutate({
       vehicleId,
@@ -224,6 +206,10 @@ export default function MemberDashboard() {
       serviceLatitude: coords?.latitude || null,
       serviceLongitude: coords?.longitude || null,
       urgency: 'URGENT',
+      subtotalCents,
+      discountCents,
+      taxAmountCents,
+      totalCents,
       vehicle: selectedVeh ? {
         make: selectedVeh.make,
         model: selectedVeh.model,
@@ -233,14 +219,13 @@ export default function MemberDashboard() {
       } : undefined,
       vehicleMakeModel: selectedVeh ? `${selectedVeh.year || ''} ${selectedVeh.make} ${selectedVeh.model}`.trim() : undefined,
       tireSize: selectedVeh?.tireSize,
-      serviceItems: [
-        {
-          serviceName: selectedSvc.name,
-          category: selectedSvc.category,
-          quantity: 1,
-          unitPriceCents: selectedSvc.priceCents,
-        },
-      ],
+      serviceItems: serviceItems.map((s) => ({
+        serviceName: s.serviceName,
+        category: s.category,
+        quantity: s.quantity,
+        unitPriceCents: s.unitPriceCents,
+        notes: s.notes,
+      })),
       problemNotes: `[Member Priority Request] Plate: ${selectedVeh?.licensePlate || 'N/A'}. Tire: ${selectedVeh?.tireSize || 'N/A'}. ${notes}`.trim(),
       source: 'MEMBER_PORTAL',
     });
@@ -690,22 +675,17 @@ export default function MemberDashboard() {
           </div>
 
           <div>
-            <label className="font-semibold text-slate-700">Roadside Service (10% VIP Member Rate Applied)</label>
-            <select
-              value={serviceName}
-              onChange={(e) => setServiceName(e.target.value)}
-              className="select-base mt-1"
-            >
-              {['Tire Services', 'Roadside Assistance', 'Maintenance & Inspections'].map((groupName) => (
-                <optgroup key={groupName} label={groupName}>
-                  {MEMBER_SERVICE_OPTIONS.filter((s) => s.group === groupName).map((svc) => (
-                    <option key={svc.name} value={svc.name}>
-                      {svc.name} — {formatCurrency(centsToDollars(svc.priceCents), currencySymbol)} (VIP Rate)
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+            <MultiServiceSelector
+              items={serviceItems}
+              onChange={setServiceItems}
+              currencySymbol={currencySymbol}
+              taxRate={country === 'CA' ? 0.13 : country === 'UK' ? 0.20 : 0.08}
+              discountPercent={10}
+              discountLabel="VIP Member Roadside Discount (-10%)"
+              allowPriceEdit={false}
+              showTaxToggle={false}
+              title="Requested Roadside Services"
+            />
           </div>
 
           <div>
@@ -769,9 +749,19 @@ export default function MemberDashboard() {
             {jobs.map((j: any) => (
               <div key={j.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-slate-50/50 transition">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-mono font-bold text-slate-900">{j.jobCode || `JOB-${j.id.slice(0, 6)}`}</span>
                     {getStatusBadge(j.status)}
+                    {j.serviceItems && j.serviceItems.length > 0 && (
+                      <span className="font-semibold text-slate-800 text-xs">
+                        {j.serviceItems[0].serviceName}
+                        {j.serviceItems.length > 1 && (
+                          <span className="ml-1.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            +{j.serviceItems.length - 1} more
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </div>
                   <div className="text-slate-600 flex items-center gap-1.5 mt-1">
                     <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />

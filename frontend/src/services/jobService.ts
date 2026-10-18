@@ -28,12 +28,20 @@ export interface JobItem {
   otherExpenseCents?: number;
   expenseNotes?: string;
   itPlatformFeeCents?: number;
+  source?: string;
+  fleetId?: string | null;
+  fleet?: any;
+  subtotalCents?: number;
+  taxRateBps?: number;
+  taxAmountCents?: number;
   customer?: {
     id?: string;
     name?: string;
     fullName?: string;
     phone?: string;
     email?: string;
+    customerType?: string;
+    membershipTier?: string;
   } | null;
   vehicle?: {
     id?: string;
@@ -42,6 +50,7 @@ export interface JobItem {
     model?: string;
     tireSize?: string;
     licensePlate?: string;
+    unitNumber?: string;
   } | null;
   driver?: {
     id: string;
@@ -230,6 +239,7 @@ export const jobService = {
     vehicleMake?: string;
     vehicleModel?: string;
     vehicleYear?: number;
+    unitNumber?: string;
     tireSize?: string;
     licensePlate?: string;
     serviceItems?: any[];

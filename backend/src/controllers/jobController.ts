@@ -591,9 +591,22 @@ export const jobController = {
         subtotalCents = data.totalCents || 16000;
       }
 
+      let discountCents = 0;
+      if (data.discountCents !== undefined && data.discountCents !== null) {
+        discountCents = Math.max(0, Math.round(Number(data.discountCents)));
+      } else if (data.source === 'MEMBER_PORTAL') {
+        discountCents = Math.round(subtotalCents * 0.10);
+      } else if (customerId) {
+        const cust = await prisma.customer.findUnique({ where: { id: customerId }, select: { customerType: true } });
+        if (cust?.customerType === 'MEMBERSHIP') {
+          discountCents = Math.round(subtotalCents * 0.10);
+        }
+      }
+
+      const netSubtotalCents = Math.max(0, subtotalCents - discountCents);
       const taxRateBps = data.taxRateBps ?? (country === 'CA' ? 1300 : country === 'UK' ? 2000 : 800);
-      const taxAmountCents = data.taxCents ?? data.taxAmount ?? Math.round((subtotalCents * taxRateBps) / 10000);
-      const totalCents = data.totalCents ?? data.totalAmount ?? (subtotalCents + taxAmountCents);
+      const taxAmountCents = data.taxCents ?? data.taxAmount ?? Math.round((netSubtotalCents * taxRateBps) / 10000);
+      const totalCents = data.totalCents ?? data.totalAmount ?? (netSubtotalCents + taxAmountCents);
 
       // IT platform royalty fee: CA: 150 cents ($1.50 CAD), US: 100 cents ($1.00 USD), UK: 100 pence (£1.00 GBP)
       const itPlatformFeeCents = country === 'CA' ? 150 : 100;
@@ -1199,6 +1212,7 @@ export const jobController = {
         vehicleMake,
         vehicleModel,
         vehicleYear,
+        unitNumber,
         tireSize,
         licensePlate,
         serviceItems: incomingServiceItems,
@@ -1229,7 +1243,7 @@ export const jobController = {
       if (paymentMethod !== undefined) updateData.paymentMethod = validPaymentMethod(paymentMethod);
 
       // Update or create vehicle specs (Crucial for mobile tire vans to stock the right tire)
-      if (vehicleMake || vehicleModel || vehicleYear || tireSize || licensePlate) {
+      if (vehicleMake || vehicleModel || vehicleYear || tireSize || licensePlate || unitNumber !== undefined) {
         if (job.vehicleId) {
           await prisma.vehicle.update({
             where: { id: job.vehicleId },
@@ -1237,6 +1251,7 @@ export const jobController = {
               ...(vehicleMake ? { make: vehicleMake } : {}),
               ...(vehicleModel ? { model: vehicleModel } : {}),
               ...(vehicleYear ? { year: Number(vehicleYear) } : {}),
+              ...(unitNumber !== undefined ? { unitNumber: unitNumber ? String(unitNumber).trim() : null } : {}),
               ...(tireSize ? { tireSize } : {}),
               ...(licensePlate ? { licensePlate } : {}),
             },
@@ -1248,6 +1263,7 @@ export const jobController = {
               make: vehicleMake || 'Standard',
               model: vehicleModel || 'Vehicle',
               year: Number(vehicleYear) || new Date().getFullYear(),
+              unitNumber: unitNumber ? String(unitNumber).trim() : null,
               tireSize: tireSize || '225/65R17',
               licensePlate: licensePlate || undefined,
             },

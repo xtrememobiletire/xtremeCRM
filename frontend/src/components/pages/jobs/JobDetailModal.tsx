@@ -104,6 +104,24 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
   const currentUpfrontCents = Math.round((parseFloat(upfrontDollars) || 0) * 100);
   const balanceDueCents = Math.max(0, totalCents - currentUpfrontCents);
 
+  const subtotalCents =
+    job.subtotalCents ||
+    job.serviceItems?.reduce((sum: number, it: any) => sum + (it.unitPriceCents || 0) * (it.quantity || 1), 0) ||
+    totalCents;
+
+  let discountCents = 0;
+  let discountLabel = '';
+  if (job.fleet?.discountPercent && job.fleet.discountPercent > 0) {
+    discountCents = Math.round(subtotalCents * (job.fleet.discountPercent / 100));
+    discountLabel = `Contract Discount (-${job.fleet.discountPercent}%)`;
+  } else if (job.source === 'MEMBER_PORTAL' || job.customer?.customerType === 'MEMBERSHIP') {
+    discountCents = Math.round(subtotalCents * 0.10);
+    discountLabel = 'VIP Member Discount (-10%)';
+  } else if (subtotalCents > 0 && job.taxAmountCents !== undefined && (subtotalCents + (job.taxAmountCents || 0)) > totalCents) {
+    discountCents = (subtotalCents + (job.taxAmountCents || 0)) - totalCents;
+    discountLabel = 'Contract Discount';
+  }
+
   const handleStatusChange = async (newStatus: string) => {
     try {
       setUpdating(true);
@@ -432,14 +450,34 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
             </div>
             <div className="divide-y divide-slate-100 p-1.5">
               {job.serviceItems && job.serviceItems.length > 0 ? (
-                job.serviceItems.map((item: any, idx: number) => (
-                  <div key={idx} className="flex justify-between items-center py-1.5 px-2 text-xs">
-                    <span className="font-medium text-slate-800">{item.serviceName}</span>
-                    <span className="font-mono font-bold text-slate-900">
-                      Qty: {item.quantity || 1}
-                    </span>
-                  </div>
-                ))
+                job.serviceItems.map((item: any, idx: number) => {
+                  const lineTotal = (item.unitPriceCents || 0) * (item.quantity || 1);
+                  return (
+                    <div key={idx} className="flex justify-between items-center py-2 px-2 text-xs">
+                      <div>
+                        <div className="font-semibold text-slate-800 flex items-center gap-1.5">
+                          <span>{item.serviceName}</span>
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-slate-100 text-slate-600 uppercase">
+                            {item.category ? String(item.category).replace('_SERVICE', '').replace('_ASSISTANCE', '') : 'SVC'}
+                          </span>
+                        </div>
+                        {item.notes && (
+                          <div className="text-[11px] text-slate-500 italic mt-0.5">
+                            Note: {item.notes}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right font-mono">
+                        <div className="text-slate-500 text-[11px]">
+                          Qty: {item.quantity || 1} &times; {formatCurrency(centsToDollars(item.unitPriceCents || 0), currencySymbol)}
+                        </div>
+                        <div className="font-bold text-slate-900">
+                          {formatCurrency(centsToDollars(lineTotal), currencySymbol)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
               ) : job.lineItems && job.lineItems.length > 0 ? (
                 job.lineItems.map((item: any, idx: number) => (
                   <div key={idx} className="flex justify-between items-center py-1.5 px-2 text-xs">
@@ -496,6 +534,30 @@ export default function JobDetailModal({ isOpen, onClose, job }: JobDetailModalP
 
         {/* Minimal Financial Ledger & Upfront Deposit Box */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-2.5 shadow-2xs">
+          {/* Explicit B2B Contract / Member Discount Breakdown */}
+          {discountCents > 0 && (
+            <div className="space-y-1 pb-2 border-b border-slate-100 text-xs font-mono">
+              <div className="flex justify-between items-center text-slate-600">
+                <span>Catalog Subtotal:</span>
+                <span className="font-semibold text-slate-800">
+                  {formatCurrency(centsToDollars(subtotalCents), currencySymbol)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                <span>{discountLabel}:</span>
+                <span>-{formatCurrency(centsToDollars(discountCents), currencySymbol)}</span>
+              </div>
+              {job.taxAmountCents !== undefined && (
+                <div className="flex justify-between items-center text-slate-600">
+                  <span>Tax ({job.taxRateBps ? `${job.taxRateBps / 100}%` : 'Regional'}):</span>
+                  <span className="font-semibold text-slate-800">
+                    {formatCurrency(centsToDollars(job.taxAmountCents || 0), currencySymbol)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Quoted</span>

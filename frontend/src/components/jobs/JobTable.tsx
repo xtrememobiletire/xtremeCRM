@@ -149,11 +149,26 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                     {job.vehicle ? `${job.vehicle.year || ''} ${job.vehicle.make} ${job.vehicle.model}`.trim() : (job.vehicleMakeModel || 'N/A')}
                   </span>
                 </div>
-                {job.vehicle?.tireSize && (
-                  <span className="inline-block mt-0.5 px-1.5 py-0.5 bg-red-50 border border-red-100 rounded text-[10px] font-mono font-semibold text-red-700">
-                    {job.vehicle.tireSize}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                  {job.vehicle?.tireSize && (
+                    <span className="inline-block px-1.5 py-0.5 bg-red-50 border border-red-100 rounded text-[10px] font-mono font-semibold text-red-700">
+                      {job.vehicle.tireSize}
+                    </span>
+                  )}
+                  {job.serviceItems && job.serviceItems.length > 0 && (
+                    <span className="text-[11px] font-medium text-slate-700 flex items-center gap-1">
+                      <span>• {job.serviceItems[0].serviceName}</span>
+                      {job.serviceItems.length > 1 && (
+                        <span
+                          className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200 cursor-help"
+                          title={job.serviceItems.map((si: any) => `${si.serviceName} (x${si.quantity || 1})`).join(', ')}
+                        >
+                          +{job.serviceItems.length - 1} more
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </div>
               </td>
               {!isDriver && (
                 <td className="table-td whitespace-nowrap">

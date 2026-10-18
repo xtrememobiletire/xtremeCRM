@@ -393,6 +393,7 @@ router.post('/request-service', async (req: Request, res: Response) => {
     const {
       vehicleId,
       driverId,
+      serviceItems,
       serviceName = 'Tire Repair (plug)',
       serviceType = 'STANDARD',
       serviceCategory,
@@ -437,16 +438,55 @@ router.post('/request-service', async (req: Request, res: Response) => {
 
     const serviceTimezone = resolveTimezoneFromCoords(lat, lng, country);
 
-    const rawServiceKey = String(serviceCategory || serviceName || '').trim();
-    const catalogEntry = PORTAL_SERVICE_MAP[rawServiceKey];
     const isEmergency = serviceType === 'EMERGENCY';
-    const resolvedCategory = catalogEntry?.category || (isEmergency ? 'ROADSIDE_ASSISTANCE' : 'TIRE_SERVICE');
-    const basePriceCents = catalogEntry?.priceCents ?? (isEmergency ? 18000 : 12000);
-    const discountFactor = Math.max(0, 100 - (fleet.discountPercent || 0)) / 100;
-    const unitPriceCents = Math.round(basePriceCents * discountFactor);
-    const subtotalCents = unitPriceCents;
-    const taxAmountCents = Math.round((subtotalCents * taxRateBps) / 10000);
-    const totalCents = subtotalCents + taxAmountCents;
+    let itemsToCreate: Array<{
+      serviceName: string;
+      category: 'TIRE_SERVICE' | 'ROADSIDE_ASSISTANCE' | 'MAINTENANCE';
+      unitPriceCents: number;
+      quantity: number;
+      notes?: string | null;
+    }> = [];
+
+    if (Array.isArray(serviceItems) && serviceItems.length > 0) {
+      itemsToCreate = serviceItems.map((item: any) => {
+        const itemKey = String(item.serviceName || item.name || '').trim();
+        const catalogEntry = PORTAL_SERVICE_MAP[itemKey];
+        const category = item.category || catalogEntry?.category || (isEmergency ? 'ROADSIDE_ASSISTANCE' : 'TIRE_SERVICE');
+        const unitPriceCents = item.unitPriceCents ? Math.round(Number(item.unitPriceCents)) : (catalogEntry?.priceCents ?? (isEmergency ? 18000 : 12000));
+        const quantity = Math.max(1, Math.round(Number(item.quantity || 1)));
+        return {
+          serviceName: itemKey || 'Commercial Fleet Service',
+          category: category as any,
+          unitPriceCents,
+          quantity,
+          notes: item.notes ? String(item.notes).trim() : null,
+        };
+      });
+    } else {
+      const rawServiceKey = String(serviceCategory || serviceName || '').trim();
+      const catalogEntry = PORTAL_SERVICE_MAP[rawServiceKey];
+      const resolvedCategory = catalogEntry?.category || (isEmergency ? 'ROADSIDE_ASSISTANCE' : 'TIRE_SERVICE');
+      const basePriceCents = catalogEntry?.priceCents ?? (isEmergency ? 18000 : 12000);
+      itemsToCreate = [
+        {
+          serviceName: rawServiceKey || 'Commercial Fleet Service',
+          category: resolvedCategory as any,
+          unitPriceCents: basePriceCents,
+          quantity: 1,
+          notes: `Requested via Fleet Portal: ${tireSize || ''}`,
+        },
+      ];
+    }
+
+    const subtotalCents = itemsToCreate.reduce(
+      (sum, item) => sum + item.unitPriceCents * item.quantity,
+      0
+    );
+    const discountPercent = Math.max(0, Number(fleet.discountPercent || 0));
+    const discountCents = Math.round(subtotalCents * (discountPercent / 100));
+    const netSubtotalCents = Math.max(0, subtotalCents - discountCents);
+    const taxAmountCents = Math.round((netSubtotalCents * taxRateBps) / 10000);
+    const totalCents = netSubtotalCents + taxAmountCents;
     const itPlatformFeeCents = country === 'CA' ? 150 : 100;
 
     const rawScheduled = scheduledAt || appointmentDate;
@@ -525,15 +565,7 @@ router.post('/request-service', async (req: Request, res: Response) => {
         paymentMethod: 'INVOICE_NET30',
         paymentStatus: 'UNPAID',
         serviceItems: {
-          create: [
-            {
-              serviceName: rawServiceKey || 'Commercial Fleet Service',
-              category: resolvedCategory as any,
-              unitPriceCents,
-              quantity: 1,
-              notes: `Requested via Fleet Portal: ${tireSize || ''}`,
-            },
-          ],
+          create: itemsToCreate,
         },
       },
       include: {

@@ -187,6 +187,7 @@ export const VerifyBookingAddressSchema = z.object({
   vehicleMake: z.string().optional(),
   vehicleModel: z.string().optional(),
   vehicleYear: z.coerce.number().optional().nullable(),
+  unitNumber: z.string().optional().nullable(),
   tireSize: z.string().optional(),
   licensePlate: z.string().optional(),
   selectedServices: z.array(z.string()).optional(),

@@ -57,6 +57,7 @@ export default function VerifyAddressModal({
   const [vehicleMake, setVehicleMake] = useState<string>('');
   const [vehicleModel, setVehicleModel] = useState<string>('');
   const [vehicleYear, setVehicleYear] = useState<string>('');
+  const [unitNumber, setUnitNumber] = useState<string>('');
   const [tireSize, setTireSize] = useState<string>('');
   const [licensePlate, setLicensePlate] = useState<string>('');
 
@@ -84,14 +85,16 @@ export default function VerifyAddressModal({
         setVehicleMake(v.make || '');
         setVehicleModel(v.model || '');
         setVehicleYear(v.year ? String(v.year) : '');
-        setTireSize(v.tireSize || '');
-        setLicensePlate(v.licensePlate || '');
+        setUnitNumber(v.unitNumber || booking.unitNumber || '');
+        setTireSize(v.tireSize || booking.tireSize || '');
+        setLicensePlate(v.licensePlate || booking.licensePlate || '');
       } else {
-        setVehicleMake('');
-        setVehicleModel('');
-        setVehicleYear('');
-        setTireSize('');
-        setLicensePlate('');
+        setVehicleMake(booking.vehicleMake || '');
+        setVehicleModel(booking.vehicleModel || '');
+        setVehicleYear(booking.vehicleYear ? String(booking.vehicleYear) : '');
+        setUnitNumber(booking.unitNumber || '');
+        setTireSize(booking.tireSize || '');
+        setLicensePlate(booking.licensePlate || '');
       }
 
       // Pre-fill services
@@ -106,7 +109,8 @@ export default function VerifyAddressModal({
       }
 
       setUrgency(booking.urgency || 'NORMAL');
-      setPaymentMethod(booking.paymentMethod || 'POS');
+      const isFleetBooking = booking.source === 'FLEET_PORTAL' || Boolean(booking.fleetId);
+      setPaymentMethod(booking.paymentMethod || (isFleetBooking ? 'INVOICE_NET30' : 'POS'));
 
       if (booking.serviceLatitude && booking.serviceLongitude) {
         setSelectedCoords([booking.serviceLongitude, booking.serviceLatitude]);
@@ -233,6 +237,7 @@ export default function VerifyAddressModal({
         vehicleMake: vehicleMake || undefined,
         vehicleModel: vehicleModel || undefined,
         vehicleYear: vehicleYear ? Number(vehicleYear) : undefined,
+        unitNumber: unitNumber || undefined,
         tireSize: tireSize || undefined,
         licensePlate: licensePlate || undefined,
         serviceItems,
@@ -250,27 +255,63 @@ export default function VerifyAddressModal({
 
   if (!booking) return null;
 
+  const isMember = booking?.source === 'MEMBER_PORTAL' || booking?.customer?.customerType === 'MEMBERSHIP';
+  const isFleet = booking?.source === 'FLEET_PORTAL' || Boolean(booking?.fleetId);
+
+  const modalTitle = isFleet
+    ? `Confirm & Verify Fleet Dispatch • ${booking.fleet?.name || 'Commercial Account'} • Job #${booking.jobCode || booking.jobNumber}`
+    : isMember
+    ? `Confirm & Verify VIP Member Request • ${recipientName || 'Member'} • Job #${booking.jobCode || booking.jobNumber}`
+    : `Confirm & Verify Website Inbound • Job #${booking.jobCode || booking.jobNumber}`;
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Confirm & Verify Website Booking • Job #${booking.jobCode || booking.jobNumber}`}
+      title={modalTitle}
       maxWidth="max-w-4xl"
     >
       <div className="space-y-4 max-h-[85vh] overflow-y-auto pr-1">
-        {/* Customer Original Input Banner */}
-        <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 text-xs">
+        {/* Context-Aware Input Banner */}
+        <div className={`p-3.5 rounded-xl border text-xs ${
+          isFleet
+            ? 'bg-blue-50/80 border-blue-200 text-blue-900'
+            : isMember
+            ? 'bg-amber-50/80 border-amber-200 text-amber-900'
+            : 'bg-slate-50 border-slate-200 text-slate-800'
+        }`}>
           <div className="flex items-start gap-2.5">
-            <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+            <AlertCircle size={16} className={`shrink-0 mt-0.5 ${
+              isFleet ? 'text-blue-600' : isMember ? 'text-amber-600' : 'text-slate-600'
+            }`} />
             <div>
-              <span className="font-bold text-amber-900 block">
-                Raw Address from Website Form (Customer Input):
-              </span>
-              <p className="text-amber-800 font-mono mt-0.5 font-semibold">
+              <div className="flex items-center gap-2">
+                <span className="font-bold block">
+                  {isFleet
+                    ? `Commercial Fleet Breakdown Request • ${booking.fleet?.name || 'Corporate Account'}`
+                    : isMember
+                    ? 'VIP Member Roadside Request • 10% Member Rate Applied'
+                    : 'Raw Address from Website Form (Customer Input):'}
+                </span>
+                <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full border ${
+                  isFleet
+                    ? 'bg-blue-100 text-blue-800 border-blue-300'
+                    : isMember
+                    ? 'bg-amber-100 text-amber-800 border-amber-300'
+                    : 'bg-slate-200 text-slate-700 border-slate-300'
+                }`}>
+                  {isFleet ? 'Fleet Account' : isMember ? 'VIP Member' : 'Public Web'}
+                </span>
+              </div>
+              <p className="font-mono mt-0.5 font-semibold">
                 "{rawCustomerAddress || 'No address provided by customer'}"
               </p>
-              <p className="text-[11px] text-amber-700 mt-1">
-                Call customer to confirm location and exact tire specifications before releasing to the driver queue.
+              <p className="text-[11px] mt-1 opacity-90">
+                {isFleet
+                  ? 'Verify depot or highway breakdown coordinates and confirm tire specifications before releasing to corporate fleet dispatch.'
+                  : isMember
+                  ? 'Verify member location and confirm roadside unit availability for priority member dispatch.'
+                  : 'Call customer to confirm location and exact tire specifications before releasing to the driver queue.'}
               </p>
             </div>
           </div>
@@ -390,7 +431,18 @@ export default function VerifyAddressModal({
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Unit #</label>
+              <input
+                type="text"
+                value={unitNumber}
+                onChange={(e) => setUnitNumber(e.target.value)}
+                placeholder="Unit 18"
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono"
+              />
+            </div>
+
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1">Make</label>
               <input
@@ -431,7 +483,7 @@ export default function VerifyAddressModal({
                 value={licensePlate}
                 onChange={(e) => setLicensePlate(e.target.value)}
                 placeholder="CFMR 482"
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono"
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono uppercase"
               />
             </div>
 

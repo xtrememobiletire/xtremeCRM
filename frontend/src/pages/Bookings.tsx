@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Globe, 
@@ -19,10 +19,13 @@ import { jobService } from '../services/jobService';
 import { useTenant } from '../context/TenantContext';
 import { toast } from 'sonner';
 
+export type BookingCategoryTab = 'ALL' | 'PUBLIC_WEB' | 'MEMBER' | 'FLEET';
+
 export default function Bookings() {
   const queryClient = useQueryClient();
   const { country: tenantCountry } = useTenant();
   const [selectedCountry, setSelectedCountry] = useState<string>(tenantCountry || 'CA');
+  const [activeCategoryTab, setActiveCategoryTab] = useState<BookingCategoryTab>('ALL');
   const [search, setSearch] = useState<string>('');
   const [page, setPage] = useState<number>(1);
   const [verifyBooking, setVerifyBooking] = useState<any>(null);
@@ -59,6 +62,40 @@ export default function Bookings() {
   });
 
   const rawBookings = bookingsResponse?.data || [];
+
+  const counts = useMemo(() => {
+    let publicWeb = 0;
+    let member = 0;
+    let fleet = 0;
+
+    for (const b of rawBookings) {
+      if (b.source === 'MEMBER_PORTAL' || b.customer?.customerType === 'MEMBERSHIP') {
+        member++;
+      } else if (b.source === 'FLEET_PORTAL' || Boolean(b.fleetId)) {
+        fleet++;
+      } else {
+        publicWeb++;
+      }
+    }
+
+    return {
+      all: rawBookings.length,
+      publicWeb,
+      member,
+      fleet,
+    };
+  }, [rawBookings]);
+
+  const filteredBookings = useMemo(() => {
+    return rawBookings.filter((b: any) => {
+      const isMember = b.source === 'MEMBER_PORTAL' || b.customer?.customerType === 'MEMBERSHIP';
+      const isFleet = b.source === 'FLEET_PORTAL' || Boolean(b.fleetId);
+      if (activeCategoryTab === 'PUBLIC_WEB') return !isMember && !isFleet;
+      if (activeCategoryTab === 'MEMBER') return isMember;
+      if (activeCategoryTab === 'FLEET') return isFleet;
+      return true;
+    });
+  }, [rawBookings, activeCategoryTab]);
 
   const handleCancel = (booking: any) => {
     if (confirm(`Are you sure you want to reject/cancel booking #${booking.jobCode || booking.jobNumber}?`)) {
@@ -130,24 +167,63 @@ export default function Bookings() {
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between gap-3">
-        <div className="relative w-full sm:w-80">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Search booking code, phone, address..."
-            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20"
-          />
+      {/* Search Bar & Category Tabs */}
+      <div className="space-y-3">
+        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="relative w-full sm:w-80">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Search booking code, phone, address..."
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+            />
+          </div>
+
+          <div className="text-xs font-semibold text-slate-500 font-mono">
+            {filteredBookings.length} {activeCategoryTab !== 'ALL' ? 'matching' : 'pending verification'} in {selectedCountry}
+          </div>
         </div>
 
-        <div className="text-xs font-semibold text-slate-500 font-mono">
-          {rawBookings.length} pending verification in {selectedCountry}
+        {/* Category Tabs (Modeled on TechnicianTabs, No Emojis) */}
+        <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 overflow-x-auto select-none">
+          {[
+            { id: 'ALL' as const, label: 'All Bookings', count: counts.all },
+            { id: 'PUBLIC_WEB' as const, label: 'Public Web', count: counts.publicWeb },
+            { id: 'MEMBER' as const, label: 'VIP Members', count: counts.member },
+            { id: 'FLEET' as const, label: 'Fleet Accounts', count: counts.fleet },
+          ].map((tab) => {
+            const isSelected = activeCategoryTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveCategoryTab(tab.id)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+              >
+                <span>{tab.label}</span>
+                {tab.count > 0 && (
+                  <span
+                    className={`text-[11px] font-bold px-1.5 py-0.2 rounded-full min-w-4 text-center ${
+                      isSelected
+                        ? 'bg-slate-100 text-slate-800'
+                        : 'bg-slate-200/80 text-slate-600'
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -157,11 +233,19 @@ export default function Bookings() {
           <div className="p-12 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200">
             Loading {selectedCountry} website bookings...
           </div>
-        ) : rawBookings.length === 0 ? (
+        ) : filteredBookings.length === 0 ? (
           <div className="p-12 bg-white rounded-xl border border-slate-200">
             <EmptyState
-              title="All Requests & Bookings Verified"
-              description={`There are currently zero unverified bookings in region ${selectedCountry}.`}
+              title={
+                activeCategoryTab === 'ALL'
+                  ? 'All Requests & Bookings Verified'
+                  : `No ${activeCategoryTab === 'MEMBER' ? 'VIP Member' : activeCategoryTab === 'FLEET' ? 'Fleet Account' : 'Public Web'} Requests`
+              }
+              description={
+                activeCategoryTab === 'ALL'
+                  ? `There are currently zero unverified bookings in region ${selectedCountry}.`
+                  : `There are currently zero unverified ${activeCategoryTab === 'MEMBER' ? 'VIP member' : activeCategoryTab === 'FLEET' ? 'fleet account' : 'public website'} requests in region ${selectedCountry}.`
+              }
               action={
                 <button
                   type="button"
@@ -174,7 +258,7 @@ export default function Bookings() {
             />
           </div>
         ) : (
-          rawBookings.map((b: any) => {
+          filteredBookings.map((b: any) => {
             const customerName = b.recipientName || b.customer?.fullName || (b.fleet ? b.fleet.name : 'Online Customer');
             const customerPhone = b.recipientPhone || b.customer?.phone || (b.fleet ? b.fleet.phone : 'No Phone');
             const rawAddress = b.serviceAddress || b.locationAddress || 'No address provided';
@@ -192,15 +276,15 @@ export default function Bookings() {
                     </span>
                     {b.source === 'MEMBER_PORTAL' || b.customer?.customerType === 'MEMBERSHIP' ? (
                       <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-extrabold tracking-wide flex items-center gap-1 shadow-2xs">
-                        👑 VIP MEMBER REQUEST
+                        VIP MEMBER REQUEST
                       </span>
                     ) : b.source === 'FLEET_PORTAL' || b.fleetId ? (
                       <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-300 text-[10px] font-extrabold tracking-wide flex items-center gap-1 shadow-2xs">
-                        🏢 FLEET: {b.fleet?.name || 'COMMERCIAL ACCOUNT'}
+                        FLEET: {b.fleet?.name || 'COMMERCIAL ACCOUNT'}
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-bold tracking-wide">
-                        🌐 WEBSITE INBOUND
+                        WEBSITE INBOUND
                       </span>
                     )}
                     <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">

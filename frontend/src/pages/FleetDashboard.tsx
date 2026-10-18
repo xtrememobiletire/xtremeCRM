@@ -18,6 +18,7 @@ import Card from '../components/ui/Card';
 import StatCard from '../components/ui/StatCard';
 import InvoicePdfModal from '../components/invoices/InvoicePdfModal';
 import AddressAutocompleteInput from '../components/common/AddressAutocompleteInput';
+import MultiServiceSelector, { type SelectedServiceItem } from '../components/common/MultiServiceSelector';
 import { toast } from 'sonner';
 
 type Tab = 'dashboard' | 'vehicles' | 'drivers' | 'request' | 'status' | 'pending-invoices' | 'paid-invoices';
@@ -74,6 +75,16 @@ export default function FleetDashboard() {
     notes: '',
   });
 
+  const [serviceItems, setServiceItems] = useState<SelectedServiceItem[]>([
+    {
+      serviceId: 'TIRE_REPAIR',
+      serviceName: 'Flat Tire Repair (Plug)',
+      category: 'TIRE_SERVICE',
+      unitPriceCents: 12000,
+      quantity: 1,
+    },
+  ]);
+
   // 1. Dashboard KPI query
   const { data: dashboardData } = useQuery({
     queryKey: ['fleet-portal-dashboard'],
@@ -87,6 +98,7 @@ export default function FleetDashboard() {
   const fleet = dashboardData?.fleet;
   const fleetCountry = (fleet?.countryCode || tenantCountry || 'CA') as 'CA' | 'US' | 'UK';
   const currencySymbol = fleetCountry === 'US' ? '$' : fleetCountry === 'UK' ? '£' : (tenantCurrencySymbol || 'CA$');
+  const taxRate = fleetCountry === 'CA' ? 0.13 : fleetCountry === 'UK' ? 0.20 : 0.08;
 
   // Pre-fill booking address and phone with fleet default location when fleet loads
   useEffect(() => {
@@ -296,6 +308,10 @@ export default function FleetDashboard() {
       toast.error('Please choose an appointment date and time');
       return;
     }
+    if (serviceItems.length === 0) {
+      toast.error('Please add at least one service item to the ticket');
+      return;
+    }
     const finalAddress = (bookingForm.address || fleet?.address || '').trim();
     if (!finalAddress) {
       toast.error('Please enter a breakdown / service location address');
@@ -307,6 +323,13 @@ export default function FleetDashboard() {
       address: finalAddress,
       serviceAddress: finalAddress,
       fleetId: fleet?.id,
+      serviceItems: serviceItems.map((s) => ({
+        serviceName: s.serviceName,
+        category: s.category,
+        unitPriceCents: s.unitPriceCents,
+        quantity: s.quantity,
+        notes: s.notes,
+      })),
       vehicleMake: selectedVeh?.make,
       vehicleModel: selectedVeh?.model,
       vehicleYear: selectedVeh?.year,
@@ -1070,63 +1093,34 @@ export default function FleetDashboard() {
                   })()}
                 </div>
 
-                {/* SELECT SERVICE & SERVICE TYPE */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Select Service *
-                    </label>
-                    <select
-                      value={bookingForm.serviceName}
-                      onChange={(e) => setBookingForm({ ...bookingForm, serviceName: e.target.value })}
-                      className="select-base mt-1.5 py-2.5 text-xs text-slate-800"
-                      required
-                    >
-                      <optgroup label="Tire Services">
-                        <option value="Flat Tire Repair (Plug)">Flat Tire Repair (Plug)</option>
-                        <option value="New Tire Replacement">New Tire Replacement</option>
-                        <option value="Used Tire Replacement">Used Tire Replacement</option>
-                        <option value="Tire Patch Repair">Tire Patch Repair</option>
-                        <option value="Stem Valve Replacement">Stem Valve Replacement</option>
-                        <option value="New RIM Replacement">New RIM Replacement</option>
-                        <option value="Used RIM Replacement">Used RIM Replacement</option>
-                        <option value="Seasonal Tire Swap (On-Rim)">Seasonal Tire Swap (On-Rim)</option>
-                        <option value="Seasonal Tire Swap (Off-Rim)">Seasonal Tire Swap (Off-Rim)</option>
-                        <option value="Spare Tire Change">Spare Tire Change</option>
-                        <option value="Wheel Balance">Wheel Balance</option>
-                        <option value="Rim Repair">Rim Repair</option>
-                      </optgroup>
-                      <optgroup label="Roadside Assistance">
-                        <option value="Jump Start / Battery Booster">Jump Start / Battery Booster</option>
-                        <option value="Battery Replacement">Battery Replacement</option>
-                        <option value="Lockout / Lock Smith Service">Lockout / Lock Smith Service</option>
-                        <option value="Fuel Delivery">Fuel Delivery</option>
-                        <option value="Towing Service">Towing Service</option>
-                        <option value="Winch Out Service">Winch Out Service</option>
-                        <option value="Emergency Roadside Assistance">Emergency Roadside Assistance</option>
-                      </optgroup>
-                      <optgroup label="Maintenance & Inspections">
-                        <option value="Battery Installation">Battery Installation</option>
-                        <option value="Tire Rotation">Tire Rotation</option>
-                        <option value="Oil Change">Oil Change</option>
-                        <option value="Brake Inspection">Brake Inspection</option>
-                      </optgroup>
-                    </select>
-                  </div>
+                {/* MULTI-SERVICE WORK ORDER BUILDER */}
+                <div className="pt-1">
+                  <MultiServiceSelector
+                    items={serviceItems}
+                    onChange={setServiceItems}
+                    currencySymbol={currencySymbol}
+                    taxRate={taxRate}
+                    discountPercent={fleet?.discountPercent || 0}
+                    discountLabel={fleet?.discountPercent ? `Fleet Contract Discount (-${fleet.discountPercent}%)` : undefined}
+                    allowPriceEdit={false}
+                    showTaxToggle={false}
+                    title="Required Work Order Services"
+                  />
+                </div>
 
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Service Urgency
-                    </label>
-                    <select
-                      value={bookingForm.serviceType}
-                      onChange={(e) => setBookingForm({ ...bookingForm, serviceType: e.target.value as any })}
-                      className="select-base mt-1.5 py-2.5 text-xs text-slate-800"
-                    >
-                      <option value="STANDARD">Standard Scheduled Service</option>
-                      <option value="EMERGENCY">Roadside Emergency (Priority Dispatch)</option>
-                    </select>
-                  </div>
+                {/* SERVICE URGENCY */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Service Urgency
+                  </label>
+                  <select
+                    value={bookingForm.serviceType}
+                    onChange={(e) => setBookingForm({ ...bookingForm, serviceType: e.target.value as any })}
+                    className="select-base mt-1.5 py-2.5 text-xs text-slate-800"
+                  >
+                    <option value="STANDARD">Standard Scheduled Service</option>
+                    <option value="EMERGENCY">Roadside Emergency (Priority Dispatch)</option>
+                  </select>
                 </div>
 
                 {/* PHONE NUMBER & TIRE SIZE */}
@@ -1255,7 +1249,14 @@ export default function FleetDashboard() {
                             {apptNum}
                           </td>
                           <td className="py-3.5 px-4 font-semibold text-slate-900">
-                            {serviceTitle}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span>{serviceTitle}</span>
+                              {j.serviceItems && j.serviceItems.length > 1 && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                  +{j.serviceItems.length - 1} more
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3.5 px-4">
                             <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold border ${
