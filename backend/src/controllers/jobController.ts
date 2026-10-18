@@ -568,16 +568,30 @@ export const jobController = {
             ? new Date(data.appointmentDate) 
             : data.arrivalWindowStart 
               ? new Date(data.arrivalWindowStart) 
-              : data.scheduledFor 
-                ? new Date(data.scheduledFor) 
+              : data.estimatedArrivalMinutes
+                ? new Date(Date.now() + Number(data.estimatedArrivalMinutes) * 60000)
+                : data.scheduledFor 
+                  ? new Date(data.scheduledFor) 
+                  : undefined,
+          arrivalWindowStart: data.arrivalWindowStart 
+            ? new Date(data.arrivalWindowStart) 
+            : data.estimatedArrivalMinutes
+              ? new Date(Date.now() + Number(data.estimatedArrivalMinutes) * 60000)
+              : undefined,
+          arrivalWindowEnd: data.arrivalWindowEnd 
+            ? new Date(data.arrivalWindowEnd) 
+            : data.arrivalWindowStart
+              ? new Date(new Date(data.arrivalWindowStart).getTime() + 30 * 60000)
+              : data.estimatedArrivalMinutes
+                ? new Date(Date.now() + (Number(data.estimatedArrivalMinutes) + 30) * 60000)
                 : undefined,
-          arrivalWindowStart: data.arrivalWindowStart ? new Date(data.arrivalWindowStart) : undefined,
-          arrivalWindowEnd: data.arrivalWindowEnd ? new Date(data.arrivalWindowEnd) : undefined,
           estimatedArrivalAt: data.estimatedArrivalAt 
             ? new Date(data.estimatedArrivalAt) 
-            : data.estimatedArrivalMinutes 
-              ? new Date(Date.now() + Number(data.estimatedArrivalMinutes) * 60000) 
-              : undefined,
+            : data.arrivalWindowStart
+              ? new Date(data.arrivalWindowStart)
+              : data.estimatedArrivalMinutes 
+                ? new Date(Date.now() + Number(data.estimatedArrivalMinutes) * 60000) 
+                : undefined,
           subtotalCents,
           taxRateBps,
           taxAmountCents,

@@ -243,10 +243,10 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
         notes,
         problemNotes: notes || undefined,
         makeUserAccount,
-        arrivalWindowStart: arrivalWindow.arrivalWindowStart,
-        arrivalWindowEnd: arrivalWindow.arrivalWindowEnd,
-        estimatedArrivalMinutes: arrivalWindow.estimatedArrivalMinutes,
-        appointmentDate: arrivalWindow.appointmentDate,
+        arrivalWindowStart: arrivalWindow.arrivalWindowStart || new Date(Date.now() + (arrivalWindow.estimatedArrivalMinutes || 30) * 60000).toISOString(),
+        arrivalWindowEnd: arrivalWindow.arrivalWindowEnd || new Date(Date.now() + ((arrivalWindow.estimatedArrivalMinutes || 30) + 30) * 60000).toISOString(),
+        estimatedArrivalMinutes: arrivalWindow.estimatedArrivalMinutes || 30,
+        appointmentDate: arrivalWindow.appointmentDate || arrivalWindow.arrivalWindowStart || new Date(Date.now() + (arrivalWindow.estimatedArrivalMinutes || 30) * 60000).toISOString(),
         serviceItems: serviceItems.map((item) => ({
           serviceName: item.serviceName,
           category: item.category,
@@ -326,7 +326,12 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
         {/* Step 1: Regional Silo Country Selector */}
         <CountrySiloSelector
           country={formCountry}
-          onChange={(c) => setFormCountry(c)}
+          onChange={(c) => {
+            setFormCountry(c);
+            setServiceAddress('');
+            setServiceCoords({ latitude: null, longitude: null });
+            setCustomerPhone('');
+          }}
           stepNumber={1}
           subtitle="Cross-Border Intake"
         />

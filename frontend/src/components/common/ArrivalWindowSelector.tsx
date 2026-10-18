@@ -62,13 +62,17 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
     }
   }, [value?.mode]);
 
-  const [startHour, setStartHour] = useState<number>(6);
-  const [startMinute, setStartMinute] = useState<string>('00');
-  const [startAmPm, setStartAmPm] = useState<'AM' | 'PM'>('PM');
+  const currentHour = getCurrentHourInTz(activeTz);
+  const nextHour = (currentHour + 1) % 24;
+  const afterNext = (currentHour + 2) % 24;
 
-  const [endHour, setEndHour] = useState<number>(7);
+  const [startHour, setStartHour] = useState<number>(nextHour % 12 === 0 ? 12 : nextHour % 12);
+  const [startMinute, setStartMinute] = useState<string>('00');
+  const [startAmPm, setStartAmPm] = useState<'AM' | 'PM'>(nextHour >= 12 ? 'PM' : 'AM');
+
+  const [endHour, setEndHour] = useState<number>(afterNext % 12 === 0 ? 12 : afterNext % 12);
   const [endMinute, setEndMinute] = useState<string>('00');
-  const [endAmPm, setEndAmPm] = useState<'AM' | 'PM'>('PM');
+  const [endAmPm, setEndAmPm] = useState<'AM' | 'PM'>(afterNext >= 12 ? 'PM' : 'AM');
 
   // Helper to convert 12h + AM/PM to 24h
   const to24Hour = (hour: number, ampm: 'AM' | 'PM') => {
@@ -177,12 +181,12 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
     updateWindowTimes(windowDate, sH, sM, sAmpm, eH, eM, eAmpm);
   };
 
-  // Initial setup
+  // Initial setup: ensure arrivalWindowStart, arrivalWindowEnd, and displayLabel are always populated
   useEffect(() => {
-    if (!value?.arrivalWindowStart && !value?.estimatedArrivalMinutes) {
-      handleEtaSelect(30);
+    if (!value?.arrivalWindowStart) {
+      handleEtaSelect(value?.estimatedArrivalMinutes || selectedEta || 30);
     }
-  }, []);
+  }, [activeTz]);
 
   return (
     <div className={`space-y-3 ${className}`}>

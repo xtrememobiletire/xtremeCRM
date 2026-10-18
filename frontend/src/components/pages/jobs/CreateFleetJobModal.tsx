@@ -280,10 +280,10 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
         upfrontAmountCents: upfrontCents,
         notes: `Unit: ${unitNumber || 'N/A'}${notes ? ` | ${notes}` : ''}`,
         problemNotes: notes || undefined,
-        arrivalWindowStart: arrivalWindow.arrivalWindowStart,
-        arrivalWindowEnd: arrivalWindow.arrivalWindowEnd,
-        estimatedArrivalMinutes: arrivalWindow.estimatedArrivalMinutes,
-        appointmentDate: arrivalWindow.appointmentDate,
+        arrivalWindowStart: arrivalWindow.arrivalWindowStart || new Date(Date.now() + (arrivalWindow.estimatedArrivalMinutes || 30) * 60000).toISOString(),
+        arrivalWindowEnd: arrivalWindow.arrivalWindowEnd || new Date(Date.now() + ((arrivalWindow.estimatedArrivalMinutes || 30) + 30) * 60000).toISOString(),
+        estimatedArrivalMinutes: arrivalWindow.estimatedArrivalMinutes || 30,
+        appointmentDate: arrivalWindow.appointmentDate || arrivalWindow.arrivalWindowStart || new Date(Date.now() + (arrivalWindow.estimatedArrivalMinutes || 30) * 60000).toISOString(),
         serviceItems: serviceItems.map((item) => ({
           serviceName: item.serviceName,
           category: item.category,
@@ -369,6 +369,8 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
             setFormCountry(c);
             setSelectedFleetId('');
             setSelectedFleetDriverId('');
+            setServiceAddress('');
+            setServiceCoords({ latitude: null, longitude: null });
           }}
           stepNumber={1}
           subtitle="Cross-Border Fleet Dispatch"
