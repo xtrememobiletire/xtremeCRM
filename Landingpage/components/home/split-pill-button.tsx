@@ -44,7 +44,7 @@ export default function SplitPillButton({
 
   const content = (
     <span
-      className={`group relative inline-flex items-stretch rounded-full overflow-hidden shadow-md hover:shadow-xl transition-all duration-200 select-none ${
+      className={`group relative inline-flex items-stretch rounded-none overflow-hidden shadow-md hover:shadow-xl transition-all duration-200 select-none ${
         isWhite
           ? "bg-white text-zinc-950 focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
           : "bg-black text-white focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"

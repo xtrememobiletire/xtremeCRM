@@ -1,0 +1,42 @@
+import sharp from "sharp";
+
+const sourceImage = "C:/Users/bil_l/.gemini/antigravity/brain/4bb30556-d9ea-45ca-b1ce-91071719dd3f/.user_uploaded/media_1792312618340_78d41d2d.png";
+
+async function detect() {
+  const image = sharp(sourceImage);
+  const { data, info } = await image.raw().toBuffer({ resolveWithObject: true });
+  const w = info.width;
+  const h = info.height;
+
+  const band = { name: "row1", top: 10, bottom: 85 };
+  const hasPixel = new Array(w).fill(false);
+  for (let x = 0; x < w; x++) {
+    for (let y = band.top; y <= band.bottom; y++) {
+      const idx = (y * w + x) * info.channels;
+      const b = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+      if (b > 25) {
+        hasPixel[x] = true;
+        break;
+      }
+    }
+  }
+
+  const spans = [];
+  let inSpan = false;
+  let start = 0;
+  for (let x = 0; x < w; x++) {
+    if (hasPixel[x] && !inSpan) {
+      inSpan = true;
+      start = x;
+    } else if (!hasPixel[x] && inSpan) {
+      inSpan = false;
+      if (x - start >= 10) spans.push({ start, end: x - 1, width: x - start });
+    }
+  }
+  if (inSpan && w - start >= 10) spans.push({ start, end: w - 1, width: w - start });
+
+  console.log(`Found ${spans.length} spans for row 1:`);
+  spans.forEach((s, i) => console.log(`  Span ${i + 1}: x=${s.start}..${s.end} (width=${s.width})`));
+}
+
+detect().catch(console.error);

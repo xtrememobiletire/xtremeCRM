@@ -48,7 +48,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
 
 export default function Navbar({
   brandName = "Xtreme Mobile Tire",
-  logoSrc,
+  logoSrc = "/logo.webp",
   navItems = DEFAULT_NAV_ITEMS,
   signInHref = "#signin",
   signUpHref = "#signup",

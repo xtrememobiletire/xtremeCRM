@@ -30,7 +30,7 @@ export default function ThemeToggle() {
   };
 
   return (
-    <div className="absolute bottom-5 right-5 sm:bottom-6 sm:right-6 z-20">
+    <div className="absolute bottom-5 right-5 sm:bottom-6 sm:right-6 z-40">
       <button
         type="button"
         onClick={toggleTheme}

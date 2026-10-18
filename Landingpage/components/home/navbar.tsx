@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import SplitPillButton from "./split-pill-button";
 
@@ -17,43 +19,28 @@ export interface NavbarProps {
   navItems?: NavItem[];
   signInHref?: string;
   signUpHref?: string;
+  onLogoClick?: () => void;
+  hide?: boolean;
 }
 
 const DEFAULT_NAV_ITEMS: NavItem[] = [
-  { label: "Home", href: "#home" },
-  {
-    label: "About Us",
-    href: "#about",
-    hasDropdown: true,
-    children: [
-      { label: "Our Story", href: "#story", description: "Learn how Xtreme Mobile Tire revolutionized fleet tire repair." },
-      { label: "Operating Model", href: "#model", description: "Our 24/7 on-site rapid dispatch mechanics." },
-      { label: "Certifications", href: "#certifications", description: "TIA certified technicians & fleet safety standards." },
-    ],
-  },
-  {
-    label: "Services",
-    href: "#services",
-    hasDropdown: true,
-    children: [
-      { label: "Commercial Fleet Support", href: "#fleet", description: "Custom maintenance plans for heavy trucks & vans." },
-      { label: "24/7 Emergency Roadside", href: "#roadside", description: "On-demand mobile tire blowout repair." },
-      { label: "On-Site Tire Installation", href: "#installation", description: "Mounting, balancing, and pressure calibration." },
-      { label: "Fleet Tire Audits", href: "#audit", description: "Digital tread depth inspection & fleet reports." },
-    ],
-  },
-  { label: "Our Team", href: "#team" },
-  { label: "Booking", href: "#booking" },
-  { label: "Contact Us", href: "#contact" },
+  { label: "About us", href: "/about" },
+  { label: "Services", href: "/services" },
+  { label: "Fleet Solutions", href: "/fleet-solutions" },
+  { label: "Book now", href: "/booking" },
 ];
 
 export default function Navbar({
   brandName = "Xtreme Mobile Tire",
-  logoSrc,
+  logoSrc = "/logo.webp",
   navItems = DEFAULT_NAV_ITEMS,
-  signInHref = "#signin",
-  signUpHref = "#signup",
+  signInHref = "/signin",
+  signUpHref = "/signup",
+  onLogoClick,
+  hide = false,
 }: NavbarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedDropdown, setExpandedDropdown] = useState<string | null>(null);
   const [desktopDropdown, setDesktopDropdown] = useState<string | null>(null);
@@ -130,17 +117,22 @@ export default function Navbar({
           */}
           <motion.div
             initial={revealed ? false : { y: "-100%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
+            animate={{
+              y: hide ? "-115%" : 0,
+              opacity: hide ? 0 : 1,
+            }}
             transition={{
-              duration: 1.2,
+              duration: hide ? 0.35 : (revealed ? 0.35 : 1.2),
               delay: revealed ? 0 : 0.2,
               ease: [0.16, 1, 0.3, 1],
             }}
             onAnimationComplete={() => setRevealed(true)}
-            className="relative mx-auto -top-[2px] isolate [transform:translateZ(0)] [backface-visibility:hidden]"
+            className={`relative mx-auto -top-[2px] isolate [transform:translateZ(0)] [backface-visibility:hidden] ${
+              hide ? "pointer-events-none" : ""
+            }`}
           >
             {/* Top 3px Continuous Bleed Strip (Covers any subpixel rounding gap) */}
-            <div className="absolute -top-[2px] left-0 right-0 h-[4px] bg-[#050811] dark:bg-white/[0.08] pointer-events-none z-10" />
+            <div className="absolute -top-[2px] left-0 right-0 h-[4px] bg-[#050811] dark:bg-[#0c0c0e] pointer-events-none z-10" />
 
             {/* Left Inverted Wing (Fillet) with smooth curvature */}
             <div
@@ -154,7 +146,7 @@ export default function Navbar({
               >
                 <path
                   d="M0,-2 L32,-2 L32,30 L30,30 C30,12 18,0 0,0 Z"
-                  className="fill-[#050811] dark:fill-white/[0.08]"
+                  className="fill-[#050811] dark:fill-[#0c0c0e]"
                 />
                 <path
                   d="M30,30 C30,12 18,0 0,0"
@@ -177,7 +169,7 @@ export default function Navbar({
               >
                 <path
                   d="M0,-2 L32,-2 L32,0 C14,0 2,12 2,30 L0,30 Z"
-                  className="fill-[#050811] dark:fill-white/[0.08]"
+                  className="fill-[#050811] dark:fill-[#0c0c0e]"
                 />
                 <path
                   d="M2,30 C2,12 14,0 32,0"
@@ -194,40 +186,52 @@ export default function Navbar({
               - Calibrated rounded-b-[26px] / lg:rounded-b-[28px] ensuring the bottom convex curve
                 never collides with the top concave fillet, permanently eliminating white slivers.
               - In Light Mode: Solid #050811 black notch against light card.
-              - In Dark Mode: Elevated frosted glass notch (bg-white/[0.08] backdrop-blur-2xl border-white/15)
-                so the notch curves pop with luminous contrast against the dark card.
+              - In Dark Mode: Sleek unified dark command notch (#0c0c0e backdrop-blur-2xl border-white/15)
+                so the notch curves pop with rich clarity against the full black card.
             */}
             <nav
               aria-label="Main Navigation"
-              className={`relative bg-[#050811] dark:bg-white/[0.08] dark:backdrop-blur-2xl text-white shadow-2xl shadow-black/40 dark:shadow-[0_15px_35px_rgba(0,0,0,0.5)] dark:border-b dark:border-x dark:border-white/15 rounded-t-none rounded-b-2xl sm:rounded-b-[26px] lg:rounded-b-[28px] ${
+              className={`relative bg-[#050811] dark:bg-[#0c0c0e]/95 dark:backdrop-blur-2xl text-white shadow-2xl shadow-black/40 dark:shadow-[0_15px_35px_rgba(0,0,0,0.8)] dark:border-b dark:border-x dark:border-white/15 rounded-t-none rounded-b-2xl sm:rounded-b-[26px] lg:rounded-b-[28px] ${
                 scrolled
                   ? "py-2 sm:py-2.5 px-4 sm:px-6 shadow-black/60 dark:shadow-[0_15px_35px_rgba(0,0,0,0.7)]"
                   : "py-2.5 sm:py-3 lg:py-3 px-5 sm:px-7"
               }`}
             >
+
               <div className="flex items-center justify-between gap-3">
                 
-                {/* Brand Logo */}
-                <a
-                  href="#home"
-                  className="group flex items-center gap-2.5 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] rounded-full py-1 pr-2"
+                {/* Brand Logo: Always navigates to home page, or smoothly scrolls to top if already on home */}
+                <Link
+                  href="/"
+                  onClick={(e) => {
+                    if (pathname === "/") {
+                      if (onLogoClick) {
+                        e.preventDefault();
+                        onLogoClick();
+                      }
+                    } else {
+                      setMobileMenuOpen(false);
+                    }
+                  }}
+                  className="group flex items-center gap-2.5 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] py-1 pr-2 cursor-pointer"
                 >
                   {logoSrc ? (
                     <img
                       src={logoSrc}
                       alt={brandName}
-                      className="w-5 h-5 rounded-full object-contain"
+                      className="h-8 sm:h-9 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
                     />
                   ) : (
-                    <span className="relative flex items-center justify-center w-5 h-5 rounded-full bg-white text-zinc-950 transition-transform duration-300 group-hover:scale-110 shadow-sm">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-primary)]" />
-                    </span>
+                    <>
+                      <span className="relative flex items-center justify-center w-5 h-5 rounded-full bg-white text-zinc-950 transition-transform duration-300 group-hover:scale-110 shadow-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-primary)]" />
+                      </span>
+                      <span className="font-bold text-white text-[15px] sm:text-base tracking-tight group-hover:text-zinc-200 transition-colors">
+                        {brandName}
+                      </span>
+                    </>
                   )}
-
-                  <span className="font-bold text-white text-[15px] sm:text-base tracking-tight group-hover:text-zinc-200 transition-colors">
-                    {brandName}
-                  </span>
-                </a>
+                </Link>
 
                 {/* DESKTOP NAV LINKS */}
                 <div className="hidden lg:flex items-center gap-1 xl:gap-2">
@@ -249,7 +253,7 @@ export default function Navbar({
                     >
                       <a
                         href={item.href}
-                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs xl:text-[13px] font-medium transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--brand-primary)] ${
+                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-none text-xs xl:text-[13px] font-medium transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--brand-primary)] ${
                           desktopDropdown === item.label
                             ? "text-white bg-white/[0.08] dark:bg-white/[0.12]"
                             : "text-zinc-400 hover:text-white hover:bg-white/[0.06] dark:hover:bg-white/[0.1]"
@@ -281,13 +285,13 @@ export default function Navbar({
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 4, scale: 0.98 }}
                             transition={{ duration: 0.18, ease: "easeOut" }}
-                            className="absolute top-full left-0 mt-2 w-64 p-2 bg-[#050811] dark:bg-[#2d2022] border border-white/10 dark:border-white/15 rounded-2xl shadow-2xl shadow-black/90 dark:shadow-[0_20px_50px_rgba(0,0,0,0.95)] z-50 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                            className="absolute top-full left-0 mt-2 w-64 p-2 bg-[#050811] dark:bg-[#2d2022] border border-white/10 dark:border-white/15 rounded-none shadow-2xl shadow-black/90 dark:shadow-[0_20px_50px_rgba(0,0,0,0.95)] z-50 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
                           >
                             {item.children.map((subItem) => (
                               <a
                                 key={subItem.label}
                                 href={subItem.href}
-                                className="block p-2.5 rounded-xl hover:bg-white/[0.06] dark:hover:bg-white/[0.08] transition-colors group"
+                                className="block p-2.5 rounded-none hover:bg-white/[0.06] dark:hover:bg-white/[0.08] transition-colors group"
                               >
                                 <div className="text-xs font-semibold text-white group-hover:text-[var(--brand-primary)] transition-colors">
                                   {subItem.label}
@@ -330,7 +334,7 @@ export default function Navbar({
                     type="button"
                     onClick={() => setMobileMenuOpen(true)}
                     aria-label="Open navigation menu"
-                    className="p-1.5 rounded-md text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] cursor-pointer"
+                    className="p-1.5 rounded-none text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] cursor-pointer"
                   >
                     <div className="w-6 flex flex-col gap-1.5 items-end py-1">
                       <span className="block h-[2px] w-6 bg-white rounded-full" />
@@ -360,24 +364,42 @@ export default function Navbar({
                 >
                   {/* Top Row: Logo on left, Close '✕' on right */}
                   <div className="flex items-center justify-between gap-3 pb-3 border-b border-white/[0.08]">
-                    <a
-                      href="#home"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2.5"
+                    <Link
+                      href="/"
+                      onClick={(e) => {
+                        setMobileMenuOpen(false);
+                        if (pathname === "/") {
+                          if (onLogoClick) {
+                            e.preventDefault();
+                            onLogoClick();
+                          }
+                        }
+                      }}
+                      className="flex items-center gap-2.5 cursor-pointer"
                     >
-                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white text-zinc-950 shadow-sm">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-primary)]" />
-                      </span>
-                      <span className="font-bold text-white text-[15px] tracking-tight">
-                        {brandName}
-                      </span>
-                    </a>
+                      {logoSrc ? (
+                        <img
+                          src={logoSrc}
+                          alt={brandName}
+                          className="h-8 w-auto object-contain"
+                        />
+                      ) : (
+                        <>
+                          <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white text-zinc-950 shadow-sm">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-primary)]" />
+                          </span>
+                          <span className="font-bold text-white text-[15px] tracking-tight">
+                            {brandName}
+                          </span>
+                        </>
+                      )}
+                    </Link>
 
                     <button
                       type="button"
                       onClick={() => setMobileMenuOpen(false)}
                       aria-label="Close navigation menu"
-                      className="p-1.5 rounded-md text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] cursor-pointer"
+                      className="p-1.5 rounded-none text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] cursor-pointer"
                     >
                       <svg
                         className="w-6 h-6 stroke-[2.2]"
