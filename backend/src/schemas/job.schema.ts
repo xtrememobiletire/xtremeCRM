@@ -179,6 +179,13 @@ export const VerifyBookingAddressSchema = z.object({
   serviceAddress: z.string().min(1, 'Service address is required'),
   serviceLatitude: z.coerce.number().optional().nullable(),
   serviceLongitude: z.coerce.number().optional().nullable(),
+  serviceTimezone: z.string().optional().nullable(),
+  appointmentDate: z.string().or(z.date()).optional().nullable(),
+  arrivalWindowStart: z.string().or(z.date()).optional().nullable(),
+  arrivalWindowEnd: z.string().or(z.date()).optional().nullable(),
+  estimatedArrivalAt: z.string().or(z.date()).optional().nullable(),
+  estimatedArrivalMinutes: z.coerce.number().optional().nullable(),
+  driverId: z.string().optional().nullable(),
   recipientName: z.string().optional(),
   recipientPhone: z.string().optional(),
   problemNotes: z.string().optional(),
@@ -190,6 +197,10 @@ export const VerifyBookingAddressSchema = z.object({
   unitNumber: z.string().optional().nullable(),
   tireSize: z.string().optional(),
   licensePlate: z.string().optional(),
+  discountCents: z.coerce.number().optional().nullable(),
+  subtotalCents: z.coerce.number().optional().nullable(),
+  taxAmountCents: z.coerce.number().optional().nullable(),
+  totalCents: z.coerce.number().optional().nullable(),
   selectedServices: z.array(z.string()).optional(),
   serviceItems: z.array(
     z.object({
@@ -197,6 +208,7 @@ export const VerifyBookingAddressSchema = z.object({
       category: z.string().optional(),
       unitPriceCents: z.coerce.number().optional(),
       quantity: z.coerce.number().default(1),
+      notes: z.string().optional().nullable(),
     })
   ).optional(),
 });

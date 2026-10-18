@@ -304,7 +304,7 @@ export default function FleetDashboard() {
   // Handle submit service
   const handleBookService = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bookingForm.appointmentDate) {
+    if (bookingForm.serviceType !== 'EMERGENCY' && !bookingForm.appointmentDate) {
       toast.error('Please choose an appointment date and time');
       return;
     }
@@ -318,8 +318,13 @@ export default function FleetDashboard() {
       return;
     }
     const selectedVeh = vehicles.find((v: any) => v.id === bookingForm.vehicleId);
+    const finalAppointmentDate = bookingForm.serviceType === 'EMERGENCY' && !bookingForm.appointmentDate
+      ? new Date(Date.now() + 30 * 60000).toISOString()
+      : bookingForm.appointmentDate;
+
     bookServiceMutation.mutate({
       ...bookingForm,
+      appointmentDate: finalAppointmentDate,
       address: finalAddress,
       serviceAddress: finalAddress,
       fleetId: fleet?.id,
@@ -997,17 +1002,33 @@ export default function FleetDashboard() {
                 <div>
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Appointment Date & Time *
+                      {bookingForm.serviceType === 'EMERGENCY' ? 'Appointment Timing' : 'Appointment Date & Time *'}
                     </label>
-                    <span className="text-[11px] text-slate-400 font-medium">24/7 Hours</span>
+                    {bookingForm.serviceType === 'EMERGENCY' ? (
+                      <span className="text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shadow-2xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                        Immediate Roadside Dispatch (ASAP ~30m)
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-slate-400 font-medium">24/7 Hours</span>
+                    )}
                   </div>
-                  <input
-                    type="datetime-local"
-                    value={bookingForm.appointmentDate}
-                    onChange={(e) => setBookingForm({ ...bookingForm, appointmentDate: e.target.value })}
-                    className="input-base mt-1.5 py-2.5 text-xs text-slate-800"
-                    required
-                  />
+                  {bookingForm.serviceType === 'EMERGENCY' ? (
+                    <div className="mt-1.5 p-3 rounded-xl bg-red-50/50 border border-red-200 text-xs text-red-900 flex items-center justify-between">
+                      <span className="font-medium">Priority Dispatch will be initiated immediately upon submission (Estimated arrival window: ~30-45 mins).</span>
+                      <span className="text-[10px] font-mono font-bold text-red-700 bg-white border border-red-200 px-2 py-0.5 rounded-md">
+                        ASAP PRIORITY
+                      </span>
+                    </div>
+                  ) : (
+                    <input
+                      type="datetime-local"
+                      value={bookingForm.appointmentDate}
+                      onChange={(e) => setBookingForm({ ...bookingForm, appointmentDate: e.target.value })}
+                      className="input-base mt-1.5 py-2.5 text-xs text-slate-800"
+                      required
+                    />
+                  )}
                 </div>
 
                 {/* VEHICLE */}

@@ -1204,6 +1204,13 @@ export const jobController = {
         serviceAddress,
         serviceLatitude,
         serviceLongitude,
+        serviceTimezone,
+        appointmentDate,
+        arrivalWindowStart,
+        arrivalWindowEnd,
+        estimatedArrivalAt,
+        estimatedArrivalMinutes,
+        driverId,
         recipientName,
         recipientPhone,
         problemNotes,
@@ -1215,24 +1222,40 @@ export const jobController = {
         unitNumber,
         tireSize,
         licensePlate,
+        discountCents: incomingDiscountCents,
         serviceItems: incomingServiceItems,
       } = req.body;
 
       const job = await prisma.job.findUnique({
         where: { id },
-        include: { vehicle: true, serviceItems: true },
+        include: { vehicle: true, serviceItems: true, customer: true, fleet: true },
       });
       if (!job) return sendError(res, 'Job not found', 404);
 
       const updateData: any = {
         updatedAt: new Date(),
       };
-      if (job.status === 'UNVERIFIED_PUBLIC') {
+
+      if (driverId) {
+        updateData.driverId = String(driverId);
+        updateData.assignedAt = new Date();
+        updateData.status = 'ASSIGNED';
+      } else if (job.status === 'UNVERIFIED_PUBLIC') {
         updateData.status = 'PENDING';
       }
+
       if (serviceAddress) updateData.serviceAddress = serviceAddress;
       if (serviceLatitude !== undefined && serviceLatitude !== null) updateData.serviceLatitude = Number(serviceLatitude);
       if (serviceLongitude !== undefined && serviceLongitude !== null) updateData.serviceLongitude = Number(serviceLongitude);
+      if (serviceTimezone) updateData.serviceTimezone = serviceTimezone;
+      if (appointmentDate) updateData.appointmentDate = new Date(appointmentDate);
+      if (arrivalWindowStart) updateData.arrivalWindowStart = new Date(arrivalWindowStart);
+      if (arrivalWindowEnd) updateData.arrivalWindowEnd = new Date(arrivalWindowEnd);
+      if (estimatedArrivalAt) updateData.estimatedArrivalAt = new Date(estimatedArrivalAt);
+      if (estimatedArrivalMinutes !== undefined && estimatedArrivalMinutes !== null) {
+        updateData.estimatedArrivalMinutes = Number(estimatedArrivalMinutes);
+      }
+
       if (recipientName) updateData.recipientName = recipientName;
       if (recipientPhone) {
         const pVal = validateAndNormalizePhone(recipientPhone, job.countryCode);
@@ -1281,15 +1304,28 @@ export const jobController = {
           category: item.category || 'TIRE_SERVICE',
           unitPriceCents: Number(item.unitPriceCents) || 5000,
           quantity: Number(item.quantity) || 1,
+          notes: item.notes || null,
         }));
         await prisma.jobServiceItem.createMany({ data: itemsToCreate });
         const subtotal = itemsToCreate.reduce((s: number, i: any) => s + i.unitPriceCents * i.quantity, 0);
+
+        // Contract or VIP discount calculation
+        let discountCents = 0;
+        if (incomingDiscountCents !== undefined && incomingDiscountCents !== null) {
+          discountCents = Math.round(Number(incomingDiscountCents));
+        } else if (job.fleet?.discountPercent) {
+          discountCents = Math.round(subtotal * (Number(job.fleet.discountPercent) / 100));
+        } else if (job.customer?.customerType === 'MEMBERSHIP' || job.source === 'MEMBER_PORTAL') {
+          discountCents = Math.round(subtotal * 0.10);
+        }
+        const netSubtotal = Math.max(0, subtotal - discountCents);
         const taxRateBps = job.countryCode === 'CA' ? 1300 : job.countryCode === 'UK' ? 2000 : 800;
-        const taxAmount = Math.round((subtotal * taxRateBps) / 10000);
+        const taxAmount = Math.round((netSubtotal * taxRateBps) / 10000);
+
         updateData.subtotalCents = subtotal;
         updateData.taxRateBps = taxRateBps;
         updateData.taxAmountCents = taxAmount;
-        updateData.totalCents = subtotal + taxAmount;
+        updateData.totalCents = netSubtotal + taxAmount;
       }
 
       const updated = await prisma.job.update({
@@ -1299,12 +1335,19 @@ export const jobController = {
           customer: true,
           vehicle: true,
           serviceItems: true,
+          fleet: true,
+          driver: true,
         },
       });
 
       try {
         const io = getIO();
         io.to(`dispatch:${updated.countryCode}`).emit('job:verified', updated);
+        if (driverId) {
+          io.to(`dispatch:${updated.countryCode}`).emit('job:assigned', updated);
+          io.to(`driver:${driverId}`).emit('job:assigned', updated);
+          sseManager.broadcast(`sse:jobs:${driverId}`, 'job:assigned', updated);
+        }
         sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:verified', updated);
       } catch {}
 

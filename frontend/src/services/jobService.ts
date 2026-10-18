@@ -231,6 +231,12 @@ export const jobService = {
     serviceAddress: string;
     serviceLatitude?: number | null;
     serviceLongitude?: number | null;
+    serviceTimezone?: string | null;
+    appointmentDate?: string | Date | null;
+    arrivalWindowStart?: string | Date | null;
+    arrivalWindowEnd?: string | Date | null;
+    estimatedArrivalMinutes?: number | null;
+    driverId?: string | null;
     recipientName?: string;
     recipientPhone?: string;
     problemNotes?: string;
@@ -242,6 +248,7 @@ export const jobService = {
     unitNumber?: string;
     tireSize?: string;
     licensePlate?: string;
+    discountCents?: number | null;
     serviceItems?: any[];
   }): Promise<JobItem> {
     const res = await api.patch(`/jobs/${id}/verify-booking`, payload);
