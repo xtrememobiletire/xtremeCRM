@@ -436,7 +436,7 @@ router.post('/request-service', async (req: Request, res: Response) => {
       }
     }
 
-    const serviceTimezone = resolveTimezoneFromCoords(lat, lng, country);
+    const serviceTimezone = req.body.serviceTimezone || resolveTimezoneFromCoords(lat, lng, country);
 
     const isEmergency = serviceType === 'EMERGENCY';
     let itemsToCreate: Array<{
@@ -524,7 +524,7 @@ router.post('/request-service', async (req: Request, res: Response) => {
     const finalTireSize = tireSize || vehicleObj?.tireSize || 'N/A';
 
     let driverPhone = contactPhone?.trim() || fleet.phone;
-    let driverName = fleet.contactPerson || fleet.name;
+    let driverName = (req.body.recipientName || fleet.contactPerson || fleet.name || '').trim();
     if (driverId) {
       const d = await prisma.fleetDriver.findUnique({ where: { id: String(driverId) } });
       if (d) {
@@ -543,7 +543,7 @@ router.post('/request-service', async (req: Request, res: Response) => {
         vehicleId: finalVehicleId,
         countryCode: country,
         source: 'FLEET_PORTAL',
-        status: 'UNVERIFIED_PUBLIC',
+        status: isEmergency ? 'PENDING' : 'UNVERIFIED_PUBLIC',
         urgency: isEmergency ? 'URGENT' : 'STANDARD',
         serviceAddress,
         serviceLatitude: lat,

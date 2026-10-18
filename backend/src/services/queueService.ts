@@ -191,8 +191,10 @@ export async function refillAgentQueueAtomic(
             )
           )
         ORDER BY
-          l.call_attempts_count ASC,
+          CASE WHEN l.status = 'NEW'::"LeadStatus" THEN 0 ELSE 1 END ASC,
           l.priority DESC,
+          COALESCE(l.number_of_units, 0) DESC,
+          l.call_attempts_count ASC,
           l.created_at ASC
         LIMIT ${slotsNeeded}
         FOR UPDATE SKIP LOCKED

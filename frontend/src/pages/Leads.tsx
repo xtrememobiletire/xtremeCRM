@@ -624,6 +624,7 @@ export default function Leads() {
             <VaFocusCard
               lead={queueData.leads[0]}
               onDisposition={(params) => dispositionMutation.mutate(params)}
+              onOpenDispositionModal={(leadItem) => setSelectedDispositionLead(leadItem)}
               isSubmitting={dispositionMutation.isPending}
               onRefreshQueue={async () => {
                 try {
@@ -1179,10 +1180,11 @@ export default function Leads() {
                             <button
                               type="button"
                               onClick={() => setSelectedDispositionLead(lead)}
-                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
-                              title="Log Call Outcome"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold text-[11px] transition cursor-pointer"
+                              title="Set Call Disposition"
                             >
-                              <ClipboardCheck size={13} />
+                              <ClipboardCheck size={12} />
+                              <span>Disposition</span>
                             </button>
                             {isAdminOrGm && !isConverted && (
                               <button
@@ -1316,10 +1318,11 @@ export default function Leads() {
                             <button
                               type="button"
                               onClick={() => setSelectedDispositionLead(lead)}
-                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
-                              title="Log Call Outcome"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold text-[11px] transition cursor-pointer"
+                              title="Set Call Disposition"
                             >
-                              <ClipboardCheck size={13} />
+                              <ClipboardCheck size={12} />
+                              <span>Disposition</span>
                             </button>
                             <button
                               type="button"
@@ -1410,10 +1413,11 @@ export default function Leads() {
                             <button
                               type="button"
                               onClick={() => setSelectedDispositionLead(lead)}
-                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
-                              title="Log Call Outcome"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold text-[11px] transition cursor-pointer"
+                              title="Set Call Disposition"
                             >
-                              <ClipboardCheck size={13} />
+                              <ClipboardCheck size={12} />
+                              <span>Disposition</span>
                             </button>
                             <button
                               type="button"
@@ -1572,10 +1576,11 @@ export default function Leads() {
                             <button
                               type="button"
                               onClick={() => setSelectedDispositionLead(lead)}
-                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
-                              title="Log Call Outcome"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold text-[11px] transition cursor-pointer"
+                              title="Set Call Disposition"
                             >
-                              <ClipboardCheck size={13} />
+                              <ClipboardCheck size={12} />
+                              <span>Disposition</span>
                             </button>
                             <button
                               type="button"
@@ -1733,10 +1738,11 @@ export default function Leads() {
                             <button
                               type="button"
                               onClick={() => setSelectedDispositionLead(lead)}
-                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
-                              title="Log Call Outcome"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold text-[11px] transition cursor-pointer"
+                              title="Set Call Disposition"
                             >
-                              <ClipboardCheck size={13} />
+                              <ClipboardCheck size={12} />
+                              <span>Disposition</span>
                             </button>
 
                             {canPerformPipelineAction(user?.role, 'BOOK_TRIAL_JOB') && (
@@ -1870,6 +1876,15 @@ export default function Leads() {
                                 <span>Convert Fleet</span>
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDispositionLead(lead)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold text-[11px] transition cursor-pointer"
+                              title="Set Call Disposition"
+                            >
+                              <ClipboardCheck size={12} />
+                              <span>Disposition</span>
+                            </button>
                             <button
                               type="button"
                               onClick={() => handleCallLead(lead)}
@@ -2135,10 +2150,11 @@ export default function Leads() {
                           <button
                             type="button"
                             onClick={() => setSelectedDispositionLead(lead)}
-                            className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
-                            title="Log Call Outcome (Triggers Replenishment)"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold text-[11px] transition cursor-pointer"
+                            title="Set Call Disposition"
                           >
-                            <ClipboardCheck size={13} />
+                            <ClipboardCheck size={12} />
+                            <span>Disposition</span>
                           </button>
 
                           {isAdminOrGm && !isConverted && !isDisqualified && (

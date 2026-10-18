@@ -1706,20 +1706,39 @@ export const leadController = {
       });
 
       // 2. Fetch currently active leads for this agent
-      const activeLeads = await prisma.lead.findMany({
-        where: {
-          assignedAgentId: agentId,
-          stage: 'VA_OUTREACH',
-          status: { in: ['NEW', 'CALLED'] },
-          OR: [{ disposition: null }],
-        },
-        orderBy: [{ createdAt: 'desc' }, { priority: 'desc' }],
+      const activeWhere: any = {
+        assignedAgentId: agentId,
+        stage: 'VA_OUTREACH',
+        status: { in: ['NEW', 'CALLED'] },
+        OR: [{ disposition: null }],
+        ...(batchId ? { batchId } : {}),
+      };
+
+      let activeLeads = await prisma.lead.findMany({
+        where: activeWhere,
+        orderBy: [{ priority: 'desc' }, { numberOfUnits: 'desc' }, { createdAt: 'asc' }],
         take: MAX_ACTIVE,
         include: {
           uploadedBy: { select: { id: true, fullName: true, role: true } },
           batch: { select: { id: true, batchName: true, countryCode: true } },
         },
       });
+
+      // INSTANT AUTO-PULL: If VA holds 0 active leads upon entering the batch, pull #1 priority unassigned lead immediately!
+      if (activeLeads.length === 0) {
+        const pulled = await refillAgentQueueAtomic(agentId, countryCode || 'CA', MAX_ACTIVE, batchId);
+        if (pulled > 0) {
+          activeLeads = await prisma.lead.findMany({
+            where: activeWhere,
+            orderBy: [{ priority: 'desc' }, { numberOfUnits: 'desc' }, { createdAt: 'asc' }],
+            take: MAX_ACTIVE,
+            include: {
+              uploadedBy: { select: { id: true, fullName: true, role: true } },
+              batch: { select: { id: true, batchName: true, countryCode: true } },
+            },
+          });
+        }
+      }
 
       const unassignedPoolCount = await prisma.lead.count({
         where: {

@@ -49,8 +49,19 @@ export default function MemberDashboard() {
 
   // Booking state (prefills if passed via navigation state)
   const [vehicleId, setVehicleId] = useState('');
+  const [isNewVehicleInline, setIsNewVehicleInline] = useState(false);
+  const [inlineVehicle, setInlineVehicle] = useState({
+    year: new Date().getFullYear(),
+    make: '',
+    model: '',
+    licensePlate: '',
+    tireSize: '225/65R17',
+    color: '',
+  });
+  const [urgencyType, setUrgencyType] = useState<'EMERGENCY' | 'SCHEDULED'>('EMERGENCY');
+  const [appointmentDate, setAppointmentDate] = useState('');
   const [address, setAddress] = useState('');
-  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number; timezone?: string } | null>(null);
   const [notes, setNotes] = useState('');
   const [serviceItems, setServiceItems] = useState<SelectedServiceItem[]>([
     {
@@ -84,13 +95,16 @@ export default function MemberDashboard() {
     },
   });
 
-  // Sync selected vehicle from navigation or default to first registered vehicle
+  // Sync selected vehicle from navigation or default to first registered vehicle (or enable inline mode if 0 vehicles)
   useEffect(() => {
     const navVehId = (location.state as any)?.selectedVehicleId;
     if (navVehId) {
       setVehicleId(navVehId);
-    } else if (!vehicleId && vehicles.length > 0) {
+      setIsNewVehicleInline(false);
+    } else if (vehicles.length > 0 && !vehicleId && !isNewVehicleInline) {
       setVehicleId(vehicles[0].id);
+    } else if (vehicles.length === 0) {
+      setIsNewVehicleInline(true);
     }
   }, [location.state, vehicles]);
 
@@ -180,10 +194,14 @@ export default function MemberDashboard() {
     },
   });
 
-  const handleSubmitBooking = (e: React.FormEvent) => {
+  const handleSubmitBooking = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!vehicleId || !address) {
-      toast.error('Vehicle and breakdown location are required');
+    if (!address.trim()) {
+      toast.error('Breakdown location address is required');
+      return;
+    }
+    if (urgencyType === 'SCHEDULED' && !appointmentDate) {
+      toast.error('Please choose a date and time for scheduled service');
       return;
     }
     if (serviceItems.length === 0) {
@@ -191,34 +209,73 @@ export default function MemberDashboard() {
       return;
     }
 
-    const selectedVeh = vehicles.find((v: any) => v.id === vehicleId);
+    let targetVehicleId = vehicleId;
+    let targetVehicle = vehicles.find((v: any) => v.id === vehicleId);
+    let targetTireSize = targetVehicle?.tireSize || '225/65R17';
+
+    // If member entered a new vehicle inline, save it to My Garage first
+    if (isNewVehicleInline || !targetVehicleId) {
+      if (!inlineVehicle.make.trim() || !inlineVehicle.model.trim()) {
+        toast.error('Please enter your vehicle Make and Model');
+        return;
+      }
+      try {
+        const createdVehRes = await api.post('/member-portal/vehicles', inlineVehicle);
+        const createdVeh = createdVehRes.data?.data;
+        targetVehicleId = createdVeh?.id;
+        targetVehicle = createdVeh;
+        targetTireSize = inlineVehicle.tireSize || '225/65R17';
+        queryClient.invalidateQueries({ queryKey: ['member-portal-vehicles'] });
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || 'Could not save vehicle to garage');
+        return;
+      }
+    }
+
+    const isEmergency = urgencyType === 'EMERGENCY';
+    const nowIso = isEmergency
+      ? new Date(Date.now() + 30 * 60000).toISOString()
+      : new Date(appointmentDate).toISOString();
+    const endIso = new Date(new Date(nowIso).getTime() + 60 * 60000).toISOString();
+
     const subtotalCents = serviceItems.reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0);
     const discountCents = Math.round(subtotalCents * 0.10); // 10% VIP discount
     const netSubtotalCents = Math.max(0, subtotalCents - discountCents);
     const taxRate = country === 'CA' ? 0.13 : country === 'UK' ? 0.20 : 0.08;
-    const taxAmountCents = Math.round((netSubtotalCents * taxRate));
+    const taxAmountCents = Math.round(netSubtotalCents * taxRate);
     const totalCents = netSubtotalCents + taxAmountCents;
 
     bookMemberService.mutate({
-      vehicleId,
+      vehicleId: targetVehicleId,
       countryCode: country,
-      serviceAddress: address,
+      serviceAddress: address.trim(),
       serviceLatitude: coords?.latitude || null,
       serviceLongitude: coords?.longitude || null,
-      urgency: 'URGENT',
+      serviceTimezone: coords?.timezone || undefined,
+      urgency: isEmergency ? 'URGENT' : 'STANDARD',
+      appointmentDate: nowIso,
+      arrivalWindowStart: nowIso,
+      arrivalWindowEnd: endIso,
+      estimatedArrivalAt: nowIso,
       subtotalCents,
       discountCents,
       taxAmountCents,
       totalCents,
-      vehicle: selectedVeh ? {
-        make: selectedVeh.make,
-        model: selectedVeh.model,
-        year: selectedVeh.year,
-        tireSize: selectedVeh.tireSize,
-        licensePlate: selectedVeh.licensePlate,
-      } : undefined,
-      vehicleMakeModel: selectedVeh ? `${selectedVeh.year || ''} ${selectedVeh.make} ${selectedVeh.model}`.trim() : undefined,
-      tireSize: selectedVeh?.tireSize,
+      vehicle: targetVehicle ? {
+        make: targetVehicle.make,
+        model: targetVehicle.model,
+        year: targetVehicle.year,
+        tireSize: targetVehicle.tireSize,
+        licensePlate: targetVehicle.licensePlate,
+      } : {
+        make: inlineVehicle.make,
+        model: inlineVehicle.model,
+        year: inlineVehicle.year,
+        tireSize: targetTireSize,
+        licensePlate: inlineVehicle.licensePlate,
+      },
+      vehicleMakeModel: targetVehicle ? `${targetVehicle.year || ''} ${targetVehicle.make} ${targetVehicle.model}`.trim() : `${inlineVehicle.year || ''} ${inlineVehicle.make} ${inlineVehicle.model}`.trim(),
+      tireSize: targetTireSize,
       serviceItems: serviceItems.map((s) => ({
         serviceName: s.serviceName,
         category: s.category,
@@ -226,7 +283,7 @@ export default function MemberDashboard() {
         unitPriceCents: s.unitPriceCents,
         notes: s.notes,
       })),
-      problemNotes: `[Member Priority Request] Plate: ${selectedVeh?.licensePlate || 'N/A'}. Tire: ${selectedVeh?.tireSize || 'N/A'}. ${notes}`.trim(),
+      problemNotes: `[Member Priority Request] Plate: ${targetVehicle?.licensePlate || inlineVehicle.licensePlate || 'N/A'}. Tire: ${targetTireSize}. ${notes}`.trim(),
       source: 'MEMBER_PORTAL',
     });
   };
@@ -601,77 +658,218 @@ export default function MemberDashboard() {
             Your request will be queued for immediate dispatcher verification and mobile technician routing.
           </div>
 
-          {vehicles.length === 0 && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-xs flex items-center justify-between gap-3">
-              <div>
-                <strong className="block font-semibold">No vehicle in your garage</strong>
-                Please add a vehicle to request roadside service.
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAddVehicleOpen(true)}
-                className="btn-primary py-1 px-2.5 text-xs font-bold whitespace-nowrap inline-flex items-center gap-1 cursor-pointer"
-              >
-                <Plus size={12} />
-                <span>Add Vehicle</span>
-              </button>
-            </div>
-          )}
-
+          {/* SERVICE URGENCY & TIMING */}
           <div>
-            <div className="flex items-center justify-between">
-              <label className="font-semibold text-slate-700">Select Vehicle *</label>
+            <label className="font-semibold text-slate-700 block mb-1.5 uppercase tracking-wider text-[11px]">
+              Service Urgency & Timing *
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => setIsAddVehicleOpen(true)}
-                className="text-[11px] text-red-600 hover:text-red-700 font-semibold inline-flex items-center gap-0.5 cursor-pointer"
+                onClick={() => setUrgencyType('EMERGENCY')}
+                className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition cursor-pointer ${
+                  urgencyType === 'EMERGENCY'
+                    ? 'bg-red-50/70 border-red-300 text-red-900 shadow-2xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                }`}
               >
-                <Plus size={12} />
-                <span>Add New Vehicle</span>
+                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${urgencyType === 'EMERGENCY' ? 'bg-red-600 animate-pulse' : 'bg-slate-400'}`} />
+                <div>
+                  <div className="font-bold text-xs flex items-center gap-1">
+                    <span>🚨 Immediate Emergency</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Priority mobile technician dispatch (ETA ~30–45 mins)</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUrgencyType('SCHEDULED')}
+                className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition cursor-pointer ${
+                  urgencyType === 'SCHEDULED'
+                    ? 'bg-blue-50/70 border-blue-300 text-blue-900 shadow-2xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${urgencyType === 'SCHEDULED' ? 'bg-blue-600' : 'bg-slate-400'}`} />
+                <div>
+                  <div className="font-bold text-xs flex items-center gap-1">
+                    <span>📅 Scheduled Service</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Choose a specific date and time window</div>
+                </div>
               </button>
             </div>
-            <select
-              value={vehicleId}
-              onChange={(e) => setVehicleId(e.target.value)}
-              className="select-base mt-1"
-              required
-            >
-              <option value="">-- Choose vehicle --</option>
-              {vehicles.map((v: any) => (
-                <option key={v.id} value={v.id}>
-                  {v.licensePlate ? `[${v.licensePlate}] ` : ''}{v.year} {v.make} {v.model} ({v.tireSize || 'TBD'})
-                </option>
-              ))}
-            </select>
 
-            {/* Selected Vehicle Detail Card */}
-            {(() => {
-              const selectedVeh = vehicles.find((v: any) => v.id === vehicleId);
-              if (!selectedVeh) return null;
-              return (
-                <div className="mt-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+            {urgencyType === 'SCHEDULED' && (
+              <div className="mt-2.5">
+                <label className="font-semibold text-slate-700 block mb-1">Appointment Date & Time *</label>
+                <input
+                  type="datetime-local"
+                  value={appointmentDate}
+                  onChange={(e) => setAppointmentDate(e.target.value)}
+                  className="input-base py-2 text-xs text-slate-800"
+                  required
+                />
+              </div>
+            )}
+          </div>
+
+          {/* VEHICLE SELECTION OR INLINE FALLBACK */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="font-semibold text-slate-700 uppercase tracking-wider text-[11px]">
+                Vehicle Details *
+              </label>
+              {vehicles.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsNewVehicleInline(false)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-semibold transition cursor-pointer ${
+                      !isNewVehicleInline ? 'bg-slate-800 text-white' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    My Garage ({vehicles.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsNewVehicleInline(true)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-semibold transition cursor-pointer flex items-center gap-1 ${
+                      isNewVehicleInline ? 'bg-slate-800 text-white' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Plus size={11} />
+                    <span>Use New Vehicle</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* CASE 1: Select from My Garage */}
+            {!isNewVehicleInline && vehicles.length > 0 ? (
+              <div>
+                <select
+                  value={vehicleId}
+                  onChange={(e) => setVehicleId(e.target.value)}
+                  className="select-base mt-1"
+                  required
+                >
+                  <option value="">-- Choose vehicle from garage --</option>
+                  {vehicles.map((v: any) => (
+                    <option key={v.id} value={v.id}>
+                      {v.licensePlate ? `[${v.licensePlate}] ` : ''}{v.year} {v.make} {v.model} ({v.tireSize || 'TBD'})
+                    </option>
+                  ))}
+                </select>
+
+                {/* Selected Vehicle Detail Card */}
+                {(() => {
+                  const selectedVeh = vehicles.find((v: any) => v.id === vehicleId);
+                  if (!selectedVeh) return null;
+                  return (
+                    <div className="mt-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold px-2 py-0.5 bg-white border border-slate-200 rounded text-slate-800">
+                            {selectedVeh.licensePlate || 'NO PLATE'}
+                          </span>
+                          <span className="font-bold text-slate-900 text-sm">
+                            {selectedVeh.year} {selectedVeh.make} {selectedVeh.model}
+                          </span>
+                        </div>
+                        <div className="text-slate-500 text-[11px] mt-1 flex flex-wrap items-center gap-2">
+                          <span>Tire Spec: <strong className="font-mono text-red-700 font-semibold">{selectedVeh.tireSize || 'TBD'}</strong></span>
+                          {selectedVeh.color && <span>&bull; Color: {selectedVeh.color}</span>}
+                          {selectedVeh.vin && <span>&bull; VIN: <span className="font-mono">{selectedVeh.vin}</span></span>}
+                        </div>
+                      </div>
+                      <div className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg font-semibold text-[11px] shrink-0 flex items-center gap-1">
+                        <ShieldCheck size={13} />
+                        <span>Saved in Garage</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : (
+              /* CASE 2: Inline New Vehicle Form (Auto-saves to Garage) */
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 text-xs">Enter Vehicle Breakdown Details</span>
+                  <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-medium">
+                    ✨ Auto-saves to My Garage
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold px-2 py-0.5 bg-white border border-slate-200 rounded text-slate-800">
-                        {selectedVeh.licensePlate || 'NO PLATE'}
-                      </span>
-                      <span className="font-bold text-slate-900 text-sm">
-                        {selectedVeh.year} {selectedVeh.make} {selectedVeh.model}
-                      </span>
-                    </div>
-                    <div className="text-slate-500 text-[11px] mt-1 flex flex-wrap items-center gap-2">
-                      <span>Tire Spec: <strong className="font-mono text-red-700 font-semibold">{selectedVeh.tireSize || 'TBD'}</strong></span>
-                      {selectedVeh.color && <span>&bull; Color: {selectedVeh.color}</span>}
-                      {selectedVeh.vin && <span>&bull; VIN: <span className="font-mono">{selectedVeh.vin}</span></span>}
-                    </div>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Year</label>
+                    <input
+                      type="number"
+                      value={inlineVehicle.year}
+                      onChange={(e) => setInlineVehicle((prev) => ({ ...prev, year: Number(e.target.value) }))}
+                      className="input-base py-1.5 text-xs"
+                      min={1980}
+                      max={new Date().getFullYear() + 1}
+                    />
                   </div>
-                  <div className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg font-semibold text-[11px] shrink-0 flex items-center gap-1">
-                    <ShieldCheck size={13} />
-                    <span>Selected Garage Vehicle</span>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Make *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Ford, Toyota, Honda"
+                      value={inlineVehicle.make}
+                      onChange={(e) => setInlineVehicle((prev) => ({ ...prev, make: e.target.value }))}
+                      className="input-base py-1.5 text-xs"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Model *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. F-150, RAV4, Civic"
+                      value={inlineVehicle.model}
+                      onChange={(e) => setInlineVehicle((prev) => ({ ...prev, model: e.target.value }))}
+                      className="input-base py-1.5 text-xs"
+                      required
+                    />
                   </div>
                 </div>
-              );
-            })()}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">License Plate</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. ABCD-123"
+                      value={inlineVehicle.licensePlate}
+                      onChange={(e) => setInlineVehicle((prev) => ({ ...prev, licensePlate: e.target.value.toUpperCase() }))}
+                      className="input-base py-1.5 text-xs font-mono uppercase"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Tire Size</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 225/65R17"
+                      value={inlineVehicle.tireSize}
+                      onChange={(e) => setInlineVehicle((prev) => ({ ...prev, tireSize: e.target.value }))}
+                      className="input-base py-1.5 text-xs font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Color (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Black, White, Grey"
+                      value={inlineVehicle.color}
+                      onChange={(e) => setInlineVehicle((prev) => ({ ...prev, color: e.target.value }))}
+                      className="input-base py-1.5 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -697,7 +895,7 @@ export default function MemberDashboard() {
                 onChange={(val) => setAddress(val)}
                 onSelectLocation={(loc) => {
                   setAddress(loc.address);
-                  setCoords({ latitude: loc.latitude, longitude: loc.longitude });
+                  setCoords({ latitude: loc.latitude, longitude: loc.longitude, timezone: loc.timezone });
                 }}
                 placeholder="e.g. 100 King St West, Toronto or Hwy 401 Eastbound shoulder"
                 required
@@ -718,10 +916,14 @@ export default function MemberDashboard() {
 
           <button
             type="submit"
-            disabled={bookMemberService.isPending || !vehicleId}
+            disabled={bookMemberService.isPending}
             className="btn-primary w-full py-2.5 text-xs font-bold cursor-pointer disabled:opacity-50"
           >
-            {bookMemberService.isPending ? 'Requesting Unit...' : 'Dispatch Roadside Unit Now'}
+            {bookMemberService.isPending
+              ? 'Requesting Unit...'
+              : urgencyType === 'EMERGENCY'
+              ? '🚨 Dispatch Roadside Unit Now'
+              : 'Schedule Service Request'}
           </button>
         </form>
       )}

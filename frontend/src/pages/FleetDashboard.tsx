@@ -64,6 +64,8 @@ export default function FleetDashboard() {
   // Booking Form State
   const [bookingForm, setBookingForm] = useState({
     appointmentDate: '',
+    driverId: '',
+    recipientName: '',
     vehicleId: '',
     serviceName: 'Flat Tire Repair',
     serviceType: 'STANDARD' as 'STANDARD' | 'EMERGENCY',
@@ -72,6 +74,7 @@ export default function FleetDashboard() {
     address: '',
     serviceLatitude: null as number | null,
     serviceLongitude: null as number | null,
+    serviceTimezone: '',
     notes: '',
   });
 
@@ -291,6 +294,26 @@ export default function FleetDashboard() {
     },
   });
 
+  // Driver selector helper (auto-fills phone & matched vehicle by plate)
+  const handleDriverSelect = (drvId: string) => {
+    const selectedDrv = drivers.find((d: any) => d.id === drvId);
+    if (!selectedDrv) {
+      setBookingForm((prev) => ({ ...prev, driverId: '', recipientName: '' }));
+      return;
+    }
+    const matchedVeh = selectedDrv.licensePlate
+      ? vehicles.find((v: any) => v.licensePlate?.toLowerCase() === selectedDrv.licensePlate?.toLowerCase())
+      : null;
+    setBookingForm((prev) => ({
+      ...prev,
+      driverId: drvId,
+      recipientName: selectedDrv.fullName || prev.recipientName,
+      contactPhone: selectedDrv.phone || prev.contactPhone,
+      vehicleId: matchedVeh ? matchedVeh.id : prev.vehicleId,
+      tireSize: matchedVeh?.tireSize || prev.tireSize,
+    }));
+  };
+
   // Handle vehicle select in booking form
   const handleVehicleSelect = (vehId: string) => {
     const selected = vehicles.find((v: any) => v.id === vehId);
@@ -304,8 +327,8 @@ export default function FleetDashboard() {
   // Handle submit service
   const handleBookService = (e: React.FormEvent) => {
     e.preventDefault();
-    if (bookingForm.serviceType !== 'EMERGENCY' && !bookingForm.appointmentDate) {
-      toast.error('Please choose an appointment date and time');
+    if (bookingForm.serviceType === 'STANDARD' && !bookingForm.appointmentDate) {
+      toast.error('Please choose an appointment date and time for scheduled service');
       return;
     }
     if (serviceItems.length === 0) {
@@ -318,9 +341,9 @@ export default function FleetDashboard() {
       return;
     }
     const selectedVeh = vehicles.find((v: any) => v.id === bookingForm.vehicleId);
-    const finalAppointmentDate = bookingForm.serviceType === 'EMERGENCY' && !bookingForm.appointmentDate
+    const finalAppointmentDate = bookingForm.serviceType === 'EMERGENCY'
       ? new Date(Date.now() + 30 * 60000).toISOString()
-      : bookingForm.appointmentDate;
+      : new Date(bookingForm.appointmentDate).toISOString();
 
     bookServiceMutation.mutate({
       ...bookingForm,
@@ -1031,6 +1054,35 @@ export default function FleetDashboard() {
                   )}
                 </div>
 
+                {/* DRIVER SELECTOR */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Select Fleet Driver (Optional)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddDriverOpen(true)}
+                      className="text-[11px] text-red-600 hover:text-red-700 font-semibold inline-flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <Plus size={12} />
+                      <span>Register New Driver</span>
+                    </button>
+                  </div>
+                  <select
+                    value={bookingForm.driverId}
+                    onChange={(e) => handleDriverSelect(e.target.value)}
+                    className="select-base mt-1.5 py-2.5 text-xs text-slate-800"
+                  >
+                    <option value="">Select an enrolled driver (auto-fills phone & assigned truck)...</option>
+                    {drivers.map((d: any) => (
+                      <option key={d.id} value={d.id}>
+                        {d.fullName} {d.phone ? `(${d.phone})` : ''} {d.licensePlate ? `• Plate: ${d.licensePlate}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* VEHICLE */}
                 <div>
                   <div className="flex items-center justify-between">
@@ -1189,6 +1241,7 @@ export default function FleetDashboard() {
                           address: loc.address,
                           serviceLatitude: loc.latitude,
                           serviceLongitude: loc.longitude,
+                          serviceTimezone: loc.timezone,
                         }));
                       }}
                       placeholder="Enter street address, highway exit, or depot location"

@@ -38,6 +38,7 @@ interface VaFocusCardProps {
   isSubmitting: boolean;
   onRefreshQueue: () => void;
   onOpenUpload?: () => void;
+  onOpenDispositionModal?: (lead: any) => void;
 }
 
 export default function VaFocusCard({
@@ -46,6 +47,7 @@ export default function VaFocusCard({
   isSubmitting,
   onRefreshQueue,
   onOpenUpload,
+  onOpenDispositionModal,
 }: VaFocusCardProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
@@ -227,14 +229,26 @@ export default function VaFocusCard({
             </div>
           </div>
 
-          {/* Click to Call Big Button */}
-          <a
-            href={`tel:${lead.phone}`}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-md transition shrink-0 active:scale-95"
-          >
-            <PhoneCall size={16} />
-            <span className="hidden sm:inline">Dial Prospect</span>
-          </a>
+          {/* Header Action Buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            {onOpenDispositionModal && (
+              <button
+                type="button"
+                onClick={() => onOpenDispositionModal(lead)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition cursor-pointer active:scale-95"
+              >
+                <Calendar size={14} />
+                <span>Set Disposition</span>
+              </button>
+            )}
+            <a
+              href={`tel:${lead.phone}`}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-md transition shrink-0 active:scale-95"
+            >
+              <PhoneCall size={16} />
+              <span className="hidden sm:inline">Dial Prospect</span>
+            </a>
+          </div>
         </div>
       </div>
 
@@ -448,22 +462,33 @@ export default function VaFocusCard({
           />
         </div>
 
-        {/* INLINE DISPOSITION BUTTONS (NO CONVERTED BUTTON) */}
+        {/* INLINE DISPOSITION PILL STRIP */}
         <div className="pt-2 border-t border-slate-100">
-          <label className="block text-xs font-bold text-slate-800 uppercase font-mono mb-2">
-            Select Call Disposition (Advances to Next Lead Immediately)
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-bold text-slate-800 uppercase font-mono">
+              Quick Disposition
+            </label>
+            {onOpenDispositionModal && (
+              <button
+                type="button"
+                onClick={() => onOpenDispositionModal(lead)}
+                className="text-xs text-blue-600 hover:text-blue-800 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
+              >
+                <Calendar size={13} />
+                <span>Full Disposition Form...</span>
+              </button>
+            )}
+          </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {/* Interested */}
             <button
               type="button"
               disabled={isSubmitting}
               onClick={() => handleQuickDisposition('INTERESTED')}
-              className="py-2.5 px-3 rounded-2xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 font-bold text-xs flex flex-col items-center justify-center gap-1 transition cursor-pointer disabled:opacity-50"
+              className="py-1.5 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
             >
               <span>🔥 Interested</span>
-              <span className="text-[10px] text-purple-600 font-normal">To Dispatcher</span>
             </button>
 
             {/* Callback */}
@@ -471,10 +496,9 @@ export default function VaFocusCard({
               type="button"
               disabled={isSubmitting}
               onClick={() => handleQuickDisposition('CALLBACK')}
-              className="py-2.5 px-3 rounded-2xl bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 font-bold text-xs flex flex-col items-center justify-center gap-1 transition cursor-pointer disabled:opacity-50"
+              className="py-1.5 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
             >
               <span>📅 Callback</span>
-              <span className="text-[10px] text-blue-600 font-normal">Schedule Date</span>
             </button>
 
             {/* Voicemail */}
@@ -482,10 +506,9 @@ export default function VaFocusCard({
               type="button"
               disabled={isSubmitting}
               onClick={() => handleQuickDisposition('VOICEMAIL')}
-              className="py-2.5 px-3 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 font-bold text-xs flex flex-col items-center justify-center gap-1 transition cursor-pointer disabled:opacity-50"
+              className="py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
             >
               <span>🎙️ Voicemail</span>
-              <span className="text-[10px] text-slate-500 font-normal">Retry later</span>
             </button>
 
             {/* No Answer */}
@@ -493,22 +516,20 @@ export default function VaFocusCard({
               type="button"
               disabled={isSubmitting}
               onClick={() => handleQuickDisposition('NO_ANSWER')}
-              className="py-2.5 px-3 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-xs flex flex-col items-center justify-center gap-1 transition cursor-pointer disabled:opacity-50"
+              className="py-1.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
             >
               <span>📞 No Answer</span>
-              <span className="text-[10px] text-amber-600 font-normal">Attempt +1</span>
             </button>
 
-            {/* RNC - Ring No Contact (1-Strike Kill) */}
+            {/* RNC */}
             <button
               type="button"
               disabled={isSubmitting}
               onClick={() => handleQuickDisposition('RNC')}
               title="Ring No Contact — Kills lead immediately on 1st strike (Never dialed again)"
-              className="py-2.5 px-3 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 font-bold text-xs flex flex-col items-center justify-center gap-1 transition cursor-pointer disabled:opacity-50"
+              className="py-1.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
             >
-              <span>🚫 RNC (Dead)</span>
-              <span className="text-[10px] text-rose-600 font-bold">1-Strike Kill</span>
+              <span>🚫 RNC</span>
             </button>
 
             {/* Not Interested */}
@@ -516,10 +537,9 @@ export default function VaFocusCard({
               type="button"
               disabled={isSubmitting}
               onClick={() => handleQuickDisposition('NOT_INTERESTED')}
-              className="py-2.5 px-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-xs flex flex-col items-center justify-center gap-1 transition cursor-pointer disabled:opacity-50"
+              className="py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
             >
               <span>❌ Not Interested</span>
-              <span className="text-[10px] text-slate-500 font-normal">Disqualify</span>
             </button>
 
             {/* Wrong Number */}
@@ -527,10 +547,9 @@ export default function VaFocusCard({
               type="button"
               disabled={isSubmitting}
               onClick={() => handleQuickDisposition('WRONG_NUMBER')}
-              className="py-2.5 px-3 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold text-xs flex flex-col items-center justify-center gap-1 transition cursor-pointer disabled:opacity-50"
+              className="py-1.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
             >
               <span>⚠️ Wrong Number</span>
-              <span className="text-[10px] text-rose-600 font-normal">Disqualify</span>
             </button>
           </div>
         </div>

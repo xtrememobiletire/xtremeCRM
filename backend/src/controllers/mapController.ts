@@ -111,7 +111,11 @@ export const mapController = {
         serviceLongitude: { not: null },
       };
       if (countryCode) where.countryCode = countryCode;
-      if (status) where.status = status;
+      if (status === 'ACTIVE' || !status) {
+        where.status = { notIn: ['COMPLETED', 'CANCELLED', 'UNVERIFIED_PUBLIC'] };
+      } else {
+        where.status = status;
+      }
       if (driverId) where.driverId = driverId;
 
       const jobs = await prisma.job.findMany({
