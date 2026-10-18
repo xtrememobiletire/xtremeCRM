@@ -18,7 +18,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import Modal from '../../ui/Modal';
 import { formatCurrency, centsToDollars } from '../../../utils/currency';
-import { formatDate } from '../../../utils/date';
+import { formatDate, formatJobWindowDual, resolveJobTimezone, formatTimeInTz } from '../../../utils/date';
 import { useTenant } from '../../../context/TenantContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useUpdateJobStatus } from '../../../hooks/useJobs';
@@ -198,6 +198,8 @@ export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDe
   const fleetName = job.fleet?.companyName || job.fleet?.name || job.lead?.companyName || job.recipientName || 'Commercial Fleet';
   const fleetCode = job.fleet?.fleetCode || (isTrial ? 'TRIAL-RUN' : 'FLT-CORP');
   const paymentTerms = job.fleet?.paymentTerms || (isTrial ? 'COMPLIMENTARY_TRIAL' : 'NET_30');
+  const jobTz = resolveJobTimezone(job);
+  const windowInfo = formatJobWindowDual(job.arrivalWindowStart || job.estimatedArrivalAt, job.arrivalWindowEnd, jobTz);
 
   return (
     <Modal
@@ -218,23 +220,39 @@ export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDe
               <Zap className="w-2.5 h-2.5 text-amber-600" />
               Fleet Dispatch
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono text-[10px] font-bold border border-indigo-200">
-              {job.countryCode || country}
+            <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono text-[10px] font-bold border border-indigo-200" title={`Timezone: ${jobTz}`}>
+              {job.countryCode || country} • {windowInfo.customerTzAbbr || jobTz.split('/')[1]?.replace(/_/g, ' ')}
             </span>
           </div>
 
-          <div className="text-right">
-            <span className="text-[11px] font-bold text-slate-700">
-              {job.driverEtaMinutes ? (
-                `ETA ~${job.driverEtaMinutes}m`
-              ) : job.arrivalWindowStart && job.arrivalWindowEnd ? (
-                `${new Date(job.arrivalWindowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}–${new Date(job.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
-              ) : (
-                'Immediate'
+          <div className="text-right space-y-0.5">
+            <div className="flex items-center justify-end gap-1.5">
+              <span className="text-xs font-bold text-slate-800" title={`Customer Local Promised Window (${jobTz})`}>
+                {windowInfo.customerWindow}
+              </span>
+              {(job.driverEtaMinutes || job.driverEstimatedArrivalAt) && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]" title="Technician Driving ETA">
+                  <Zap className="w-2.5 h-2.5 text-emerald-600" />
+                  {job.driverEtaMinutes && job.driverEtaMinutes <= 180
+                    ? `~${job.driverEtaMinutes}m`
+                    : job.driverEtaMinutes
+                    ? 'Out of Region'
+                    : `Arrives ~${formatTimeInTz(job.driverEstimatedArrivalAt, jobTz)}`}
+                </span>
               )}
-            </span>
-            <span className="text-[10px] text-slate-400 block font-mono">
-              {formatDate(job.createdAt)}
+            </div>
+            <div className="text-[10px] text-slate-500 font-mono flex items-center justify-end gap-1 flex-wrap">
+              <span className="bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-medium" title="Pakistan Shift Time">
+                Shift: {windowInfo.pktWindow}
+              </span>
+              {windowInfo.statusBadge && (
+                <span className={`px-1.5 py-0.2 rounded font-bold ${windowInfo.isOverdue ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-blue-50 text-blue-700'}`}>
+                  • {windowInfo.statusBadge}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] text-slate-400 block font-mono" title={`Logged: ${formatDate(job.createdAt, jobTz)} (${jobTz})`}>
+              Logged {formatDate(job.createdAt)}
             </span>
           </div>
         </div>

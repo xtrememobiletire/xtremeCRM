@@ -90,11 +90,18 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
     return rawDrivers.map((drv) => {
       let distanceKm: number | null = null;
       let etaMinutes: number;
+      let isOutOfRegion = false;
 
       if (currentLat !== null && currentLng !== null && drv.latitude && drv.longitude) {
         const straightKm = calculateDistanceKm(currentLat, currentLng, drv.latitude, drv.longitude);
         distanceKm = Math.round(straightKm * 1.3 * 10) / 10; // 1.3x road winding factor
-        etaMinutes = Math.max(5, Math.round((distanceKm / 45) * 60) + 5); // 45 km/h urban speed + 5 min prep
+
+        if (distanceKm > 150) {
+          isOutOfRegion = true;
+          etaMinutes = 9999; // Deprioritize out-of-region / dummy coordinates
+        } else {
+          etaMinutes = Math.max(5, Math.round((distanceKm / 45) * 60) + 5); // 45 km/h urban speed + 5 min prep
+        }
       } else {
         // Fallback default regional ETA estimate if coordinates pending
         etaMinutes = 25;
@@ -108,6 +115,7 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
         ...drv,
         distanceKm,
         etaMinutes,
+        isOutOfRegion,
         isExternal,
       };
     }).sort((a, b) => (a.etaMinutes ?? 999) - (b.etaMinutes ?? 999));
@@ -280,14 +288,19 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
     }
 
     try {
-      const driverEtaMins = selectedDriver.etaMinutes || 20;
+      const isOutOfRegion = Boolean((selectedDriver as any).isOutOfRegion);
+      const driverEtaMins = isOutOfRegion ? 30 : (selectedDriver.etaMinutes || 20);
       await assignDriverMutation.mutateAsync({
         jobId: job.id,
         driverId: activeSelectedDriverId,
         etaMinutes: driverEtaMins,
         driverEstimatedArrivalAt: new Date(Date.now() + driverEtaMins * 60000).toISOString(),
       });
-      toast.success(`Technician ${selectedDriver.fullName} dispatched (~${driverEtaMins} min travel ETA)`);
+      toast.success(
+        isOutOfRegion
+          ? `Technician ${selectedDriver.fullName} dispatched (Driver GPS outside territory: ${(selectedDriver as any).distanceKm} km away)`
+          : `Technician ${selectedDriver.fullName} dispatched (~${driverEtaMins} min travel ETA)`
+      );
       onClose();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to dispatch driver');
@@ -434,11 +447,20 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
               <div className="bg-slate-900/90 backdrop-blur-md text-white px-3.5 py-2 rounded-2xl shadow-xl border border-slate-700/80 pointer-events-auto flex items-center gap-2 shrink-0">
                 <Zap size={14} className="text-amber-400 fill-amber-400 shrink-0" />
                 <div className="text-right">
-                  <div className="text-xs font-black text-amber-300">~{selectedDriver.etaMinutes || 20} MINS</div>
-                  {selectedDriver.distanceKm !== null ? (
-                    <div className="text-[10px] text-slate-400 font-mono">{selectedDriver.distanceKm} km away</div>
+                  {(selectedDriver as any).isOutOfRegion ? (
+                    <>
+                      <div className="text-xs font-black text-amber-300">OUT OF REGION</div>
+                      <div className="text-[10px] text-slate-400 font-mono">{(selectedDriver as any).distanceKm} km away</div>
+                    </>
                   ) : (
-                    <div className="text-[9px] text-slate-400">Estimated</div>
+                    <>
+                      <div className="text-xs font-black text-amber-300">~{selectedDriver.etaMinutes || 20} MINS</div>
+                      {selectedDriver.distanceKm !== null ? (
+                        <div className="text-[10px] text-slate-400 font-mono">{selectedDriver.distanceKm} km away</div>
+                      ) : (
+                        <div className="text-[9px] text-slate-400">Estimated</div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -579,14 +601,27 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
                     </div>
 
                     <div className="text-right shrink-0 ml-2">
-                      <div className="flex items-center justify-end gap-1 font-mono font-bold text-xs text-slate-900">
-                        <Zap size={11} className="text-amber-500 fill-amber-500" />
-                        <span>~{drv.etaMinutes || 20}m</span>
-                      </div>
-                      {drv.distanceKm !== null && (
-                        <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                          {drv.distanceKm} km
+                      {(drv as any).isOutOfRegion ? (
+                        <div className="space-y-0.5">
+                          <span className="inline-block px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-bold">
+                            Out of Region
+                          </span>
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            {drv.distanceKm} km
+                          </div>
                         </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-end gap-1 font-mono font-bold text-xs text-slate-900">
+                            <Zap size={11} className="text-amber-500 fill-amber-500" />
+                            <span>~{drv.etaMinutes || 20}m</span>
+                          </div>
+                          {drv.distanceKm !== null && (
+                            <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                              {drv.distanceKm} km
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </button>
@@ -653,7 +688,9 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
                   {assignDriverMutation.isPending 
                     ? 'Dispatching...' 
                     : selectedDriver 
-                    ? `Confirm Dispatch • ~${selectedDriver.etaMinutes || 20}m ETA` 
+                    ? (selectedDriver as any).isOutOfRegion
+                      ? `Confirm Dispatch • Driver Out of Region (~${(selectedDriver as any).distanceKm} km)`
+                      : `Confirm Dispatch • ~${selectedDriver.etaMinutes || 20}m ETA` 
                     : 'Select Technician'}
                 </span>
               </button>

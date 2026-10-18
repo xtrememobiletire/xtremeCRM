@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronUp, MapPin, UserCheck, MessageSquare, Clock, Zap } from 'lucide-react';
 import { formatCurrency, centsToDollars } from '../../../utils/currency';
+import { formatJobWindowDual, resolveJobTimezone, formatTimeInTz } from '../../../utils/date';
 import { useTenant } from '../../../context/TenantContext';
 
 interface UrgentQueueAccordionProps {
@@ -114,23 +115,45 @@ export default function UrgentQueueAccordion({
                     <div className="text-[11px] text-slate-500 space-y-0.5">
                       <div>Status: <strong className="text-slate-800">{job.status}</strong></div>
                       <div>Contact: <strong className="text-slate-800">{job.recipientPhone || job.customer?.phone || 'N/A'}</strong></div>
-                      {job.arrivalWindowStart && job.arrivalWindowEnd ? (
-                        <div className="text-blue-700 font-semibold flex items-center gap-1">
-                          <Clock size={11} />
-                          <span>Window: {new Date(job.arrivalWindowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – {new Date(job.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                        </div>
-                      ) : job.estimatedArrivalAt ? (
-                        <div className="text-blue-700 font-semibold flex items-center gap-1">
-                          <Clock size={11} />
-                          <span>Promised: ~{new Date(job.estimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                        </div>
-                      ) : null}
-                      {(job.driverEtaMinutes || job.driverEstimatedArrivalAt) && (
-                        <div className="text-emerald-700 font-semibold flex items-center gap-1">
-                          <Zap size={11} />
-                          <span>Tech ETA: {job.driverEtaMinutes ? `~${job.driverEtaMinutes}m` : new Date(job.driverEstimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                        </div>
-                      )}
+                      {(() => {
+                        const jobTz = resolveJobTimezone(job);
+                        const windowInfo = (job.arrivalWindowStart || job.estimatedArrivalAt)
+                          ? formatJobWindowDual(job.arrivalWindowStart || job.estimatedArrivalAt, job.arrivalWindowEnd, jobTz)
+                          : null;
+
+                        return (
+                          <>
+                            {windowInfo && (
+                              <div className="space-y-0.5">
+                                <div className="text-blue-700 font-bold flex items-center gap-1" title={`Customer Local Time (${jobTz})`}>
+                                  <Clock size={11} className="shrink-0 text-blue-600" />
+                                  <span>{windowInfo.customerWindow}</span>
+                                </div>
+                                <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1 pl-3.5 flex-wrap">
+                                  <span className="bg-slate-100 text-slate-600 px-1 py-0.2 rounded font-medium">{windowInfo.pktWindow}</span>
+                                  {windowInfo.statusBadge && (
+                                    <span className={`px-1 py-0.2 rounded font-bold ${windowInfo.isOverdue ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>
+                                      • {windowInfo.statusBadge}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            {(job.driverEtaMinutes || job.driverEstimatedArrivalAt) && (
+                              <div className="text-emerald-700 font-semibold flex items-center gap-1">
+                                <Zap size={11} />
+                                <span>
+                                  Tech ETA: {job.driverEtaMinutes && job.driverEtaMinutes <= 180
+                                    ? `~${job.driverEtaMinutes}m`
+                                    : job.driverEtaMinutes
+                                    ? 'Out of Region'
+                                    : formatTimeInTz(job.driverEstimatedArrivalAt, jobTz)}
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
 
                     <div className="flex gap-2">

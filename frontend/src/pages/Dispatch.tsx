@@ -15,6 +15,7 @@ import CustomerMap from '../components/maps/CustomerMap';
 import { mapService, type MapJob } from '../services/mapService';
 import { useTenant } from '../context/TenantContext';
 import { useSocket } from '../context/SocketContext';
+import { formatJobWindowDual, resolveJobTimezone } from '../utils/date';
 
 type DispatchTab = 'jobs' | 'fleets' | 'customers';
 
@@ -288,19 +289,24 @@ export default function Dispatch() {
 
                       <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400 border-t border-slate-100/80">
                         <span>
-                          {job.arrivalWindowStart && job.arrivalWindowEnd ? (
-                            <span className="text-blue-700 font-semibold">
-                              Window: {new Date(job.arrivalWindowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}–{new Date(job.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                            </span>
-                          ) : job.estimatedArrivalAt ? (
-                            <span className="text-blue-700 font-semibold">
-                              Promised ~{new Date(job.estimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                            </span>
-                          ) : (
-                            job.vehicle
+                          {(() => {
+                            const jobTz = resolveJobTimezone(job);
+                            const windowInfo = (job.arrivalWindowStart || job.estimatedArrivalAt)
+                              ? formatJobWindowDual(job.arrivalWindowStart || job.estimatedArrivalAt, job.arrivalWindowEnd, jobTz)
+                              : null;
+
+                            if (windowInfo) {
+                              return (
+                                <span className="text-blue-700 font-semibold" title={`Customer Local Time (${jobTz}) • Shift: ${windowInfo.pktWindow}`}>
+                                  {windowInfo.customerWindow}
+                                  {windowInfo.statusBadge ? ` (${windowInfo.statusBadge})` : ''}
+                                </span>
+                              );
+                            }
+                            return job.vehicle
                               ? `${job.vehicle.year || ''} ${job.vehicle.make || ''} ${job.vehicle.model || ''}`
-                              : 'Vehicle on file'
-                          )}
+                              : 'Vehicle on file';
+                          })()}
                         </span>
                         {job.driver ? (
                           <span className="text-emerald-600 font-semibold">

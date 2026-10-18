@@ -250,3 +250,134 @@ export function formatDualPktAndCustomerTime(
 
   return { pktLabel, customerLabel };
 }
+
+export interface FormattedJobWindow {
+  customerWindow: string; // e.g. "5:12 AM – 5:42 AM EDT" or "Promised ~5:12 AM EDT"
+  pktWindow: string;      // e.g. "2:12 PM – 2:42 PM PKT" or "2:12 PM PKT"
+  statusBadge: string;    // e.g. "in 28m", "Due now", "10m overdue"
+  isOverdue: boolean;
+  customerTzAbbr: string; // e.g. "EDT"
+}
+
+export function resolveJobTimezone(job?: {
+  serviceTimezone?: string | null;
+  serviceLatitude?: number | null;
+  serviceLongitude?: number | null;
+  countryCode?: string | null;
+} | null): string {
+  if (!job) return 'America/Toronto';
+  if (job.serviceTimezone) return job.serviceTimezone;
+  return resolveTimezoneFromCoords(job.serviceLatitude, job.serviceLongitude, job.countryCode);
+}
+
+/**
+ * Returns dual-clock presentation (Customer Local + PKT Shift + Live Countdown)
+ * for roadside and fleet work orders.
+ */
+export function formatJobWindowDual(
+  start?: string | Date | null,
+  end?: string | Date | null,
+  customerTz?: string | null
+): FormattedJobWindow {
+  const tz = customerTz || 'America/Toronto';
+  if (!start && !end) {
+    return {
+      customerWindow: 'Immediate',
+      pktWindow: 'Immediate',
+      statusBadge: 'Now',
+      isOverdue: false,
+      customerTzAbbr: '',
+    };
+  }
+
+  const s = start ? new Date(start) : null;
+  const e = end ? new Date(end) : null;
+  const refDate = s || e;
+
+  if (!refDate || isNaN(refDate.getTime())) {
+    return {
+      customerWindow: '—',
+      pktWindow: '—',
+      statusBadge: '',
+      isOverdue: false,
+      customerTzAbbr: '',
+    };
+  }
+
+  // 1. Customer Window
+  let customerWindow: string;
+  let customerTzAbbr = '';
+  try {
+    const timeParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZoneName: 'short',
+    }).formatToParts(refDate);
+    customerTzAbbr = timeParts.find((p) => p.type === 'timeZoneName')?.value || '';
+
+    const formatTimeOnly = (d: Date) =>
+      new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        hour: 'numeric',
+        minute: '2-digit',
+      }).format(d);
+
+    if (s && e) {
+      customerWindow = `${formatTimeOnly(s)} – ${formatTimeOnly(e)} ${customerTzAbbr}`.trim();
+    } else {
+      customerWindow = `Promised ~${formatTimeOnly(refDate)} ${customerTzAbbr}`.trim();
+    }
+  } catch {
+    customerWindow = refDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+
+  // 2. PKT Shift Window
+  let pktWindow: string;
+  try {
+    const formatPktTime = (d: Date) =>
+      new Intl.DateTimeFormat('en-US', {
+        timeZone: PKT_TIMEZONE,
+        hour: 'numeric',
+        minute: '2-digit',
+      }).format(d);
+
+    if (s && e) {
+      pktWindow = `${formatPktTime(s)} – ${formatPktTime(e)} PKT`;
+    } else {
+      pktWindow = `${formatPktTime(refDate)} PKT`;
+    }
+  } catch {
+    pktWindow = refDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' PKT';
+  }
+
+  // 3. Relative Countdown & Overdue status
+  const now = Date.now();
+  const targetTime = s ? s.getTime() : e!.getTime();
+  const diffMinutes = Math.round((targetTime - now) / 60000);
+  let statusBadge: string;
+  let isOverdue: boolean;
+
+  if (diffMinutes < -15) {
+    statusBadge = `${Math.abs(diffMinutes)}m overdue`;
+    isOverdue = true;
+  } else if (diffMinutes >= -15 && diffMinutes <= 5) {
+    statusBadge = 'Due now';
+    isOverdue = false;
+  } else if (diffMinutes > 5 && diffMinutes < 60) {
+    statusBadge = `in ${diffMinutes}m`;
+    isOverdue = false;
+  } else {
+    const hours = Math.round(diffMinutes / 60);
+    if (diffMinutes > 0) {
+      statusBadge = `in ${hours}h`;
+      isOverdue = false;
+    } else {
+      statusBadge = `${Math.abs(hours)}h overdue`;
+      isOverdue = true;
+    }
+  }
+
+  return { customerWindow, pktWindow, statusBadge, isOverdue, customerTzAbbr };
+}
+

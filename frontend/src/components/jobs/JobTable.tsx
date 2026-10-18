@@ -2,7 +2,7 @@ import { Eye, UserCheck, AlertCircle, Clock, Zap, XCircle, Copy, ExternalLink } 
 import { toast } from 'sonner';
 import StatusBadge from '../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
-import { formatDate } from '../../utils/date';
+import { formatDate, formatJobWindowDual, resolveJobTimezone, formatTimeInTz } from '../../utils/date';
 import { useTenant } from '../../context/TenantContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -50,30 +50,43 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {jobs.map((job) => (
-            <tr key={job.id} className="hover:bg-slate-50/70 transition-colors">
-              <td className="table-td whitespace-nowrap">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono font-bold text-red-600 text-xs">{job.jobNumber}</span>
-                  {(job as any).isTestService && (
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
-                      TRIAL RUN
-                    </span>
+          {jobs.map((job) => {
+            const jobTz = resolveJobTimezone(job);
+            const windowInfo = (job.arrivalWindowStart || job.estimatedArrivalAt)
+              ? formatJobWindowDual(job.arrivalWindowStart || job.estimatedArrivalAt, job.arrivalWindowEnd, jobTz)
+              : null;
+
+            return (
+              <tr key={job.id} className="hover:bg-slate-50/70 transition-colors">
+                <td className="table-td whitespace-nowrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono font-bold text-red-600 text-xs">{job.jobNumber}</span>
+                    {(job as any).isTestService && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+                        TRIAL RUN
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-slate-400 font-mono">{formatDate(job.createdAt)}</div>
+                  {windowInfo && (
+                    <div className="mt-1 space-y-0.5">
+                      <div className="text-[10px] text-blue-700 font-bold flex items-center gap-1" title={`Customer Local Promised Window (${jobTz})`}>
+                        <Clock className="w-2.5 h-2.5 shrink-0 text-blue-600" />
+                        <span>{windowInfo.customerWindow}</span>
+                      </div>
+                      <div className="text-[9px] text-slate-500 font-mono flex items-center gap-1 pl-3.5 flex-wrap">
+                        <span className="bg-slate-100 text-slate-600 px-1 py-0.2 rounded font-medium" title="Pakistan Shift Time">
+                          {windowInfo.pktWindow}
+                        </span>
+                        {windowInfo.statusBadge && (
+                          <span className={`px-1 py-0.2 rounded font-bold ${windowInfo.isOverdue ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-blue-50 text-blue-700'}`}>
+                            • {windowInfo.statusBadge}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   )}
-                </div>
-                <div className="text-[11px] text-slate-400">{formatDate(job.createdAt)}</div>
-                {job.arrivalWindowStart && job.arrivalWindowEnd ? (
-                  <div className="text-[10px] text-blue-700 font-semibold flex items-center gap-1 mt-0.5" title="Customer Promised Window">
-                    <Clock className="w-2.5 h-2.5 shrink-0" />
-                    <span>{new Date(job.arrivalWindowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – {new Date(job.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                  </div>
-                ) : job.estimatedArrivalAt ? (
-                  <div className="text-[10px] text-blue-700 font-semibold flex items-center gap-1 mt-0.5" title="Customer Promised ETA">
-                    <Clock className="w-2.5 h-2.5 shrink-0" />
-                    <span>Promised ~{new Date(job.estimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                  </div>
-                ) : null}
-              </td>
+                </td>
               <td className="table-td">
                 {(job as any).isTestService && (job as any).lead?.companyName ? (
                   <div>
@@ -171,7 +184,11 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                             <div className="text-[10px] font-mono text-emerald-700 font-semibold flex items-center gap-1 pl-3" title="Technician Driving ETA">
                               <Zap className="w-2.5 h-2.5 text-emerald-600" />
                               <span>
-                                {job.driverEtaMinutes ? `Drive ETA: ~${job.driverEtaMinutes}m` : `Arrives ~${new Date(job.driverEstimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
+                                {job.driverEtaMinutes && job.driverEtaMinutes <= 180
+                                  ? `Drive ETA: ~${job.driverEtaMinutes}m`
+                                  : job.driverEtaMinutes
+                                  ? `Out of Region (~${Math.round(job.driverEtaMinutes * 0.75)} km)`
+                                  : `Arrives ~${formatTimeInTz(job.driverEstimatedArrivalAt, jobTz)}`}
                               </span>
                             </div>
                           )}
@@ -284,7 +301,8 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                 </div>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
