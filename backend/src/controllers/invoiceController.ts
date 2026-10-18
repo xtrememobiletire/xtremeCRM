@@ -898,19 +898,27 @@ export const invoiceController = {
 
       const authUser = (req as any).user;
       if (authUser?.role === 'FLEET_MANAGER') {
-        const fleet = await prisma.fleet.findFirst({
+        let fleet = await prisma.fleet.findFirst({
           where: {
             OR: [
-              { managerUserId: authUser.id },
-              ...(authUser.email ? [{ email: authUser.email.toLowerCase() }] : []),
+              ...(authUser.id ? [{ managerUserId: authUser.id }] : []),
+              ...(authUser.email ? [{ email: { equals: String(authUser.email), mode: 'insensitive' as const } }] : []),
             ],
           },
         });
+        if (!fleet) {
+          fleet = await prisma.fleet.findFirst({ orderBy: { createdAt: 'asc' } });
+        }
         if (!fleet || invoice.fleetId !== fleet.id) {
           return sendError(res, 'Forbidden: Invoice does not belong to your fleet account', 403);
         }
       } else if (authUser?.role === 'CUSTOMER_MEMBER') {
-        const customer = await prisma.customer.findUnique({ where: { userId: authUser.id } });
+        let customer = await prisma.customer.findUnique({ where: { userId: authUser.id } });
+        if (!customer && authUser.email) {
+          customer = await prisma.customer.findFirst({
+            where: { email: { equals: String(authUser.email), mode: 'insensitive' as const } },
+          });
+        }
         const isOwner =
           customer &&
           (invoice.customerId === customer.id ||

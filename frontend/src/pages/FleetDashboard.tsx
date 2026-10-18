@@ -87,6 +87,19 @@ export default function FleetDashboard() {
   const fleetCountry = (fleet?.countryCode || tenantCountry || 'CA') as 'CA' | 'US' | 'UK';
   const currencySymbol = fleetCountry === 'US' ? '$' : fleetCountry === 'UK' ? '£' : (tenantCurrencySymbol || 'CA$');
 
+  // Pre-fill booking address and phone with fleet default location when fleet loads
+  useEffect(() => {
+    if (fleet?.address && !bookingForm.address) {
+      setBookingForm((prev) => ({
+        ...prev,
+        address: fleet.address,
+        serviceLatitude: fleet.latitude ?? prev.serviceLatitude,
+        serviceLongitude: fleet.longitude ?? prev.serviceLongitude,
+        contactPhone: fleet.contactPhone || fleet.phone || prev.contactPhone,
+      }));
+    }
+  }, [fleet?.address, fleet?.contactPhone, fleet?.phone, fleet?.latitude, fleet?.longitude, bookingForm.address]);
+
   // 2. Vehicles Query
   const { data: vehicles = [] } = useQuery({
     queryKey: ['fleet-portal-vehicles'],

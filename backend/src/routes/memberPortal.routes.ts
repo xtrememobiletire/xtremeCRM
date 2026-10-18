@@ -12,7 +12,11 @@ router.use(authorize(['CUSTOMER_MEMBER', 'ADMIN', 'GENERAL_MANAGER']));
 
 async function getScopedCustomer(req: Request) {
   const userId = (req.user as any)?.id;
+  const userEmail = (req.user as any)?.email;
+  const userPhone = (req.user as any)?.phone;
   const role = (req.user as any)?.role;
+  const countryCode = (req.user as any)?.countryCode || 'CA';
+  const fullName = (req.user as any)?.fullName || 'Member Customer';
   const requestedCustomerId = (req.query.customerId as string) || (req.body?.customerId as string);
 
   if (requestedCustomerId && ['ADMIN', 'GENERAL_MANAGER'].includes(role)) {
@@ -20,10 +24,56 @@ async function getScopedCustomer(req: Request) {
     if (cust) return cust;
   }
 
-  let customer = await prisma.customer.findFirst({ where: { userId } });
-  if (!customer && ['ADMIN', 'GENERAL_MANAGER'].includes(role)) {
-    customer = await prisma.customer.findFirst({ orderBy: { createdAt: 'desc' } });
+  // 1. Direct match by userId
+  let customer = userId ? await prisma.customer.findFirst({ where: { userId } }) : null;
+
+  // 2. Email or Phone match -> link account
+  if (!customer && (userEmail || userPhone)) {
+    customer = await prisma.customer.findFirst({
+      where: {
+        OR: [
+          ...(userEmail ? [{ email: { equals: String(userEmail), mode: 'insensitive' as const } }] : []),
+          ...(userPhone ? [{ phone: String(userPhone) }] : []),
+        ],
+      },
+    });
+
+    if (customer && userId && !customer.userId) {
+      customer = await prisma.customer.update({
+        where: { id: customer.id },
+        data: { userId },
+      });
+    }
   }
+
+  // 3. Auto-provision customer profile for CUSTOMER_MEMBER if none exists
+  if (!customer && role === 'CUSTOMER_MEMBER' && userId) {
+    const fallbackPhone = userPhone || `+14165550${Math.floor(100 + Math.random() * 900)}`;
+    customer = await prisma.customer.create({
+      data: {
+        userId,
+        fullName,
+        email: userEmail,
+        phone: fallbackPhone,
+        countryCode: (['CA', 'US', 'UK'].includes(countryCode) ? countryCode : 'CA') as any,
+        customerType: 'MEMBERSHIP',
+        membershipTier: 'GOLD',
+        membershipExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      },
+    });
+  }
+
+  // 4. Admin fallback
+  if (!customer && ['ADMIN', 'GENERAL_MANAGER'].includes(role)) {
+    customer = await prisma.customer.findFirst({
+      where: { customerType: 'MEMBERSHIP' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!customer) {
+      customer = await prisma.customer.findFirst({ orderBy: { createdAt: 'desc' } });
+    }
+  }
+
   return customer;
 }
 

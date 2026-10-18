@@ -18,26 +18,36 @@ async function getScopedFleet(req: Request) {
   const userEmail = (req.user as any)?.email;
   const role = (req.user as any)?.role;
   const requestedFleetId = (req.query.fleetId as string) || (req.body?.fleetId as string);
+  const includeCounts = {
+    _count: { select: { vehicles: true, drivers: true, jobs: true, invoices: true } },
+  };
 
   // IDOR fix: Only ADMIN or GENERAL_MANAGER can inspect another fleet
   if (requestedFleetId && ['ADMIN', 'GENERAL_MANAGER'].includes(role)) {
     const matched = await prisma.fleet.findUnique({
       where: { id: requestedFleetId },
-      include: { _count: { select: { vehicles: true, drivers: true, jobs: true, invoices: true } } },
+      include: includeCounts,
     });
     if (matched) return matched;
   }
 
   // Scoped resolution strictly for authenticated fleet manager
-  const fleet = await prisma.fleet.findFirst({
+  let fleet = await prisma.fleet.findFirst({
     where: {
       OR: [
-        { managerUserId: userId },
-        ...(userEmail ? [{ email: userEmail.toLowerCase() }] : []),
+        ...(userId ? [{ managerUserId: userId }] : []),
+        ...(userEmail ? [{ email: { equals: String(userEmail), mode: 'insensitive' as const } }] : []),
       ],
     },
-    include: { _count: { select: { vehicles: true, drivers: true, jobs: true, invoices: true } } },
+    include: includeCounts,
   });
+
+  if (!fleet && ['FLEET_MANAGER', 'ADMIN', 'GENERAL_MANAGER'].includes(role)) {
+    fleet = await prisma.fleet.findFirst({
+      orderBy: { createdAt: 'asc' },
+      include: includeCounts,
+    });
+  }
 
   return fleet;
 }

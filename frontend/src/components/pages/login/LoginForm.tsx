@@ -40,6 +40,8 @@ export default function LoginForm() {
       setEmail('dispatcher@xtremecrm.com');
     } else if (role === 'va') {
       setEmail('va@xtremecrm.com');
+    } else if (role === 'member') {
+      setEmail('member@xtremecrm.com');
     } else {
       setEmail('driver@xtremecrm.com');
     }
@@ -179,7 +181,7 @@ export default function LoginForm() {
             Dispatcher
           </button>
         </div>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-4 gap-1.5">
           <button
             type="button"
             onClick={() => handleQuickFill('agent')}
@@ -199,7 +201,14 @@ export default function LoginForm() {
             onClick={() => handleQuickFill('driver')}
             className="py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition text-center cursor-pointer"
           >
-            Technician
+            Tech
+          </button>
+          <button
+            type="button"
+            onClick={() => handleQuickFill('member')}
+            className="py-1.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-[11px] font-semibold text-blue-700 transition text-center cursor-pointer shadow-2xs"
+          >
+            Member
           </button>
         </div>
 
