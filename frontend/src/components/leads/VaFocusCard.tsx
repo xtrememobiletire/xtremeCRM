@@ -41,6 +41,52 @@ interface VaFocusCardProps {
   onOpenDispositionModal?: (lead: any) => void;
 }
 
+const DISPOSITION_OPTIONS = [
+  { 
+    value: 'INTERESTED', 
+    label: '🔥 Interested', 
+    activeClass: 'bg-purple-100 text-purple-900 border-purple-400 ring-2 ring-purple-400/50', 
+    defaultClass: 'bg-purple-50 text-purple-900 border-purple-200 hover:bg-purple-100' 
+  },
+  { 
+    value: 'CALLBACK', 
+    label: '📅 Callback', 
+    activeClass: 'bg-blue-100 text-blue-900 border-blue-400 ring-2 ring-blue-400/50', 
+    defaultClass: 'bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100' 
+  },
+  { 
+    value: 'VOICEMAIL', 
+    label: '🎙️ Voicemail', 
+    activeClass: 'bg-slate-200 text-slate-900 border-slate-400 ring-2 ring-slate-400/50', 
+    defaultClass: 'bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-200' 
+  },
+  { 
+    value: 'NO_ANSWER', 
+    label: '📞 No Answer', 
+    activeClass: 'bg-amber-100 text-amber-900 border-amber-400 ring-2 ring-amber-400/50', 
+    defaultClass: 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100' 
+  },
+  { 
+    value: 'RNC', 
+    label: '🚫 RNC', 
+    title: 'Ring No Contact — Kills lead immediately on 1st strike (Never dialed again)',
+    activeClass: 'bg-rose-100 text-rose-900 border-rose-400 ring-2 ring-rose-400/50', 
+    defaultClass: 'bg-rose-50 text-rose-900 border-rose-300 hover:bg-rose-100' 
+  },
+  { 
+    value: 'NOT_INTERESTED', 
+    label: '❌ Not Interested', 
+    activeClass: 'bg-slate-200 text-slate-900 border-slate-400 ring-2 ring-slate-400/50', 
+    defaultClass: 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200' 
+  },
+  { 
+    value: 'WRONG_NUMBER', 
+    label: '⚠️ Wrong Number', 
+    activeClass: 'bg-rose-100 text-rose-800 border-rose-400 ring-2 ring-rose-400/50', 
+    defaultClass: 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100' 
+  },
+];
+
 export default function VaFocusCard({
   lead,
   onDisposition,
@@ -50,6 +96,7 @@ export default function VaFocusCard({
   onOpenDispositionModal,
 }: VaFocusCardProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [selectedDisposition, setSelectedDisposition] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [showCallbackPicker, setShowCallbackPicker] = useState(false);
   const [callbackDate, setCallbackDate] = useState('');
@@ -60,8 +107,14 @@ export default function VaFocusCard({
   useEffect(() => {
     if (lead) {
       setCallbackTimezone(resolveLeadTimezone(lead));
+      setSelectedDisposition(null);
+      setNotes('');
+      setShowCallbackPicker(false);
+      setCallbackDate('');
+      setCallbackDay('');
+      setCallbackTime('');
     }
-  }, [lead]);
+  }, [lead?.id]);
 
   const dualClockPreview = useMemo(() => {
     if (!lead || !callbackDate || !callbackTime) return null;
@@ -123,18 +176,14 @@ export default function VaFocusCard({
     }, 1500);
   };
 
-  const handleQuickDisposition = (disp: string) => {
-    if (disp === 'CALLBACK') {
-      setShowCallbackPicker(true);
-      return;
+  const handleSelectDisposition = (disp: string) => {
+    if (selectedDisposition === disp) {
+      setSelectedDisposition(null);
+      setShowCallbackPicker(false);
+    } else {
+      setSelectedDisposition(disp);
+      setShowCallbackPicker(disp === 'CALLBACK');
     }
-
-    onDisposition({
-      id: lead.id,
-      disposition: disp,
-      notes: notes.trim() || undefined,
-    });
-    setNotes('');
   };
 
   const setQuickCallback = (hoursFromNow: number) => {
@@ -163,28 +212,50 @@ export default function VaFocusCard({
     setCallbackTime(`${hr}:${min}`);
   };
 
-  const handleSaveCallback = () => {
-    if (!callbackDate) {
-      toast.error('Please pick a callback date');
+  const handleCommitDisposition = () => {
+    if (!selectedDisposition) {
+      if (onOpenDispositionModal) {
+        onOpenDispositionModal(lead);
+      } else {
+        toast.error('Please select a disposition outcome first');
+      }
       return;
     }
-    const tz = callbackTimezone || resolveLeadTimezone(lead);
-    onDisposition({
-      id: lead.id,
-      disposition: 'CALLBACK',
-      notes: notes.trim() || undefined,
-      callbackDate,
-      callbackDay: callbackDay || undefined,
-      callbackTime: callbackTime || undefined,
-      callbackTimezone: tz,
-      callbackData: {
+
+    if (selectedDisposition === 'CALLBACK') {
+      if (!callbackDate) {
+        setShowCallbackPicker(true);
+        toast.error('Please select a callback date and time before saving');
+        return;
+      }
+      const tz = callbackTimezone || resolveLeadTimezone(lead);
+      onDisposition({
+        id: lead.id,
+        disposition: 'CALLBACK',
+        notes: notes.trim() || undefined,
         callbackDate,
         callbackDay: callbackDay || undefined,
         callbackTime: callbackTime || undefined,
         callbackTimezone: tz,
-      },
+        callbackData: {
+          callbackDate,
+          callbackDay: callbackDay || undefined,
+          callbackTime: callbackTime || undefined,
+          callbackTimezone: tz,
+        },
+      });
+      setSelectedDisposition(null);
+      setShowCallbackPicker(false);
+      setNotes('');
+      return;
+    }
+
+    onDisposition({
+      id: lead.id,
+      disposition: selectedDisposition,
+      notes: notes.trim() || undefined,
     });
-    setShowCallbackPicker(false);
+    setSelectedDisposition(null);
     setNotes('');
   };
 
@@ -231,16 +302,23 @@ export default function VaFocusCard({
 
           {/* Header Action Buttons */}
           <div className="flex items-center gap-2 shrink-0">
-            {onOpenDispositionModal && (
-              <button
-                type="button"
-                onClick={() => onOpenDispositionModal(lead)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition cursor-pointer active:scale-95"
-              >
-                <Calendar size={14} />
-                <span>Set Disposition</span>
-              </button>
-            )}
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleCommitDisposition}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl font-bold text-xs shadow-md transition cursor-pointer active:scale-95 disabled:opacity-50 ${
+                selectedDisposition
+                  ? 'bg-blue-600 hover:bg-blue-500 text-white ring-2 ring-blue-400/50'
+                  : 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'
+              }`}
+            >
+              <Calendar size={14} />
+              <span>
+                {selectedDisposition
+                  ? `Set Disposition (${selectedDisposition.replace(/_/g, ' ')})`
+                  : 'Set Disposition'}
+              </span>
+            </button>
             <a
               href={`tel:${lead.phone}`}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-md transition shrink-0 active:scale-95"
@@ -462,12 +540,19 @@ export default function VaFocusCard({
           />
         </div>
 
-        {/* INLINE DISPOSITION PILL STRIP */}
-        <div className="pt-2 border-t border-slate-100">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-bold text-slate-800 uppercase font-mono">
-              Quick Disposition
-            </label>
+        {/* INLINE DISPOSITION SELECTION & ACTION */}
+        <div className="pt-3 border-t border-slate-100 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-bold text-slate-800 uppercase font-mono">
+                1. Select Disposition
+              </label>
+              {selectedDisposition && (
+                <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                  Selected: {selectedDisposition.replace(/_/g, ' ')}
+                </span>
+              )}
+            </div>
             {onOpenDispositionModal && (
               <button
                 type="button"
@@ -475,209 +560,176 @@ export default function VaFocusCard({
                 className="text-xs text-blue-600 hover:text-blue-800 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
               >
                 <Calendar size={13} />
-                <span>Full Disposition Form...</span>
+                <span>Full Form...</span>
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {/* Interested */}
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleQuickDisposition('INTERESTED')}
-              className="py-1.5 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-            >
-              <span>🔥 Interested</span>
-            </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {DISPOSITION_OPTIONS.map((opt) => {
+              const isSelected = selectedDisposition === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => handleSelectDisposition(opt.value)}
+                  title={opt.title}
+                  className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50 border ${
+                    isSelected
+                      ? `${opt.activeClass} font-extrabold shadow-xs`
+                      : `${opt.defaultClass} hover:border-slate-300`
+                  }`}
+                >
+                  <span>{opt.label}</span>
+                  {isSelected && <Check size={13} className="stroke-[3]" />}
+                </button>
+              );
+            })}
+          </div>
 
-            {/* Callback */}
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleQuickDisposition('CALLBACK')}
-              className="py-1.5 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-            >
-              <span>📅 Callback</span>
-            </button>
+          {/* Callback Date Picker Slide-Down (if CALLBACK selected) */}
+          {showCallbackPicker && (
+            <div className="p-4 bg-blue-50/90 border border-blue-200 rounded-2xl space-y-3 mt-1 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-blue-900 text-xs flex items-center gap-1.5">
+                  <Calendar size={14} /> Schedule Follow-up Callback
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCallbackPicker(false);
+                    if (selectedDisposition === 'CALLBACK') {
+                      setSelectedDisposition(null);
+                    }
+                  }}
+                  className="text-xs text-blue-700 hover:underline cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
 
-            {/* Voicemail */}
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleQuickDisposition('VOICEMAIL')}
-              className="py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-            >
-              <span>🎙️ Voicemail</span>
-            </button>
+              {/* Quick Presets */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] uppercase font-bold text-blue-700 font-mono">Quick:</span>
+                <button
+                  type="button"
+                  onClick={() => setQuickCallback(2)}
+                  className="px-2 py-0.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 text-[11px] font-semibold transition cursor-pointer"
+                >
+                  +2 Hours
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickCallback(24)}
+                  className="px-2 py-0.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 text-[11px] font-semibold transition cursor-pointer"
+                >
+                  +24 Hours
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickCallback(48)}
+                  className="px-2 py-0.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 text-[11px] font-semibold transition cursor-pointer"
+                >
+                  +2 Days
+                </button>
+              </div>
 
-            {/* No Answer */}
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleQuickDisposition('NO_ANSWER')}
-              className="py-1.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-            >
-              <span>📞 No Answer</span>
-            </button>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                <div>
+                  <label className="block text-[11px] font-semibold text-blue-800 mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={callbackDate}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCallbackDate(val);
+                      if (val) {
+                        const [y, m, d] = val.split('-').map(Number);
+                        const dt = new Date(y, m - 1, d);
+                        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                        setCallbackDay(days[dt.getDay()]);
+                      }
+                    }}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-blue-200 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-blue-800 mb-1">Day</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Wednesday"
+                    value={callbackDay}
+                    onChange={(e) => setCallbackDay(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-blue-200 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-blue-800 mb-1">Time (24h)</label>
+                  <input
+                    type="time"
+                    value={callbackTime}
+                    onChange={(e) => setCallbackTime(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-blue-200 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-blue-800 mb-1">Timezone</label>
+                  <select
+                    value={callbackTimezone}
+                    onChange={(e) => setCallbackTimezone(e.target.value)}
+                    className="w-full px-2 py-1.5 text-xs rounded-xl border border-blue-200 bg-white"
+                  >
+                    <option value="America/Toronto">Eastern (Toronto/NY)</option>
+                    <option value="America/Chicago">Central (Chicago/Winnipeg)</option>
+                    <option value="America/Denver">Mountain (Denver/Calgary)</option>
+                    <option value="America/Phoenix">Mountain (Arizona)</option>
+                    <option value="America/Los_Angeles">Pacific (LA/Vancouver)</option>
+                    <option value="America/Halifax">Atlantic (Halifax)</option>
+                    <option value="Europe/London">UK (London GMT/BST)</option>
+                  </select>
+                </div>
+              </div>
 
-            {/* RNC */}
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleQuickDisposition('RNC')}
-              title="Ring No Contact — Kills lead immediately on 1st strike (Never dialed again)"
-              className="py-1.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-            >
-              <span>🚫 RNC</span>
-            </button>
+              {/* Dual Clock Preview Banner */}
+              {dualClockPreview && (
+                <div className="p-2.5 rounded-xl bg-blue-100/70 border border-blue-300/80 text-xs text-blue-950 space-y-1">
+                  <div className="flex items-center justify-between font-semibold">
+                    <span className="flex items-center gap-1">
+                      <Clock size={12} className="text-blue-700" /> Customer Local:
+                    </span>
+                    <span className="font-mono text-blue-900 font-bold">{dualClockPreview.customerLabel}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span>🇵🇰 Pakistan Shift (PKT):</span>
+                    <span className="font-mono font-semibold text-slate-900">{dualClockPreview.pktLabel}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
-            {/* Not Interested */}
+          {/* Primary Action Button: Set Disposition */}
+          <div className="pt-1">
             <button
               type="button"
-              disabled={isSubmitting}
-              onClick={() => handleQuickDisposition('NOT_INTERESTED')}
-              className="py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+              disabled={isSubmitting || !selectedDisposition}
+              onClick={handleCommitDisposition}
+              className={`w-full py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md active:scale-98 ${
+                selectedDisposition
+                  ? 'bg-blue-600 hover:bg-blue-500 text-white ring-4 ring-blue-500/20 shadow-blue-500/10'
+                  : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+              }`}
             >
-              <span>❌ Not Interested</span>
-            </button>
-
-            {/* Wrong Number */}
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleQuickDisposition('WRONG_NUMBER')}
-              className="py-1.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-            >
-              <span>⚠️ Wrong Number</span>
+              <Check size={16} />
+              <span>
+                {selectedDisposition
+                  ? `Set Disposition (${selectedDisposition.replace(/_/g, ' ')})`
+                  : 'Select a Disposition Above & Click to Set'}
+              </span>
             </button>
           </div>
         </div>
-
-        {/* Callback Date Picker Slide-Down */}
-        {showCallbackPicker && (
-          <div className="p-4 bg-blue-50/90 border border-blue-200 rounded-2xl space-y-3 mt-3 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-blue-900 text-xs flex items-center gap-1.5">
-                <Calendar size={14} /> Schedule Follow-up Callback
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowCallbackPicker(false)}
-                className="text-xs text-blue-700 hover:underline"
-              >
-                Cancel
-              </button>
-            </div>
-
-            {/* Quick Presets */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] uppercase font-bold text-blue-700 font-mono">Quick:</span>
-              <button
-                type="button"
-                onClick={() => setQuickCallback(2)}
-                className="px-2 py-0.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 text-[11px] font-semibold transition"
-              >
-                +2 Hours
-              </button>
-              <button
-                type="button"
-                onClick={() => setQuickCallback(24)}
-                className="px-2 py-0.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 text-[11px] font-semibold transition"
-              >
-                +24 Hours
-              </button>
-              <button
-                type="button"
-                onClick={() => setQuickCallback(48)}
-                className="px-2 py-0.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 text-[11px] font-semibold transition"
-              >
-                +2 Days
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-              <div>
-                <label className="block text-[11px] font-semibold text-blue-800 mb-1">Date</label>
-                <input
-                  type="date"
-                  value={callbackDate}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setCallbackDate(val);
-                    if (val) {
-                      const [y, m, d] = val.split('-').map(Number);
-                      const dt = new Date(y, m - 1, d);
-                      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                      setCallbackDay(days[dt.getDay()]);
-                    }
-                  }}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-blue-200 bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-blue-800 mb-1">Day</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Wednesday"
-                  value={callbackDay}
-                  onChange={(e) => setCallbackDay(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-blue-200 bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-blue-800 mb-1">Time (24h)</label>
-                <input
-                  type="time"
-                  value={callbackTime}
-                  onChange={(e) => setCallbackTime(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-blue-200 bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-blue-800 mb-1">Timezone</label>
-                <select
-                  value={callbackTimezone}
-                  onChange={(e) => setCallbackTimezone(e.target.value)}
-                  className="w-full px-2 py-1.5 text-xs rounded-xl border border-blue-200 bg-white"
-                >
-                  <option value="America/Toronto">Eastern (Toronto/NY)</option>
-                  <option value="America/Chicago">Central (Chicago/Winnipeg)</option>
-                  <option value="America/Denver">Mountain (Denver/Calgary)</option>
-                  <option value="America/Phoenix">Mountain (Arizona)</option>
-                  <option value="America/Los_Angeles">Pacific (LA/Vancouver)</option>
-                  <option value="America/Halifax">Atlantic (Halifax)</option>
-                  <option value="Europe/London">UK (London GMT/BST)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Dual Clock Preview Banner */}
-            {dualClockPreview && (
-              <div className="p-2.5 rounded-xl bg-blue-100/70 border border-blue-300/80 text-xs text-blue-950 space-y-1">
-                <div className="flex items-center justify-between font-semibold">
-                  <span className="flex items-center gap-1">
-                    <Clock size={12} className="text-blue-700" /> Customer Local:
-                  </span>
-                  <span className="font-mono text-blue-900 font-bold">{dualClockPreview.customerLabel}</span>
-                </div>
-                <div className="flex items-center justify-between text-slate-700">
-                  <span>🇵🇰 Pakistan Shift (PKT):</span>
-                  <span className="font-mono font-semibold text-slate-900">{dualClockPreview.pktLabel}</span>
-                </div>
-              </div>
-            )}
-
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={handleSaveCallback}
-              className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition shadow-xs cursor-pointer"
-            >
-              Confirm & Save Callback
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
