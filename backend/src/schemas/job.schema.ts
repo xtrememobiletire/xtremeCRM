@@ -57,6 +57,8 @@ export const CreateJobSchema = z.object({
     },
     z.enum(['URGENT', 'STANDARD', 'FUTURE']).default('STANDARD')
   ),
+  isTestService: z.boolean().optional().default(false),
+  prospectCompanyName: z.string().optional().nullable(),
   source: z.enum(['DIRECT_CALL', 'WHATSAPP', 'WEBSITE', 'LANDING_PAGE_SELF_BOOK', 'FLEET_PORTAL', 'MEMBER_PORTAL']).optional().default('DIRECT_CALL'),
   scheduledFor: z.string().optional(),
   appointmentDate: z.string().optional(),
@@ -197,9 +199,11 @@ export const VerifyBookingAddressSchema = z.object({
   unitNumber: z.string().optional().nullable(),
   tireSize: z.string().optional(),
   licensePlate: z.string().optional(),
+  vehicleColor: z.string().optional().nullable(),
   discountCents: z.coerce.number().optional().nullable(),
   subtotalCents: z.coerce.number().optional().nullable(),
   taxAmountCents: z.coerce.number().optional().nullable(),
+  taxCents: z.coerce.number().optional().nullable(),
   totalCents: z.coerce.number().optional().nullable(),
   selectedServices: z.array(z.string()).optional(),
   serviceItems: z.array(
@@ -211,7 +215,7 @@ export const VerifyBookingAddressSchema = z.object({
       notes: z.string().optional().nullable(),
     })
   ).optional(),
-});
+}).passthrough();
 
 export const ExternalDispatchTokenParamSchema = z.object({
   token: z.string().min(1, 'Token is required'),

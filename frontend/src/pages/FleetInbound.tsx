@@ -51,6 +51,8 @@ export default function FleetInbound() {
   const fleets = fleetsResponse?.data || [];
 
   // Form State
+  const [isTrialRun, setIsTrialRun] = useState(false);
+  const [prospectCompanyName, setProspectCompanyName] = useState('');
   const [selectedFleetId, setSelectedFleetId] = useState<string>('');
   const [selectedFleetDriverId, setSelectedFleetDriverId] = useState<string>('');
   const [driverName, setDriverName] = useState('');
@@ -210,8 +212,8 @@ export default function FleetInbound() {
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    if (!selectedFleetId) {
-      toast.error('Please select a commercial fleet account');
+    if (!selectedFleetId && !(isTrialRun && prospectCompanyName.trim())) {
+      toast.error('Please select a commercial fleet account or enter a Prospect Company Name for the Trial Run');
       return;
     }
     if (!serviceAddress) {
@@ -247,7 +249,9 @@ export default function FleetInbound() {
 
       const created = await jobService.createJob({
         countryCode: formCountry,
-        fleetId: selectedFleetId,
+        fleetId: selectedFleetId || undefined,
+        isTestService: isTrialRun,
+        prospectCompanyName: isTrialRun && !selectedFleetId ? prospectCompanyName.trim() : undefined,
         recipientName: driverName,
         recipientPhone: phoneValidation.normalized,
         serviceAddress,
@@ -387,18 +391,63 @@ export default function FleetInbound() {
 
           {/* Step 2: Contracted Commercial Fleet Account */}
           <div>
+            {/* Low-Code Trial Run Toggle (Works With or Without an Existing Fleet / Lead) */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50/80 border border-amber-200 mb-2">
+              <div>
+                <span className="text-xs font-bold text-amber-950 block">
+                  🎯 Offer Fleet Trial Service (Feasibility Run)
+                </span>
+                <span className="text-[11px] text-amber-800">
+                  Dispatch a trial job for an existing fleet or a new walk-in prospect (no Lead required)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !isTrialRun;
+                  setIsTrialRun(next);
+                  if (next) {
+                    // Default service items to $0.00 Complimentary Trial (editable by dispatcher)
+                    setServiceItems((prev) => prev.map((it) => ({ ...it, unitPriceCents: 0 })));
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition cursor-pointer border ${
+                  isTrialRun
+                    ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                {isTrialRun ? '✓ TRIAL RUN ACTIVE ($0 Default)' : 'Enable Trial Run'}
+              </button>
+            </div>
+
+            {isTrialRun && !selectedFleetId && (
+              <div className="mb-3">
+                <label className="block text-xs font-bold text-amber-900 mb-1">
+                  Prospect Fleet / Company Name (No Fleet Account Required) *
+                </label>
+                <input
+                  type="text"
+                  value={prospectCompanyName}
+                  onChange={(e) => setProspectCompanyName(e.target.value)}
+                  placeholder="e.g. TransCanada Freight Ltd."
+                  className="w-full px-3 py-2 text-xs rounded-xl border-2 border-amber-300 bg-white font-semibold text-slate-900 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+            )}
+
             <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">2</span>
                 <Building2 className="w-3.5 h-3.5 text-red-600" />
-                <span>Select Contracted Fleet Account <span className="text-red-500">*</span></span>
+                <span>Select Contracted Fleet Account {isTrialRun ? '(Optional for Prospect Trial)' : <span className="text-red-500">*</span>}</span>
               </span>
               <span className="text-[11px] font-mono text-slate-400">{fleets.length} Accounts in {formCountry}</span>
             </label>
             <select
               value={selectedFleetId}
               onChange={(e) => handleSelectFleet(e.target.value)}
-              required
+              required={!isTrialRun}
               autoFocus
               className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
             >

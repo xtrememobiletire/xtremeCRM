@@ -71,6 +71,7 @@ export default function VerifyAddressModal({
   const [unitNumber, setUnitNumber] = useState<string>('');
   const [tireSize, setTireSize] = useState<string>('11R22.5');
   const [licensePlate, setLicensePlate] = useState<string>('');
+  const [vehicleColor, setVehicleColor] = useState<string>('');
 
   // Work Order Services
   const [serviceItems, setServiceItems] = useState<SelectedServiceItem[]>([
@@ -144,6 +145,7 @@ export default function VerifyAddressModal({
         setVehicleMake(v.make || '');
         setVehicleModel(v.model || '');
         setVehicleYear(v.year ? String(v.year) : '');
+        setVehicleColor(v.color || (booking as any).vehicleColor || '');
         setUnitNumber(v.unitNumber || booking.unitNumber || '');
         setTireSize(v.tireSize || booking.tireSize || (isFleet ? '11R22.5' : '225/65R17'));
         setLicensePlate(v.licensePlate || booking.licensePlate || '');
@@ -151,6 +153,7 @@ export default function VerifyAddressModal({
         setVehicleMake(booking.vehicleMake || '');
         setVehicleModel(booking.vehicleModel || '');
         setVehicleYear(booking.vehicleYear ? String(booking.vehicleYear) : '');
+        setVehicleColor((booking as any).vehicleColor || '');
         setUnitNumber(booking.unitNumber || '');
         setTireSize(booking.tireSize || (isFleet ? '11R22.5' : '225/65R17'));
         setLicensePlate(booking.licensePlate || '');
@@ -162,7 +165,12 @@ export default function VerifyAddressModal({
           booking.serviceItems.map((si: any) => ({
             serviceId: si.id || si.serviceName,
             serviceName: si.serviceName,
-            category: si.category || 'TIRE_SERVICE',
+            category:
+              si.category === 'ROADSIDE' || si.category === 'ROADSIDE_ASSISTANCE'
+                ? 'ROADSIDE_ASSISTANCE'
+                : si.category === 'MAINTENANCE'
+                ? 'MAINTENANCE'
+                : 'TIRE_SERVICE',
             unitPriceCents: si.unitPriceCents || 12000,
             quantity: si.quantity || 1,
             notes: si.notes || '',
@@ -316,13 +324,19 @@ export default function VerifyAddressModal({
         vehicleMake: vehicleMake || undefined,
         vehicleModel: vehicleModel || undefined,
         vehicleYear: vehicleYear ? Number(vehicleYear) : undefined,
+        vehicleColor: vehicleColor || undefined,
         unitNumber: unitNumber || undefined,
         tireSize: tireSize || undefined,
-        licensePlate: licensePlate || undefined,
+        licensePlate: licensePlate && licensePlate.trim() ? licensePlate.trim().toUpperCase() : undefined,
         discountCents,
         serviceItems: serviceItems.map((item) => ({
           serviceName: item.serviceName,
-          category: item.category,
+          category:
+            item.category === 'ROADSIDE_ASSISTANCE' || (item.category as string) === 'ROADSIDE'
+              ? 'ROADSIDE_ASSISTANCE'
+              : item.category === 'MAINTENANCE'
+              ? 'MAINTENANCE'
+              : 'TIRE_SERVICE',
           unitPriceCents: item.unitPriceCents,
           quantity: item.quantity,
           notes: item.notes || null,
@@ -539,7 +553,7 @@ export default function VerifyAddressModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1">Unit #</label>
               <input
@@ -580,6 +594,17 @@ export default function VerifyAddressModal({
                 value={vehicleYear}
                 onChange={(e) => setVehicleYear(e.target.value)}
                 placeholder="2022"
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Color</label>
+              <input
+                type="text"
+                value={vehicleColor}
+                onChange={(e) => setVehicleColor(e.target.value)}
+                placeholder="White / Black"
                 className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
               />
             </div>

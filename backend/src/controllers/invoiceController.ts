@@ -453,6 +453,7 @@ export const invoiceController = {
         where: {
           id: { in: jobIds },
           fleetId,
+          isTestService: false,
           invoiceId: null,
           status: 'COMPLETED',
         },
@@ -496,8 +497,11 @@ export const invoiceController = {
       });
 
       const subtotalCents = itemsData.reduce((sum, it) => sum + it.unitPriceCents * it.quantity, 0);
-      const discountPercent = fleet.discountPercent || 0;
-      const discountCents = Math.round(subtotalCents * (discountPercent / 100));
+      // Avoid double-discounting if B2B discount was already baked into JobServiceItem.unitPriceCents at booking time
+      const explicitDiscountCents = req.body.discountCents !== undefined
+        ? Math.max(0, Math.round(Number(req.body.discountCents)))
+        : 0;
+      const discountCents = explicitDiscountCents;
       const depositCents = 0;
 
       const { taxAmountCents, totalCents, balanceDueCents } = calculateTaxAndTotals(

@@ -379,7 +379,7 @@ export default function FleetDashboard() {
 
   const activeJobsCount = useMemo(() => {
     return jobs.filter((j: any) =>
-      ['DISPATCHED', 'EN_ROUTE', 'ON_SCENE', 'IN_PROGRESS', 'ASSIGNED', 'PENDING'].includes(j.status)
+      ['UNVERIFIED_PUBLIC', 'DISPATCHED', 'EN_ROUTE', 'ON_SCENE', 'IN_PROGRESS', 'ASSIGNED', 'PENDING'].includes(j.status)
     ).length;
   }, [jobs]);
 
@@ -704,7 +704,7 @@ export default function FleetDashboard() {
                                       ? 'bg-blue-50 text-blue-700 border border-blue-200'
                                       : 'bg-amber-50 text-amber-700 border border-amber-200'
                                   }`}>
-                                    {j.status}
+                                    {j.status === 'UNVERIFIED_PUBLIC' ? 'AWAITING DISPATCH' : j.status}
                                   </span>
                                 </td>
                                 <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">
@@ -1320,7 +1320,7 @@ export default function FleetDashboard() {
                                 ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                                 : 'bg-amber-50 text-amber-700 border border-amber-200'
                             }`}>
-                              {j.status === 'IN_PROGRESS' ? 'Job Start' : j.status}
+                              {j.status === 'UNVERIFIED_PUBLIC' ? 'AWAITING DISPATCH' : j.status === 'IN_PROGRESS' ? 'Job Start' : j.status}
                             </span>
                           </td>
                         </tr>

@@ -31,6 +31,8 @@ export interface JobItem {
   source?: string;
   fleetId?: string | null;
   fleet?: any;
+  isTestService?: boolean;
+  prospectCompanyName?: string;
   subtotalCents?: number;
   taxRateBps?: number;
   taxAmountCents?: number;
@@ -248,6 +250,7 @@ export const jobService = {
     unitNumber?: string;
     tireSize?: string;
     licensePlate?: string;
+    vehicleColor?: string;
     discountCents?: number | null;
     serviceItems?: any[];
   }): Promise<JobItem> {

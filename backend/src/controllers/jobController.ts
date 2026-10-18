@@ -76,7 +76,7 @@ export const jobController = {
       const where: any = {};
       if (countryCode && countryCode !== 'ALL') where.countryCode = countryCode;
       if (status === 'ACTIVE') {
-        where.status = { not: 'COMPLETED' };
+        where.status = { notIn: ['COMPLETED', 'CANCELLED', 'UNVERIFIED_PUBLIC'] };
       } else if (status) {
         where.status = status;
       }
@@ -150,7 +150,7 @@ export const jobController = {
 
       // 2. Active / Unverified status isolation
       if (status === 'ACTIVE') {
-        andConditions.push({ status: { notIn: ['COMPLETED', 'UNVERIFIED_PUBLIC'] } });
+        andConditions.push({ status: { notIn: ['COMPLETED', 'CANCELLED', 'UNVERIFIED_PUBLIC'] } });
       } else if (!status) {
         andConditions.push({ status: { not: 'UNVERIFIED_PUBLIC' } });
       }
@@ -628,8 +628,11 @@ export const jobController = {
         ? Math.round(Number(data.upfrontAmountCents))
         : (data.upfrontAmountDollars !== undefined ? Math.round(Number(data.upfrontAmountDollars) * 100) : 0);
 
-      let initialPaymentStatus: 'UNPAID' | 'PARTIAL' | 'PAID_PENDING_VERIFICATION' = 'UNPAID';
-      if (upfrontAmountCents > 0) {
+      let initialPaymentStatus: 'UNPAID' | 'PARTIAL' | 'PAID_PENDING_VERIFICATION' | 'VERIFIED_PAID' = 'UNPAID';
+      const isTestService = Boolean(data.isTestService);
+      if (isTestService && totalCents === 0) {
+        initialPaymentStatus = 'VERIFIED_PAID'; // Complimentary $0.00 trial run requires no invoice chase
+      } else if (upfrontAmountCents > 0) {
         initialPaymentStatus = upfrontAmountCents >= totalCents ? 'PAID_PENDING_VERIFICATION' : 'PARTIAL';
       }
 
@@ -657,6 +660,7 @@ export const jobController = {
           customerId,
           vehicleId,
           fleetId: data.fleetId,
+          isTestService,
           createdById: creatorId,
           serviceAddress,
           serviceLatitude,
@@ -664,7 +668,9 @@ export const jobController = {
           serviceTimezone,
           driverId: validatedDriverId,
           assignedAt: validatedDriverId ? new Date() : undefined,
-          recipientName: data.recipientName || data.customer?.name || data.customer?.fullName || data.customerName || name,
+          recipientName: data.prospectCompanyName
+            ? `${data.prospectCompanyName}${data.recipientName ? ` (${data.recipientName})` : ''}`
+            : (data.recipientName || data.customer?.name || data.customer?.fullName || data.customerName || name),
           recipientPhone: normalizedContactPhone || (data.recipientPhone ? normalizePhoneNumber(data.recipientPhone, country) : undefined),
           problemNotes: data.problemNotes || data.notes,
           urgency: normalizeUrgency(data.urgency),
@@ -1218,6 +1224,7 @@ export const jobController = {
         vehicleMake,
         vehicleModel,
         vehicleYear,
+        vehicleColor,
         unitNumber,
         tireSize,
         licensePlate,
@@ -1236,9 +1243,12 @@ export const jobController = {
       };
 
       if (driverId) {
-        updateData.driverId = String(driverId);
-        updateData.assignedAt = new Date();
-        updateData.status = 'ASSIGNED';
+        const drv = await prisma.user.findUnique({ where: { id: String(driverId) } });
+        if (drv && drv.countryCode === job.countryCode) {
+          updateData.driverId = drv.id;
+          updateData.assignedAt = new Date();
+          updateData.status = 'ASSIGNED';
+        }
       } else if (job.status === 'UNVERIFIED_PUBLIC') {
         updateData.status = 'PENDING';
       }
@@ -1246,11 +1256,36 @@ export const jobController = {
       if (serviceAddress) updateData.serviceAddress = serviceAddress;
       if (serviceLatitude !== undefined && serviceLatitude !== null) updateData.serviceLatitude = Number(serviceLatitude);
       if (serviceLongitude !== undefined && serviceLongitude !== null) updateData.serviceLongitude = Number(serviceLongitude);
-      if (serviceTimezone) updateData.serviceTimezone = serviceTimezone;
+
+      // Resolve accurate IANA timezone from verified Mapbox coordinates or incoming payload
+      if (serviceLatitude !== undefined && serviceLatitude !== null && serviceLongitude !== undefined && serviceLongitude !== null) {
+        try {
+          updateData.serviceTimezone = tzlookup(Number(serviceLatitude), Number(serviceLongitude)) || serviceTimezone || job.serviceTimezone;
+        } catch {
+          if (serviceTimezone) updateData.serviceTimezone = serviceTimezone;
+        }
+      } else if (serviceTimezone) {
+        updateData.serviceTimezone = serviceTimezone;
+      }
+
       if (appointmentDate) updateData.appointmentDate = new Date(appointmentDate);
-      if (arrivalWindowStart) updateData.arrivalWindowStart = new Date(arrivalWindowStart);
-      if (arrivalWindowEnd) updateData.arrivalWindowEnd = new Date(arrivalWindowEnd);
-      if (estimatedArrivalAt) updateData.estimatedArrivalAt = new Date(estimatedArrivalAt);
+      if (arrivalWindowStart) {
+        updateData.arrivalWindowStart = new Date(arrivalWindowStart);
+        updateData.estimatedArrivalAt = new Date(arrivalWindowStart);
+      } else if (estimatedArrivalAt) {
+        updateData.estimatedArrivalAt = new Date(estimatedArrivalAt);
+      } else if (estimatedArrivalMinutes) {
+        const etaDate = new Date(Date.now() + Number(estimatedArrivalMinutes) * 60000);
+        updateData.arrivalWindowStart = etaDate;
+        updateData.estimatedArrivalAt = etaDate;
+      }
+
+      if (arrivalWindowEnd) {
+        updateData.arrivalWindowEnd = new Date(arrivalWindowEnd);
+      } else if (updateData.arrivalWindowStart) {
+        updateData.arrivalWindowEnd = new Date(updateData.arrivalWindowStart.getTime() + 30 * 60000);
+      }
+
       if (estimatedArrivalMinutes !== undefined && estimatedArrivalMinutes !== null) {
         updateData.estimatedArrivalMinutes = Number(estimatedArrivalMinutes);
       }
@@ -1265,7 +1300,8 @@ export const jobController = {
       if (paymentMethod !== undefined) updateData.paymentMethod = validPaymentMethod(paymentMethod);
 
       // Update or create vehicle specs (Crucial for mobile tire vans to stock the right tire)
-      if (vehicleMake || vehicleModel || vehicleYear || tireSize || licensePlate || unitNumber !== undefined) {
+      if (vehicleMake || vehicleModel || vehicleYear || vehicleColor !== undefined || tireSize || licensePlate !== undefined || unitNumber !== undefined) {
+        const cleanPlate = licensePlate && String(licensePlate).trim() ? String(licensePlate).trim().toUpperCase() : undefined;
         if (job.vehicleId) {
           await prisma.vehicle.update({
             where: { id: job.vehicleId },
@@ -1273,9 +1309,10 @@ export const jobController = {
               ...(vehicleMake ? { make: vehicleMake } : {}),
               ...(vehicleModel ? { model: vehicleModel } : {}),
               ...(vehicleYear ? { year: Number(vehicleYear) } : {}),
+              ...(vehicleColor !== undefined ? { color: vehicleColor ? String(vehicleColor).trim() : null } : {}),
               ...(unitNumber !== undefined ? { unitNumber: unitNumber ? String(unitNumber).trim() : null } : {}),
               ...(tireSize ? { tireSize } : {}),
-              ...(licensePlate ? { licensePlate } : {}),
+              ...(cleanPlate ? { licensePlate: cleanPlate } : {}),
             },
           });
         } else {
@@ -1285,9 +1322,10 @@ export const jobController = {
               make: vehicleMake || 'Standard',
               model: vehicleModel || 'Vehicle',
               year: Number(vehicleYear) || new Date().getFullYear(),
+              color: vehicleColor ? String(vehicleColor).trim() : null,
               unitNumber: unitNumber ? String(unitNumber).trim() : null,
               tireSize: tireSize || '225/65R17',
-              licensePlate: licensePlate || undefined,
+              licensePlate: cleanPlate || undefined,
             },
           });
           updateData.vehicleId = newVeh.id;

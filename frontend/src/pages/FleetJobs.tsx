@@ -337,7 +337,7 @@ export default function FleetJobs() {
               <tbody className="divide-y divide-slate-100">
                 {rawJobs.map((job: any) => {
                   const isTrial = Boolean(job.isTestService);
-                  const fleetName = job.fleet?.name || (isTrial ? 'Prospective Fleet (Trial)' : 'Commercial Account');
+                  const fleetName = job.fleet?.name || job.lead?.companyName || (isTrial ? (job.recipientName || 'Prospective Fleet (Trial)') : 'Commercial Account');
                   const fleetCode = job.fleet?.fleetCode || (isTrial ? 'TRIAL' : 'B2B');
                   const unitNumber = job.vehicle?.unitNumber;
 
