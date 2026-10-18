@@ -63,9 +63,9 @@ export default function AccountPreviewCard({
             </div>
           </div>
 
-          {/* Bottom Compartment: Bordered Text Box matching Wireframe */}
+          {/* Bottom Compartment: Bordered Text Box matching Wireframe (Simple modern font) */}
           <div className="flex-1 p-6 sm:p-8 lg:p-9 border-t border-black/15 dark:border-white/15 bg-zinc-50/90 dark:bg-white/[0.03] flex items-center justify-center text-center">
-            <p className="font-serif text-base sm:text-lg lg:text-xl text-zinc-800 dark:text-zinc-200 leading-relaxed font-normal max-w-lg">
+            <p className="font-sans text-sm sm:text-base lg:text-lg text-zinc-600 dark:text-zinc-300 leading-relaxed font-normal max-w-lg">
               {activeOption.summaryText}
             </p>
           </div>

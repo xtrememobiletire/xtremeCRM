@@ -4,14 +4,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Pool of 6 high-resolution commercial fleet pictures
-const FLEET_IMAGES: string[] = [
-  "/fleet-trucks.jpg",
-  "/fleet-vans.jpg",
-  "/fleet-semi.jpg",
-  "/mobile-tire-service.jpg",
-  "/fleet-electric.jpg",
+// Pool of 6 high-resolution mobile tire and automotive service pictures
+const SERVICE_IMAGES: string[] = [
+  "/service-tire-change.jpg",
+  "/service-mobile-van.jpg",
+  "/service-brake-repair.jpg",
   "/tire-service-wheel.jpg",
+  "/mobile-tire-service.jpg",
+  "/tire-shop.jpg",
 ];
 
 interface CardConfig {
@@ -36,7 +36,7 @@ const CARDS_CONFIG: CardConfig[] = [
   },
   {
     id: "card-middle",
-    initialIndex: 2,
+    initialIndex: 1,
     rotation: "rotate-0",
     marginClass: "z-20",
     originClass: "origin-center",
@@ -45,7 +45,7 @@ const CARDS_CONFIG: CardConfig[] = [
   },
   {
     id: "card-right",
-    initialIndex: 4,
+    initialIndex: 2,
     rotation: "rotate-3 sm:rotate-5 md:rotate-[6deg]",
     marginClass: "-ml-6 sm:-ml-10 md:-ml-14 lg:-ml-16",
     originClass: "origin-bottom-left",
@@ -69,14 +69,14 @@ function FleetPhotoCard({ config, currentImage }: { config: CardConfig; currentI
     >
       {/* 
         CLEAN PICTURE ONLY (NO CAROUSEL CONTROLS, NO TEXT, NO LABELS)
-        Smooth crossfade transition across 6 fleet images
+        Smooth crossfade transition across 6 professional service images
       */}
       <div className="absolute inset-0 w-full h-full bg-zinc-950">
         <AnimatePresence mode="popLayout">
           <motion.img
             key={`${config.id}-${currentImage}`}
             src={currentImage}
-            alt="Commercial Fleet Vehicle"
+            alt="Professional Mobile Tire and Auto Service"
             initial={{ opacity: 0, scale: 1.05 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
@@ -98,10 +98,10 @@ function FleetPhotoCard({ config, currentImage }: { config: CardConfig; currentI
 export default function ServicesHero() {
   const [photoStep, setPhotoStep] = useState(0);
 
-  // Staggered auto-rotation cycling through the 6 fleet pictures
+  // Staggered auto-rotation cycling through the 6 professional service pictures
   useEffect(() => {
     const timer = setInterval(() => {
-      setPhotoStep((prev) => (prev + 1) % FLEET_IMAGES.length);
+      setPhotoStep((prev) => (prev + 1) % SERVICE_IMAGES.length);
     }, 4500);
 
     return () => clearInterval(timer);
@@ -138,7 +138,7 @@ export default function ServicesHero() {
         {/* Book Now Button */}
         <div className="pt-1">
           <Link
-            href="/book"
+            href="/booking"
             className="inline-flex items-center justify-center px-8 sm:px-10 py-3 sm:py-3.5 rounded-none border border-zinc-900/80 dark:border-white/80 bg-transparent text-zinc-950 dark:text-white hover:bg-zinc-950 hover:text-white dark:hover:bg-white dark:hover:text-black font-medium text-sm sm:text-base tracking-tight transition-all duration-300 shadow-sm active:scale-98"
           >
             Book Now
@@ -149,16 +149,16 @@ export default function ServicesHero() {
 
 
       {/* ========================================================================
-          THREE FANNED CARDS (CLEAN FLEET PICTURES ONLY)
+          THREE FANNED CARDS (CLEAN PROFESSIONAL SERVICE PICTURES ONLY)
           - Reduced height for clean proportion
           - Initial landing shows top ~half height of the cards
           - Scrolling reveals the full height of the cards
-          - Rotates through 6 fleet pictures cleanly (no carousel controls or labels)
+          - Rotates through 6 authentic service pictures cleanly
           ======================================================================== */}
       <div className="relative w-full flex items-start justify-center mt-10 sm:mt-14 pb-24 sm:pb-36 lg:pb-44 px-2 sm:px-4 overflow-visible">
         <div className="relative flex items-start justify-center w-full max-w-[1440px] select-none">
           {CARDS_CONFIG.map((config) => {
-            const currentImg = FLEET_IMAGES[(config.initialIndex + photoStep) % FLEET_IMAGES.length];
+            const currentImg = SERVICE_IMAGES[(config.initialIndex + photoStep) % SERVICE_IMAGES.length];
             return (
               <FleetPhotoCard
                 key={config.id}

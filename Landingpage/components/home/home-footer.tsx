@@ -7,11 +7,13 @@ import FooterLargeBranding from "./footer/footer-large-branding";
 interface HomeFooterProps {
   brandName?: string;
   logoSrc?: string;
+  className?: string;
 }
 
 export default function HomeFooter({
   brandName = "Xtreme Mobile Tire",
   logoSrc = "/logo.webp",
+  className = "",
 }: HomeFooterProps) {
   return (
     /* 
@@ -20,7 +22,7 @@ export default function HomeFooter({
       - Desktop/Tablet (sm+): Floating card with side and bottom gaps (w-[calc(100%-3rem)], mb-6, rounded-b-[36px]).
       - Solid dark black background (#050811) with border-white/10
     */
-    <footer id="footer" className="relative z-10 w-full sm:w-[calc(100%-3rem)] lg:w-[calc(100%-4rem)] mx-auto bg-[#050811] text-white border-t sm:border border-white/10 rounded-t-[28px] sm:rounded-t-[38px] lg:rounded-t-[48px] rounded-b-none sm:rounded-b-[36px] lg:rounded-b-[44px] mt-16 sm:mt-28 pt-10 sm:pt-16 pb-0 overflow-hidden shadow-2xl flex flex-col justify-between mb-0 sm:mb-6">
+    <footer id="footer" className={`relative z-10 w-full sm:w-[calc(100%-3rem)] lg:w-[calc(100%-4rem)] mx-auto bg-[#050811] text-white border-t sm:border border-white/10 rounded-t-[28px] sm:rounded-t-[38px] lg:rounded-t-[48px] rounded-b-none sm:rounded-b-[36px] lg:rounded-b-[44px] ${className ? className : "mt-6 sm:mt-8"} pt-10 sm:pt-16 pb-0 overflow-hidden shadow-2xl flex flex-col justify-between mb-0 sm:mb-6`}>
       
       {/* Increased Width Content Container */}
       <div className="w-full max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 space-y-10 sm:space-y-12 flex-1">

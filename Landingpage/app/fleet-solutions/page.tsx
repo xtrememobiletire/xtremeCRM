@@ -1,26 +1,28 @@
-"use client";
-
 import PageShell from "@/components/layout/page-shell";
+import FleetHero from "@/components/fleet/fleet-hero";
+import FleetOnboardingSteps from "@/components/fleet/fleet-onboarding-steps";
+import FleetPortalFeatures from "@/components/fleet/fleet-portal-features";
+import FleetDowntimeBanner from "@/components/fleet/fleet-downtime-banner";
+import FleetCreateAccount from "@/components/fleet/fleet-create-account";
 
 export default function FleetSolutionsPage() {
   return (
     <PageShell>
-      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-20 sm:py-28 flex-1 flex flex-col justify-center items-center text-center">
-        <div className="flex items-center gap-2.5 mb-3.5">
-          <span className="w-3 h-3 bg-black dark:bg-[var(--brand-primary)] inline-block shrink-0 rounded-none shadow-sm" />
-          <span
-            className="text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200"
-            style={{ fontFamily: '"Times New Roman", Times, serif' }}
-          >
-            Fleet Solutions
-          </span>
-        </div>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-[var(--neutral-dark)] mb-4">
-          Commercial Fleet Management
-        </h1>
-        <p className="text-base sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed font-normal">
-          Dedicated fleet portals, fixed commercial pricing, 24/7 driver roadside dispatch, and consolidated weekly master invoicing.
-        </p>
+      <div className="w-full flex-1 flex flex-col">
+        {/* Commercial Fleet Solutions Hero (Fanned Cards with Commercial Fleet Photography) */}
+        <FleetHero />
+
+        {/* Get Your Fleet Protected (Interactive 3-Step Onboarding with Picture Box) */}
+        <FleetOnboardingSteps />
+
+        {/* Everything Included in Your Fleet Manager Portal (2x2 Architectural Grid) */}
+        <FleetPortalFeatures />
+
+        {/* Ready to Eliminate Fleet Downtime Banner and 24/7 Dispatch Bar */}
+        <FleetDowntimeBanner />
+
+        {/* Create Your Fleet Account (Interactive 4-Step / 2-Fields Form matching Wireframe) */}
+        <FleetCreateAccount />
       </div>
     </PageShell>
   );

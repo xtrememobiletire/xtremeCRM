@@ -151,7 +151,7 @@ export default function AboutContactLocations() {
               {/* Action Link button */}
               <div className="pt-2">
                 <Link
-                  href="/book"
+                  href="/booking"
                   className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-950 dark:text-white hover:text-[var(--brand-primary)] dark:hover:text-[var(--brand-primary)] transition-colors group/cta"
                 >
                   <span>Schedule Immediate Service</span>
