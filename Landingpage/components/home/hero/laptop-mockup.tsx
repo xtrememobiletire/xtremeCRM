@@ -10,7 +10,7 @@ interface LaptopMockupProps {
 
 export default function LaptopMockup({
   videoSrc = "https://assets.mixkit.co/videos/preview/mixkit-car-wheel-turning-in-slow-motion-41865-large.mp4",
-  posterSrc = "/wheel-car.jpg",
+  posterSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792426893/xtreme/landing/wheel-car_jpg.png",
   className = "",
 }: LaptopMockupProps) {
   const [videoError, setVideoError] = useState(false);

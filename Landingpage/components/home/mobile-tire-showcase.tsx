@@ -93,7 +93,7 @@ export default function MobileTireShowcase() {
               {/* Background Photography (High-performance vehicle with custom wheels/tires at dusk) */}
               <div className="absolute inset-0 overflow-hidden">
                 <img
-                  src="/wheel-car.jpg"
+                  src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426893/xtreme/landing/wheel-car_jpg.png"
                   alt="Professional Mobile Tire Service"
                   className="w-full h-full object-cover object-center group-hover/image:scale-105 transition-transform duration-700 ease-out"
                 />

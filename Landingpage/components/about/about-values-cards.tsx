@@ -20,7 +20,7 @@ const VALUES_ITEMS: ValueCardItem[] = [
     description:
       "Fixed, upfront pricing with zero hidden emergency fees—you only pay for what your vehicle truly needs.",
     badge: "Upfront Pricing",
-    imageSrc: "/wheel-detail.jpg",
+    imageSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426894/xtreme/landing/wheel-detail_jpg.jpg",
     hoverBarText: "Fixed Transparent Pricing",
     icon: <ShieldCheck className="w-5 h-5" strokeWidth={1.8} />,
   },
@@ -30,7 +30,7 @@ const VALUES_ITEMS: ValueCardItem[] = [
     description:
       "Available 24/7 across the USA and Canada with safety-tested tires and commercial-grade mobile gear.",
     badge: "24/7 Coast to Coast",
-    imageSrc: "/mobile-tire-service.jpg",
+    imageSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426873/xtreme/landing/mobile-tire-service_jpg.jpg",
     hoverBarText: "Commercial-Grade Gear",
     icon: <BadgeCheck className="w-5 h-5" strokeWidth={1.8} />,
   },
@@ -40,7 +40,7 @@ const VALUES_ITEMS: ValueCardItem[] = [
     description:
       "15+ years of certified mobile experience getting cars and commercial fleets back on the road fast.",
     badge: "15+ Years Certified",
-    imageSrc: "/tire-service-wheel.jpg",
+    imageSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426886/xtreme/landing/tire-service-wheel_jpg.jpg",
     hoverBarText: "Master Certified Technicians",
     icon: <Wrench className="w-5 h-5" strokeWidth={1.8} />,
   },

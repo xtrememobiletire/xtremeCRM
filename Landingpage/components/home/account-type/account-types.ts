@@ -28,7 +28,7 @@ export const ACCOUNT_OPTIONS: Record<AccountKey, AccountOption> = {
     ],
     ctaLabel: "Sign Up for Fleet",
     ctaHref: "/signup",
-    imageSrc: "/fleet-manager.jpg",
+    imageSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426861/xtreme/landing/fleet-manager_jpg.jpg",
     imageAlt: "Commercial Freight and Fleet Van Logistics",
     imageTag: "Active Fleet Telemetry",
     summaryText:
@@ -47,7 +47,7 @@ export const ACCOUNT_OPTIONS: Record<AccountKey, AccountOption> = {
     ],
     ctaLabel: "Join Membership",
     ctaHref: "/booking",
-    imageSrc: "/personal-membership.jpg",
+    imageSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426876/xtreme/landing/personal-membership_jpg.jpg",
     imageAlt: "Luxury Personal Car Mobile Tire Support",
     imageTag: "On-Demand Driver Assist",
     summaryText:

@@ -11,33 +11,33 @@ interface BrandItem {
 }
 
 const ROW_1: BrandItem[] = [
-  { id: "audi", name: "Audi", logo: "/brands/audi.png" },
-  { id: "bmw", name: "BMW", logo: "/brands/bmw.png" },
-  { id: "mercedes", name: "Mercedes", logo: "/brands/mercedes.png" },
-  { id: "volkswagen", name: "Volkswagen", logo: "/brands/volkswagen.png" },
-  { id: "porsche", name: "Porsche", logo: "/brands/porsche.png" },
-  { id: "mini", name: "Mini", logo: "/brands/mini.png" },
-  { id: "volvo", name: "Volvo", logo: "/brands/volvo.png" },
+  { id: "audi", name: "Audi", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426767/xtreme/landing/brands/audi_png.png" },
+  { id: "bmw", name: "BMW", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426771/xtreme/landing/brands/bmw_png.png" },
+  { id: "mercedes", name: "Mercedes", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426806/xtreme/landing/brands/mercedes_png.png" },
+  { id: "volkswagen", name: "Volkswagen", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426839/xtreme/landing/brands/volkswagen_png.png" },
+  { id: "porsche", name: "Porsche", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426828/xtreme/landing/brands/porsche_png.png" },
+  { id: "mini", name: "Mini", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426820/xtreme/landing/brands/mini_png.png" },
+  { id: "volvo", name: "Volvo", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426841/xtreme/landing/brands/volvo_png.png" },
 ];
 
 const ROW_2: BrandItem[] = [
-  { id: "alfa-romeo", name: "Alfa Romeo", logo: "/brands/alfa-romeo.png" },
-  { id: "toyota", name: "Toyota", logo: "/brands/toyota.png" },
-  { id: "lexus", name: "Lexus", logo: "/brands/lexus.png" },
-  { id: "nissan", name: "Nissan", logo: "/brands/nissan.png" },
-  { id: "mazda", name: "Mazda", logo: "/brands/mazda.png" },
-  { id: "subaru", name: "Subaru", logo: "/brands/subaru.png" },
-  { id: "honda", name: "Honda", logo: "/brands/honda.png" },
+  { id: "alfa-romeo", name: "Alfa Romeo", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426723/xtreme/landing/brands/alfa-romeo_png.png" },
+  { id: "toyota", name: "Toyota", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426836/xtreme/landing/brands/toyota_png.png" },
+  { id: "lexus", name: "Lexus", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426802/xtreme/landing/brands/lexus_png.png" },
+  { id: "nissan", name: "Nissan", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426825/xtreme/landing/brands/nissan_png.png" },
+  { id: "mazda", name: "Mazda", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426804/xtreme/landing/brands/mazda_png.png" },
+  { id: "subaru", name: "Subaru", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426831/xtreme/landing/brands/subaru_png.png" },
+  { id: "honda", name: "Honda", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426791/xtreme/landing/brands/honda_png.png" },
 ];
 
 const ROW_3: BrandItem[] = [
-  { id: "mitsubishi", name: "Mitsubishi", logo: "/brands/mitsubishi.png" },
-  { id: "suzuki", name: "Suzuki", logo: "/brands/suzuki.png" },
-  { id: "infiniti", name: "Infiniti", logo: "/brands/infiniti.png" },
-  { id: "hyundai", name: "Hyundai", logo: "/brands/hyundai.png" },
-  { id: "kia", name: "Kia", logo: "/brands/kia.png" },
-  { id: "ford", name: "Ford", logo: "/brands/ford.png" },
-  { id: "holden", name: "Holden", logo: "/brands/holden.png" },
+  { id: "mitsubishi", name: "Mitsubishi", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426823/xtreme/landing/brands/mitsubishi_png.png" },
+  { id: "suzuki", name: "Suzuki", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426834/xtreme/landing/brands/suzuki_png.png" },
+  { id: "infiniti", name: "Infiniti", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426797/xtreme/landing/brands/infiniti_png.png" },
+  { id: "hyundai", name: "Hyundai", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426794/xtreme/landing/brands/hyundai_png.png" },
+  { id: "kia", name: "Kia", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426799/xtreme/landing/brands/kia_png.png" },
+  { id: "ford", name: "Ford", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426778/xtreme/landing/brands/ford_png.png" },
+  { id: "holden", name: "Holden", logo: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426789/xtreme/landing/brands/holden_png.png" },
 ];
 
 function MarqueeRow({

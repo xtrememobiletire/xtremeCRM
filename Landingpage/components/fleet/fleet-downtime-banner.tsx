@@ -19,7 +19,7 @@ export default function FleetDowntimeBanner() {
         {/* Background Commercial Fleet Image */}
         <div className="absolute inset-0 w-full h-full">
           <Image
-            src="/fleet-semi.jpg"
+            src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426862/xtreme/landing/fleet-semi_jpg.jpg"
             alt="Commercial Fleet on Highway"
             fill
             className="object-cover object-center opacity-45 transition-transform duration-1000 ease-out group-hover:scale-105"

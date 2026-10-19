@@ -7,12 +7,12 @@ import { LOGIN_URL } from "@/lib/config";
 
 // Pool of 6 high-resolution commercial fleet pictures
 const FLEET_IMAGES: string[] = [
-  "/fleet-semi.jpg",
-  "/service-mobile-van.jpg",
-  "/fleet-electric.jpg",
-  "/fleet-vans.jpg",
-  "/fleet-manager.jpg",
-  "/fleet-trucks.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426862/xtreme/landing/fleet-semi_jpg.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426881/xtreme/landing/service-mobile-van_jpg.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426859/xtreme/landing/fleet-electric_jpg.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426864/xtreme/landing/fleet-vans_jpg.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426861/xtreme/landing/fleet-manager_jpg.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426863/xtreme/landing/fleet-trucks_jpg.jpg",
 ];
 
 interface CardConfig {

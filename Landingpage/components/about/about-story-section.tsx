@@ -61,7 +61,7 @@ export default function AboutStorySection() {
             {/* High-Resolution Founders Photo: Full shoulders, arms & faces visible with zero side-cropping */}
             <div className="relative w-full max-w-[380px] sm:max-w-[420px] aspect-[16/10] bg-black border border-black/10 dark:border-none shadow-md overflow-hidden [mask-image:linear-gradient(to_bottom,black_85%,transparent_100%)]">
               <Image
-                src="/founders-story.jpg"
+                src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426867/xtreme/landing/founders-story_jpg.jpg"
                 alt="Xtreme Mobile Tire Co-Founders"
                 fill
                 className="object-contain object-top filter grayscale contrast-110 brightness-100"

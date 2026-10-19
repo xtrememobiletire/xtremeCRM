@@ -112,7 +112,7 @@ export default function FleetBanner() {
               {/* Background Photography (Heavy Commercial Fleet Truck) */}
               <div className="absolute inset-0 overflow-hidden">
                 <img
-                  src="/fleet-manager.jpg"
+                  src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426861/xtreme/landing/fleet-manager_jpg.jpg"
                   alt="Commercial Fleet Logistics and Tire Maintenance"
                   className="w-full h-full object-cover object-center group-hover/image:scale-105 transition-transform duration-700 ease-out"
                 />

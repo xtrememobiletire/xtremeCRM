@@ -37,7 +37,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         title: "Seasonal Tire Change (ON/OFF RIM)",
         shortDesc: "Complete seasonal swap with laser-balanced precision directly in your driveway.",
         iconName: "RotateCw",
-        image: "/mobile-tire-service.jpg",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426873/xtreme/landing/mobile-tire-service_jpg.jpg",
         stats: {
           badge: "Seasonal Tire Swap and Laser Balance",
           duration: "30-45 Mins",
@@ -57,7 +57,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         title: "Flat Tire Repair",
         shortDesc: "RMA-certified internal vulcanized puncture repair to get you rolling safely.",
         iconName: "Wrench",
-        image: "/tire-service-wheel.jpg",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426886/xtreme/landing/tire-service-wheel_jpg.jpg",
         stats: {
           badge: "On-Site Vulcanized Patch Repair",
           duration: "20-30 Mins",
@@ -77,7 +77,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         title: "New Tires for Sale",
         shortDesc: "Top-tier OEM brands delivered, mounted, and balanced on your schedule.",
         iconName: "Sparkles",
-        image: "/tire-shop.jpg",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426887/xtreme/landing/tire-shop_jpg.jpg",
         stats: {
           badge: "Premium OEM Brands Delivered",
           duration: "45-60 Mins",
@@ -97,7 +97,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         title: "Used Tires for Sale",
         shortDesc: "Multi-point safety inspected certified pre-owned tires for budget reliability.",
         iconName: "BadgeCheck",
-        image: "/wheel-car.jpg",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426893/xtreme/landing/wheel-car_jpg.png",
         stats: {
           badge: "Certified Pre-Owned Multi-Point Tested",
           duration: "30-45 Mins",
@@ -117,7 +117,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         title: "Tire Storage",
         shortDesc: "Insured, climate-controlled seasonal storage facility with doorstep pickup.",
         iconName: "Warehouse",
-        image: "/fleet-vans.jpg",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426864/xtreme/landing/fleet-vans_jpg.jpg",
         stats: {
           badge: "Climate-Controlled Insured Storage",
           duration: "Doorstep Pickup and Delivery",
@@ -146,7 +146,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         title: "Rim Repair",
         shortDesc: "Complete mobile cosmetic and structural alloy restoration for curb rash and bends.",
         iconName: "Disc3",
-        image: "/wheel-detail.jpg",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426894/xtreme/landing/wheel-detail_jpg.jpg",
         stats: {
           badge: "Alloy Curb Rash and Trueing Restoration",
           duration: "45-60 Mins",
@@ -166,7 +166,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         title: "Rim Protector Installation",
         shortDesc: "Engineered high-impact edge defense barriers guarding your wheels against curb impact.",
         iconName: "ShieldCheck",
-        image: "/wheel-car.jpg",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426893/xtreme/landing/wheel-car_jpg.png",
         stats: {
           badge: "Precision Wheel Guard Defense Armor",
           duration: "30-45 Mins",
@@ -195,7 +195,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         title: "Oil Change",
         shortDesc: "Premium full-synthetic oil and OEM filter replacement at your doorstep.",
         iconName: "Droplets",
-        image: "/fleet-trucks.jpg",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426863/xtreme/landing/fleet-trucks_jpg.jpg",
         stats: {
           badge: "Full Synthetic Lube and Filter Service",
           duration: "30-40 Mins",
@@ -215,7 +215,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         title: "Brake Replacement",
         shortDesc: "Ceramic pad and rotor replacement for silent, decisive stopping confidence.",
         iconName: "Disc",
-        image: "/tire-service-wheel.jpg",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426886/xtreme/landing/tire-service-wheel_jpg.jpg",
         stats: {
           badge: "Ceramic Brake Pads and Rotors",
           duration: "60-75 Mins",
@@ -235,7 +235,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         title: "Battery Boost / Jump-Start",
         shortDesc: "Rapid on-location battery diagnostic, high-amperage jump-start, or new battery fitment.",
         iconName: "Zap",
-        image: "/fleet-electric.jpg",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426859/xtreme/landing/fleet-electric_jpg.jpg",
         stats: {
           badge: "Instant Battery Boost and Diagnostic",
           duration: "15-25 Mins",
@@ -264,7 +264,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         title: "Roadside Assistance (24/7)",
         shortDesc: "All-hours priority emergency dispatch with real-time GPS technician tracking.",
         iconName: "Clock",
-        image: "/fleet-semi.jpg",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426862/xtreme/landing/fleet-semi_jpg.jpg",
         stats: {
           badge: "24/7 Priority Emergency Dispatch",
           duration: "Under 35 Mins Response",
@@ -284,7 +284,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         title: "Car Lockout / Locksmith",
         shortDesc: "Damage-free, non-destructive vehicle entry when your keys are locked inside.",
         iconName: "KeyRound",
-        image: "/fleet-vans.jpg",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426864/xtreme/landing/fleet-vans_jpg.jpg",
         stats: {
           badge: "Damage-Free Automotive Lockout",
           duration: "15-25 Mins",
@@ -304,7 +304,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         title: "Gas and Diesel Delivery",
         shortDesc: "Clean emergency fuel brought directly to your empty tank so you can reach the nearest station.",
         iconName: "Fuel",
-        image: "/fleet-trucks.jpg",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426863/xtreme/landing/fleet-trucks_jpg.jpg",
         stats: {
           badge: "Emergency On-Site Fuel Delivery",
           duration: "20-30 Mins",
@@ -333,7 +333,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         title: "Car Detailing",
         shortDesc: "Mobile luxury interior steam extraction, exterior hand wash, and hydrophobic paint seal.",
         iconName: "Sparkles",
-        image: "/wheel-detail.jpg",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426894/xtreme/landing/wheel-detail_jpg.jpg",
         stats: {
           badge: "Full Interior and Exterior Luxury Detail",
           duration: "90-120 Mins",
@@ -353,7 +353,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         title: "PPF (Paint Protection Film)",
         shortDesc: "Self-healing optical polyurethane film shielding your paintwork from rock chips and road debris.",
         iconName: "Shield",
-        image: "/wheel-car.jpg",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426893/xtreme/landing/wheel-car_jpg.png",
         stats: {
           badge: "Self-Healing Stone Chip Armor",
           duration: "Custom Scheduled",

@@ -25,7 +25,7 @@ export default function Login() {
         {/* Compact Logo with minimal bottom margin */}
         <a href={landingUrl} title="Return to Landing Page" className="inline-block cursor-pointer mb-2">
           <img 
-            src="/logo-signin.png" 
+            src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426903/xtreme/frontend/logo-signin_png.png" 
             alt="Xtreme Mobile Tire" 
             className="h-14 sm:h-16 w-auto object-contain drop-shadow-sm hover:scale-105 transition-transform" 
           />

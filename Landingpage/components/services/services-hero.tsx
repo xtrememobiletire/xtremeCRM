@@ -6,12 +6,12 @@ import { motion, AnimatePresence } from "framer-motion";
 
 // Pool of 6 high-resolution mobile tire and automotive service pictures
 const SERVICE_IMAGES: string[] = [
-  "/service-tire-change.jpg",
-  "/service-mobile-van.jpg",
-  "/service-brake-repair.jpg",
-  "/tire-service-wheel.jpg",
-  "/mobile-tire-service.jpg",
-  "/tire-shop.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426883/xtreme/landing/service-tire-change_jpg.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426881/xtreme/landing/service-mobile-van_jpg.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426878/xtreme/landing/service-brake-repair_jpg.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426886/xtreme/landing/tire-service-wheel_jpg.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426873/xtreme/landing/mobile-tire-service_jpg.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426887/xtreme/landing/tire-shop_jpg.jpg",
 ];
 
 interface CardConfig {

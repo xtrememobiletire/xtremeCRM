@@ -19,7 +19,7 @@ const TESTIMONIALS: TestimonialItem[] = [
     name: "Jennifer Walsh",
     role: "Director of Fleet Operations",
     company: "Apex Freight Logistics",
-    avatarSrc: "/avatar-1.jpg",
+    avatarSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426721/xtreme/landing/avatar-1_jpg.jpg",
     avatarAlt: "Jennifer Walsh - Apex Freight",
     quote:
       "Xtreme Mobile Tire completely transformed how our commercial logistics operations run. Roadside blowout downtime dropped by 65% and our drivers are back on the highway in under 40 minutes.",
@@ -29,7 +29,7 @@ const TESTIMONIALS: TestimonialItem[] = [
     name: "Marcus Vance",
     role: "Regional Dispatch Manager",
     company: "Metro Delivery Express",
-    avatarSrc: "/avatar-2.jpg",
+    avatarSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426721/xtreme/landing/avatar-2_jpg.jpg",
     avatarAlt: "Marcus Vance - Metro Delivery",
     quote:
       "Having certified mechanics service our 48 delivery vans right at the depot during driver shift changeovers has been a total game changer. Zero yard disruption, zero lost driver hours.",
@@ -39,7 +39,7 @@ const TESTIMONIALS: TestimonialItem[] = [
     name: "Elena Rostova",
     role: "Fleet Maintenance Lead",
     company: "Titan Heavy Haulage",
-    avatarSrc: "/avatar-3.jpg",
+    avatarSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426722/xtreme/landing/avatar-3_jpg.jpg",
     avatarAlt: "Elena Rostova - Titan Heavy Haulage",
     quote:
       "The automated tread depth telemetry and bi-weekly master billing gave our management team absolute transparency. Their TIA certified mobile mechanics are the best in the industry.",
@@ -49,7 +49,7 @@ const TESTIMONIALS: TestimonialItem[] = [
     name: "David Morales",
     role: "Operations Director",
     company: "Vanguard Contractor Fleet",
-    avatarSrc: "/avatar-4.jpg",
+    avatarSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426723/xtreme/landing/avatar-4_jpg.jpg",
     avatarAlt: "David Morales - Vanguard Contractor",
     quote:
       "Whether it's an emergency flat on I-95 or scheduled skid steer and work van tire rotations across job sites, Xtreme Mobile Tire is always on site before our paperwork is even finished.",
