@@ -1,11 +1,6 @@
 /**
  * Application URL Configuration
- * Controls links pointing to the CRM web application.
+ * Hardcoded direct links to Xtreme Mobile Tire CRM application.
  */
-export const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ||
-  (process.env.NODE_ENV === "production"
-    ? "https://app.xtrememobiletire.com"
-    : "http://localhost:5173");
-
-export const LOGIN_URL = `${APP_URL}/login`;
+export const APP_URL = "https://app.xtrememobiletire.com";
+export const LOGIN_URL = "https://app.xtrememobiletire.com/login";

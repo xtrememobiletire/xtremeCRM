@@ -196,7 +196,7 @@ export default function Navbar({
               {/* DESKTOP ACTIONS: Sign In & Split-Pill Sign Up (hidden on mobile) */}
               <div className="hidden lg:flex items-center gap-4">
                 <a
-                  href={signInHref}
+                  href="https://app.xtrememobiletire.com/login"
                   className="text-xs xl:text-sm font-medium text-zinc-400 hover:text-white transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--brand-primary)]"
                 >
                   Sign in
@@ -319,7 +319,7 @@ export default function Navbar({
                 */}
                 <div className="pt-4 flex items-center justify-between">
                   <a
-                    href={signInHref}
+                    href="https://app.xtrememobiletire.com/login"
                     onClick={() => setMobileMenuOpen(false)}
                     className="text-sm font-semibold text-zinc-300 hover:text-white transition-colors"
                   >

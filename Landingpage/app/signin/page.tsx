@@ -6,7 +6,7 @@ import { ArrowRight } from "lucide-react";
 import { LOGIN_URL } from "@/lib/config";
 
 export default function SignInPage() {
-  const loginUrl = LOGIN_URL;
+  const loginUrl = "https://app.xtrememobiletire.com/login";
 
   useEffect(() => {
     window.location.replace(loginUrl);
