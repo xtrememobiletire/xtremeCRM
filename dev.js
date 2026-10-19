@@ -52,7 +52,7 @@ function runProcess(cmd, args, cwd, prefix) {
   const isWin = process.platform === 'win32';
   const child = spawn(cmd, args, {
     cwd,
-    stdio: ['inherit', 'pipe', 'pipe'],
+    stdio: ['ignore', 'pipe', 'pipe'],
     shell: isWin,
     env: { ...process.env, FORCE_COLOR: '1' },
   });
