@@ -16,7 +16,7 @@ const MISSION_POINTS: MissionPoint[] = [
   {
     id: "quality-reliability",
     number: "01",
-    title: "Quality & Reliability",
+    title: "Quality and Reliability",
     description:
       "Rapid 24/7 response across the USA and Canada using commercial-grade mobile tools and safety-inspected tires.",
     icon: <BadgeCheck className="w-5 h-5" strokeWidth={1.8} />,
@@ -142,7 +142,7 @@ export default function AboutMissionSection() {
   return (
     <section
       ref={sectionRef}
-      className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20 lg:py-24"
+      className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 lg:pt-16 pb-4 sm:pb-6 lg:pb-8"
     >
       {/* 
         ========================================================================
@@ -185,20 +185,20 @@ export default function AboutMissionSection() {
 
         {/* 
           LEFT COLUMN: FIXED / STICKY IN PLACE
-          - Desktop: Contains "OUR MISSION" and Speedometer pinned at top-32
+          - Desktop: Contains "OUR MISSION" and Speedometer pinned in the middle
           - Mobile: Speedometer sits right beneath the mobile header
         */}
-        <div className="lg:col-span-5 lg:sticky lg:top-32 self-start flex flex-col items-center lg:items-start z-20">
+        <div className="lg:col-span-5 lg:sticky lg:top-28 self-start flex flex-col items-center justify-center z-20">
           
-          {/* Desktop-only Header Title: "OUR MISSION" */}
-          <div className="hidden lg:block w-full text-center lg:text-left mb-6">
+          {/* Desktop-only Header Title: "OUR MISSION" (Centered over speedometer, shifted right from left margin) */}
+          <div className="hidden lg:block w-full text-center mb-6">
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[38px] font-bold tracking-tight uppercase text-zinc-950 dark:text-white font-sans select-none">
               Our Mission
             </h2>
           </div>
 
-          {/* Speedometer Instrument Cluster */}
-          <div className="w-full flex justify-center lg:justify-start">
+          {/* Speedometer Instrument Cluster (Centered in the middle of the column) */}
+          <div className="w-full flex justify-center items-center">
             <SpeedometerGauge
               progress={progress}
               currentSpeed={speed}

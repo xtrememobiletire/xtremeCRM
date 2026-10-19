@@ -21,7 +21,7 @@ const STORY_BLOCKS: StoryBlock[] = [
   },
   {
     id: "growing-across-borders",
-    title: "Growing Across the USA, Canada & Toward the UK",
+    title: "Growing Across the USA, Canada and Toward the UK",
     text: "What started as a vision between two friends has grown into a cross-border mobile tire network serving the USA and Canada—with plans to expand into the UK next. Built on upfront pricing and zero wasted time, we’ve combined certified technicians, commercial-grade mobile units, and a live fleet portal to deliver service you can actually trust.",
   },
   {
@@ -33,7 +33,7 @@ const STORY_BLOCKS: StoryBlock[] = [
 
 export default function AboutStorySection() {
   return (
-    <section className="relative z-10 w-full bg-transparent text-zinc-950 dark:text-white py-10 sm:py-14 lg:py-16 border-t border-black/5 dark:border-white/5">
+    <section className="relative z-10 w-full bg-transparent text-zinc-950 dark:text-white pt-4 sm:pt-6 lg:pt-8 pb-10 sm:pb-14 lg:pb-16 border-t border-black/5 dark:border-white/5">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         {/* 
           ========================================================================
@@ -46,10 +46,10 @@ export default function AboutStorySection() {
           
           {/* 
             LEFT COLUMN: FIXED / STICKY IN PLACE
-            - Pinned at top-32 while ONLY the right side text scrolls
+            - Pinned at top-28 while ONLY the right side text scrolls
             - Full shoulders, arms & faces visible with zero side-cropping
           */}
-          <div className="lg:col-span-5 lg:sticky lg:top-32 self-start flex flex-col items-center lg:items-start z-20">
+          <div className="lg:col-span-5 lg:sticky lg:top-28 self-start flex flex-col items-center lg:items-start z-20">
             
             {/* Header Title: "OUR STORY" (Clean, simple, non-italic) */}
             <div className="w-full text-center lg:text-left mb-4">
