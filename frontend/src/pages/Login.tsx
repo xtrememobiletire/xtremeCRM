@@ -9,9 +9,9 @@ export default function Login() {
       : 'http://localhost:4000');
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative">
+    <div className="min-h-screen bg-slate-100 flex flex-col justify-center items-center py-4 px-4 sm:px-6 relative">
       {/* Top Back Navigation to Landing Page */}
-      <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-10">
+      <div className="absolute top-3 left-3 sm:top-5 sm:left-5 z-10">
         <a
           href={landingUrl}
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-none text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:text-slate-900 hover:border-slate-300 shadow-2xs hover:shadow-xs transition cursor-pointer"
@@ -21,20 +21,20 @@ export default function Login() {
         </a>
       </div>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex flex-col items-center justify-center mb-4">
-          <a href={landingUrl} title="Return to Landing Page" className="inline-block cursor-pointer">
-            <img 
-              src="/logo-signin.png" 
-              alt="Xtreme Mobile Tire" 
-              className="h-28 sm:h-36 w-auto object-contain drop-shadow-md hover:scale-105 transition-transform" 
-            />
-          </a>
-        </div>
-      </div>
+      <div className="w-full max-w-md flex flex-col items-center">
+        {/* Compact Logo with minimal bottom margin */}
+        <a href={landingUrl} title="Return to Landing Page" className="inline-block cursor-pointer mb-2">
+          <img 
+            src="/logo-signin.png" 
+            alt="Xtreme Mobile Tire" 
+            className="h-14 sm:h-16 w-auto object-contain drop-shadow-sm hover:scale-105 transition-transform" 
+          />
+        </a>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
-        <LoginForm />
+        {/* Login Form Card */}
+        <div className="w-full">
+          <LoginForm />
+        </div>
       </div>
     </div>
   );
