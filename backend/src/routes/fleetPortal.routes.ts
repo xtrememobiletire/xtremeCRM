@@ -543,7 +543,7 @@ router.post('/request-service', async (req: Request, res: Response) => {
         vehicleId: finalVehicleId,
         countryCode: country,
         source: 'FLEET_PORTAL',
-        status: isEmergency ? 'PENDING' : 'UNVERIFIED_PUBLIC',
+        status: 'PENDING',
         urgency: isEmergency ? 'URGENT' : 'STANDARD',
         serviceAddress,
         serviceLatitude: lat,

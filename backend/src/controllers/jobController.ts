@@ -73,10 +73,19 @@ export const jobController = {
       const customerId = req.query.customerId as string;
       const search = req.query.search as string;
 
+      const isFleetJob = req.query.isFleetJob;
+      const isFleetQuery = isFleetJob === 'true' || isFleetJob === '1';
+
       const where: any = {};
       if (countryCode && countryCode !== 'ALL') where.countryCode = countryCode;
       if (status === 'ACTIVE') {
-        where.status = { notIn: ['COMPLETED', 'CANCELLED', 'UNVERIFIED_PUBLIC'] };
+        if (isFleetQuery) {
+          where.status = { notIn: ['COMPLETED', 'CANCELLED'] };
+        } else {
+          where.status = { notIn: ['COMPLETED', 'CANCELLED', 'UNVERIFIED_PUBLIC'] };
+        }
+      } else if (status === 'PENDING' && isFleetQuery) {
+        where.status = { in: ['PENDING', 'UNVERIFIED_PUBLIC'] };
       } else if (status) {
         where.status = status;
       }
@@ -125,7 +134,6 @@ export const jobController = {
 
       if (fleetId && userRole !== 'FLEET_MANAGER') where.fleetId = fleetId;
       if (customerId && userRole !== 'CUSTOMER_MEMBER') where.customerId = customerId;
-      const isFleetJob = req.query.isFleetJob;
       const source = req.query.source as any;
 
       if (source) where.source = source;
@@ -150,9 +158,15 @@ export const jobController = {
 
       // 2. Active / Unverified status isolation
       if (status === 'ACTIVE') {
-        andConditions.push({ status: { notIn: ['COMPLETED', 'CANCELLED', 'UNVERIFIED_PUBLIC'] } });
+        if (isFleetQuery) {
+          andConditions.push({ status: { notIn: ['COMPLETED', 'CANCELLED'] } });
+        } else {
+          andConditions.push({ status: { notIn: ['COMPLETED', 'CANCELLED', 'UNVERIFIED_PUBLIC'] } });
+        }
       } else if (!status) {
-        andConditions.push({ status: { not: 'UNVERIFIED_PUBLIC' } });
+        if (!isFleetQuery) {
+          andConditions.push({ status: { not: 'UNVERIFIED_PUBLIC' } });
+        }
       }
 
       // 3. Job Category refinement

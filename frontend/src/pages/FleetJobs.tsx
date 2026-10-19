@@ -60,6 +60,7 @@ export default function FleetJobs() {
       fleetId: selectedFleetId || undefined,
       isFleetJob: 'true' as any,
     } as any),
+    refetchInterval: 15000,
   });
 
   // 2. Fetch Fleets for filter dropdown
@@ -96,7 +97,8 @@ export default function FleetJobs() {
       fleetId: selectedFleetId || undefined,
       isFleetJob: 'true' as any,
     } as any),
-    staleTime: 30000,
+    staleTime: 15000,
+    refetchInterval: 15000,
   });
 
   const summaryJobs = useMemo(() => {
@@ -108,7 +110,7 @@ export default function FleetJobs() {
   // Calculate high-level summary counters
   const counters = useMemo(() => {
     const total = summaryResponse?.pagination?.total ?? summaryJobs.length;
-    const pending = summaryJobs.filter((j: any) => j.status === 'PENDING').length;
+    const pending = summaryJobs.filter((j: any) => ['PENDING', 'UNVERIFIED_PUBLIC'].includes(j.status)).length;
     const inProgress = summaryJobs.filter((j: any) => ['ASSIGNED', 'IN_PROGRESS'].includes(j.status)).length;
     const completed = summaryJobs.filter((j: any) => j.status === 'COMPLETED').length;
     return {
@@ -446,7 +448,7 @@ export default function FleetJobs() {
                         <StatusBadge status={job.status} />
                       </td>
                       <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
-                        {!job.driverId && job.status === 'PENDING' && (
+                        {!job.driverId && (job.status === 'PENDING' || job.status === 'UNVERIFIED_PUBLIC') && (
                           <button
                             type="button"
                             onClick={(e) => {

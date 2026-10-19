@@ -727,7 +727,7 @@ export default function FleetDashboard() {
                                       ? 'bg-blue-50 text-blue-700 border border-blue-200'
                                       : 'bg-amber-50 text-amber-700 border border-amber-200'
                                   }`}>
-                                    {j.status === 'UNVERIFIED_PUBLIC' ? 'AWAITING DISPATCH' : j.status}
+                                    {['UNVERIFIED_PUBLIC', 'PENDING'].includes(j.status) ? 'AWAITING DISPATCH' : j.status}
                                   </span>
                                 </td>
                                 <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">
@@ -1374,7 +1374,7 @@ export default function FleetDashboard() {
                                 ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                                 : 'bg-amber-50 text-amber-700 border border-amber-200'
                             }`}>
-                              {j.status === 'UNVERIFIED_PUBLIC' ? 'AWAITING DISPATCH' : j.status === 'IN_PROGRESS' ? 'Job Start' : j.status}
+                              {['UNVERIFIED_PUBLIC', 'PENDING'].includes(j.status) ? 'AWAITING DISPATCH' : j.status === 'IN_PROGRESS' ? 'Job Start' : j.status}
                             </span>
                           </td>
                         </tr>
