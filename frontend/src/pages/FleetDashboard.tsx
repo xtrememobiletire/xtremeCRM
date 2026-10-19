@@ -1178,6 +1178,7 @@ export default function FleetDashboard() {
                     allowPriceEdit={false}
                     showTaxToggle={false}
                     title="Required Work Order Services"
+                    hidePricing={true}
                   />
                 </div>
 

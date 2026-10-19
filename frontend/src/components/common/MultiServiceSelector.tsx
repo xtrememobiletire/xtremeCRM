@@ -27,6 +27,7 @@ export interface MultiServiceSelectorProps {
   allowPriceEdit?: boolean;
   showTaxToggle?: boolean;
   title?: string;
+  hidePricing?: boolean;
 }
 
 export default function MultiServiceSelector({
@@ -44,6 +45,7 @@ export default function MultiServiceSelector({
   allowPriceEdit = true,
   showTaxToggle = true,
   title = 'Services & Breakdown Work Order',
+  hidePricing = false,
 }: MultiServiceSelectorProps) {
   const activeItems = selectedItems || items || [];
   const handleToggleTax = setIsTaxIncluded || onToggleTaxIncluded || (() => {});
@@ -152,7 +154,9 @@ export default function MultiServiceSelector({
             <option value="">+ Add Service to Ticket...</option>
             {SERVICES_CATALOG.map((cat) => (
               <option key={cat.id} value={cat.id}>
-                {cat.name} ({formatCurrency(centsToDollars(cat.defaultPriceCents), currencySymbol)})
+                {hidePricing
+                  ? cat.name
+                  : `${cat.name} (${formatCurrency(centsToDollars(cat.defaultPriceCents), currencySymbol)})`}
               </option>
             ))}
           </select>
@@ -213,30 +217,34 @@ export default function MultiServiceSelector({
                       </button>
                     </div>
 
-                    {/* Unit Price (Editable or Static) */}
-                    {allowPriceEdit ? (
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-slate-400 font-mono">{currencySymbol}</span>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={centsToDollars(item.unitPriceCents)}
-                          onChange={(e) => handleUpdatePrice(idx, parseFloat(e.target.value) || 0)}
-                          className="w-20 px-2 py-1 text-xs font-mono font-bold rounded-lg border border-slate-200 text-slate-900 focus:outline-none focus:ring-1 focus:ring-red-500"
-                          title="Editable unit price"
-                        />
-                      </div>
-                    ) : (
-                      <div className="text-xs font-mono text-slate-600 font-semibold">
-                        {formatCurrency(centsToDollars(item.unitPriceCents), currencySymbol)} ea.
-                      </div>
-                    )}
+                    {!hidePricing && (
+                      <>
+                        {/* Unit Price (Editable or Static) */}
+                        {allowPriceEdit ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-slate-400 font-mono">{currencySymbol}</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={centsToDollars(item.unitPriceCents)}
+                              onChange={(e) => handleUpdatePrice(idx, parseFloat(e.target.value) || 0)}
+                              className="w-20 px-2 py-1 text-xs font-mono font-bold rounded-lg border border-slate-200 text-slate-900 focus:outline-none focus:ring-1 focus:ring-red-500"
+                              title="Editable unit price"
+                            />
+                          </div>
+                        ) : (
+                          <div className="text-xs font-mono text-slate-600 font-semibold">
+                            {formatCurrency(centsToDollars(item.unitPriceCents), currencySymbol)} ea.
+                          </div>
+                        )}
 
-                    {/* Line Total */}
-                    <div className="text-right w-18 font-mono font-bold text-xs text-slate-900">
-                      {formatCurrency(centsToDollars(lineSubtotal), currencySymbol)}
-                    </div>
+                        {/* Line Total */}
+                        <div className="text-right w-18 font-mono font-bold text-xs text-slate-900">
+                          {formatCurrency(centsToDollars(lineSubtotal), currencySymbol)}
+                        </div>
+                      </>
+                    )}
 
                     {/* Remove Button */}
                     <button
@@ -268,59 +276,61 @@ export default function MultiServiceSelector({
       )}
 
       {/* Tax Setting & Live Summary Card */}
-      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-        {/* Tax Toggle / Status */}
-        {showTaxToggle ? (
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={isTaxIncluded}
-              onChange={(e) => handleToggleTax(e.target.checked)}
-              className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-slate-300 cursor-pointer"
-            />
-            <span className="font-semibold text-slate-700">
-              Quote includes tax / Tax-exempt (No added tax)
-            </span>
-          </label>
-        ) : (
-          <span className="text-slate-500 font-semibold text-[11px]">
-            Direct Ingress &bull; Commercial Dispatch Rates
-          </span>
-        )}
-
-        {/* Live Financial Totals */}
-        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs font-mono justify-end">
-          <div>
-            <span className="text-slate-500">Subtotal: </span>
-            <span className="font-bold text-slate-800">
-              {formatCurrency(centsToDollars(subtotalCents), currencySymbol)}
-            </span>
-          </div>
-
-          {discountCents > 0 && (
-            <div className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-              <span className="text-emerald-600 font-medium">
-                {discountLabel || `Discount (-${discountPercent}%)`}:{' '}
+      {!hidePricing && (
+        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          {/* Tax Toggle / Status */}
+          {showTaxToggle ? (
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isTaxIncluded}
+                onChange={(e) => handleToggleTax(e.target.checked)}
+                className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-slate-300 cursor-pointer"
+              />
+              <span className="font-semibold text-slate-700">
+                Quote includes tax / Tax-exempt (No added tax)
               </span>
-              <span>-{formatCurrency(centsToDollars(discountCents), currencySymbol)}</span>
-            </div>
+            </label>
+          ) : (
+            <span className="text-slate-500 font-semibold text-[11px]">
+              Direct Ingress &bull; Commercial Dispatch Rates
+            </span>
           )}
 
-          <div>
-            <span className="text-slate-500">Tax ({Math.round(taxRate * 100)}%): </span>
-            <span className="font-bold text-slate-800">
-              {isTaxIncluded ? '$0.00' : formatCurrency(centsToDollars(taxCents), currencySymbol)}
-            </span>
-          </div>
+          {/* Live Financial Totals */}
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs font-mono justify-end">
+            <div>
+              <span className="text-slate-500">Subtotal: </span>
+              <span className="font-bold text-slate-800">
+                {formatCurrency(centsToDollars(subtotalCents), currencySymbol)}
+              </span>
+            </div>
 
-          <div className="pl-2 border-l border-slate-200">
-            <span className="text-slate-500">Total: </span>
-            <span className="font-black text-red-600 text-sm">
-              {formatCurrency(centsToDollars(totalCents), currencySymbol)}
-            </span>
+            {discountCents > 0 && (
+              <div className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                <span className="text-emerald-600 font-medium">
+                  {discountLabel || `Discount (-${discountPercent}%)`}:{' '}
+                </span>
+                <span>-{formatCurrency(centsToDollars(discountCents), currencySymbol)}</span>
+              </div>
+            )}
+
+            <div>
+              <span className="text-slate-500">Tax ({Math.round(taxRate * 100)}%): </span>
+              <span className="font-bold text-slate-800">
+                {isTaxIncluded ? '$0.00' : formatCurrency(centsToDollars(taxCents), currencySymbol)}
+              </span>
+            </div>
+
+            <div className="pl-2 border-l border-slate-200">
+              <span className="text-slate-500">Total: </span>
+              <span className="font-black text-red-600 text-sm">
+                {formatCurrency(centsToDollars(totalCents), currencySymbol)}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
