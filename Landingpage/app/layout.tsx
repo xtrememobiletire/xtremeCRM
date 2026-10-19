@@ -16,8 +16,13 @@ const serif = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "XtremeCRM",
-  description: "Next-generation CRM platform",
+  title: "Xtreme Mobile Tire | 24/7 Mobile Tire Service and Fleet Support",
+  description: "On-demand mobile tire repair, replacement, and fleet management delivered directly to your location.",
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
@@ -28,6 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn("font-sans dark", sans.variable, serif.variable)} suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/favicon.png" type="image/png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=sessionStorage.getItem("theme");if(t==="light"){document.documentElement.classList.remove("dark");}}catch(e){}})();`,
