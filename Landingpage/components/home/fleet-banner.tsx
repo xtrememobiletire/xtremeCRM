@@ -20,10 +20,7 @@ export default function FleetBanner() {
       <div className="text-left mb-6 sm:mb-8">
         <div className="flex items-center gap-2.5 mb-2.5">
           <span className="w-3 h-3 bg-black dark:bg-[var(--brand-primary)] inline-block shrink-0 shadow-sm rounded-none" />
-          <span
-            className="text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200"
-            style={{ fontFamily: '"Times New Roman", Times, serif' }}
-          >
+          <span className="text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
             Fleet Solutions
           </span>
         </div>
@@ -62,7 +59,7 @@ export default function FleetBanner() {
               {/* 
                 3. Bordered Benefits Box matching Wireframe:
                 - Generous internal padding and breathing room between lines
-                - High-contrast editorial serif typography (Playfair Display)
+                - Clean, legible simple sans-serif typography
                 - Sharp corners (rounded-none)
               */}
               <div className="relative rounded-none border border-black/20 dark:border-white/20 bg-zinc-50/80 dark:bg-white/[0.04] p-7 sm:p-9 lg:p-10 shadow-sm hover:border-[var(--brand-primary)]/50 transition-colors group/box">
@@ -73,7 +70,7 @@ export default function FleetBanner() {
                   {FLEET_BENEFITS.map((item, idx) => (
                     <li
                       key={idx}
-                      className="flex items-start gap-3 sm:gap-3.5 font-serif text-base sm:text-lg lg:text-xl leading-relaxed text-zinc-800 dark:text-zinc-200 font-normal"
+                      className="flex items-start gap-3 sm:gap-3.5 font-sans text-sm sm:text-base lg:text-[17px] leading-relaxed text-zinc-800 dark:text-zinc-200 font-normal"
                     >
                       <span className="w-1.5 h-1.5 rounded-none bg-[var(--brand-primary)] mt-2.5 shrink-0" />
                       <span>{item}</span>
