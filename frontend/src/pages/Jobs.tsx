@@ -28,6 +28,7 @@ export default function Jobs() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [urgency, setUrgency] = useState('');
+  const [jobCategory, setJobCategory] = useState<string>('ALL');
   const [page, setPage] = useState(1);
   const [selectedCountry, setSelectedCountry] = useState<'ALL' | 'CA' | 'UK' | 'US'>('ALL');
 
@@ -50,14 +51,16 @@ export default function Jobs() {
     search: search || undefined,
     driverId: isDriver ? user?.id : undefined,
     countryCode: selectedCountry,
+    jobCategory: jobCategory,
     isFleetJob: 'false',
   });
 
   const rawJobs = jobsResponse?.data || [];
-  // Strict retail roadside isolation: never display commercial fleets, trial runs, or unverified bookings on /jobs
-  // Also enforce tab isolation: never show completed in ACTIVE tab, never show active in COMPLETED tab
-  const retailJobs = rawJobs.filter((j: any) => {
-    if (j.fleetId || j.isTestService || j.status === 'UNVERIFIED_PUBLIC') return false;
+  // Strict non-fleet job visibility for /jobs: fleet jobs belong exclusively to /fleet-jobs
+  // Tab isolation: never show completed in ACTIVE tab, never show active in COMPLETED tab
+  const visibleJobs = rawJobs.filter((j: any) => {
+    if (j.status === 'UNVERIFIED_PUBLIC') return false;
+    if (j.fleetId || j.isFleetJob || j.fleet || j.isTestService) return false;
     if (!isDriver) {
       if (lifecycleTab === 'ACTIVE' && j.status === 'COMPLETED') return false;
       if (lifecycleTab === 'COMPLETED' && j.status !== 'COMPLETED') return false;
@@ -66,8 +69,8 @@ export default function Jobs() {
   });
   // Strict driver isolation: only show jobs where driverId matches current user ID
   const jobs = isDriver && user?.id
-    ? retailJobs.filter((j: any) => j.driverId === user.id || j.driver?.id === user.id)
-    : retailJobs;
+    ? visibleJobs.filter((j: any) => j.driverId === user.id || j.driver?.id === user.id)
+    : visibleJobs;
 
   const liveSelectedJob = useMemo(
     () => jobs.find((j: any) => j.id === selectedJob?.id) || selectedJob,
@@ -225,6 +228,8 @@ export default function Jobs() {
               onStatusChange={(v) => { setStatus(v); setPage(1); }}
               urgency={urgency}
               onUrgencyChange={(v) => { setUrgency(v); setPage(1); }}
+              jobCategory={jobCategory}
+              onJobCategoryChange={(cat) => { setJobCategory(cat); setPage(1); }}
               lifecycleTab={lifecycleTab}
               onLifecycleTabChange={(tab) => { setLifecycleTab(tab); setPage(1); }}
             />

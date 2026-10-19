@@ -2,7 +2,7 @@ import { Eye, UserCheck, AlertCircle, Clock, Zap, XCircle, Copy, ExternalLink } 
 import { toast } from 'sonner';
 import StatusBadge from '../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
-import { formatDate } from '../../utils/date';
+import { formatDate, formatJobWindowDual, resolveJobTimezone, formatTimeInTz } from '../../utils/date';
 import { useTenant } from '../../context/TenantContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -50,30 +50,58 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {jobs.map((job) => (
-            <tr key={job.id} className="hover:bg-slate-50/70 transition-colors">
-              <td className="table-td whitespace-nowrap">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono font-bold text-red-600 text-xs">{job.jobNumber}</span>
-                  {(job as any).isTestService && (
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
-                      TRIAL RUN
-                    </span>
+          {jobs.map((job) => {
+            const jobTz = resolveJobTimezone(job);
+            const windowInfo = (job.arrivalWindowStart || job.estimatedArrivalAt)
+              ? formatJobWindowDual(job.arrivalWindowStart || job.estimatedArrivalAt, job.arrivalWindowEnd, jobTz)
+              : null;
+
+            return (
+              <tr key={job.id} className="hover:bg-slate-50/70 transition-colors">
+                <td className="table-td whitespace-nowrap">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-mono font-bold text-red-600 text-xs">{job.jobNumber}</span>
+                    {(job as any).isTestService && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+                        ⚡ TRIAL RUN
+                      </span>
+                    )}
+                    {((job as any).source === 'MEMBER_PORTAL' || (job as any).customer?.customerType === 'MEMBERSHIP') && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-300">
+                        👑 VIP MEMBER
+                      </span>
+                    )}
+                    {((job as any).fleet || (job as any).fleetId) && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-800 border border-blue-200">
+                        🏢 {(job as any).fleet?.fleetCode || 'FLEET'}
+                      </span>
+                    )}
+                    {((job as any).source === 'WEBSITE' || (job as any).source === 'LANDING_PAGE_SELF_BOOK') && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-purple-50 text-purple-800 border border-purple-200">
+                        🌐 WEB
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-slate-400 font-mono">{formatDate(job.createdAt)}</div>
+                  {windowInfo && (
+                    <div className="mt-1 space-y-0.5">
+                      <div className="text-[10px] text-blue-700 font-bold flex items-center gap-1" title={`Customer Local Promised Window (${jobTz})`}>
+                        <Clock className="w-2.5 h-2.5 shrink-0 text-blue-600" />
+                        <span>{windowInfo.customerWindow}</span>
+                      </div>
+                      <div className="text-[9px] text-slate-500 font-mono flex items-center gap-1 pl-3.5 flex-wrap">
+                        <span className="bg-slate-100 text-slate-600 px-1 py-0.2 rounded font-medium" title="Pakistan Shift Time">
+                          {windowInfo.pktWindow}
+                        </span>
+                        {windowInfo.statusBadge && (
+                          <span className={`px-1 py-0.2 rounded font-bold ${windowInfo.isOverdue ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-blue-50 text-blue-700'}`}>
+                            • {windowInfo.statusBadge}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   )}
-                </div>
-                <div className="text-[11px] text-slate-400">{formatDate(job.createdAt)}</div>
-                {job.arrivalWindowStart && job.arrivalWindowEnd ? (
-                  <div className="text-[10px] text-blue-700 font-semibold flex items-center gap-1 mt-0.5" title="Customer Promised Window">
-                    <Clock className="w-2.5 h-2.5 shrink-0" />
-                    <span>{new Date(job.arrivalWindowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – {new Date(job.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                  </div>
-                ) : job.estimatedArrivalAt ? (
-                  <div className="text-[10px] text-blue-700 font-semibold flex items-center gap-1 mt-0.5" title="Customer Promised ETA">
-                    <Clock className="w-2.5 h-2.5 shrink-0" />
-                    <span>Promised ~{new Date(job.estimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                  </div>
-                ) : null}
-              </td>
+                </td>
               <td className="table-td">
                 {(job as any).isTestService && (job as any).lead?.companyName ? (
                   <div>
@@ -90,24 +118,57 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                   </div>
                 ) : (
                   <>
-                    <div className="font-semibold text-slate-900 text-xs sm:text-sm">
-                      {job.customer?.fullName || job.customer?.name || job.recipientName || 'Walk-in'}
+                    <div className="font-semibold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
+                      <span>{job.fleet?.name || job.customer?.fullName || job.customer?.name || job.recipientName || 'Walk-in'}</span>
+                      {job.customer?.customerType === 'MEMBERSHIP' && (
+                        <span className="px-1 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                          {job.customer.membershipTier || 'Gold'}
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] font-mono text-slate-500">
+                      {job.fleet && job.recipientName ? `${job.recipientName} • ` : ''}
                       {job.customer?.phone || job.recipientPhone || ''}
                     </div>
                   </>
                 )}
               </td>
               <td className="table-td">
-                <div className="text-xs font-semibold text-slate-800">
-                  {job.vehicle ? `${job.vehicle.year || ''} ${job.vehicle.make} ${job.vehicle.model}`.trim() : 'N/A'}
-                </div>
-                {job.vehicle?.tireSize && (
-                  <span className="inline-block mt-0.5 px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-mono text-slate-600">
-                    {job.vehicle.tireSize}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {job.vehicle?.licensePlate && (
+                    <span className="font-mono font-bold px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] text-slate-800">
+                      {job.vehicle.licensePlate}
+                    </span>
+                  )}
+                  {job.vehicle?.unitNumber && (
+                    <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-1 py-0.5 rounded border border-slate-200">
+                      U-{job.vehicle.unitNumber}
+                    </span>
+                  )}
+                  <span className="text-xs font-semibold text-slate-800">
+                    {job.vehicle ? `${job.vehicle.year || ''} ${job.vehicle.make} ${job.vehicle.model}`.trim() : (job.vehicleMakeModel || 'N/A')}
                   </span>
-                )}
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                  {job.vehicle?.tireSize && (
+                    <span className="inline-block px-1.5 py-0.5 bg-red-50 border border-red-100 rounded text-[10px] font-mono font-semibold text-red-700">
+                      {job.vehicle.tireSize}
+                    </span>
+                  )}
+                  {job.serviceItems && job.serviceItems.length > 0 && (
+                    <span className="text-[11px] font-medium text-slate-700 flex items-center gap-1">
+                      <span>• {job.serviceItems[0].serviceName}</span>
+                      {job.serviceItems.length > 1 && (
+                        <span
+                          className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200 cursor-help"
+                          title={job.serviceItems.map((si: any) => `${si.serviceName} (x${si.quantity || 1})`).join(', ')}
+                        >
+                          +{job.serviceItems.length - 1} more
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </div>
               </td>
               {!isDriver && (
                 <td className="table-td whitespace-nowrap">
@@ -171,7 +232,11 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                             <div className="text-[10px] font-mono text-emerald-700 font-semibold flex items-center gap-1 pl-3" title="Technician Driving ETA">
                               <Zap className="w-2.5 h-2.5 text-emerald-600" />
                               <span>
-                                {job.driverEtaMinutes ? `Drive ETA: ~${job.driverEtaMinutes}m` : `Arrives ~${new Date(job.driverEstimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
+                                {job.driverEtaMinutes && job.driverEtaMinutes <= 180
+                                  ? `Drive ETA: ~${job.driverEtaMinutes}m`
+                                  : job.driverEtaMinutes
+                                  ? `Out of Region (~${Math.round(job.driverEtaMinutes * 0.75)} km)`
+                                  : `Arrives ~${formatTimeInTz(job.driverEstimatedArrivalAt, jobTz)}`}
                               </span>
                             </div>
                           )}
@@ -284,7 +349,8 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                 </div>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

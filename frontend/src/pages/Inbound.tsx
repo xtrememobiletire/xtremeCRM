@@ -20,7 +20,11 @@ export default function Inbound() {
   const [callerName, setCallerName] = useState('');
   const [leadSource, setLeadSource] = useState('DIRECT_CALL');
   const [serviceAddress, setServiceAddress] = useState('');
-  const [serviceCoords, setServiceCoords] = useState<{ latitude: number | null; longitude: number | null }>({
+  const [serviceCoords, setServiceCoords] = useState<{
+    latitude: number | null;
+    longitude: number | null;
+    timezone?: string;
+  }>({
     latitude: null,
     longitude: null,
   });
@@ -101,6 +105,7 @@ export default function Inbound() {
         serviceAddress,
         serviceLatitude: serviceCoords.latitude ?? undefined,
         serviceLongitude: serviceCoords.longitude ?? undefined,
+        serviceTimezone: serviceCoords.timezone,
         notes,
         problemNotes: notes || undefined,
         upfrontAmountCents: upfrontCents,
@@ -108,10 +113,10 @@ export default function Inbound() {
         countryCode: formCountry,
         source: leadSource,
         makeUserAccount: isProvisionAccount,
-        arrivalWindowStart: arrivalWindow.arrivalWindowStart,
-        arrivalWindowEnd: arrivalWindow.arrivalWindowEnd,
-        estimatedArrivalMinutes: arrivalWindow.estimatedArrivalMinutes,
-        appointmentDate: arrivalWindow.appointmentDate,
+        arrivalWindowStart: arrivalWindow.arrivalWindowStart || new Date(Date.now() + (arrivalWindow.estimatedArrivalMinutes || 30) * 60000).toISOString(),
+        arrivalWindowEnd: arrivalWindow.arrivalWindowEnd || new Date(Date.now() + ((arrivalWindow.estimatedArrivalMinutes || 30) + 30) * 60000).toISOString(),
+        estimatedArrivalMinutes: arrivalWindow.estimatedArrivalMinutes || 30,
+        appointmentDate: arrivalWindow.appointmentDate || arrivalWindow.arrivalWindowStart || new Date(Date.now() + (arrivalWindow.estimatedArrivalMinutes || 30) * 60000).toISOString(),
         serviceItems: serviceItems.map((item) => ({
           serviceName: item.serviceName,
           category: item.category,
@@ -166,7 +171,12 @@ export default function Inbound() {
       <div className="max-w-4xl mx-auto">
         <InboundIntakeForm
           countryCode={formCountry}
-          onCountryChange={setFormCountry}
+          onCountryChange={(c) => {
+            setFormCountry(c);
+            setServiceAddress('');
+            setServiceCoords({ latitude: null, longitude: null });
+            setCallerPhone('');
+          }}
           callerPhone={callerPhone}
           setCallerPhone={setCallerPhone}
           callerName={callerName}
@@ -176,7 +186,11 @@ export default function Inbound() {
           serviceAddress={serviceAddress}
           setServiceAddress={setServiceAddress}
           onSelectLocation={(loc: GeocodeLocation) => {
-            setServiceCoords({ latitude: loc.latitude, longitude: loc.longitude });
+            setServiceCoords({
+              latitude: loc.latitude,
+              longitude: loc.longitude,
+              timezone: loc.timezone,
+            });
           }}
           vehicleMakeModel={vehicleMakeModel}
           setVehicleMakeModel={setVehicleMakeModel}
@@ -192,6 +206,7 @@ export default function Inbound() {
           setUrgency={setUrgency}
           arrivalWindow={arrivalWindow}
           setArrivalWindow={setArrivalWindow}
+          timezone={serviceCoords.timezone}
           notes={notes}
           setNotes={setNotes}
           upfrontAmountDollars={upfrontAmountDollars}

@@ -16,7 +16,7 @@ import {
 const router = Router();
 
 router.use(authenticate);
-router.use(authorize(['ADMIN', 'ACCOUNTANT']));
+router.use(authorize(['ADMIN', 'GENERAL_MANAGER', 'ACCOUNTANT', 'DEVELOPER']));
 
 /**
  * @route   GET /api/accounting/summary
@@ -137,7 +137,7 @@ router.post(
  */
 router.get(
   '/developer-profit',
-  authorize(['ADMIN']),
+  authorize(['ADMIN', 'GENERAL_MANAGER', 'DEVELOPER']),
   accountingController.getDeveloperProfit
 );
 

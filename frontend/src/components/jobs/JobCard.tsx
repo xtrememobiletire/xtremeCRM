@@ -1,6 +1,7 @@
 import { MapPin, Phone, Car, UserCheck, Eye, Clock, Zap } from 'lucide-react';
 import StatusBadge from '../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
+import { formatJobWindowDual, resolveJobTimezone, formatTimeInTz } from '../../utils/date';
 import { useTenant } from '../../context/TenantContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -18,6 +19,11 @@ export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps
   const { user } = useAuth();
   const isDriver = user?.role === 'DRIVER';
   const { currencySymbol } = useTenant();
+
+  const jobTz = resolveJobTimezone(job);
+  const windowInfo = (job.arrivalWindowStart || job.estimatedArrivalAt)
+    ? formatJobWindowDual(job.arrivalWindowStart || job.estimatedArrivalAt, job.arrivalWindowEnd, jobTz)
+    : null;
 
   return (
     <div className="card-surface p-4 space-y-3">
@@ -72,27 +78,32 @@ export default function JobCard({ job, onViewJob, onAssignDriver }: JobCardProps
       </div>
 
       {/* Timing Commitment & Driver ETA */}
-      {(job.arrivalWindowStart || job.estimatedArrivalAt || job.driverEstimatedArrivalAt || job.driverEtaMinutes) && (
+      {(windowInfo || job.driverEstimatedArrivalAt || job.driverEtaMinutes) && (
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[11px]">
-          {job.arrivalWindowStart && job.arrivalWindowEnd ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 font-semibold border border-blue-200" title="Customer Promised Window">
+          {windowInfo && (
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 font-semibold border border-blue-200" title={`Customer Local Time (${jobTz})`}>
               <Clock className="w-3 h-3 text-blue-600" />
-              <span>
-                Window: {new Date(job.arrivalWindowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – {new Date(job.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              <span>{windowInfo.customerWindow}</span>
+              <span className="text-[10px] text-blue-600 font-normal font-mono border-l border-blue-200 pl-1.5" title="Pakistan Shift Time">
+                {windowInfo.pktWindow}
               </span>
-            </span>
-          ) : job.estimatedArrivalAt ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 font-semibold border border-blue-200" title="Customer Promised ETA">
-              <Clock className="w-3 h-3 text-blue-600" />
-              <span>Promised ~{new Date(job.estimatedArrivalAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-            </span>
-          ) : null}
+              {windowInfo.statusBadge && (
+                <span className={`text-[9px] font-bold px-1 rounded ${windowInfo.isOverdue ? 'bg-red-100 text-red-700' : 'text-blue-700'}`}>
+                  • {windowInfo.statusBadge}
+                </span>
+              )}
+            </div>
+          )}
 
           {(job.driverEstimatedArrivalAt || job.driverEtaMinutes) && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200" title="Technician Driving ETA">
               <Zap className="w-3 h-3 text-emerald-600" />
               <span>
-                Tech ETA: {job.driverEtaMinutes ? `~${job.driverEtaMinutes}m` : new Date(job.driverEstimatedArrivalAt!).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                Tech ETA: {job.driverEtaMinutes && job.driverEtaMinutes <= 180
+                  ? `~${job.driverEtaMinutes}m`
+                  : job.driverEtaMinutes
+                  ? 'Out of Region'
+                  : formatTimeInTz(job.driverEstimatedArrivalAt, jobTz)}
               </span>
             </span>
           )}

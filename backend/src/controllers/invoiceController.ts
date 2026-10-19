@@ -96,12 +96,35 @@ export const invoiceController = {
       if (countryCode && countryCode !== 'ALL') where.countryCode = countryCode;
       if (status) where.status = status;
       if (invoiceType) {
-        where.invoiceType = invoiceType;
-        if (invoiceType === 'MEMBER') {
-          where.customer = { customerType: 'MEMBERSHIP' };
+        if (invoiceType === 'FLEET') {
+          where.OR = [
+            { invoiceType: 'FLEET' },
+            { fleetId: { not: null } },
+          ];
+        } else if (invoiceType === 'MEMBER') {
+          where.OR = [
+            { invoiceType: 'MEMBER' },
+            { customer: { customerType: 'MEMBERSHIP' } },
+          ];
+        } else if (invoiceType === 'CUSTOMER') {
+          where.OR = [
+            { invoiceType: 'CUSTOMER' },
+            {
+              AND: [
+                { customerId: { not: null } },
+                { fleetId: null },
+                { customer: { customerType: { not: 'MEMBERSHIP' } } },
+              ],
+            },
+          ];
+        } else {
+          where.invoiceType = invoiceType;
         }
       }
-      if (fleetId) where.fleetId = fleetId;
+      if (fleetId) {
+        delete where.OR;
+        where.fleetId = fleetId;
+      }
       if (customerId) where.customerId = customerId;
       if (search) {
         where.OR = [
@@ -306,11 +329,17 @@ export const invoiceController = {
           quantity: Math.max(1, Math.round(Number(item.quantity || 1))),
         }));
       } else if (job.serviceItems.length > 0) {
-        itemsData = job.serviceItems.map((item) => ({
-          itemDetails: `${item.serviceName} (${job.vehicle ? `${job.vehicle.year || ''} ${job.vehicle.make || ''} ${job.vehicle.model || ''}`.trim() : 'Standard Vehicle'})`,
-          unitPriceCents: item.unitPriceCents,
-          quantity: item.quantity,
-        }));
+        itemsData = job.serviceItems.map((item) => {
+          const vehDesc = job.vehicle
+            ? `${job.vehicle.unitNumber ? `[Unit ${job.vehicle.unitNumber}] ` : ''}${job.vehicle.year || ''} ${job.vehicle.make || ''} ${job.vehicle.model || ''}`.trim()
+            : 'Standard Vehicle';
+          const notesDesc = item.notes ? ` • ${item.notes}` : '';
+          return {
+            itemDetails: `${item.serviceName} (${vehDesc})${notesDesc}`,
+            unitPriceCents: item.unitPriceCents,
+            quantity: item.quantity,
+          };
+        });
       } else {
         itemsData = [
           {
@@ -322,7 +351,16 @@ export const invoiceController = {
       }
 
       const subtotalCents = itemsData.reduce((sum, it) => sum + it.unitPriceCents * it.quantity, 0);
-      const discountAmountCents = Math.max(0, Math.round(Number(discountCents || 0)));
+      let discountAmountCents = Math.max(0, Math.round(Number(discountCents || 0)));
+      if (!discountAmountCents) {
+        if (job.fleet?.discountPercent && job.fleet.discountPercent > 0) {
+          discountAmountCents = Math.round(subtotalCents * (job.fleet.discountPercent / 100));
+        } else if (job.customer?.customerType === 'MEMBERSHIP') {
+          discountAmountCents = Math.round(subtotalCents * 0.10);
+        } else if (job.subtotalCents > 0 && (job.subtotalCents + job.taxAmountCents) > job.totalCents) {
+          discountAmountCents = (job.subtotalCents + job.taxAmountCents) - job.totalCents;
+        }
+      }
       const depositCents = creditDeposit ? (job.upfrontAmountCents || 0) : 0;
 
       const { taxAmountCents, totalCents, balanceDueCents } = calculateTaxAndTotals(
@@ -415,6 +453,7 @@ export const invoiceController = {
         where: {
           id: { in: jobIds },
           fleetId,
+          isTestService: false,
           invoiceId: null,
           status: 'COMPLETED',
         },
@@ -458,8 +497,11 @@ export const invoiceController = {
       });
 
       const subtotalCents = itemsData.reduce((sum, it) => sum + it.unitPriceCents * it.quantity, 0);
-      const discountPercent = fleet.discountPercent || 0;
-      const discountCents = Math.round(subtotalCents * (discountPercent / 100));
+      // Avoid double-discounting if B2B discount was already baked into JobServiceItem.unitPriceCents at booking time
+      const explicitDiscountCents = req.body.discountCents !== undefined
+        ? Math.max(0, Math.round(Number(req.body.discountCents)))
+        : 0;
+      const discountCents = explicitDiscountCents;
       const depositCents = 0;
 
       const { taxAmountCents, totalCents, balanceDueCents } = calculateTaxAndTotals(
@@ -833,6 +875,10 @@ export const invoiceController = {
       const id = String(req.params.id);
       const { status, paymentMethod, paidAt } = req.body;
 
+      const existing = await prisma.invoice.findUnique({ where: { id } });
+      if (!existing) return sendError(res, 'Invoice not found', 404);
+      const fullNetPayable = Math.max(0, existing.totalCents - (existing.depositCents || 0));
+
       const updated = await prisma.$transaction(async (tx) => {
         const inv = await tx.invoice.update({
           where: { id },
@@ -842,7 +888,7 @@ export const invoiceController = {
             ...(status === 'PAID' && {
               paidAt: paidAt ? new Date(paidAt) : new Date(),
               balanceDueCents: 0,
-              amountPaidCents: { set: undefined }, // will preserve existing or match
+              amountPaidCents: fullNetPayable,
             }),
           },
           include: {
@@ -891,6 +937,38 @@ export const invoiceController = {
       });
 
       if (!invoice) return sendError(res, 'Invoice not found', 404);
+
+      const authUser = (req as any).user;
+      if (authUser?.role === 'FLEET_MANAGER') {
+        let fleet = await prisma.fleet.findFirst({
+          where: {
+            OR: [
+              ...(authUser.id ? [{ managerUserId: authUser.id }] : []),
+              ...(authUser.email ? [{ email: { equals: String(authUser.email), mode: 'insensitive' as const } }] : []),
+            ],
+          },
+        });
+        if (!fleet) {
+          fleet = await prisma.fleet.findFirst({ orderBy: { createdAt: 'asc' } });
+        }
+        if (!fleet || invoice.fleetId !== fleet.id) {
+          return sendError(res, 'Forbidden: Invoice does not belong to your fleet account', 403);
+        }
+      } else if (authUser?.role === 'CUSTOMER_MEMBER') {
+        let customer = await prisma.customer.findUnique({ where: { userId: authUser.id } });
+        if (!customer && authUser.email) {
+          customer = await prisma.customer.findFirst({
+            where: { email: { equals: String(authUser.email), mode: 'insensitive' as const } },
+          });
+        }
+        const isOwner =
+          customer &&
+          (invoice.customerId === customer.id ||
+            invoice.jobs?.some((j: any) => j.customerId === customer.id));
+        if (!customer || !isOwner) {
+          return sendError(res, 'Forbidden: Invoice does not belong to your member account', 403);
+        }
+      }
 
       const regionalHub = invoice.countryCode === 'US'
         ? {

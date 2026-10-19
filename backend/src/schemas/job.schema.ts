@@ -18,6 +18,7 @@ export const PaginationQuerySchema = z.object({
     z.enum(['true', 'false', '1', '0'])
   ).optional(),
   source: z.string().optional(),
+  jobCategory: z.enum(['ALL', 'RETAIL', 'MEMBER', 'FLEET', 'TRIAL']).optional(),
   sortBy: z.enum(['createdAt', 'updatedAt', 'scheduledFor']).optional().default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 }).passthrough();
@@ -28,8 +29,20 @@ export const CreateJobSchema = z.object({
   customerId: z.string().uuid().optional(),
   vehicleId: z.string().uuid().optional(),
   fleetId: z.string().uuid().optional(),
+  driverId: z.string().uuid().optional().nullable(),
   serviceAddress: z.string().optional(),
   locationAddress: z.string().optional(),
+  serviceLatitude: z.coerce.number().optional().nullable(),
+  serviceLongitude: z.coerce.number().optional().nullable(),
+  latitude: z.coerce.number().optional().nullable(),
+  longitude: z.coerce.number().optional().nullable(),
+  serviceTimezone: z.string().optional().nullable(),
+  customerName: z.string().optional().nullable(),
+  customerPhone: z.string().optional().nullable(),
+  customerEmail: z.string().optional().nullable(),
+  email: z.string().optional().nullable(),
+  vehicleMakeModel: z.string().optional().nullable(),
+  tireSize: z.string().optional().nullable(),
   recipientName: z.string().optional(),
   recipientPhone: z.string().optional(),
   urgency: z.preprocess(
@@ -44,6 +57,8 @@ export const CreateJobSchema = z.object({
     },
     z.enum(['URGENT', 'STANDARD', 'FUTURE']).default('STANDARD')
   ),
+  isTestService: z.boolean().optional().default(false),
+  prospectCompanyName: z.string().optional().nullable(),
   source: z.enum(['DIRECT_CALL', 'WHATSAPP', 'WEBSITE', 'LANDING_PAGE_SELF_BOOK', 'FLEET_PORTAL', 'MEMBER_PORTAL']).optional().default('DIRECT_CALL'),
   scheduledFor: z.string().optional(),
   appointmentDate: z.string().optional(),
@@ -76,6 +91,8 @@ export const CreateJobSchema = z.object({
   vehicle: z.object({
     make: z.string().optional(),
     model: z.string().optional(),
+    makeModel: z.string().optional(),
+    unitNumber: z.string().optional(),
     year: z.coerce.number().optional(),
     tireSize: z.string().optional(),
     licensePlate: z.string().optional(),
@@ -164,6 +181,13 @@ export const VerifyBookingAddressSchema = z.object({
   serviceAddress: z.string().min(1, 'Service address is required'),
   serviceLatitude: z.coerce.number().optional().nullable(),
   serviceLongitude: z.coerce.number().optional().nullable(),
+  serviceTimezone: z.string().optional().nullable(),
+  appointmentDate: z.string().or(z.date()).optional().nullable(),
+  arrivalWindowStart: z.string().or(z.date()).optional().nullable(),
+  arrivalWindowEnd: z.string().or(z.date()).optional().nullable(),
+  estimatedArrivalAt: z.string().or(z.date()).optional().nullable(),
+  estimatedArrivalMinutes: z.coerce.number().optional().nullable(),
+  driverId: z.string().optional().nullable(),
   recipientName: z.string().optional(),
   recipientPhone: z.string().optional(),
   problemNotes: z.string().optional(),
@@ -172,8 +196,15 @@ export const VerifyBookingAddressSchema = z.object({
   vehicleMake: z.string().optional(),
   vehicleModel: z.string().optional(),
   vehicleYear: z.coerce.number().optional().nullable(),
+  unitNumber: z.string().optional().nullable(),
   tireSize: z.string().optional(),
   licensePlate: z.string().optional(),
+  vehicleColor: z.string().optional().nullable(),
+  discountCents: z.coerce.number().optional().nullable(),
+  subtotalCents: z.coerce.number().optional().nullable(),
+  taxAmountCents: z.coerce.number().optional().nullable(),
+  taxCents: z.coerce.number().optional().nullable(),
+  totalCents: z.coerce.number().optional().nullable(),
   selectedServices: z.array(z.string()).optional(),
   serviceItems: z.array(
     z.object({
@@ -181,9 +212,10 @@ export const VerifyBookingAddressSchema = z.object({
       category: z.string().optional(),
       unitPriceCents: z.coerce.number().optional(),
       quantity: z.coerce.number().default(1),
+      notes: z.string().optional().nullable(),
     })
   ).optional(),
-});
+}).passthrough();
 
 export const ExternalDispatchTokenParamSchema = z.object({
   token: z.string().min(1, 'Token is required'),

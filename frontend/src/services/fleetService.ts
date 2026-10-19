@@ -30,6 +30,9 @@ export interface FleetItem {
   jobs?: any[];
   numberOfUnits?: number | null;
   discountPercent?: number;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   createdAt?: string;
 }
 

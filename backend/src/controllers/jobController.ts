@@ -15,6 +15,7 @@ import {
 import { getIO } from '../config/socket.js';
 import { geocodingService } from '../services/geocodingService.js';
 import { sseManager } from '../services/sseManager.js';
+import tzlookup from '@photostructure/tz-lookup';
 
 const stripDriverFinancials = (job: any) => {
   const isAudited = Boolean(job.auditedById || job.expenseStatedById);
@@ -44,11 +45,13 @@ const normalizeUrgency = (u?: string | null): 'URGENT' | 'STANDARD' | 'FUTURE' =
   return 'STANDARD';
 };
 
-const validPaymentMethod = (pm?: string | null): 'E_TRANSFER' | 'POS' | 'CASH' | 'MOTO' | 'STRIPE' | null => {
+const validPaymentMethod = (
+  pm?: string | null
+): 'E_TRANSFER' | 'POS' | 'CASH' | 'MOTO' | 'STRIPE' | 'INVOICE_NET30' | null => {
   if (!pm) return null;
   const upper = String(pm).toUpperCase();
   if (upper === 'CREDIT_CARD' || upper === 'PHONE') return 'MOTO';
-  if (['E_TRANSFER', 'POS', 'CASH', 'MOTO', 'STRIPE'].includes(upper)) {
+  if (['E_TRANSFER', 'POS', 'CASH', 'MOTO', 'STRIPE', 'INVOICE_NET30'].includes(upper)) {
     return upper as any;
   }
   return null;
@@ -73,7 +76,7 @@ export const jobController = {
       const where: any = {};
       if (countryCode && countryCode !== 'ALL') where.countryCode = countryCode;
       if (status === 'ACTIVE') {
-        where.status = { not: 'COMPLETED' };
+        where.status = { notIn: ['COMPLETED', 'CANCELLED', 'UNVERIFIED_PUBLIC'] };
       } else if (status) {
         where.status = status;
       }
@@ -128,22 +131,55 @@ export const jobController = {
       if (source) where.source = source;
 
       const andConditions: any[] = [];
-      if (isFleetJob === 'true' || isFleetJob === '1') {
+      const jobCategory = req.query.jobCategory as string;
+
+      // 1. Fleet vs Non-Fleet isolation (strict separation between /fleet-jobs and /jobs)
+      if (isFleetJob === 'false' || isFleetJob === '0') {
+        andConditions.push({
+          fleetId: null,
+          isTestService: false,
+        });
+      } else if (isFleetJob === 'true' || isFleetJob === '1') {
         andConditions.push({
           OR: [
             { fleetId: { not: null } },
             { isTestService: true },
           ],
         });
-      } else if (isFleetJob === 'false' || isFleetJob === '0') {
+      }
+
+      // 2. Active / Unverified status isolation
+      if (status === 'ACTIVE') {
+        andConditions.push({ status: { notIn: ['COMPLETED', 'CANCELLED', 'UNVERIFIED_PUBLIC'] } });
+      } else if (!status) {
+        andConditions.push({ status: { not: 'UNVERIFIED_PUBLIC' } });
+      }
+
+      // 3. Job Category refinement
+      if (jobCategory === 'MEMBER') {
+        andConditions.push({
+          OR: [
+            { source: 'MEMBER_PORTAL' },
+            { customer: { customerType: 'MEMBERSHIP' } },
+          ],
+        });
+      } else if (jobCategory === 'RETAIL') {
         andConditions.push({
           fleetId: null,
           isTestService: false,
-          ...(status === 'ACTIVE'
-            ? { status: { notIn: ['COMPLETED', 'UNVERIFIED_PUBLIC'] } }
-            : status
-            ? {}
-            : { status: { not: 'UNVERIFIED_PUBLIC' } }),
+          source: { not: 'MEMBER_PORTAL' },
+          OR: [
+            { customerId: null },
+            { customer: { customerType: 'RETAIL' } },
+          ],
+        });
+      } else if (jobCategory === 'FLEET') {
+        andConditions.push({
+          fleetId: { not: null },
+        });
+      } else if (jobCategory === 'TRIAL') {
+        andConditions.push({
+          isTestService: true,
         });
       }
 
@@ -307,6 +343,66 @@ export const jobController = {
 
       // 1. Auto-resolve or create Customer if nested details provided
       let customerId = data.customerId;
+      const authUser = (req as any).user;
+
+      if (!customerId && authUser?.id) {
+        let memberCustomer = await prisma.customer.findUnique({
+          where: { userId: authUser.id },
+        });
+        if (!memberCustomer && (authUser.email || authUser.phone)) {
+          memberCustomer = await prisma.customer.findFirst({
+            where: {
+              OR: [
+                ...(authUser.email ? [{ email: { equals: String(authUser.email), mode: 'insensitive' as const } }] : []),
+                ...(authUser.phone ? [{ phone: String(authUser.phone) }] : []),
+              ],
+            },
+          });
+          if (memberCustomer && !memberCustomer.userId) {
+            await prisma.customer.update({
+              where: { id: memberCustomer.id },
+              data: { userId: authUser.id },
+            });
+          }
+        }
+        if (!memberCustomer && authUser.role === 'CUSTOMER_MEMBER') {
+          const fallbackPhone = authUser.phone || `+14165550${Math.floor(100 + Math.random() * 900)}`;
+          memberCustomer = await prisma.customer.create({
+            data: {
+              userId: authUser.id,
+              fullName: authUser.fullName || 'Member Customer',
+              email: authUser.email,
+              phone: fallbackPhone,
+              countryCode: (['CA', 'US', 'UK'].includes(country) ? country : 'CA') as any,
+              customerType: 'MEMBERSHIP',
+              membershipTier: 'GOLD',
+              membershipExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+            },
+          });
+        }
+        if (memberCustomer) {
+          customerId = memberCustomer.id;
+          if (!data.recipientName) data.recipientName = memberCustomer.fullName;
+          if (!data.recipientPhone) data.recipientPhone = memberCustomer.phone;
+        }
+      }
+
+      if (!customerId && data.vehicleId) {
+        const existingVeh = await prisma.vehicle.findUnique({
+          where: { id: String(data.vehicleId) },
+          include: { customer: true },
+        });
+        if (existingVeh?.customerId) {
+          customerId = existingVeh.customerId;
+          if (!data.recipientName && existingVeh.customer?.fullName) {
+            data.recipientName = existingVeh.customer.fullName;
+          }
+          if (!data.recipientPhone && existingVeh.customer?.phone) {
+            data.recipientPhone = existingVeh.customer.phone;
+          }
+        }
+      }
+
       const rawPhone = data.customer?.phone || data.customerPhone || data.recipientPhone || data.phone;
       const name = data.customer?.name || data.customer?.fullName || data.customerName || data.recipientName || data.name;
       let normalizedContactPhone = '';
@@ -371,7 +467,7 @@ export const jobController = {
               data: {
                 fullName: name || 'Valued Customer',
                 phone: normalizedContactPhone,
-                email: data.customer?.email || data.email,
+                email: data.customer?.email || data.customerEmail || data.email,
                 countryCode: country as any,
               },
             });
@@ -448,6 +544,7 @@ export const jobController = {
               make: make || 'Standard',
               model: model || 'Vehicle',
               licensePlate: plate || undefined,
+              unitNumber: data.vehicle?.unitNumber || undefined,
               tireSize: tireSize,
             },
           });
@@ -493,9 +590,22 @@ export const jobController = {
         subtotalCents = data.totalCents || 16000;
       }
 
+      let discountCents = 0;
+      if (data.discountCents !== undefined && data.discountCents !== null) {
+        discountCents = Math.max(0, Math.round(Number(data.discountCents)));
+      } else if (data.source === 'MEMBER_PORTAL') {
+        discountCents = Math.round(subtotalCents * 0.10);
+      } else if (customerId) {
+        const cust = await prisma.customer.findUnique({ where: { id: customerId }, select: { customerType: true } });
+        if (cust?.customerType === 'MEMBERSHIP') {
+          discountCents = Math.round(subtotalCents * 0.10);
+        }
+      }
+
+      const netSubtotalCents = Math.max(0, subtotalCents - discountCents);
       const taxRateBps = data.taxRateBps ?? (country === 'CA' ? 1300 : country === 'UK' ? 2000 : 800);
-      const taxAmountCents = data.taxCents ?? data.taxAmount ?? Math.round((subtotalCents * taxRateBps) / 10000);
-      const totalCents = data.totalCents ?? data.totalAmount ?? (subtotalCents + taxAmountCents);
+      const taxAmountCents = data.taxCents ?? data.taxAmount ?? Math.round((netSubtotalCents * taxRateBps) / 10000);
+      const totalCents = data.totalCents ?? data.totalAmount ?? (netSubtotalCents + taxAmountCents);
 
       // IT platform royalty fee: CA: 150 cents ($1.50 CAD), US: 100 cents ($1.00 USD), UK: 100 pence (£1.00 GBP)
       const itPlatformFeeCents = country === 'CA' ? 150 : 100;
@@ -518,9 +628,28 @@ export const jobController = {
         ? Math.round(Number(data.upfrontAmountCents))
         : (data.upfrontAmountDollars !== undefined ? Math.round(Number(data.upfrontAmountDollars) * 100) : 0);
 
-      let initialPaymentStatus: 'UNPAID' | 'PARTIAL' | 'PAID_PENDING_VERIFICATION' = 'UNPAID';
-      if (upfrontAmountCents > 0) {
+      let initialPaymentStatus: 'UNPAID' | 'PARTIAL' | 'PAID_PENDING_VERIFICATION' | 'VERIFIED_PAID' = 'UNPAID';
+      const isTestService = Boolean(data.isTestService);
+      if (isTestService && totalCents === 0) {
+        initialPaymentStatus = 'VERIFIED_PAID'; // Complimentary $0.00 trial run requires no invoice chase
+      } else if (upfrontAmountCents > 0) {
         initialPaymentStatus = upfrontAmountCents >= totalCents ? 'PAID_PENDING_VERIFICATION' : 'PARTIAL';
+      }
+
+      const defaultTz = country === 'UK' ? 'Europe/London' : country === 'US' ? 'America/New_York' : 'America/Toronto';
+      let serviceTimezone = data.serviceTimezone || defaultTz;
+      if (serviceLatitude !== null && serviceLongitude !== null) {
+        try {
+          serviceTimezone = tzlookup(serviceLatitude, serviceLongitude) || serviceTimezone;
+        } catch {}
+      }
+
+      let validatedDriverId: string | undefined = undefined;
+      if (data.driverId) {
+        const drv = await prisma.user.findUnique({ where: { id: data.driverId } });
+        if (drv && drv.countryCode === country) {
+          validatedDriverId = drv.id;
+        }
       }
 
       const job = await prisma.job.create({
@@ -531,11 +660,17 @@ export const jobController = {
           customerId,
           vehicleId,
           fleetId: data.fleetId,
+          isTestService,
           createdById: creatorId,
           serviceAddress,
           serviceLatitude,
           serviceLongitude,
-          recipientName: data.recipientName || data.customer?.name || data.customer?.fullName || data.customerName || name,
+          serviceTimezone,
+          driverId: validatedDriverId,
+          assignedAt: validatedDriverId ? new Date() : undefined,
+          recipientName: data.prospectCompanyName
+            ? `${data.prospectCompanyName}${data.recipientName ? ` (${data.recipientName})` : ''}`
+            : (data.recipientName || data.customer?.name || data.customer?.fullName || data.customerName || name),
           recipientPhone: normalizedContactPhone || (data.recipientPhone ? normalizePhoneNumber(data.recipientPhone, country) : undefined),
           problemNotes: data.problemNotes || data.notes,
           urgency: normalizeUrgency(data.urgency),
@@ -545,16 +680,30 @@ export const jobController = {
             ? new Date(data.appointmentDate) 
             : data.arrivalWindowStart 
               ? new Date(data.arrivalWindowStart) 
-              : data.scheduledFor 
-                ? new Date(data.scheduledFor) 
+              : data.estimatedArrivalMinutes
+                ? new Date(Date.now() + Number(data.estimatedArrivalMinutes) * 60000)
+                : data.scheduledFor 
+                  ? new Date(data.scheduledFor) 
+                  : undefined,
+          arrivalWindowStart: data.arrivalWindowStart 
+            ? new Date(data.arrivalWindowStart) 
+            : data.estimatedArrivalMinutes
+              ? new Date(Date.now() + Number(data.estimatedArrivalMinutes) * 60000)
+              : undefined,
+          arrivalWindowEnd: data.arrivalWindowEnd 
+            ? new Date(data.arrivalWindowEnd) 
+            : data.arrivalWindowStart
+              ? new Date(new Date(data.arrivalWindowStart).getTime() + 30 * 60000)
+              : data.estimatedArrivalMinutes
+                ? new Date(Date.now() + (Number(data.estimatedArrivalMinutes) + 30) * 60000)
                 : undefined,
-          arrivalWindowStart: data.arrivalWindowStart ? new Date(data.arrivalWindowStart) : undefined,
-          arrivalWindowEnd: data.arrivalWindowEnd ? new Date(data.arrivalWindowEnd) : undefined,
           estimatedArrivalAt: data.estimatedArrivalAt 
             ? new Date(data.estimatedArrivalAt) 
-            : data.estimatedArrivalMinutes 
-              ? new Date(Date.now() + Number(data.estimatedArrivalMinutes) * 60000) 
-              : undefined,
+            : data.arrivalWindowStart
+              ? new Date(data.arrivalWindowStart)
+              : data.estimatedArrivalMinutes 
+                ? new Date(Date.now() + Number(data.estimatedArrivalMinutes) * 60000) 
+                : undefined,
           subtotalCents,
           taxRateBps,
           taxAmountCents,
@@ -564,7 +713,11 @@ export const jobController = {
           repairerFeeCents,
           paymentMethod: validPaymentMethod(data.paymentMethod),
           paymentStatus: initialPaymentStatus,
-          status: data.source === 'LANDING_PAGE_SELF_BOOK' ? 'UNVERIFIED_PUBLIC' : 'PENDING',
+          status: (data.source === 'LANDING_PAGE_SELF_BOOK' || data.source === 'MEMBER_PORTAL')
+            ? 'UNVERIFIED_PUBLIC'
+            : validatedDriverId
+              ? 'ASSIGNED'
+              : 'PENDING',
           serviceItems: {
             create: serviceItemsCreate,
           },
@@ -582,6 +735,11 @@ export const jobController = {
         const io = getIO();
         io.to(`dispatch:${country}`).emit('job:created', job);
         sseManager.broadcast(`sse:dispatch:${country}`, 'job:created', job);
+
+        if (validatedDriverId) {
+          io.to(`driver:${validatedDriverId}`).emit('job:assigned', job);
+          sseManager.broadcast(`sse:user:${validatedDriverId}`, 'job:assigned', job);
+        }
       } catch {}
 
       return sendSuccess(res, job, 'Job created successfully', 201);
@@ -1051,6 +1209,13 @@ export const jobController = {
         serviceAddress,
         serviceLatitude,
         serviceLongitude,
+        serviceTimezone,
+        appointmentDate,
+        arrivalWindowStart,
+        arrivalWindowEnd,
+        estimatedArrivalAt,
+        estimatedArrivalMinutes,
+        driverId,
         recipientName,
         recipientPhone,
         problemNotes,
@@ -1059,26 +1224,72 @@ export const jobController = {
         vehicleMake,
         vehicleModel,
         vehicleYear,
+        vehicleColor,
+        unitNumber,
         tireSize,
         licensePlate,
+        discountCents: incomingDiscountCents,
         serviceItems: incomingServiceItems,
       } = req.body;
 
       const job = await prisma.job.findUnique({
         where: { id },
-        include: { vehicle: true, serviceItems: true },
+        include: { vehicle: true, serviceItems: true, customer: true, fleet: true },
       });
       if (!job) return sendError(res, 'Job not found', 404);
 
       const updateData: any = {
         updatedAt: new Date(),
       };
-      if (job.status === 'UNVERIFIED_PUBLIC') {
+
+      if (driverId) {
+        const drv = await prisma.user.findUnique({ where: { id: String(driverId) } });
+        if (drv && drv.countryCode === job.countryCode) {
+          updateData.driverId = drv.id;
+          updateData.assignedAt = new Date();
+          updateData.status = 'ASSIGNED';
+        }
+      } else if (job.status === 'UNVERIFIED_PUBLIC') {
         updateData.status = 'PENDING';
       }
+
       if (serviceAddress) updateData.serviceAddress = serviceAddress;
       if (serviceLatitude !== undefined && serviceLatitude !== null) updateData.serviceLatitude = Number(serviceLatitude);
       if (serviceLongitude !== undefined && serviceLongitude !== null) updateData.serviceLongitude = Number(serviceLongitude);
+
+      // Resolve accurate IANA timezone from verified Mapbox coordinates or incoming payload
+      if (serviceLatitude !== undefined && serviceLatitude !== null && serviceLongitude !== undefined && serviceLongitude !== null) {
+        try {
+          updateData.serviceTimezone = tzlookup(Number(serviceLatitude), Number(serviceLongitude)) || serviceTimezone || job.serviceTimezone;
+        } catch {
+          if (serviceTimezone) updateData.serviceTimezone = serviceTimezone;
+        }
+      } else if (serviceTimezone) {
+        updateData.serviceTimezone = serviceTimezone;
+      }
+
+      if (appointmentDate) updateData.appointmentDate = new Date(appointmentDate);
+      if (arrivalWindowStart) {
+        updateData.arrivalWindowStart = new Date(arrivalWindowStart);
+        updateData.estimatedArrivalAt = new Date(arrivalWindowStart);
+      } else if (estimatedArrivalAt) {
+        updateData.estimatedArrivalAt = new Date(estimatedArrivalAt);
+      } else if (estimatedArrivalMinutes) {
+        const etaDate = new Date(Date.now() + Number(estimatedArrivalMinutes) * 60000);
+        updateData.arrivalWindowStart = etaDate;
+        updateData.estimatedArrivalAt = etaDate;
+      }
+
+      if (arrivalWindowEnd) {
+        updateData.arrivalWindowEnd = new Date(arrivalWindowEnd);
+      } else if (updateData.arrivalWindowStart) {
+        updateData.arrivalWindowEnd = new Date(updateData.arrivalWindowStart.getTime() + 30 * 60000);
+      }
+
+      if (estimatedArrivalMinutes !== undefined && estimatedArrivalMinutes !== null) {
+        updateData.estimatedArrivalMinutes = Number(estimatedArrivalMinutes);
+      }
+
       if (recipientName) updateData.recipientName = recipientName;
       if (recipientPhone) {
         const pVal = validateAndNormalizePhone(recipientPhone, job.countryCode);
@@ -1089,7 +1300,8 @@ export const jobController = {
       if (paymentMethod !== undefined) updateData.paymentMethod = validPaymentMethod(paymentMethod);
 
       // Update or create vehicle specs (Crucial for mobile tire vans to stock the right tire)
-      if (vehicleMake || vehicleModel || vehicleYear || tireSize || licensePlate) {
+      if (vehicleMake || vehicleModel || vehicleYear || vehicleColor !== undefined || tireSize || licensePlate !== undefined || unitNumber !== undefined) {
+        const cleanPlate = licensePlate && String(licensePlate).trim() ? String(licensePlate).trim().toUpperCase() : undefined;
         if (job.vehicleId) {
           await prisma.vehicle.update({
             where: { id: job.vehicleId },
@@ -1097,8 +1309,10 @@ export const jobController = {
               ...(vehicleMake ? { make: vehicleMake } : {}),
               ...(vehicleModel ? { model: vehicleModel } : {}),
               ...(vehicleYear ? { year: Number(vehicleYear) } : {}),
+              ...(vehicleColor !== undefined ? { color: vehicleColor ? String(vehicleColor).trim() : null } : {}),
+              ...(unitNumber !== undefined ? { unitNumber: unitNumber ? String(unitNumber).trim() : null } : {}),
               ...(tireSize ? { tireSize } : {}),
-              ...(licensePlate ? { licensePlate } : {}),
+              ...(cleanPlate ? { licensePlate: cleanPlate } : {}),
             },
           });
         } else {
@@ -1108,8 +1322,10 @@ export const jobController = {
               make: vehicleMake || 'Standard',
               model: vehicleModel || 'Vehicle',
               year: Number(vehicleYear) || new Date().getFullYear(),
+              color: vehicleColor ? String(vehicleColor).trim() : null,
+              unitNumber: unitNumber ? String(unitNumber).trim() : null,
               tireSize: tireSize || '225/65R17',
-              licensePlate: licensePlate || undefined,
+              licensePlate: cleanPlate || undefined,
             },
           });
           updateData.vehicleId = newVeh.id;
@@ -1125,15 +1341,28 @@ export const jobController = {
           category: item.category || 'TIRE_SERVICE',
           unitPriceCents: Number(item.unitPriceCents) || 5000,
           quantity: Number(item.quantity) || 1,
+          notes: item.notes || null,
         }));
         await prisma.jobServiceItem.createMany({ data: itemsToCreate });
         const subtotal = itemsToCreate.reduce((s: number, i: any) => s + i.unitPriceCents * i.quantity, 0);
+
+        // Contract or VIP discount calculation
+        let discountCents = 0;
+        if (incomingDiscountCents !== undefined && incomingDiscountCents !== null) {
+          discountCents = Math.round(Number(incomingDiscountCents));
+        } else if (job.fleet?.discountPercent) {
+          discountCents = Math.round(subtotal * (Number(job.fleet.discountPercent) / 100));
+        } else if (job.customer?.customerType === 'MEMBERSHIP' || job.source === 'MEMBER_PORTAL') {
+          discountCents = Math.round(subtotal * 0.10);
+        }
+        const netSubtotal = Math.max(0, subtotal - discountCents);
         const taxRateBps = job.countryCode === 'CA' ? 1300 : job.countryCode === 'UK' ? 2000 : 800;
-        const taxAmount = Math.round((subtotal * taxRateBps) / 10000);
+        const taxAmount = Math.round((netSubtotal * taxRateBps) / 10000);
+
         updateData.subtotalCents = subtotal;
         updateData.taxRateBps = taxRateBps;
         updateData.taxAmountCents = taxAmount;
-        updateData.totalCents = subtotal + taxAmount;
+        updateData.totalCents = netSubtotal + taxAmount;
       }
 
       const updated = await prisma.job.update({
@@ -1143,12 +1372,19 @@ export const jobController = {
           customer: true,
           vehicle: true,
           serviceItems: true,
+          fleet: true,
+          driver: true,
         },
       });
 
       try {
         const io = getIO();
         io.to(`dispatch:${updated.countryCode}`).emit('job:verified', updated);
+        if (driverId) {
+          io.to(`dispatch:${updated.countryCode}`).emit('job:assigned', updated);
+          io.to(`driver:${driverId}`).emit('job:assigned', updated);
+          sseManager.broadcast(`sse:jobs:${driverId}`, 'job:assigned', updated);
+        }
         sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'job:verified', updated);
       } catch {}
 

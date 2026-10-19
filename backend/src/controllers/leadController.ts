@@ -11,10 +11,11 @@ import {
   generateUniqueFleetCode,
 } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
-import { refillAgentQueueAtomic, checkAndCompleteBatches, getQueue, QUEUES } from '../services/queueService.js';
+import { refillAgentQueueAtomic, claimCallbackLeadAtomic, checkAndCompleteBatches, getQueue, QUEUES } from '../services/queueService.js';
 import { sseManager } from '../services/sseManager.js';
 import { validateAndNormalizePhone } from '../utils/validators.js';
 import { logger } from '../utils/logger.js';
+import { resolveLeadTimezone, zonedWallTimeToUtc } from '../utils/timezone.js';
 
 export const VA_LEAD_CAP = 1;
 
@@ -69,7 +70,7 @@ export const leadController = {
         if (!lead.assignedAgentId && ['NEW', 'CALLED'].includes(lead.status) && lead.stage === 'VA_OUTREACH') {
           m.unassignedLeads++;
         }
-        if (lead.assignedAgentId && ['NEW', 'CALLED'].includes(lead.status) && ['VA_OUTREACH', 'AGENT_CALLBACK'].includes(lead.stage)) {
+        if (lead.assignedAgentId && ['NEW', 'CALLED', 'CALLBACK'].includes(lead.status) && ['VA_OUTREACH', 'AGENT_CALLBACK'].includes(lead.stage)) {
           m.heldLeads++;
         }
         if (['CONVERTED', 'DEAD'].includes(lead.status)) {
@@ -250,7 +251,7 @@ export const leadController = {
             assignedLeads: {
               where: {
                 stage: { in: ['VA_OUTREACH', 'AGENT_CALLBACK'] },
-                status: { in: ['NEW', 'CALLED'] },
+                status: { in: ['NEW', 'CALLED', 'CALLBACK'] },
               },
               select: { id: true },
             },
@@ -401,6 +402,9 @@ export const leadController = {
               select: { id: true, fullName: true, role: true },
             },
             assignedDispatcher: {
+              select: { id: true, fullName: true, role: true },
+            },
+            lastCalledByVa: {
               select: { id: true, fullName: true, role: true },
             },
             testServices: {
@@ -591,7 +595,11 @@ export const leadController = {
       if (notes !== undefined) data.notes = notes;
       if (dispatcherNotes !== undefined) data.dispatcherNotes = dispatcherNotes;
       if (priority !== undefined) data.priority = Number(priority);
-      if (assignedAgentId !== undefined) data.assignedAgentId = assignedAgentId;
+      if (assignedAgentId !== undefined) {
+        data.assignedAgentId = assignedAgentId || null;
+        data.assignmentMethod = assignedAgentId ? 'MANUAL' : null;
+        data.assignedAt = assignedAgentId ? new Date() : null;
+      }
       if (assignedDispatcherId !== undefined) data.assignedDispatcherId = assignedDispatcherId;
       if (whatsappFollowUp !== undefined) data.whatsappFollowUp = whatsappFollowUp;
       if (whatsappNotes !== undefined) data.whatsappNotes = whatsappNotes;
@@ -605,6 +613,7 @@ export const leadController = {
           uploadedBy: { select: { id: true, fullName: true, role: true } },
           assignedAgent: { select: { id: true, fullName: true, role: true } },
           assignedDispatcher: { select: { id: true, fullName: true, role: true } },
+          lastCalledByVa: { select: { id: true, fullName: true, role: true } },
         },
       });
 
@@ -617,6 +626,35 @@ export const leadController = {
       } catch {}
 
       return sendSuccess(res, updated, 'Lead updated');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Claim an unassigned callback lead (Atomic ACID with SKIP LOCKED)
+   */
+  async claimCallbackLead(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const agentId = (req as any).user?.id;
+      if (!agentId) return sendError(res, 'Unauthorized', 401);
+
+      const claimed = await claimCallbackLeadAtomic(id, agentId);
+      if (!claimed) {
+        return sendError(res, 'Could not claim callback lead. It may have already been claimed or rescheduled.', 409);
+      }
+
+      const lead = await prisma.lead.findUnique({
+        where: { id },
+        include: {
+          uploadedBy: { select: { id: true, fullName: true, role: true } },
+          assignedAgent: { select: { id: true, fullName: true, role: true } },
+          lastCalledByVa: { select: { id: true, fullName: true, role: true } },
+        },
+      });
+
+      return sendSuccess(res, lead, 'Callback lead claimed successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }
@@ -1651,9 +1689,11 @@ export const leadController = {
       const scheduledCallbacks = await prisma.lead.findMany({
         where: {
           stage: 'AGENT_CALLBACK',
+          status: 'CALLBACK',
+          callbackDate: { lte: now },
           OR: [
             { assignedAgentId: agentId },
-            { assignedAgentId: null, callbackDate: { lte: now } },
+            { assignedAgentId: null },
           ],
           ...(countryCode ? { countryCode } : {}),
         },
@@ -1666,20 +1706,39 @@ export const leadController = {
       });
 
       // 2. Fetch currently active leads for this agent
-      const activeLeads = await prisma.lead.findMany({
-        where: {
-          assignedAgentId: agentId,
-          stage: 'VA_OUTREACH',
-          status: { in: ['NEW', 'CALLED'] },
-          OR: [{ disposition: null }],
-        },
-        orderBy: [{ createdAt: 'desc' }, { priority: 'desc' }],
+      const activeWhere: any = {
+        assignedAgentId: agentId,
+        stage: 'VA_OUTREACH',
+        status: { in: ['NEW', 'CALLED'] },
+        OR: [{ disposition: null }],
+        ...(batchId ? { batchId } : {}),
+      };
+
+      let activeLeads = await prisma.lead.findMany({
+        where: activeWhere,
+        orderBy: [{ priority: 'desc' }, { numberOfUnits: 'desc' }, { createdAt: 'asc' }],
         take: MAX_ACTIVE,
         include: {
           uploadedBy: { select: { id: true, fullName: true, role: true } },
           batch: { select: { id: true, batchName: true, countryCode: true } },
         },
       });
+
+      // INSTANT AUTO-PULL: If VA holds 0 active leads upon entering the batch, pull #1 priority unassigned lead immediately!
+      if (activeLeads.length === 0) {
+        const pulled = await refillAgentQueueAtomic(agentId, countryCode || 'CA', MAX_ACTIVE, batchId);
+        if (pulled > 0) {
+          activeLeads = await prisma.lead.findMany({
+            where: activeWhere,
+            orderBy: [{ priority: 'desc' }, { numberOfUnits: 'desc' }, { createdAt: 'asc' }],
+            take: MAX_ACTIVE,
+            include: {
+              uploadedBy: { select: { id: true, fullName: true, role: true } },
+              batch: { select: { id: true, batchName: true, countryCode: true } },
+            },
+          });
+        }
+      }
 
       const unassignedPoolCount = await prisma.lead.count({
         where: {
@@ -1750,6 +1809,7 @@ export const leadController = {
 
       let newStatus: any = 'CALLED';
       let newStage: any = 'VA_OUTREACH';
+      let parsedCallbackDate: Date | null = null;
 
       const updateData: any = {
         disposition: disposition as any,
@@ -1762,10 +1822,39 @@ export const leadController = {
       } else if (disposition === 'CALLBACK') {
         newStatus = 'CALLBACK';
         newStage = 'AGENT_CALLBACK';
-        updateData.callbackDate = callbackDate ? new Date(callbackDate) : new Date(Date.now() + 24 * 3600 * 1000);
+
+        const tz = req.body.callbackTimezone || resolveLeadTimezone({
+          countryCode: lead.countryCode,
+          phone: lead.phone,
+          address: lead.address,
+        });
+
+        if (callbackDate) {
+          if (typeof callbackDate === 'string' && callbackDate.includes('-') && callbackTime) {
+            const dateStr = callbackDate.includes('T') ? callbackDate.split('T')[0] : callbackDate;
+            const timeParts = String(callbackTime).match(/(\d{1,2}):(\d{2})/);
+            if (timeParts) {
+              let hour = parseInt(timeParts[1], 10);
+              const minute = parseInt(timeParts[2], 10);
+              if (/pm/i.test(callbackTime) && hour < 12) hour += 12;
+              if (/am/i.test(callbackTime) && hour === 12) hour = 0;
+              parsedCallbackDate = zonedWallTimeToUtc(dateStr, hour, minute, tz);
+            } else {
+              parsedCallbackDate = new Date(callbackDate);
+            }
+          } else {
+            parsedCallbackDate = new Date(callbackDate);
+          }
+        } else {
+          parsedCallbackDate = new Date(Date.now() + 24 * 3600 * 1000);
+        }
+
+        updateData.callbackDate = parsedCallbackDate;
         updateData.callbackDay = callbackDay || undefined;
         updateData.callbackTime = callbackTime || undefined;
-        updateData.assignedAgentId = null; // Released to callbacks pool
+        // Keep unassigned in Callback Pool until callbackDate arrives (lastCalledByVaId stores sticky VA)
+        const isFutureCallback = parsedCallbackDate && parsedCallbackDate.getTime() > Date.now();
+        updateData.assignedAgentId = isFutureCallback ? null : (agentId || lead.assignedAgentId || null);
       } else if (disposition === 'INTERESTED' || disposition === 'WARM_TRANSFER') {
         newStatus = 'CALLED';
         newStage = 'DISPATCHER_REVIEW';
@@ -1774,28 +1863,48 @@ export const leadController = {
         // Immediate 1-strike kill for Ring No Contact
         newStatus = 'DEAD';
         newStage = 'DISQUALIFIED';
-        updateData.disqualifiedAtStage = 'VA_OUTREACH';
+        updateData.disqualifiedAtStage = lead.stage || 'VA_OUTREACH';
         updateData.disqualificationReason = 'UNRESPONSIVE';
         updateData.disqualifiedNotes = 'Ring No Contact (Dead line / continuous ringing) - Disqualified on 1st attempt';
         updateData.assignedAgentId = null;
       } else if (['NO_ANSWER', 'VOICEMAIL'].includes(disposition)) {
         const newAttempts = (lead.callAttemptsCount || 0) + 1;
-        if (newAttempts >= 3) {
-          newStatus = 'DEAD';
-          newStage = 'DISQUALIFIED';
-          updateData.disqualifiedAtStage = 'VA_OUTREACH';
-          updateData.disqualificationReason = 'UNRESPONSIVE';
-          updateData.disqualifiedNotes = `Auto-disqualified after 3 failed call attempts (${disposition})`;
-          updateData.assignedAgentId = null;
+        if (lead.stage === 'AGENT_CALLBACK') {
+          // Callback follow-up: up to 5 attempts before disqualification
+          if (newAttempts >= 5) {
+            newStatus = 'DEAD';
+            newStage = 'DISQUALIFIED';
+            updateData.disqualifiedAtStage = 'AGENT_CALLBACK';
+            updateData.disqualificationReason = 'UNRESPONSIVE';
+            updateData.disqualifiedNotes = `Auto-disqualified after 5 failed callback attempts (${disposition})`;
+            updateData.assignedAgentId = null;
+          } else {
+            // Reschedule callback +2 hours
+            newStatus = 'CALLBACK';
+            newStage = 'AGENT_CALLBACK';
+            parsedCallbackDate = new Date(Date.now() + 2 * 3600 * 1000);
+            updateData.callbackDate = parsedCallbackDate;
+            updateData.assignedAgentId = agentId || lead.assignedAgentId || null;
+          }
         } else {
-          newStatus = 'CALLED';
-          newStage = 'VA_OUTREACH';
-          updateData.assignedAgentId = null; // Recycled back to unassigned pool
+          // Standard cold outreach: up to 3 attempts
+          if (newAttempts >= 3) {
+            newStatus = 'DEAD';
+            newStage = 'DISQUALIFIED';
+            updateData.disqualifiedAtStage = 'VA_OUTREACH';
+            updateData.disqualificationReason = 'UNRESPONSIVE';
+            updateData.disqualifiedNotes = `Auto-disqualified after 3 failed call attempts (${disposition})`;
+            updateData.assignedAgentId = null;
+          } else {
+            newStatus = 'CALLED';
+            newStage = 'VA_OUTREACH';
+            updateData.assignedAgentId = null; // Recycled back to unassigned pool
+          }
         }
       } else if (['NOT_INTERESTED', 'WRONG_NUMBER'].includes(disposition)) {
         newStatus = 'DEAD';
         newStage = 'DISQUALIFIED';
-        updateData.disqualifiedAtStage = 'VA_OUTREACH';
+        updateData.disqualifiedAtStage = lead.stage || 'VA_OUTREACH';
         updateData.disqualificationReason = disqualificationReason || (disposition === 'WRONG_NUMBER' ? 'WRONG_NUMBER' : 'NOT_INTERESTED');
         updateData.disqualifiedNotes = notes || null;
         updateData.assignedAgentId = null;
@@ -1814,11 +1923,31 @@ export const leadController = {
         where: { id },
         data: updateData,
         include: {
-          uploadedBy: { select: { id: true, fullName: true } },
-          assignedAgent: { select: { id: true, fullName: true } },
-          assignedDispatcher: { select: { id: true, fullName: true } },
+          uploadedBy: { select: { id: true, fullName: true, role: true } },
+          assignedAgent: { select: { id: true, fullName: true, role: true } },
+          assignedDispatcher: { select: { id: true, fullName: true, role: true } },
+          lastCalledByVa: { select: { id: true, fullName: true, role: true } },
         },
       });
+
+      // Enqueue delayed callback trigger if scheduled in the future
+      if (parsedCallbackDate && parsedCallbackDate.getTime() > Date.now()) {
+        const boss = getQueue();
+        if (boss) {
+          try {
+            await boss.send(
+              QUEUES.CALLBACK_DUE_TRIGGER,
+              {
+                leadId: updated.id,
+                preferredAgentId: agentId || lead.lastCalledByVaId || lead.assignedAgentId || undefined,
+              },
+              { startAfter: parsedCallbackDate }
+            );
+          } catch (qErr) {
+            logger.warn(`[Disposition] Could not enqueue callback due trigger:`, qErr);
+          }
+        }
+      }
 
       // Synchronously execute atomic refill for VA (1-lead cap, zero polling)
       if (agentId) {

@@ -326,22 +326,38 @@ export function useSSE() {
         lastActivityRef.current = Date.now();
         try {
           const job = JSON.parse(event.data);
-          queryClient.setQueriesData({ queryKey: ['jobs'] }, (oldData: any) => {
-            if (!oldData) return oldData;
-            if (Array.isArray(oldData.data)) {
-              if (oldData.data.some((j: any) => j.id === job.id)) return oldData;
-              return {
-                ...oldData,
-                data: [job, ...oldData.data],
-                total: (oldData.total || oldData.data.length) + 1,
-              };
-            }
-            return oldData;
-          });
+          const isFleetOrTrial = Boolean(job.fleetId || job.isTestService);
+          const isUnverified = job.status === 'UNVERIFIED_PUBLIC';
+
+          if (!isFleetOrTrial && !isUnverified) {
+            queryClient.setQueriesData({ queryKey: ['jobs'] }, (oldData: any) => {
+              if (!oldData) return oldData;
+              if (Array.isArray(oldData.data)) {
+                if (oldData.data.some((j: any) => j.id === job.id)) return oldData;
+                return {
+                  ...oldData,
+                  data: [job, ...oldData.data],
+                  total: (oldData.total || oldData.data.length) + 1,
+                };
+              }
+              return oldData;
+            });
+          }
         } catch {
           scheduleInvalidation(['jobs', 'dispatch-jobs']);
         }
-        scheduleInvalidation(['dashboard-stats', 'pending-jobs-count', 'dispatch-map-jobs']);
+        scheduleInvalidation([
+          'jobs',
+          'fleet-jobs',
+          'fleet-jobs-summary',
+          'fleet-portal-jobs',
+          'fleet-portal-dashboard',
+          'member-portal-jobs',
+          'bookings-queue',
+          'dashboard-stats',
+          'pending-jobs-count',
+          'dispatch-map-jobs',
+        ]);
       };
 
       const handleBookingCreated = (event: MessageEvent) => {

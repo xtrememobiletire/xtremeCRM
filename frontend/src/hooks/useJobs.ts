@@ -11,6 +11,7 @@ export function useJobs(params?: {
   countryCode?: string;
   driverId?: string;
   isFleetJob?: boolean | string;
+  jobCategory?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }) {

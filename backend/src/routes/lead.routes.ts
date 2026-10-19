@@ -95,6 +95,13 @@ router.patch('/:id', authenticate, leadController.updateLead);
 router.patch('/:id/disposition', authenticate, leadController.setDisposition);
 
 /**
+ * @route   POST /api/leads/:id/claim-callback
+ * @desc    Claim an unassigned due callback lead (Atomic ACID with SKIP LOCKED)
+ * @access  Private
+ */
+router.post('/:id/claim-callback', authenticate, leadController.claimCallbackLead);
+
+/**
  * @route   POST /api/leads/:id/advance-stage
  * @desc    Advance lead stage in the pipeline (VA -> Dispatcher Review -> Trial -> Contract)
  * @access  Private

@@ -244,18 +244,7 @@ export default function FleetInfoSection({ formData, onChange, countryCode = 'CA
             />
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">Number of Units (NOU)</label>
-            <input
-              type="number"
-              min="0"
-              value={formData.numberOfUnits}
-              onChange={(e) => onChange('numberOfUnits', e.target.value)}
-              placeholder="e.g. 25"
-              className="input-base font-mono"
-            />
-          </div>
+        <div className="grid grid-cols-1 gap-3">
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Contract Discount %</label>
             <input

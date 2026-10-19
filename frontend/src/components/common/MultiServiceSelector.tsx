@@ -9,6 +9,7 @@ export interface SelectedServiceItem {
   category: 'TIRE_SERVICE' | 'ROADSIDE_ASSISTANCE' | 'MAINTENANCE';
   unitPriceCents: number;
   quantity: number;
+  notes?: string;
 }
 
 export interface MultiServiceSelectorProps {
@@ -18,9 +19,14 @@ export interface MultiServiceSelectorProps {
   countryCode?: string;
   currencySymbol?: string;
   taxRate?: number;
-  isTaxIncluded: boolean;
+  isTaxIncluded?: boolean;
   setIsTaxIncluded?: (val: boolean) => void;
   onToggleTaxIncluded?: (val: boolean) => void;
+  discountPercent?: number;
+  discountLabel?: string;
+  allowPriceEdit?: boolean;
+  showTaxToggle?: boolean;
+  title?: string;
 }
 
 export default function MultiServiceSelector({
@@ -30,9 +36,14 @@ export default function MultiServiceSelector({
   countryCode: _countryCode,
   currencySymbol = '$',
   taxRate = 0.13,
-  isTaxIncluded,
+  isTaxIncluded = false,
   setIsTaxIncluded,
   onToggleTaxIncluded,
+  discountPercent = 0,
+  discountLabel,
+  allowPriceEdit = true,
+  showTaxToggle = true,
+  title = 'Services & Breakdown Work Order',
 }: MultiServiceSelectorProps) {
   const activeItems = selectedItems || items || [];
   const handleToggleTax = setIsTaxIncluded || onToggleTaxIncluded || (() => {});
@@ -94,17 +105,30 @@ export default function MultiServiceSelector({
     onChange(updated);
   };
 
+  const handleUpdateNotes = (index: number, notes: string) => {
+    const updated = [...activeItems];
+    updated[index].notes = notes;
+    onChange(updated);
+  };
+
   // Financial calculations
   const subtotalCents = activeItems.reduce(
     (sum, item) => sum + item.unitPriceCents * item.quantity,
     0
   );
 
+  const discountCents =
+    discountPercent && discountPercent > 0
+      ? Math.round(subtotalCents * (discountPercent / 100))
+      : 0;
+
+  const netSubtotalCents = Math.max(0, subtotalCents - discountCents);
+
   const taxCents = isTaxIncluded
     ? 0
-    : Math.round(subtotalCents * taxRate);
+    : Math.round(netSubtotalCents * taxRate);
 
-  const totalCents = isTaxIncluded ? subtotalCents : subtotalCents + taxCents;
+  const totalCents = isTaxIncluded ? netSubtotalCents : netSubtotalCents + taxCents;
 
   return (
     <div className="space-y-3">
@@ -112,7 +136,7 @@ export default function MultiServiceSelector({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
           <Wrench className="w-3.5 h-3.5 text-red-600" />
-          <span>Services & Breakdown Work Order <span className="text-red-500">*</span></span>
+          <span>{title} <span className="text-red-500">*</span></span>
         </label>
 
         {/* Add Service Dropdown Picker */}
@@ -149,73 +173,93 @@ export default function MultiServiceSelector({
             return (
               <div
                 key={`${item.serviceId}-${idx}`}
-                className="p-2.5 sm:p-3 rounded-xl border border-slate-200 bg-white shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                className="p-2.5 sm:p-3 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-2"
               >
-                {/* Left: Service Title & Badge */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900 truncate">
-                      {item.serviceName}
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-600 uppercase">
-                      {item.category.replace('_SERVICE', '').replace('_ASSISTANCE', '')}
-                    </span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  {/* Left: Service Title & Badge */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-slate-900 truncate">
+                        {item.serviceName}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-600 uppercase">
+                        {item.category.replace('_SERVICE', '').replace('_ASSISTANCE', '')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Right: Quantity Controls, Unit Price & Line Total */}
+                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                    {/* Quantity Counter */}
+                    <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-slate-50 shadow-inner">
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateQuantity(idx, item.quantity - 1)}
+                        className="px-2 py-0.5 text-xs font-bold text-slate-600 hover:bg-slate-200 transition cursor-pointer"
+                        title="Decrease quantity"
+                      >
+                        -
+                      </button>
+                      <span className="px-2.5 py-0.5 text-xs font-bold font-mono text-slate-900 bg-white">
+                        {item.quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateQuantity(idx, item.quantity + 1)}
+                        className="px-2 py-0.5 text-xs font-bold text-slate-600 hover:bg-slate-200 transition cursor-pointer"
+                        title="Increase quantity"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    {/* Unit Price (Editable or Static) */}
+                    {allowPriceEdit ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-slate-400 font-mono">{currencySymbol}</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={centsToDollars(item.unitPriceCents)}
+                          onChange={(e) => handleUpdatePrice(idx, parseFloat(e.target.value) || 0)}
+                          className="w-20 px-2 py-1 text-xs font-mono font-bold rounded-lg border border-slate-200 text-slate-900 focus:outline-none focus:ring-1 focus:ring-red-500"
+                          title="Editable unit price"
+                        />
+                      </div>
+                    ) : (
+                      <div className="text-xs font-mono text-slate-600 font-semibold">
+                        {formatCurrency(centsToDollars(item.unitPriceCents), currencySymbol)} ea.
+                      </div>
+                    )}
+
+                    {/* Line Total */}
+                    <div className="text-right w-18 font-mono font-bold text-xs text-slate-900">
+                      {formatCurrency(centsToDollars(lineSubtotal), currencySymbol)}
+                    </div>
+
+                    {/* Remove Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveItem(idx)}
+                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                      title="Remove item"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
 
-                {/* Right: Quantity Controls, Editable Unit Price & Line Total */}
-                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                  {/* Quantity Counter */}
-                  <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-slate-50 shadow-inner">
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateQuantity(idx, item.quantity - 1)}
-                      className="px-2 py-0.5 text-xs font-bold text-slate-600 hover:bg-slate-200 transition cursor-pointer"
-                      title="Decrease quantity"
-                    >
-                      -
-                    </button>
-                    <span className="px-2.5 py-0.5 text-xs font-bold font-mono text-slate-900 bg-white">
-                      {item.quantity}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateQuantity(idx, item.quantity + 1)}
-                      className="px-2 py-0.5 text-xs font-bold text-slate-600 hover:bg-slate-200 transition cursor-pointer"
-                      title="Increase quantity"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  {/* Unit Price (Editable) */}
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-slate-400 font-mono">{currencySymbol}</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={centsToDollars(item.unitPriceCents)}
-                      onChange={(e) => handleUpdatePrice(idx, parseFloat(e.target.value) || 0)}
-                      className="w-20 px-2 py-1 text-xs font-mono font-bold rounded-lg border border-slate-200 text-slate-900 focus:outline-none focus:ring-1 focus:ring-red-500"
-                      title="Editable unit price"
-                    />
-                  </div>
-
-                  {/* Line Total */}
-                  <div className="text-right w-18 font-mono font-bold text-xs text-slate-900">
-                    {formatCurrency(centsToDollars(lineSubtotal), currencySymbol)}
-                  </div>
-
-                  {/* Remove Button */}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveItem(idx)}
-                    className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                    title="Remove item"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                {/* Optional Line Notes (e.g. Wheel Position / Notes) */}
+                <div className="pt-1 border-t border-slate-100 flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 shrink-0">Notes / Position:</span>
+                  <input
+                    type="text"
+                    value={item.notes || ''}
+                    onChange={(e) => handleUpdateNotes(idx, e.target.value)}
+                    placeholder="e.g. Front driver-side, trailer right-rear inner, spare requested..."
+                    className="w-full px-2 py-0.5 text-[11px] text-slate-700 bg-slate-50 border border-slate-200 rounded focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300"
+                  />
                 </div>
               </div>
             );
@@ -224,34 +268,51 @@ export default function MultiServiceSelector({
       )}
 
       {/* Tax Setting & Live Summary Card */}
-      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-        {/* Tax Toggle */}
-        <label className="flex items-center gap-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={isTaxIncluded}
-            onChange={(e) => handleToggleTax(e.target.checked)}
-            className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-slate-300 cursor-pointer"
-          />
-          <span className="font-semibold text-slate-700">
-            Quote includes tax / Tax-exempt (No added tax)
+      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        {/* Tax Toggle / Status */}
+        {showTaxToggle ? (
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={isTaxIncluded}
+              onChange={(e) => handleToggleTax(e.target.checked)}
+              className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-slate-300 cursor-pointer"
+            />
+            <span className="font-semibold text-slate-700">
+              Quote includes tax / Tax-exempt (No added tax)
+            </span>
+          </label>
+        ) : (
+          <span className="text-slate-500 font-semibold text-[11px]">
+            Direct Ingress &bull; Commercial Dispatch Rates
           </span>
-        </label>
+        )}
 
         {/* Live Financial Totals */}
-        <div className="flex items-center gap-4 text-xs font-mono justify-end">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs font-mono justify-end">
           <div>
             <span className="text-slate-500">Subtotal: </span>
             <span className="font-bold text-slate-800">
               {formatCurrency(centsToDollars(subtotalCents), currencySymbol)}
             </span>
           </div>
+
+          {discountCents > 0 && (
+            <div className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              <span className="text-emerald-600 font-medium">
+                {discountLabel || `Discount (-${discountPercent}%)`}:{' '}
+              </span>
+              <span>-{formatCurrency(centsToDollars(discountCents), currencySymbol)}</span>
+            </div>
+          )}
+
           <div>
             <span className="text-slate-500">Tax ({Math.round(taxRate * 100)}%): </span>
             <span className="font-bold text-slate-800">
               {isTaxIncluded ? '$0.00' : formatCurrency(centsToDollars(taxCents), currencySymbol)}
             </span>
           </div>
+
           <div className="pl-2 border-l border-slate-200">
             <span className="text-slate-500">Total: </span>
             <span className="font-black text-red-600 text-sm">

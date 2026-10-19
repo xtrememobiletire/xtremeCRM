@@ -42,6 +42,11 @@ const routeChunkLoaders: Record<string, () => Promise<any>> = {
   '/leads': () => import('../../pages/Leads'),
   '/fleet-dashboard': () => import('../../pages/FleetDashboard'),
   '/member-dashboard': () => import('../../pages/MemberDashboard'),
+  '/member/dashboard': () => import('../../pages/MemberDashboard'),
+  '/member/garage': () => import('../../pages/MemberDashboard'),
+  '/member/request': () => import('../../pages/MemberDashboard'),
+  '/member/history': () => import('../../pages/MemberDashboard'),
+  '/member/invoices': () => import('../../pages/MemberDashboard'),
   '/technician': () => import('../../pages/TechnicianPortal'),
   '/history': () => import('../../pages/History'),
 };
@@ -112,7 +117,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
   const navItems = isFleetManager
     ? [{ icon: Truck, label: 'Fleet Portal', path: '/fleet-dashboard' }]
     : isMember
-    ? [{ icon: Car, label: 'Member Portal', path: '/member-dashboard' }]
+    ? [
+        { icon: BarChart3, label: 'Overview', path: '/member/dashboard' },
+        { icon: Car, label: 'My Garage', path: '/member/garage' },
+        { icon: Wrench, label: 'Request Service', path: '/member/request' },
+        { icon: History, label: 'Service History', path: '/member/history' },
+        { icon: FileText, label: 'Invoices & Receipts', path: '/member/invoices' },
+      ]
     : isDriver
     ? [
         { icon: Wrench, label: 'Orders', path: '/technician' },

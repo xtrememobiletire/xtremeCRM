@@ -164,6 +164,14 @@ async function main() {
       phone: '+17035550105',
       isAgentActive: false,
     },
+    {
+      email: 'member@xtremecrm.com',
+      fullName: 'Jordan Member',
+      role: 'CUSTOMER_MEMBER' as const,
+      countryCode: 'CA' as const,
+      phone: '+14165550777',
+      isAgentActive: false,
+    },
   ];
 
   const userMap: Record<string, any> = {};
@@ -216,6 +224,7 @@ async function main() {
   const agentUser = userMap['agent@xtremecrm.com'];
   const accountantUser = userMap['accountant@xtremecrm.com'];
   const vaUser = userMap['va@xtremecrm.com'];
+  const memberUser = userMap['member@xtremecrm.com'];
 
   console.log('✅ Staff users ready.');
 
@@ -233,7 +242,7 @@ async function main() {
       status: 'APPROVED',
       discountPercent: 10.0,
       contractSignedAt: new Date(),
-      managerUserId: userMap['Administration@ktgroupcanada.ca'].id,
+      managerUserId: userMap['fleet.manager@xtremecrm.com']?.id || userMap['Administration@ktgroupcanada.ca']?.id,
     },
   });
 
@@ -452,6 +461,96 @@ async function main() {
   }
 
   console.log('✅ Seeded 5 Retail Customers and Vehicles.');
+
+  // Seed B2C Membership Customer Profile for member@xtremecrm.com
+  let memberCustomer: any = null;
+  if (memberUser) {
+    memberCustomer = await prisma.customer.create({
+      data: {
+        userId: memberUser.id,
+        fullName: memberUser.fullName,
+        phone: memberUser.phone || '+14165550777',
+        email: memberUser.email,
+        countryCode: 'CA',
+        customerType: 'MEMBERSHIP',
+        membershipTier: 'GOLD',
+        membershipExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        address: '55 Bremner Blvd, Toronto, ON M5J 0A6 Canada',
+        latitude: 43.6425,
+        longitude: -79.3807,
+      },
+    });
+
+    const memberVeh1 = await prisma.vehicle.create({
+      data: {
+        customerId: memberCustomer.id,
+        countryCode: 'CA',
+        make: 'Tesla',
+        model: 'Model Y',
+        year: 2023,
+        licensePlate: 'EV-MEMBER1',
+        tireSize: '255/45R19',
+        color: 'Pearl White',
+      },
+    });
+
+    await prisma.vehicle.create({
+      data: {
+        customerId: memberCustomer.id,
+        countryCode: 'CA',
+        make: 'Ford',
+        model: 'F-150',
+        year: 2022,
+        licensePlate: 'TRK-MEMBER2',
+        tireSize: '275/65R18',
+        color: 'Agate Black',
+      },
+    });
+
+    await prisma.job.create({
+      data: {
+        jobCode: 'JOB-CA-M1001',
+        customerId: memberCustomer.id,
+        vehicleId: memberVeh1.id,
+        createdById: memberUser.id,
+        driverId: danDriver.id,
+        countryCode: 'CA',
+        currency: 'CAD',
+        status: 'COMPLETED',
+        urgency: 'URGENT',
+        source: 'MEMBER_PORTAL',
+        recipientName: memberCustomer.fullName,
+        recipientPhone: memberCustomer.phone,
+        serviceAddress: '55 Bremner Blvd, Toronto, ON M5J 0A6 Canada',
+        serviceLatitude: 43.6425,
+        serviceLongitude: -79.3807,
+        problemNotes: '[Member Priority Service] Flat Tire Repair on Tesla Model Y front right wheel.',
+        subtotalCents: 10800,
+        taxRateBps: 1300,
+        taxAmountCents: 1404,
+        totalCents: 12204,
+        itPlatformFeeCents: 150,
+        paymentMethod: 'POS',
+        paymentStatus: 'VERIFIED_PAID',
+        materialCostCents: 1500,
+        repairerFeeCents: 4500,
+        completedAt: new Date(Date.now() - 2 * 86400000),
+        assignedAt: new Date(Date.now() - 2 * 86400000 - 3600000),
+        serviceItems: {
+          create: [
+            {
+              serviceName: 'Flat Tire Repair',
+              category: 'TIRE_SERVICE',
+              unitPriceCents: 10800,
+              quantity: 1,
+            },
+          ],
+        },
+      },
+    });
+
+    console.log('✅ Seeded Member Portal Customer, Garage Vehicles & Past Job for member@xtremecrm.com');
+  }
 
   // =========================================================================
   // 4. SEED CATEGORY 1: RETAIL ROADSIDE JOBS (/jobs page)
@@ -819,6 +918,107 @@ async function main() {
     });
   }
   console.log('✅ Seeded Category 2: 3 Commercial Fleet Work Orders (/fleet-jobs).');
+
+  // =========================================================================
+  // SEED SAMPLE INVOICES (For Fleet Portal & Member Portal Testing)
+  // =========================================================================
+  await prisma.invoice.create({
+    data: {
+      invoiceNumber: 'INV-KT-1001',
+      invoiceType: 'JOB',
+      countryCode: 'CA',
+      currency: 'CAD',
+      fleetId: ktFleet.id,
+      issueDate: new Date(),
+      dueDate: new Date(Date.now() + 30 * 86400000),
+      status: 'PENDING',
+      subtotalCents: 45000,
+      taxRatePercent: 13.0,
+      taxAmountCents: 5850,
+      totalCents: 50850,
+      amountPaidCents: 0,
+      balanceDueCents: 50850,
+      createdById: accountantUser.id,
+      paymentMethod: 'INVOICE_NET30',
+      notes: 'Net 30 commercial terms for KT Group emergency roadside repair.',
+      items: {
+        create: [
+          {
+            itemDetails: 'Commercial Steer Tire Replacement (11R22.5)',
+            unitPriceCents: 45000,
+            quantity: 1,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.invoice.create({
+    data: {
+      invoiceNumber: 'INV-KT-1002',
+      invoiceType: 'JOB',
+      countryCode: 'CA',
+      currency: 'CAD',
+      fleetId: ktFleet.id,
+      issueDate: new Date(Date.now() - 15 * 86400000),
+      dueDate: new Date(Date.now() + 15 * 86400000),
+      status: 'PAID',
+      paidAt: new Date(Date.now() - 5 * 86400000),
+      subtotalCents: 85000,
+      taxRatePercent: 13.0,
+      taxAmountCents: 11050,
+      totalCents: 96050,
+      amountPaidCents: 96050,
+      balanceDueCents: 0,
+      createdById: accountantUser.id,
+      paymentMethod: 'INVOICE_NET30',
+      notes: 'Paid via direct bank deposit.',
+      items: {
+        create: [
+          {
+            itemDetails: 'Commercial Dual Tire Replacement (Depot Yard Service)',
+            unitPriceCents: 85000,
+            quantity: 1,
+          },
+        ],
+      },
+    },
+  });
+
+  if (memberCustomer) {
+    await prisma.invoice.create({
+      data: {
+        invoiceNumber: 'INV-MEM-2001',
+        invoiceType: 'JOB',
+        countryCode: 'CA',
+        currency: 'CAD',
+        customerId: memberCustomer.id,
+        issueDate: new Date(Date.now() - 2 * 86400000),
+        dueDate: new Date(Date.now() - 2 * 86400000),
+        status: 'PAID',
+        paidAt: new Date(Date.now() - 2 * 86400000),
+        subtotalCents: 10800,
+        taxRatePercent: 13.0,
+        taxAmountCents: 1404,
+        totalCents: 12204,
+        amountPaidCents: 12204,
+        balanceDueCents: 0,
+        createdById: accountantUser.id,
+        paymentMethod: 'POS',
+        notes: 'Mobile roadside tire repair - Member Gold benefit applied.',
+        items: {
+          create: [
+            {
+              itemDetails: 'Flat Tire Repair (Mobile Service)',
+              unitPriceCents: 10800,
+              quantity: 1,
+            },
+          ],
+        },
+      },
+    });
+  }
+  console.log('✅ Seeded Sample Invoices for KT Group Fleet & Member Portal.');
 
   // =========================================================================
   // 6. SEED CATEGORY 3: PROSPECTIVE FLEET TRIAL SERVICES (/fleet-jobs page)

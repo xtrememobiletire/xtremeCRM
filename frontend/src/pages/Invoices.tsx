@@ -78,14 +78,17 @@ export default function Invoices() {
     return [];
   }, [invoicesResponse]);
 
-  // Strict Tab Filtering: On MEMBER tab, strictly show customers of type MEMBERSHIP or MEMBER invoices
+  // Strict Tab Filtering: Filter invoices by customer type and fleet attribution
   const displayInvoices: InvoiceRecord[] = useMemo(() => {
     return invoices.filter((inv) => {
+      if (activeTab === 'FLEET') {
+        return (inv.invoiceType as string) === 'FLEET' || Boolean(inv.fleetId) || Boolean(inv.fleet);
+      }
       if (activeTab === 'MEMBER') {
-        return (inv.invoiceType as string) === 'MEMBER' || (inv.customer as any)?.customerType === 'MEMBERSHIP';
+        return (inv.invoiceType as string) === 'MEMBER' || inv.customer?.customerType === 'MEMBERSHIP';
       }
       if (activeTab === 'CUSTOMER') {
-        return (inv.invoiceType as string) === 'CUSTOMER' && (inv.customer as any)?.customerType !== 'MEMBERSHIP';
+        return ((inv.invoiceType as string) === 'CUSTOMER' || ((Boolean(inv.customerId) || Boolean(inv.customer)) && !inv.fleetId && !inv.fleet)) && inv.customer?.customerType !== 'MEMBERSHIP';
       }
       return true;
     });

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Building2, 
@@ -9,7 +9,6 @@ import {
   Truck, 
   ClipboardCheck, 
   Calendar, 
-  Zap, 
   Wrench, 
   XCircle, 
   Layers,
@@ -18,7 +17,10 @@ import {
   ChevronRight,
   ArrowLeft,
   ShieldCheck,
-  Edit3
+  Edit3,
+  Clock,
+  AlertTriangle,
+  UserCheck
 } from 'lucide-react';
 import Modal from '../components/ui/Modal';
 import LeadCommandCenter from '../components/leads/LeadCommandCenter';
@@ -37,6 +39,8 @@ import {
   type LeadStage, 
   type DisqualificationReason 
 } from '../services/leadService';
+import { userService } from '../services/userService';
+import { resolveLeadTimezone, formatDualPktAndCustomerTime } from '../utils/date';
 import {
   getAllowedPipelineTabs,
   canPerformPipelineAction,
@@ -61,14 +65,8 @@ export default function Leads() {
   const isDispatcher = user?.role === 'DISPATCHER';
   const isAdminOrGm = ['ADMIN', 'GENERAL_MANAGER'].includes(user?.role || '');
 
-  // Determine initial tab strictly along lifecycle
-  const initialTab: LeadPoolTab = isVa
-    ? 'unassigned'
-    : isAgent
-    ? 'callbacks'
-    : isDispatcher
-    ? 'dispatcher'
-    : 'unassigned';
+  // Dispatcher, GM, Admin, and Call Agents default to root unassigned tab so they can freely navigate
+  const initialTab: LeadPoolTab = 'unassigned';
 
   const [activeTab, setActiveTab] = useState<LeadPoolTab>(initialTab);
   const [currentPage, setCurrentPage] = useState(1);
@@ -103,9 +101,6 @@ export default function Leads() {
   const [editingNotesLead, setEditingNotesLead] = useState<Lead | null>(null);
   const [dispatcherNotesText, setDispatcherNotesText] = useState('');
 
-  // Auto-dialer toggle
-  const [autoDialEnabled, setAutoDialEnabled] = useState(false);
-
   // Filters & search
   const [search, setSearch] = useState('');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -114,10 +109,14 @@ export default function Leads() {
   const [vaInSession, setVaInSession] = useState(false);
 
   // Upper Management container view mode: 'BATCHES' | 'DRILLDOWN' | 'GLOBAL'
-  const [managementViewMode, setManagementViewMode] = useState<'BATCHES' | 'DRILLDOWN' | 'GLOBAL'>(
-    isDispatcher ? 'GLOBAL' : 'BATCHES'
-  );
+  const [managementViewMode, setManagementViewMode] = useState<'BATCHES' | 'DRILLDOWN' | 'GLOBAL'>('BATCHES');
   const [inspectedBatchId, setInspectedBatchId] = useState<string | null>(null);
+
+  // Call Agent dual mode: 'COLD_OUTREACH' vs 'CALLBACKS'
+  const [agentWorkflowMode, setAgentWorkflowMode] = useState<'COLD_OUTREACH' | 'CALLBACKS'>('COLD_OUTREACH');
+
+  // Callbacks sub-filter
+  const [callbackSubFilter, setCallbackSubFilter] = useState<'ALL' | 'UNASSIGNED_DUE' | 'UNASSIGNED_UPCOMING' | 'ASSIGNED'>('ALL');
 
   // 1. Available active batches for VA campaign selection (Zero country friction, never future batches)
   const { data: availableBatches = [], isLoading: isLoadingVaBatches, refetch: refetchBatches } = useQuery({
@@ -136,11 +135,18 @@ export default function Leads() {
 
   const inspectedBatch = managementBatches.find((b: any) => b.id === inspectedBatchId) || null;
 
+  // Staff users query for inline agent assignment dropdown in Callbacks table
+  const { data: staffUsers = [] } = useQuery({
+    queryKey: ['staff-users', country],
+    queryFn: () => userService.getStaffUsers(),
+    enabled: isAdminOrGm || isDispatcher,
+  });
+
   // 3. Agent / VA 1-cap focus queue (refills synchronously on disposition)
   const { data: queueResponse, isLoading: isLoadingQueue, refetch: refetchQueue } = useQuery({
     queryKey: ['agent-queue', country, selectedBatchId],
     queryFn: () => leadService.getAgentQueue(country, selectedBatchId || undefined),
-    enabled: (isVa || isAgent) && vaInSession,
+    enabled: (isVa || isAgent) && (vaInSession || agentWorkflowMode === 'CALLBACKS'),
   });
 
   const queueData = queueResponse || {
@@ -162,7 +168,7 @@ export default function Leads() {
       page: currentPage,
       limit: pageSize,
     }),
-    enabled: managementViewMode === 'DRILLDOWN' || managementViewMode === 'GLOBAL' || !isAdminOrGm,
+    enabled: managementViewMode === 'DRILLDOWN' || managementViewMode === 'GLOBAL' || !isAdminOrGm || agentWorkflowMode === 'CALLBACKS',
   });
 
   const tabLeads: Lead[] = leadsResponse?.data || [];
@@ -173,7 +179,48 @@ export default function Leads() {
     totalPages: Math.max(1, Math.ceil((tabLeads.length || 1) / pageSize)),
   };
   const displayLeads: Lead[] = tabLeads;
-  const isLoading = (isVa || isAgent) && vaInSession ? isLoadingQueue : isLoadingLeads;
+
+  const callbackCounts = useMemo(() => {
+    const all = tabLeads.length;
+    const now = new Date();
+    const unassignedDue = tabLeads.filter(
+      (l) => !l.assignedAgent && l.callbackDate && new Date(l.callbackDate) <= now
+    ).length;
+    const unassignedUpcoming = tabLeads.filter(
+      (l) => !l.assignedAgent && (!l.callbackDate || new Date(l.callbackDate) > now)
+    ).length;
+    const assigned = tabLeads.filter((l) => !!l.assignedAgent).length;
+    return { all, unassignedDue, unassignedUpcoming, assigned };
+  }, [tabLeads]);
+
+  const filteredCallbackLeads = useMemo(() => {
+    if (activeTab !== 'callbacks') return displayLeads;
+    const now = new Date();
+
+    // Regular agents / VAs: show callbacks assigned to them + unassigned due callbacks they can claim
+    if (!isAdminOrGm && !isDispatcher) {
+      return displayLeads.filter(
+        (l) => l.assignedAgentId === user?.id || (!l.assignedAgentId && l.callbackDate && new Date(l.callbackDate) <= now)
+      );
+    }
+
+    if (callbackSubFilter === 'UNASSIGNED_DUE') {
+      return displayLeads.filter(
+        (l) => !l.assignedAgent && l.callbackDate && new Date(l.callbackDate) <= now
+      );
+    }
+    if (callbackSubFilter === 'UNASSIGNED_UPCOMING') {
+      return displayLeads.filter(
+        (l) => !l.assignedAgent && (!l.callbackDate || new Date(l.callbackDate) > now)
+      );
+    }
+    if (callbackSubFilter === 'ASSIGNED') {
+      return displayLeads.filter((l) => !!l.assignedAgent);
+    }
+    return displayLeads;
+  }, [displayLeads, activeTab, callbackSubFilter, isAdminOrGm, isDispatcher, user?.id]);
+
+  const isLoading = (isVa || isAgent) && vaInSession && agentWorkflowMode === 'COLD_OUTREACH' ? isLoadingQueue : isLoadingLeads;
 
   const refetchAll = () => {
     if (isVa || isAgent) {
@@ -227,17 +274,28 @@ export default function Leads() {
   });
 
   const dispositionMutation = useMutation({
-    mutationFn: ({ 
-      id, 
-      disposition, 
-      notes, 
-      callbackData 
-    }: { 
+    mutationFn: (params: { 
       id: string; 
       disposition: string; 
       notes?: string; 
       callbackData?: any; 
-    }) => leadService.setDisposition(id, disposition, notes, callbackData),
+      callbackDate?: string;
+      callbackDay?: string;
+      callbackTime?: string;
+      callbackTimezone?: string;
+      disqualificationReason?: string;
+    }) => {
+      const { id, disposition, notes, callbackData, ...rest } = params;
+      const combinedCallback = {
+        ...(callbackData || {}),
+        ...(rest.callbackDate ? { callbackDate: rest.callbackDate } : {}),
+        ...(rest.callbackDay ? { callbackDay: rest.callbackDay } : {}),
+        ...(rest.callbackTime ? { callbackTime: rest.callbackTime } : {}),
+        ...(rest.callbackTimezone ? { callbackTimezone: rest.callbackTimezone } : {}),
+        ...(rest.disqualificationReason ? { disqualificationReason: rest.disqualificationReason } : {}),
+      };
+      return leadService.setDisposition(id, disposition, notes, combinedCallback);
+    },
     onSuccess: async () => {
       toast.success('Call outcome recorded! 1-cap slot auto-replenished.');
       setSelectedDispositionLead(null);
@@ -246,22 +304,36 @@ export default function Leads() {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['management-batches'] });
       queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
-
-      if (autoDialEnabled && isAgent) {
-        setTimeout(async () => {
-          const freshQueue: any = await queryClient.fetchQuery({
-            queryKey: ['agent-queue', country],
-            queryFn: () => leadService.getAgentQueue(country),
-          });
-          const nextLead = freshQueue?.scheduledCallbacks?.[0] || freshQueue?.leads?.[0];
-          if (nextLead && nextLead.phone) {
-            handleCallLead(nextLead);
-          }
-        }, 1200);
-      }
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to record disposition');
+    },
+  });
+
+  const reassignMutation = useMutation({
+    mutationFn: ({ id, assignedAgentId }: { id: string; assignedAgentId: string | null }) =>
+      leadService.updateLead(id, { assignedAgentId } as any),
+    onSuccess: () => {
+      toast.success('Lead assignment updated');
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to update assignment');
+    },
+  });
+
+  const claimCallbackMutation = useMutation({
+    mutationFn: (id: string) => leadService.claimCallbackLead(id),
+    onSuccess: () => {
+      toast.success('Callback claimed! Added to your priority queue.');
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to claim callback');
     },
   });
 
@@ -384,12 +456,70 @@ export default function Leads() {
   return (
     <div className="space-y-5">
       {/* 1. VA / CALL AGENT WORKFLOW: ZERO FRICTION CAMPAIGN CHOOSER & 1-LEAD FOCUS CARD */}
-      {(isVa || isAgent) && !isAdminOrGm && !isDispatcher ? (
-        !vaInSession ? (
-          <VaBatchHub
-            batches={availableBatches}
-            isLoading={isLoadingVaBatches}
-            onSelectBatch={(batchId) => {
+      {(isVa || isAgent) && !isAdminOrGm && !isDispatcher && agentWorkflowMode === 'COLD_OUTREACH' ? (
+        <div className="space-y-4">
+          {/* Agent Top Mode Bar */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-2.5 shadow-2xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAgentWorkflowMode('COLD_OUTREACH')}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer bg-red-600 text-white shadow-xs"
+              >
+                <Layers size={13} />
+                <span>Cold Outreach Hub</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAgentWorkflowMode('CALLBACKS');
+                  setActiveTab('callbacks');
+                  setCurrentPage(1);
+                }}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700"
+              >
+                <Calendar size={13} />
+                <span>My Callbacks Pool</span>
+                {queueData.scheduledCallbacks && queueData.scheduledCallbacks.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-blue-600 text-white">
+                    {queueData.scheduledCallbacks.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Shifted to upper tab as requested */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsUploadModalOpen(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 border border-slate-200 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                title="Upload leads spreadsheet to an existing batch"
+              >
+                <UploadCloud size={13} className="text-slate-500" />
+                <span>Upload CSV</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  refetchQueue();
+                  refetchBatches();
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 border border-slate-200 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                title="Sync Queue"
+              >
+                <RefreshCw size={13} className={`text-slate-500 ${isLoadingQueue ? 'animate-spin' : ''}`} />
+                <span>Sync Queue</span>
+              </button>
+            </div>
+          </div>
+
+          {!vaInSession ? (
+            <VaBatchHub
+              batches={availableBatches}
+              isLoading={isLoadingVaBatches}
+              onSelectBatch={(batchId) => {
               setSelectedBatchId(batchId);
               setVaInSession(true);
             }}
@@ -398,8 +528,8 @@ export default function Leads() {
           />
         ) : (
           <div className="space-y-4">
-            {/* VA Session Header: Switch Campaign + Active Slot status */}
-            <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-md flex flex-wrap items-center justify-between gap-4 border border-slate-800">
+            {/* VA Session Header: Clean theme matching CRM color scheme */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -407,95 +537,41 @@ export default function Leads() {
                     setVaInSession(false);
                     setSelectedBatchId(null);
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 border border-slate-200 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
                 >
                   <ArrowLeft size={13} />
                   <span>Switch Campaign</span>
                 </button>
 
                 <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-400 bg-red-950/80 px-2.5 py-0.5 rounded-full border border-red-800">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-700 bg-red-50 px-2.5 py-0.5 rounded-full border border-red-200">
                       1-Cap Focus Replenishment
                     </span>
-                    <span className="text-xs text-slate-300">
+                    <span className="text-xs text-slate-600">
                       Active Campaign:{' '}
-                      <strong className="text-white font-bold">
+                      <strong className="text-slate-900 font-bold">
                         {selectedBatchId
                           ? availableBatches.find((b) => b.id === selectedBatchId)?.batchName || 'Selected Campaign'
                           : 'All Active Campaigns (Auto FIFO)'}
                       </strong>
                     </span>
-                    <span className="text-xs text-slate-300 ml-2">
-                      Active Slot Load: <strong className="text-white font-bold">{queueData.activeCount} / 1</strong>
+                    <span className="text-xs text-slate-500 ml-1">
+                      • Active Slot Load: <strong className="text-slate-900 font-bold">{queueData.activeCount} / 1</strong>
                     </span>
                   </div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-slate-500">
                     {queueData.unassignedPoolCount > 0 ? (
                       <span>
-                        🚀 <strong className="text-emerald-400 font-bold">{queueData.unassignedPoolCount} unassigned cold leads</strong> waiting in queue. Next lead replenishes instantly upon call outcome!
+                        🚀 <strong className="text-emerald-700 font-bold">{queueData.unassignedPoolCount} unassigned cold leads</strong> waiting in queue. Next lead replenishes instantly upon call outcome!
                       </span>
                     ) : (
-                      <span className="text-slate-400">
+                      <span className="text-slate-500">
                         No unassigned leads remaining in this campaign. Click &quot;Switch Campaign&quot; to pick another active batch.
                       </span>
                     )}
                   </div>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2.5 flex-wrap">
-                {/* Quick Campaign Switch Dropdown */}
-                <div className="flex items-center gap-1.5">
-                  <Layers size={13} className="text-slate-400" />
-                  <select
-                    value={selectedBatchId || ''}
-                    onChange={(e) => setSelectedBatchId(e.target.value || null)}
-                    className="bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold rounded-xl px-3 py-1.5 outline-none focus:ring-1 focus:ring-red-500 cursor-pointer max-w-[280px]"
-                  >
-                    <option value="">All Active Campaigns (Auto FIFO)</option>
-                    {availableBatches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        [{b.countryCode}] {b.batchName} ({b.unassignedLeads} leads left)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Auto-Dialer Toggle for Call Agents / VAs */}
-                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-bold text-slate-300 cursor-pointer select-none">
-                  <Zap size={13} className={autoDialEnabled ? 'text-amber-400 fill-amber-400' : 'text-slate-400'} />
-                  <span>Auto-Dial</span>
-                  <input
-                    type="checkbox"
-                    checked={autoDialEnabled}
-                    onChange={(e) => setAutoDialEnabled(e.target.checked)}
-                    className="rounded text-red-600 focus:ring-red-500 ml-0.5 cursor-pointer"
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  onClick={() => setIsUploadModalOpen(true)}
-                  className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                  title="Upload leads spreadsheet to an existing batch"
-                >
-                  <UploadCloud size={12} className="text-slate-400" />
-                  <span>Upload Leads</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    refetchQueue();
-                    refetchBatches();
-                  }}
-                  className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
-                  title="Sync Queue"
-                >
-                  <RefreshCw size={12} className={isLoadingQueue ? 'animate-spin' : ''} />
-                  <span>Sync Queue</span>
-                </button>
               </div>
             </div>
 
@@ -503,6 +579,7 @@ export default function Leads() {
             <VaFocusCard
               lead={queueData.leads[0]}
               onDisposition={(params) => dispositionMutation.mutate(params)}
+              onOpenDispositionModal={(leadItem) => setSelectedDispositionLead(leadItem)}
               isSubmitting={dispositionMutation.isPending}
               onRefreshQueue={async () => {
                 try {
@@ -559,23 +636,24 @@ export default function Leads() {
               </div>
             )}
           </div>
-        )
-      ) : (
-        /* 2. UPPER MANAGEMENT WORKFLOW: BATCH CONTAINERS DASHBOARD OR DRILLDOWN / GLOBAL LEDGER */
-        managementViewMode === 'BATCHES' ? (
+        )}
+      </div>
+    ) : (
+        /* 2. UPPER MANAGEMENT WORKFLOW OR AGENT CALLBACKS POOL */
+        (isAdminOrGm || isDispatcher) && managementViewMode === 'BATCHES' ? (
           <ManagementBatchDashboard
             batches={managementBatches}
             isLoading={isLoadingBatches}
             onInspectBatch={(batchId: string) => {
               setInspectedBatchId(batchId);
               setManagementViewMode('DRILLDOWN');
-              setActiveTab(isDispatcher ? 'dispatcher' : 'unassigned');
+              setActiveTab('unassigned');
               setCurrentPage(1);
             }}
             onOpenGlobalLedger={() => {
               setInspectedBatchId(null);
               setManagementViewMode('GLOBAL');
-              setActiveTab(isDispatcher ? 'dispatcher' : 'all');
+              setActiveTab('all');
               setCurrentPage(1);
             }}
             onStartBatch={(id) => startBatchByIdMutation.mutate(id)}
@@ -587,7 +665,9 @@ export default function Leads() {
           />
         ) : (
           <div className="space-y-4">
-            {/* Breadcrumb Navigation & Batch Metadata Strip */}
+            {isAdminOrGm || isDispatcher ? (
+              <>
+                {/* Breadcrumb Navigation & Batch Metadata Strip */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <button
@@ -683,6 +763,105 @@ export default function Leads() {
                 );
               })}
             </div>
+          </>
+        ) : (
+          /* Call Agent Callbacks Mode Header */
+          <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-2xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAgentWorkflowMode('COLD_OUTREACH')}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
+              >
+                <Layers size={13} />
+                <span>Switch to Cold Outreach Hub</span>
+              </button>
+              <div className="h-4 w-px bg-slate-200" />
+              <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <Calendar size={13} className="text-blue-600" />
+                My Callbacks Pool
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => refetchLeads()}
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+                title="Refresh Callbacks"
+              >
+                <RefreshCw size={13} className={isLoadingLeads ? 'animate-spin' : ''} />
+              </button>
+            </div>
+          </div>
+        )}
+
+            {/* Callbacks Sub-filters (Upper Management strictly: Admin, GM, Dispatcher) */}
+            {activeTab === 'callbacks' && (isAdminOrGm || isDispatcher) && (
+              <div className="flex items-center gap-1.5 p-1.5 bg-white border border-slate-200 rounded-2xl overflow-x-auto text-xs shadow-2xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono px-2 py-1">
+                  Filter Callbacks:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCallbackSubFilter('ALL')}
+                  className={`px-3 py-1 rounded-xl font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                    callbackSubFilter === 'ALL'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>All Callbacks</span>
+                  <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-800">
+                    {callbackCounts.all}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCallbackSubFilter('UNASSIGNED_DUE')}
+                  className={`px-3 py-1 rounded-xl font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                    callbackSubFilter === 'UNASSIGNED_DUE'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200'
+                  }`}
+                >
+                  <AlertTriangle size={12} />
+                  <span>Unassigned (Due Now)</span>
+                  <span className={`font-mono text-[10px] px-1.5 py-0.2 rounded-full ${callbackSubFilter === 'UNASSIGNED_DUE' ? 'bg-rose-800 text-white' : 'bg-rose-200 text-rose-800'}`}>
+                    {callbackCounts.unassignedDue}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCallbackSubFilter('UNASSIGNED_UPCOMING')}
+                  className={`px-3 py-1 rounded-xl font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                    callbackSubFilter === 'UNASSIGNED_UPCOMING'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200'
+                  }`}
+                >
+                  <Calendar size={12} />
+                  <span>Unassigned (Upcoming)</span>
+                  <span className={`font-mono text-[10px] px-1.5 py-0.2 rounded-full ${callbackSubFilter === 'UNASSIGNED_UPCOMING' ? 'bg-blue-800 text-white' : 'bg-blue-200 text-blue-800'}`}>
+                    {callbackCounts.unassignedUpcoming}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCallbackSubFilter('ASSIGNED')}
+                  className={`px-3 py-1 rounded-xl font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                    callbackSubFilter === 'ASSIGNED'
+                      ? 'bg-slate-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <UserCheck size={12} />
+                  <span>Assigned to Agents</span>
+                  <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-700">
+                    {callbackCounts.assigned}
+                  </span>
+                </button>
+              </div>
+            )}
 
             {/* Search & Filters */}
             <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs flex flex-wrap items-center justify-between gap-3">
@@ -702,7 +881,7 @@ export default function Leads() {
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
         {isLoading ? (
           <div className="p-10 text-center text-xs text-slate-500">Loading pool records...</div>
-        ) : displayLeads.length === 0 ? (
+        ) : filteredCallbackLeads.length === 0 ? (
           <div className="p-12 text-center">
             <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
             <h4 className="text-sm font-bold text-slate-700">No leads found in this pool</h4>
@@ -738,7 +917,8 @@ export default function Leads() {
                       <th className="py-3 px-4">Company & Units</th>
                       <th className="py-3 px-4">Contact Person</th>
                       <th className="py-3 px-4">Phone & Communications</th>
-                      <th className="py-3 px-4">Scheduled Callback Time</th>
+                      <th className="py-3 px-4">Scheduled Callback (Dual Time)</th>
+                      <th className="py-3 px-4">Scheduled By</th>
                       <th className="py-3 px-4">Assigned Agent</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </>
@@ -791,7 +971,7 @@ export default function Leads() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {displayLeads.map((lead) => {
+                {filteredCallbackLeads.map((lead) => {
                   const isConverted = lead.stage === 'CONVERTED';
                   const isDisqualified = lead.stage === 'DISQUALIFIED';
 
@@ -955,10 +1135,11 @@ export default function Leads() {
                             <button
                               type="button"
                               onClick={() => setSelectedDispositionLead(lead)}
-                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
-                              title="Log Call Outcome"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold text-[11px] transition cursor-pointer"
+                              title="Set Call Disposition"
                             >
-                              <ClipboardCheck size={13} />
+                              <ClipboardCheck size={12} />
+                              <span>Disposition</span>
                             </button>
                             {isAdminOrGm && !isConverted && (
                               <button
@@ -1092,10 +1273,11 @@ export default function Leads() {
                             <button
                               type="button"
                               onClick={() => setSelectedDispositionLead(lead)}
-                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
-                              title="Log Call Outcome"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold text-[11px] transition cursor-pointer"
+                              title="Set Call Disposition"
                             >
-                              <ClipboardCheck size={13} />
+                              <ClipboardCheck size={12} />
+                              <span>Disposition</span>
                             </button>
                             <button
                               type="button"
@@ -1186,10 +1368,11 @@ export default function Leads() {
                             <button
                               type="button"
                               onClick={() => setSelectedDispositionLead(lead)}
-                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
-                              title="Log Call Outcome"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold text-[11px] transition cursor-pointer"
+                              title="Set Call Disposition"
                             >
-                              <ClipboardCheck size={13} />
+                              <ClipboardCheck size={12} />
+                              <span>Disposition</span>
                             </button>
                             <button
                               type="button"
@@ -1219,9 +1402,12 @@ export default function Leads() {
                     );
                   }
 
-                  // TAB: CALLBACKS (AGENT PRIORITY)
+                  // TAB: CALLBACKS (AGENT PRIORITY & UPPER MANAGEMENT COMMAND)
                   if (activeTab === 'callbacks') {
                     const isOverdue = lead.callbackDate && new Date(lead.callbackDate) <= new Date();
+                    const leadTz = resolveLeadTimezone(lead);
+                    const { customerLabel, pktLabel } = formatDualPktAndCustomerTime(lead.callbackDate, leadTz);
+
                     return (
                       <tr key={lead.id} className="hover:bg-slate-50/70 transition">
                         <td className="py-3.5 px-4">
@@ -1250,6 +1436,11 @@ export default function Leads() {
                         <td className="py-3.5 px-4">
                           <div className="font-mono font-bold text-slate-800">{lead.phone}</div>
                           {lead.email && <div className="text-[11px] text-slate-500 truncate max-w-[170px]">{lead.email}</div>}
+                          {lead.poaEmail && (
+                            <div className="text-[10px] text-amber-700 font-semibold truncate max-w-[170px]" title="POA Billing Email">
+                              POA: {lead.poaEmail}
+                            </div>
+                          )}
                         </td>
 
                         <td className="py-3.5 px-4">
@@ -1259,11 +1450,15 @@ export default function Leads() {
                                 ? 'bg-rose-50 text-rose-800 border-rose-200 animate-pulse' 
                                 : 'bg-blue-50 text-blue-800 border-blue-200'
                             }`}>
-                              <Calendar size={10} />
-                              <span>{lead.callbackDay || 'Due'}: {lead.callbackTime || (lead.callbackDate ? new Date(lead.callbackDate).toLocaleDateString() : 'Scheduled')}</span>
+                              <Clock size={10} />
+                              <span>{customerLabel}</span>
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                              <span>🇵🇰 PKT:</span>
+                              <span className="font-semibold text-slate-700">{pktLabel}</span>
                             </span>
                             {isOverdue && (
-                              <span className="text-[9px] font-bold text-rose-600 uppercase tracking-wider">
+                              <span className="text-[9px] font-extrabold text-rose-600 uppercase tracking-wider bg-rose-100/70 px-1.5 py-0.2 rounded border border-rose-200">
                                 Overdue Callback
                               </span>
                             )}
@@ -1271,10 +1466,55 @@ export default function Leads() {
                         </td>
 
                         <td className="py-3.5 px-4 text-slate-600 text-[11px]">
-                          {lead.assignedAgent ? (
-                            <span className="font-bold text-slate-800">Agent: {lead.assignedAgent.fullName}</span>
+                          <div className="font-medium text-slate-800">
+                            {lead.lastCalledByVa ? lead.lastCalledByVa.fullName : (lead.uploadedBy?.fullName || 'VA Outreach')}
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            Batch: {lead.batch?.batchName || 'General'}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-slate-600 text-[11px]">
+                          {isAdminOrGm || isDispatcher ? (
+                            <div className="flex flex-col gap-1 items-start">
+                              <select
+                                value={lead.assignedAgent?.id || ''}
+                                onChange={(e) => {
+                                  reassignMutation.mutate({
+                                    id: lead.id,
+                                    assignedAgentId: e.target.value || null,
+                                  });
+                                }}
+                                className="px-2 py-1 text-xs rounded-lg border border-slate-300 bg-white text-slate-800 font-medium outline-none focus:ring-1 focus:ring-red-500 max-w-[170px]"
+                              >
+                                <option value="">Unassigned (Open Pool)</option>
+                                {staffUsers.map((u: any) => (
+                                  <option key={u.id} value={u.id}>
+                                    {u.fullName} ({u.role})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
                           ) : (
-                            <span className="text-amber-700 font-medium">Unassigned (Open Pool)</span>
+                            <div className="flex flex-col gap-1 items-start">
+                              {lead.assignedAgent ? (
+                                <span className="font-bold text-slate-800">Agent: {lead.assignedAgent.fullName}</span>
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-amber-700 font-medium text-[11px]">Unassigned</span>
+                                  {isOverdue && (
+                                    <button
+                                      type="button"
+                                      disabled={claimCallbackMutation.isPending}
+                                      onClick={() => claimCallbackMutation.mutate(lead.id)}
+                                      className="px-2 py-0.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] transition shadow-2xs cursor-pointer"
+                                    >
+                                      Claim
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           )}
                         </td>
 
@@ -1291,10 +1531,22 @@ export default function Leads() {
                             <button
                               type="button"
                               onClick={() => setSelectedDispositionLead(lead)}
-                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
-                              title="Log Call Outcome"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold text-[11px] transition cursor-pointer"
+                              title="Set Call Disposition"
                             >
-                              <ClipboardCheck size={13} />
+                              <ClipboardCheck size={12} />
+                              <span>Disposition</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingNotesLead(lead);
+                                setDispatcherNotesText(lead.notes || '');
+                              }}
+                              className="p-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition cursor-pointer"
+                              title="View & Edit Notes"
+                            >
+                              <Edit3 size={13} />
                             </button>
                             <button
                               type="button"
@@ -1441,10 +1693,11 @@ export default function Leads() {
                             <button
                               type="button"
                               onClick={() => setSelectedDispositionLead(lead)}
-                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
-                              title="Log Call Outcome"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold text-[11px] transition cursor-pointer"
+                              title="Set Call Disposition"
                             >
-                              <ClipboardCheck size={13} />
+                              <ClipboardCheck size={12} />
+                              <span>Disposition</span>
                             </button>
 
                             {canPerformPipelineAction(user?.role, 'BOOK_TRIAL_JOB') && (
@@ -1578,6 +1831,15 @@ export default function Leads() {
                                 <span>Convert Fleet</span>
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDispositionLead(lead)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold text-[11px] transition cursor-pointer"
+                              title="Set Call Disposition"
+                            >
+                              <ClipboardCheck size={12} />
+                              <span>Disposition</span>
+                            </button>
                             <button
                               type="button"
                               onClick={() => handleCallLead(lead)}
@@ -1843,10 +2105,11 @@ export default function Leads() {
                           <button
                             type="button"
                             onClick={() => setSelectedDispositionLead(lead)}
-                            className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
-                            title="Log Call Outcome (Triggers Replenishment)"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold text-[11px] transition cursor-pointer"
+                            title="Set Call Disposition"
                           >
-                            <ClipboardCheck size={13} />
+                            <ClipboardCheck size={12} />
+                            <span>Disposition</span>
                           </button>
 
                           {isAdminOrGm && !isConverted && !isDisqualified && (

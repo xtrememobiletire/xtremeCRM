@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { getNavigationUrl } from '../../utils/navigation';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
+import { formatJobWindowDual, resolveJobTimezone } from '../../utils/date';
 import { toast } from 'sonner';
 
 interface TechnicianJobCardProps {
@@ -137,13 +138,15 @@ export default function TechnicianJobCard({
             <span className="text-[11px] font-bold text-slate-700">
               {tabType === 'CANCELLED' ? (
                 <span className="text-rose-600 font-bold bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">Declined</span>
-              ) : job.driverEtaMinutes ? (
+              ) : job.driverEtaMinutes && job.driverEtaMinutes <= 180 ? (
                 `ETA ~${job.driverEtaMinutes}m`
-              ) : job.arrivalWindowStart && job.arrivalWindowEnd ? (
-                `${new Date(job.arrivalWindowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}–${new Date(job.arrivalWindowEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
-              ) : (
-                'Immediate'
-              )}
+              ) : (() => {
+                const jobTz = resolveJobTimezone(job);
+                const windowInfo = (job.arrivalWindowStart || job.estimatedArrivalAt)
+                  ? formatJobWindowDual(job.arrivalWindowStart || job.estimatedArrivalAt, job.arrivalWindowEnd, jobTz)
+                  : null;
+                return windowInfo?.customerWindow || 'Immediate';
+              })()}
             </span>
           </div>
         </div>

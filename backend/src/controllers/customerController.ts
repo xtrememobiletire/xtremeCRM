@@ -76,7 +76,10 @@ export const customerController = {
       const spendByCustomer = customerIds.length > 0
         ? await prisma.job.groupBy({
             by: ['customerId'],
-            where: { customerId: { in: customerIds } },
+            where: {
+              customerId: { in: customerIds },
+              status: { not: 'CANCELLED' },
+            },
             _sum: { totalCents: true },
           })
         : [];

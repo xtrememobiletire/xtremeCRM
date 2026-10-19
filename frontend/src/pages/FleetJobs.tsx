@@ -10,7 +10,9 @@ import {
   MapPin,
   UserCheck,
   Building2,
-  Sparkles
+  Sparkles,
+  Zap,
+  Eye
 } from 'lucide-react';
 
 const FleetJobDetailModal = lazy(() => import('../components/pages/jobs/FleetJobDetailModal'));
@@ -23,6 +25,7 @@ import JobLifecycleTabs from '../components/common/JobLifecycleTabs';
 import { jobService } from '../services/jobService';
 import { fleetService } from '../services/fleetService';
 import { useTenant } from '../context/TenantContext';
+import { formatDate, formatJobWindowDual, resolveJobTimezone, formatTimeInTz } from '../utils/date';
 
 export default function FleetJobs() {
   const { country: tenantCountry } = useTenant();
@@ -334,9 +337,14 @@ export default function FleetJobs() {
               <tbody className="divide-y divide-slate-100">
                 {rawJobs.map((job: any) => {
                   const isTrial = Boolean(job.isTestService);
-                  const fleetName = job.fleet?.name || (isTrial ? 'Prospective Fleet (Trial)' : 'Commercial Account');
+                  const fleetName = job.fleet?.name || job.lead?.companyName || (isTrial ? (job.recipientName || 'Prospective Fleet (Trial)') : 'Commercial Account');
                   const fleetCode = job.fleet?.fleetCode || (isTrial ? 'TRIAL' : 'B2B');
                   const unitNumber = job.vehicle?.unitNumber;
+
+                  const jobTz = resolveJobTimezone(job);
+                  const windowInfo = (job.arrivalWindowStart || job.estimatedArrivalAt)
+                    ? formatJobWindowDual(job.arrivalWindowStart || job.estimatedArrivalAt, job.arrivalWindowEnd, jobTz)
+                    : null;
 
                   return (
                     <tr 
@@ -344,7 +352,7 @@ export default function FleetJobs() {
                       className="hover:bg-slate-50/60 transition group cursor-pointer"
                       onClick={() => setSelectedJob(job)}
                     >
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
+                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <span>{job.jobCode || job.jobNumber}</span>
                           {isTrial && (
@@ -354,6 +362,25 @@ export default function FleetJobs() {
                             </span>
                           )}
                         </div>
+                        <div className="text-[11px] text-slate-400 font-mono font-normal">{formatDate(job.createdAt)}</div>
+                        {windowInfo && (
+                          <div className="mt-1 space-y-0.5 font-normal">
+                            <div className="text-[10px] text-blue-700 font-bold flex items-center gap-1" title={`Customer Local Promised Window (${jobTz})`}>
+                              <Clock className="w-2.5 h-2.5 shrink-0 text-blue-600" />
+                              <span>{windowInfo.customerWindow}</span>
+                            </div>
+                            <div className="text-[9px] text-slate-500 font-mono flex items-center gap-1 pl-3.5 flex-wrap">
+                              <span className="bg-slate-100 text-slate-600 px-1 py-0.2 rounded font-medium" title="Pakistan Shift Time">
+                                {windowInfo.pktWindow}
+                              </span>
+                              {windowInfo.statusBadge && (
+                                <span className={`px-1 py-0.2 rounded font-bold ${windowInfo.isOverdue ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-blue-50 text-blue-700'}`}>
+                                  • {windowInfo.statusBadge}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="font-bold text-slate-900 flex items-center gap-1.5">
@@ -383,9 +410,23 @@ export default function FleetJobs() {
                       </td>
                       <td className="py-3.5 px-4">
                         {job.driver ? (
-                          <div className="flex items-center gap-1.5 font-semibold text-slate-800">
-                            <UserCheck size={13} className="text-emerald-600" />
-                            <span>{job.driver.fullName}</span>
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+                              <UserCheck size={13} className="text-emerald-600" />
+                              <span>{job.driver.fullName}</span>
+                            </div>
+                            {(job.driverEtaMinutes || job.driverEstimatedArrivalAt) && (
+                              <div className="text-[10px] font-mono text-emerald-700 font-semibold flex items-center gap-1 pl-4" title="Technician Driving ETA">
+                                <Zap className="w-2.5 h-2.5 text-emerald-600" />
+                                <span>
+                                  {job.driverEtaMinutes && job.driverEtaMinutes <= 180
+                                    ? `Drive ETA: ~${job.driverEtaMinutes}m`
+                                    : job.driverEtaMinutes
+                                    ? `Out of Region (~${Math.round(job.driverEtaMinutes * 0.75)} km)`
+                                    : `Arrives ~${formatTimeInTz(job.driverEstimatedArrivalAt, jobTz)}`}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <button
@@ -404,7 +445,7 @@ export default function FleetJobs() {
                       <td className="py-3.5 px-4">
                         <StatusBadge status={job.status} />
                       </td>
-                      <td className="py-3.5 px-4 text-right space-x-1.5">
+                      <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
                         {!job.driverId && job.status === 'PENDING' && (
                           <button
                             type="button"
@@ -412,7 +453,7 @@ export default function FleetJobs() {
                               e.stopPropagation();
                               setAssignJob(job);
                             }}
-                            className="text-xs font-semibold text-red-600 hover:text-red-700 px-2.5 py-1 rounded-md bg-red-50 hover:bg-red-100 transition cursor-pointer"
+                            className="text-xs font-semibold text-red-600 hover:text-red-700 px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 transition cursor-pointer"
                           >
                             Assign Driver
                           </button>
@@ -423,9 +464,11 @@ export default function FleetJobs() {
                             e.stopPropagation();
                             setSelectedJob(job);
                           }}
-                          className="text-xs font-semibold text-slate-600 hover:text-slate-900 px-2.5 py-1 rounded-md hover:bg-slate-200 transition cursor-pointer"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-red-600 bg-slate-100 hover:bg-red-50 border border-slate-200 hover:border-red-200 px-2.5 py-1.5 rounded-lg transition cursor-pointer shadow-2xs"
+                          title="View Fleet Work Order Details"
                         >
-                          View Details
+                          <Eye size={13} className="text-slate-500" />
+                          <span>View Details</span>
                         </button>
                       </td>
                     </tr>

@@ -48,6 +48,7 @@ interface InboundIntakeFormProps {
   setUrgency: (val: 'URGENT' | 'STANDARD' | 'FUTURE') => void;
   arrivalWindow?: ArrivalWindowData;
   setArrivalWindow?: (data: ArrivalWindowData) => void;
+  timezone?: string;
   etaMinutes?: string;
   setEtaMinutes?: (val: string) => void;
   notes: string;
@@ -88,6 +89,7 @@ export default function InboundIntakeForm({
   setUrgency,
   arrivalWindow,
   setArrivalWindow,
+  timezone,
   etaMinutes,
   setEtaMinutes,
   notes,
@@ -423,6 +425,8 @@ export default function InboundIntakeForm({
           {setArrivalWindow ? (
             <ArrivalWindowSelector
               value={arrivalWindow}
+              timezone={timezone}
+              countryCode={countryCode}
               onChange={(data) => {
                 setArrivalWindow(data);
                 if (data.mode === 'ETA') {

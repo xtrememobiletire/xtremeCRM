@@ -61,7 +61,26 @@ export const fleetController = {
         prisma.fleet.count({ where }),
       ]);
 
-      const paginated = createPaginatedResponse(fleets, page, limit, totalCount);
+      const fleetIds = fleets.map((f) => f.id);
+      const unpaidByFleet =
+        fleetIds.length > 0
+          ? await prisma.invoice.groupBy({
+              by: ['fleetId'],
+              where: {
+                fleetId: { in: fleetIds },
+                status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] },
+              },
+              _sum: { balanceDueCents: true },
+            })
+          : [];
+      const balanceMap = new Map(unpaidByFleet.map((b) => [b.fleetId, b._sum.balanceDueCents || 0]));
+      const enrichedFleets = fleets.map((f) => ({
+        ...f,
+        companyName: f.name,
+        outstandingBalanceCents: balanceMap.get(f.id) || 0,
+      }));
+
+      const paginated = createPaginatedResponse(enrichedFleets, page, limit, totalCount);
       return res.status(200).json(paginated);
     } catch (err: any) {
       return sendError(res, err.message);
@@ -301,34 +320,61 @@ export const fleetController = {
       const vehicles = req.body.vehicles;
       if (Array.isArray(vehicles) && vehicles.length > 0) {
         for (const v of vehicles) {
-          if (!v.licensePlate) continue;
+          const cleanPlate = v.licensePlate && String(v.licensePlate).trim() ? String(v.licensePlate).trim().toUpperCase() : null;
+          const cleanUnit = v.unitNumber && String(v.unitNumber).trim() ? String(v.unitNumber).trim() : null;
+          if (!cleanPlate && !cleanUnit) continue;
+
           try {
-            await prisma.vehicle.upsert({
-              where: {
-                countryCode_licensePlate: {
-                  countryCode: effectiveCountry,
-                  licensePlate: v.licensePlate.trim().toUpperCase(),
+            if (cleanPlate) {
+              await prisma.vehicle.upsert({
+                where: {
+                  countryCode_licensePlate: {
+                    countryCode: effectiveCountry,
+                    licensePlate: cleanPlate,
+                  },
                 },
-              },
-              update: {
-                fleetId: fleet.id,
-                make: v.make || 'Commercial',
-                model: v.model || 'Rig',
-                year: v.year ? Number(v.year) : new Date().getFullYear(),
-                tireSize: v.tireSize || '11R22.5',
-                vin: v.vin || undefined,
-              },
-              create: {
-                fleetId: fleet.id,
-                countryCode: effectiveCountry,
-                licensePlate: v.licensePlate.trim().toUpperCase(),
-                make: v.make || 'Commercial',
-                model: v.model || 'Rig',
-                year: v.year ? Number(v.year) : new Date().getFullYear(),
-                tireSize: v.tireSize || '11R22.5',
-                vin: v.vin || undefined,
-              },
-            });
+                update: {
+                  fleetId: fleet.id,
+                  unitNumber: cleanUnit || undefined,
+                  make: v.make || 'Commercial',
+                  model: v.model || 'Rig',
+                  year: v.year ? Number(v.year) : new Date().getFullYear(),
+                  color: v.color?.trim() || undefined,
+                  unitType: v.unitType?.trim() || undefined,
+                  tireSize: v.tireSize || '11R22.5',
+                  vin: v.vin || undefined,
+                },
+                create: {
+                  fleetId: fleet.id,
+                  countryCode: effectiveCountry,
+                  licensePlate: cleanPlate,
+                  unitNumber: cleanUnit || undefined,
+                  make: v.make || 'Commercial',
+                  model: v.model || 'Rig',
+                  year: v.year ? Number(v.year) : new Date().getFullYear(),
+                  color: v.color?.trim() || undefined,
+                  unitType: v.unitType?.trim() || undefined,
+                  tireSize: v.tireSize || '11R22.5',
+                  vin: v.vin || undefined,
+                },
+              });
+            } else {
+              await prisma.vehicle.create({
+                data: {
+                  fleetId: fleet.id,
+                  countryCode: effectiveCountry,
+                  unitNumber: cleanUnit,
+                  licensePlate: null,
+                  make: v.make || 'Commercial',
+                  model: v.model || 'Rig',
+                  year: v.year ? Number(v.year) : new Date().getFullYear(),
+                  color: v.color?.trim() || undefined,
+                  unitType: v.unitType?.trim() || undefined,
+                  tireSize: v.tireSize || '11R22.5',
+                  vin: v.vin || undefined,
+                },
+              });
+            }
           } catch (e: any) {
             console.error('Failed to create fleet vehicle:', e?.message);
           }

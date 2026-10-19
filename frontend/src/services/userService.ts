@@ -30,6 +30,13 @@ export const userService = {
     return Array.isArray(raw.data) ? raw.data : (Array.isArray(raw) ? raw : []);
   },
 
+  async getStaffUsers(countryCode?: string): Promise<UserItem[]> {
+    const res = await api.get('/users', { params: { limit: 100, countryCode } });
+    const raw = res.data;
+    const all = Array.isArray(raw.data) ? raw.data : (Array.isArray(raw) ? raw : []);
+    return all.filter((u: any) => ['CALL_AGENT', 'VIRTUAL_ASSISTANT', 'DISPATCHER', 'ADMIN', 'GENERAL_MANAGER'].includes(u.role));
+  },
+
   async toggleMyPresence(isAgentActive?: boolean) {
     const res = await api.patch('/users/me/active', { isAgentActive });
     return res.data.data;

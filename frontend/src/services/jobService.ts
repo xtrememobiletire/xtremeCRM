@@ -28,12 +28,22 @@ export interface JobItem {
   otherExpenseCents?: number;
   expenseNotes?: string;
   itPlatformFeeCents?: number;
+  source?: string;
+  fleetId?: string | null;
+  fleet?: any;
+  isTestService?: boolean;
+  prospectCompanyName?: string;
+  subtotalCents?: number;
+  taxRateBps?: number;
+  taxAmountCents?: number;
   customer?: {
     id?: string;
     name?: string;
     fullName?: string;
     phone?: string;
     email?: string;
+    customerType?: string;
+    membershipTier?: string;
   } | null;
   vehicle?: {
     id?: string;
@@ -42,6 +52,7 @@ export interface JobItem {
     model?: string;
     tireSize?: string;
     licensePlate?: string;
+    unitNumber?: string;
   } | null;
   driver?: {
     id: string;
@@ -104,6 +115,7 @@ export const jobService = {
     driverId?: string;
     fleetId?: string;
     isFleetJob?: boolean | string;
+    jobCategory?: string;
     source?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
@@ -221,6 +233,12 @@ export const jobService = {
     serviceAddress: string;
     serviceLatitude?: number | null;
     serviceLongitude?: number | null;
+    serviceTimezone?: string | null;
+    appointmentDate?: string | Date | null;
+    arrivalWindowStart?: string | Date | null;
+    arrivalWindowEnd?: string | Date | null;
+    estimatedArrivalMinutes?: number | null;
+    driverId?: string | null;
     recipientName?: string;
     recipientPhone?: string;
     problemNotes?: string;
@@ -229,8 +247,11 @@ export const jobService = {
     vehicleMake?: string;
     vehicleModel?: string;
     vehicleYear?: number;
+    unitNumber?: string;
     tireSize?: string;
     licensePlate?: string;
+    vehicleColor?: string;
+    discountCents?: number | null;
     serviceItems?: any[];
   }): Promise<JobItem> {
     const res = await api.patch(`/jobs/${id}/verify-booking`, payload);

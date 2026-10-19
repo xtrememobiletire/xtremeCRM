@@ -10,6 +10,7 @@ import {
   createPaginatedResponse,
 } from '../utils/index.js';
 import { geocodingService } from '../services/geocodingService.js';
+import { invalidateUserAuthCache } from '../config/passport.js';
 
 export const userController = {
   async getUsers(req: Request, res: Response) {
@@ -251,6 +252,7 @@ export const userController = {
         },
       });
 
+      invalidateUserAuthCache(id);
       return sendSuccess(res, updated, 'User updated successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
@@ -276,6 +278,7 @@ export const userController = {
         },
       });
 
+      invalidateUserAuthCache(id);
       return sendSuccess(res, updated, `Agent presence set to ${updated.isAgentActive ? 'Active' : 'Inactive'}`);
     } catch (err: any) {
       return sendError(res, err.message, 400);
@@ -290,6 +293,7 @@ export const userController = {
         data: { deletedAt: new Date() },
       });
 
+      invalidateUserAuthCache(id);
       return sendSuccess(res, null, 'User deleted successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);

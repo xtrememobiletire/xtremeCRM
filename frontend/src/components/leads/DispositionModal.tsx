@@ -1,6 +1,12 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useMemo, type FormEvent } from 'react';
 import Modal from '../ui/Modal';
 import { useAuth } from '../../context/AuthContext';
+import { Clock } from 'lucide-react';
+import { 
+  resolveLeadTimezone, 
+  zonedWallTimeToUtc, 
+  formatDualPktAndCustomerTime 
+} from '../../utils/date';
 
 interface DispositionModalProps {
   lead: any | null;
@@ -14,6 +20,7 @@ interface DispositionModalProps {
       callbackDate?: string;
       callbackDay?: string;
       callbackTime?: string;
+      callbackTimezone?: string;
       disqualificationReason?: string;
     };
   }) => void;
@@ -34,6 +41,7 @@ export default function DispositionModal({
   const [callbackDate, setCallbackDate] = useState('');
   const [callbackDay, setCallbackDay] = useState('');
   const [callbackTime, setCallbackTime] = useState('');
+  const [callbackTimezone, setCallbackTimezone] = useState('America/Toronto');
   const [dispositionReason, setDispositionReason] = useState('NOT_INTERESTED');
 
   useEffect(() => {
@@ -43,9 +51,49 @@ export default function DispositionModal({
       setCallbackDate('');
       setCallbackDay('');
       setCallbackTime('');
+      setCallbackTimezone(resolveLeadTimezone(lead));
       setDispositionReason('NOT_INTERESTED');
     }
   }, [lead]);
+
+  const dualClockPreview = useMemo(() => {
+    if (!callbackDate || !callbackTime) return null;
+    const timeParts = callbackTime.match(/(\d{1,2}):(\d{2})/);
+    if (!timeParts) return null;
+    let hour = parseInt(timeParts[1], 10);
+    const minute = parseInt(timeParts[2], 10);
+    if (/pm/i.test(callbackTime) && hour < 12) hour += 12;
+    if (/am/i.test(callbackTime) && hour === 12) hour = 0;
+    const tz = callbackTimezone || resolveLeadTimezone(lead);
+    const utcDate = zonedWallTimeToUtc(callbackDate, hour, minute, tz);
+    return formatDualPktAndCustomerTime(utcDate, tz);
+  }, [callbackDate, callbackTime, callbackTimezone, lead]);
+
+  const setQuickCallback = (hoursFromNow: number) => {
+    const tz = callbackTimezone || resolveLeadTimezone(lead);
+    const target = new Date(Date.now() + hoursFromNow * 3600 * 1000);
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(target);
+    const y = parts.find((p) => p.type === 'year')?.value;
+    const m = parts.find((p) => p.type === 'month')?.value;
+    const d = parts.find((p) => p.type === 'day')?.value;
+    const hr = parts.find((p) => p.type === 'hour')?.value || '10';
+    const min = parts.find((p) => p.type === 'minute')?.value || '00';
+    if (y && m && d) {
+      setCallbackDate(`${y}-${m}-${d}`);
+      const dt = new Date(`${y}-${m}-${d}T00:00:00`);
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      setCallbackDay(days[dt.getDay()]);
+    }
+    setCallbackTime(`${hr}:${min}`);
+  };
 
   if (!lead) return null;
 
@@ -61,6 +109,7 @@ export default function DispositionModal({
         callbackDate: callbackDate || undefined,
         callbackDay: callbackDay || undefined,
         callbackTime: callbackTime || undefined,
+        callbackTimezone: callbackTimezone || undefined,
         disqualificationReason: ['NOT_INTERESTED', 'WRONG_NUMBER'].includes(selectedDisposition)
           ? dispositionReason
           : undefined,
@@ -117,11 +166,38 @@ export default function DispositionModal({
 
         {/* If Callback Requested */}
         {selectedDisposition === 'CALLBACK' && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
-            <div className="font-bold text-blue-900">Schedule Follow-up Callback</div>
-            <div className="grid grid-cols-3 gap-2">
+          <div className="p-3 bg-blue-50/90 border border-blue-200 rounded-xl space-y-2.5">
+            <div className="font-bold text-blue-900 text-xs">Schedule Follow-up Callback</div>
+
+            {/* Quick Presets */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] uppercase font-bold text-blue-700 font-mono">Quick:</span>
+              <button
+                type="button"
+                onClick={() => setQuickCallback(2)}
+                className="px-2 py-0.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 text-[11px] font-semibold transition"
+              >
+                +2 Hours
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuickCallback(24)}
+                className="px-2 py-0.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 text-[11px] font-semibold transition"
+              >
+                +24 Hours
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuickCallback(48)}
+                className="px-2 py-0.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 text-[11px] font-semibold transition"
+              >
+                +2 Days
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div>
-                <label className="block font-semibold text-blue-800 mb-1">Date</label>
+                <label className="block font-semibold text-blue-800 mb-1 text-[11px]">Date</label>
                 <input
                   type="date"
                   value={callbackDate}
@@ -139,7 +215,7 @@ export default function DispositionModal({
                 />
               </div>
               <div>
-                <label className="block font-semibold text-blue-800 mb-1">Day</label>
+                <label className="block font-semibold text-blue-800 mb-1 text-[11px]">Day</label>
                 <input
                   type="text"
                   readOnly
@@ -149,16 +225,47 @@ export default function DispositionModal({
                 />
               </div>
               <div>
-                <label className="block font-semibold text-blue-800 mb-1">Time</label>
+                <label className="block font-semibold text-blue-800 mb-1 text-[11px]">Time (24h)</label>
                 <input
-                  type="text"
+                  type="time"
                   value={callbackTime}
-                  placeholder="11:00 AM"
                   onChange={(e) => setCallbackTime(e.target.value)}
                   className="w-full px-2 py-1.5 text-xs rounded-lg border border-blue-200 bg-white"
                 />
               </div>
+              <div>
+                <label className="block font-semibold text-blue-800 mb-1 text-[11px]">Timezone</label>
+                <select
+                  value={callbackTimezone}
+                  onChange={(e) => setCallbackTimezone(e.target.value)}
+                  className="w-full px-2 py-1.5 text-xs rounded-lg border border-blue-200 bg-white"
+                >
+                  <option value="America/Toronto">Eastern (Toronto/NY)</option>
+                  <option value="America/Chicago">Central (Chicago/Winnipeg)</option>
+                  <option value="America/Denver">Mountain (Denver/Calgary)</option>
+                  <option value="America/Phoenix">Mountain (Arizona)</option>
+                  <option value="America/Los_Angeles">Pacific (LA/Vancouver)</option>
+                  <option value="America/Halifax">Atlantic (Halifax)</option>
+                  <option value="Europe/London">UK (London GMT/BST)</option>
+                </select>
+              </div>
             </div>
+
+            {/* Dual Clock Preview Banner */}
+            {dualClockPreview && (
+              <div className="p-2 rounded-lg bg-blue-100/70 border border-blue-300/80 text-[11px] text-blue-950 space-y-0.5">
+                <div className="flex items-center justify-between font-semibold">
+                  <span className="flex items-center gap-1">
+                    <Clock size={11} className="text-blue-700" /> Customer Local:
+                  </span>
+                  <span className="font-mono text-blue-900 font-bold">{dualClockPreview.customerLabel}</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-700">
+                  <span>🇵🇰 Pakistan Shift (PKT):</span>
+                  <span className="font-mono font-semibold text-slate-900">{dualClockPreview.pktLabel}</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

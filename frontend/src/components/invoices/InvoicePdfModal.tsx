@@ -10,6 +10,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
+import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 
 interface InvoicePdfModalProps {
@@ -56,6 +57,9 @@ export default function InvoicePdfModal({
   invoiceId,
   onStatusUpdated,
 }: InvoicePdfModalProps) {
+  const { user } = useAuth();
+  const isPortalClient = user?.role === 'FLEET_MANAGER' || user?.role === 'CUSTOMER_MEMBER';
+
   const [data, setData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -228,20 +232,22 @@ export default function InvoicePdfModal({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsEditingAddress(!isEditingAddress)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
-                isEditingAddress
-                  ? 'bg-red-600 text-white shadow-xs'
-                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-              }`}
-            >
-              <Edit3 size={13} />
-              <span>{isEditingAddress ? 'Done Editing' : 'Alter Addresses'}</span>
-            </button>
+            {!isPortalClient && (
+              <button
+                type="button"
+                onClick={() => setIsEditingAddress(!isEditingAddress)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
+                  isEditingAddress
+                    ? 'bg-red-600 text-white shadow-xs'
+                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                }`}
+              >
+                <Edit3 size={13} />
+                <span>{isEditingAddress ? 'Done Editing' : 'Alter Addresses'}</span>
+              </button>
+            )}
 
-            {data && data.status !== 'PAID' && (
+            {!isPortalClient && data && data.status !== 'PAID' && (
               <button
                 type="button"
                 disabled={updating}

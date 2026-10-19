@@ -9,6 +9,7 @@ import {
   formatCurrency,
 } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
+import { getTimeframeBounds } from '../utils/timezone.js';
 
 export const accountingController = {
   /**
@@ -21,30 +22,11 @@ export const accountingController = {
       const { startDate, endDate, timeframe } = req.query;
 
       const dateFilter: any = {};
-      const now = new Date();
 
-      if (timeframe === 'yesterday') {
-        const start = new Date(now);
-        start.setDate(now.getDate() - 1);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(now);
-        end.setDate(now.getDate() - 1);
-        end.setHours(23, 59, 59, 999);
-        dateFilter.gte = start;
-        dateFilter.lte = end;
-      } else if (timeframe === 'last_3_days') {
-        const start = new Date(now);
-        start.setDate(now.getDate() - 3);
-        start.setHours(0, 0, 0, 0);
-        dateFilter.gte = start;
-      } else if (timeframe === 'last_7_days' || timeframe === 'week') {
-        const start = new Date(now);
-        start.setDate(now.getDate() - 7);
-        start.setHours(0, 0, 0, 0);
-        dateFilter.gte = start;
-      } else if (timeframe === 'monthly' || timeframe === 'month_to_date') {
-        const start = new Date(now.getFullYear(), now.getMonth(), 1);
-        dateFilter.gte = start;
+      if (timeframe && typeof timeframe === 'string') {
+        const bounds = getTimeframeBounds(timeframe, countryCode);
+        dateFilter.gte = bounds.gte;
+        if (bounds.lte) dateFilter.lte = bounds.lte;
       } else {
         if (startDate) dateFilter.gte = new Date(startDate as string);
         if (endDate) dateFilter.lte = new Date(endDate as string);
@@ -150,30 +132,11 @@ export const accountingController = {
       const skip = calculateSkip(page, limit);
 
       const dateFilter: any = {};
-      const now = new Date();
 
-      if (timeframe === 'yesterday') {
-        const start = new Date(now);
-        start.setDate(now.getDate() - 1);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(now);
-        end.setDate(now.getDate() - 1);
-        end.setHours(23, 59, 59, 999);
-        dateFilter.gte = start;
-        dateFilter.lte = end;
-      } else if (timeframe === 'last_3_days' || timeframe === '3days') {
-        const start = new Date(now);
-        start.setDate(now.getDate() - 3);
-        start.setHours(0, 0, 0, 0);
-        dateFilter.gte = start;
-      } else if (timeframe === 'last_7_days' || timeframe === '7days' || timeframe === 'week') {
-        const start = new Date(now);
-        start.setDate(now.getDate() - 7);
-        start.setHours(0, 0, 0, 0);
-        dateFilter.gte = start;
-      } else if (timeframe === 'monthly' || timeframe === 'month' || timeframe === 'month_to_date') {
-        const start = new Date(now.getFullYear(), now.getMonth(), 1);
-        dateFilter.gte = start;
+      if (timeframe && typeof timeframe === 'string') {
+        const bounds = getTimeframeBounds(timeframe, countryCode);
+        dateFilter.gte = bounds.gte;
+        if (bounds.lte) dateFilter.lte = bounds.lte;
       } else {
         if (startDate) dateFilter.gte = new Date(startDate as string);
         if (endDate) dateFilter.lte = new Date(endDate as string);
