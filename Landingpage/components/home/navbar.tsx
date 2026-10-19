@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import SplitPillButton from "./split-pill-button";
+import { LOGIN_URL } from "@/lib/config";
 
 export interface NavItem {
   label: string;
@@ -34,9 +35,7 @@ export default function Navbar({
   brandName = "Xtreme Mobile Tire",
   logoSrc = "/logo.webp",
   navItems = DEFAULT_NAV_ITEMS,
-  signInHref = process.env.NEXT_PUBLIC_APP_URL
-    ? `${process.env.NEXT_PUBLIC_APP_URL}/login`
-    : "http://localhost:5173/login",
+  signInHref = LOGIN_URL,
   signUpHref = "/signup",
   onLogoClick,
   hide = false,

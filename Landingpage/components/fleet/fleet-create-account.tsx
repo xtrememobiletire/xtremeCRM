@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { LOGIN_URL } from "@/lib/config";
 import {
   Check,
   ArrowRight,
@@ -640,11 +641,7 @@ export default function FleetCreateAccount() {
 
                   <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                     <a
-                      href={
-                        process.env.NEXT_PUBLIC_APP_URL
-                          ? `${process.env.NEXT_PUBLIC_APP_URL}/login`
-                          : "http://localhost:5173/login"
-                      }
+                      href={LOGIN_URL}
                       className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 rounded-none bg-zinc-950 text-white dark:bg-white dark:text-black hover:bg-[#DC2626] dark:hover:bg-[#DC2626] dark:hover:text-white font-medium text-sm transition-colors cursor-pointer"
                     >
                       Sign In to Fleet Portal

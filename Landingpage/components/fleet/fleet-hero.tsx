@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { LOGIN_URL } from "@/lib/config";
 
 // Pool of 6 high-resolution commercial fleet pictures
 const FLEET_IMAGES: string[] = [
@@ -137,11 +138,7 @@ export default function FleetHero() {
             Register Fleet
           </Link>
           <a
-            href={
-              process.env.NEXT_PUBLIC_APP_URL
-                ? `${process.env.NEXT_PUBLIC_APP_URL}/login`
-                : "http://localhost:5173/login"
-            }
+            href={LOGIN_URL}
             className="inline-flex items-center justify-center px-8 sm:px-10 py-3 sm:py-3.5 rounded-none border border-zinc-900/80 dark:border-white/80 bg-transparent text-zinc-950 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium text-sm sm:text-base tracking-tight transition-all duration-300 shadow-sm active:scale-98 cursor-pointer"
           >
             SignIn to Fleet

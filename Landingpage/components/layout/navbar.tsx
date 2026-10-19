@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import SplitPillButton from "../home/split-pill-button";
+import { LOGIN_URL } from "@/lib/config";
 
 export interface NavItem {
   label: string;
@@ -50,10 +51,8 @@ export default function Navbar({
   brandName = "Xtreme Mobile Tire",
   logoSrc = "/logo.webp",
   navItems = DEFAULT_NAV_ITEMS,
-  signInHref = process.env.NEXT_PUBLIC_APP_URL
-    ? `${process.env.NEXT_PUBLIC_APP_URL}/login`
-    : "http://localhost:5173/login",
-  signUpHref = "#signup",
+  signInHref = LOGIN_URL,
+  signUpHref = "/signup",
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedDropdown, setExpandedDropdown] = useState<string | null>(null);

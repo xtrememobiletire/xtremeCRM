@@ -2,7 +2,11 @@ import { ArrowLeft } from 'lucide-react';
 import LoginForm from '../components/pages/login/LoginForm';
 
 export default function Login() {
-  const landingUrl = import.meta.env.VITE_LANDING_PAGE_URL || 'http://localhost:4000';
+  const landingUrl =
+    import.meta.env.VITE_LANDING_PAGE_URL ||
+    (import.meta.env.PROD || (typeof window !== 'undefined' && !window.location.hostname.includes('localhost'))
+      ? 'https://xtrememobiletire.com'
+      : 'http://localhost:4000');
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative">

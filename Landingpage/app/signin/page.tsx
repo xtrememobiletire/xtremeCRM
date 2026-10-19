@@ -3,11 +3,10 @@
 import { useEffect } from "react";
 import PageShell from "@/components/layout/page-shell";
 import { ArrowRight } from "lucide-react";
+import { LOGIN_URL } from "@/lib/config";
 
 export default function SignInPage() {
-  const loginUrl = process.env.NEXT_PUBLIC_APP_URL
-    ? `${process.env.NEXT_PUBLIC_APP_URL}/login`
-    : "http://localhost:5173/login";
+  const loginUrl = LOGIN_URL;
 
   useEffect(() => {
     window.location.replace(loginUrl);

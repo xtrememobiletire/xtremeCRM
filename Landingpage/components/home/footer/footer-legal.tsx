@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LOGIN_URL } from "@/lib/config";
 
 interface FooterLegalProps {
   brandName?: string;
@@ -42,11 +43,7 @@ export default function FooterLegal({
         </Link>
         <span>/</span>
         <a
-          href={
-            process.env.NEXT_PUBLIC_APP_URL
-              ? `${process.env.NEXT_PUBLIC_APP_URL}/login`
-              : "http://localhost:5173/login"
-          }
+          href={LOGIN_URL}
           className="hover:text-white transition-colors"
         >
           Fleet Portal
