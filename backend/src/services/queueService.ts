@@ -160,12 +160,43 @@ export async function refillAgentQueueAtomic(
       // Per-VA advisory lock prevents concurrent transactions assigning duplicate leads
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${vaId}))`;
 
+      if (batchId) {
+        // Auto-promote batch to ACTIVE if needed so it is ready for claiming
+        await tx.batch.updateMany({
+          where: {
+            id: batchId,
+            status: { not: 'ACTIVE' },
+          },
+          data: {
+            status: 'ACTIVE',
+            scheduledDate: new Date(),
+          },
+        });
+
+        // Release any untouched lead from other batches back to unassigned pool
+        await tx.lead.updateMany({
+          where: {
+            assignedAgentId: vaId,
+            stage: 'VA_OUTREACH',
+            status: 'NEW',
+            disposition: null,
+            batchId: { not: batchId },
+          },
+          data: {
+            assignedAgentId: null,
+            assignmentMethod: null,
+            assignedAt: null,
+          },
+        });
+      }
+
       const activeCount = await tx.lead.count({
         where: {
           assignedAgentId: vaId,
           stage: 'VA_OUTREACH',
           status: { in: ['NEW', 'CALLED'] },
           disposition: null,
+          ...(batchId ? { batchId } : {}),
         },
       });
 
@@ -182,7 +213,8 @@ export async function refillAgentQueueAtomic(
           AND (${batchId || null}::text IS NOT NULL OR l.country_code = ${countryCode || 'CA'}::"CountryCode")
           AND (l.last_called_by_va_id IS NULL OR l.last_called_by_va_id != ${vaId} OR l.last_called_at <= NOW() - INTERVAL '2 hours')
           AND (
-            l.batch_id IS NULL
+            (${batchId || null}::text IS NOT NULL AND l.batch_id = ${batchId || null})
+            OR l.batch_id IS NULL
             OR EXISTS (
               SELECT 1 FROM batches b
               WHERE b.id = l.batch_id

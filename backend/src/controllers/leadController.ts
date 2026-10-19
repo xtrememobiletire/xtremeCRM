@@ -1448,11 +1448,16 @@ export const leadController = {
           where: { id: targetBatchId },
         });
         if (batch) {
-          await prisma.batch.update({
+          const updateData: any = {
+            totalLeads: { increment: leadsToCreate.length },
+          };
+          if (activationMode === 'IMMEDIATE') {
+            updateData.status = 'ACTIVE';
+            updateData.scheduledDate = new Date();
+          }
+          batch = await prisma.batch.update({
             where: { id: batch.id },
-            data: {
-              totalLeads: { increment: leadsToCreate.length },
-            },
+            data: updateData,
           });
         }
       }
@@ -1724,10 +1729,9 @@ export const leadController = {
         },
       });
 
-      // INSTANT AUTO-PULL: If VA holds 0 active leads upon entering the batch, pull #1 priority unassigned lead immediately!
-      if (activeLeads.length === 0) {
-        const pulled = await refillAgentQueueAtomic(agentId, countryCode || 'CA', MAX_ACTIVE, batchId);
-        if (pulled > 0) {
+      if (activeLeads.length < MAX_ACTIVE) {
+        const newlyAssigned = await refillAgentQueueAtomic(agentId, countryCode || 'CA', MAX_ACTIVE, batchId);
+        if (newlyAssigned > 0) {
           activeLeads = await prisma.lead.findMany({
             where: activeWhere,
             orderBy: [{ priority: 'desc' }, { numberOfUnits: 'desc' }, { createdAt: 'asc' }],
