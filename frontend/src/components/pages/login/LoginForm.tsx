@@ -234,14 +234,13 @@ export default function LoginForm() {
 
         {/* Return to Landing Page Link */}
         <div className="pt-3 border-t border-slate-100 flex justify-center">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
+          <a
+            href={import.meta.env.VITE_LANDING_PAGE_URL || 'http://localhost:4000'}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition cursor-pointer py-1"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Return to Landing Page</span>
-          </button>
+          </a>
         </div>
       </div>
     </div>

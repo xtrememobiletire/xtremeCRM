@@ -12,6 +12,7 @@ export const config = {
   NODE_ENV: nodeEnv,
   PORT: Number(process.env.PORT) || 3000,
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
+  LANDING_PAGE_URL: process.env.LANDING_PAGE_URL || 'http://localhost:4000',
   DATABASE_URL: process.env.DATABASE_URL || '',
   DIRECT_URL: process.env.DIRECT_URL || '',
   COOKIE_SECRET: process.env.COOKIE_SECRET || 'default_cookie_secret_change_me',

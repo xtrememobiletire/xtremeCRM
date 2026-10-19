@@ -42,8 +42,10 @@ app.use(
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
+  'http://localhost:4000',
   'https://xtreme-crm.vercel.app',
   ...(config.FRONTEND_URL ? config.FRONTEND_URL.split(',').map((s) => s.trim()) : []),
+  ...(config.LANDING_PAGE_URL ? config.LANDING_PAGE_URL.split(',').map((s) => s.trim()) : []),
 ];
 
 app.use(

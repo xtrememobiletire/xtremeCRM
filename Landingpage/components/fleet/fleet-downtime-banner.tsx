@@ -54,11 +54,8 @@ export default function FleetDowntimeBanner() {
             </span>
           </div>
 
-          {/* Headline in Serif Font matching wireframe - using "and", not "&" */}
-          <h2
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-normal tracking-tight text-white leading-[1.15]"
-            style={{ fontFamily: '"Times New Roman", Times, serif' }}
-          >
+          {/* Headline in Clean Bold Sans Font - using "and", not "&" */}
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-bold tracking-tight text-white leading-[1.15]">
             Ready to Eliminate Fleet Downtime Across the USA, UK and Canada?
           </h2>
 

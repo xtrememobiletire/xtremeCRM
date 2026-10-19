@@ -32,6 +32,7 @@ const colors = {
 const prefixes = {
   backend: `${colors.cyan}${colors.bold}[backend]${colors.reset} `,
   frontend: `${colors.magenta}${colors.bold}[frontend]${colors.reset} `,
+  landing: `${colors.yellow}${colors.bold}[landing]${colors.reset} `,
   system: `${colors.green}${colors.bold}[system]${colors.reset} `,
 };
 
@@ -120,24 +121,33 @@ process.on('exit', () => {
 async function main() {
   const backendDir = path.join(__dirname, 'backend');
   const frontendDir = path.join(__dirname, 'frontend');
+  const landingDir = path.join(__dirname, 'Landingpage');
 
   if (command === 'dev') {
     console.log(`${prefixes.system}Starting XtremeCRM Development Services...`);
-    console.log(`${prefixes.system}Backend Target:  ${colors.cyan}http://localhost:3000${colors.reset}`);
-    console.log(`${prefixes.system}Frontend Target: ${colors.magenta}http://localhost:5173${colors.reset}\n`);
+    console.log(`${prefixes.system}Landing Target:  ${colors.yellow}http://localhost:4000${colors.reset}`);
+    console.log(`${prefixes.system}Frontend Target: ${colors.magenta}http://localhost:5173${colors.reset}`);
+    console.log(`${prefixes.system}Backend Target:  ${colors.cyan}http://localhost:3000${colors.reset}\n`);
 
-    const backendProc = runProcess('pnpm', ['run', 'dev'], backendDir, prefixes.backend);
-    activeChildren.push(backendProc);
+    const landingProc = runProcess('pnpm', ['run', 'dev'], landingDir, prefixes.landing);
+    activeChildren.push(landingProc);
 
     const frontendProc = runProcess('pnpm', ['run', 'dev'], frontendDir, prefixes.frontend);
     activeChildren.push(frontendProc);
 
-    backendProc.on('exit', (code) => {
-      console.log(`${prefixes.backend}Process exited with code ${code}`);
+    const backendProc = runProcess('pnpm', ['run', 'dev'], backendDir, prefixes.backend);
+    activeChildren.push(backendProc);
+
+    landingProc.on('exit', (code) => {
+      console.log(`${prefixes.landing}Process exited with code ${code}`);
     });
 
     frontendProc.on('exit', (code) => {
       console.log(`${prefixes.frontend}Process exited with code ${code}`);
+    });
+
+    backendProc.on('exit', (code) => {
+      console.log(`${prefixes.backend}Process exited with code ${code}`);
     });
   } else if (command === 'build') {
     console.log(`${prefixes.system}Starting XtremeCRM Production Build...\n`);

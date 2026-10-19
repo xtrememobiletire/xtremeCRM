@@ -127,19 +127,13 @@ export default function AboutContactLocations() {
               {/* Category Eyebrow */}
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-[var(--brand-primary)] inline-block shrink-0 rounded-none shadow-sm" />
-                <span
-                  className="text-xs tracking-widest uppercase text-zinc-600 dark:text-zinc-400 font-medium"
-                  style={{ fontFamily: '"Times New Roman", Times, serif' }}
-                >
-                  Direct Contact & Support
+                <span className="text-xs font-mono font-bold tracking-widest uppercase text-zinc-600 dark:text-zinc-400">
+                  Direct Contact and Support
                 </span>
               </div>
 
-              {/* Main Headline in Serif Font matching wireframe */}
-              <h2
-                className="text-4xl sm:text-5xl lg:text-[54px] font-normal tracking-tight text-zinc-950 dark:text-white leading-[1.08]"
-                style={{ fontFamily: '"Times New Roman", Times, serif' }}
-              >
+              {/* Main Headline */}
+              <h2 className="text-4xl sm:text-5xl lg:text-[54px] font-bold tracking-tight text-zinc-950 dark:text-white leading-[1.08]">
                 Get In Touch
               </h2>
 
@@ -241,12 +235,11 @@ export default function AboutContactLocations() {
 
                       {/* Country Code Label matching wireframe (UK, US, CAD) */}
                       <span
-                        className={`text-xs sm:text-sm font-bold tracking-wider uppercase transition-colors ${
+                        className={`text-xs sm:text-sm font-bold tracking-wider uppercase font-mono transition-colors ${
                           isActive
                             ? "text-zinc-950 dark:text-white"
                             : "text-zinc-600 dark:text-zinc-400 group-hover/circle:text-zinc-900 dark:group-hover/circle:text-white"
                         }`}
-                        style={{ fontFamily: '"Times New Roman", Times, serif' }}
                       >
                         {loc.code}
                       </span>

@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
@@ -13,7 +13,6 @@ import { useSSE } from './hooks/useSSE';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 
 // Lazy Loaded Pages with Auto-Retry
-const Landing = lazyWithRetry(() => import('./pages/Landing'));
 const Login = lazyWithRetry(() => import('./pages/Login'));
 const Dashboard = lazyWithRetry(() => import('./pages/Dashboard'));
 const Jobs = lazyWithRetry(() => import('./pages/Jobs'));
@@ -70,6 +69,15 @@ function PageLoader() {
   );
 }
 
+function RedirectToLanding() {
+  useEffect(() => {
+    const landingUrl = import.meta.env.VITE_LANDING_PAGE_URL || 'http://localhost:4000';
+    window.location.replace(landingUrl);
+  }, []);
+
+  return <PageLoader />;
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
@@ -112,15 +120,8 @@ function AppRoutes() {
   return (
     <RouteErrorBoundary>
       <Routes>
-        {/* Unauthenticated Landing Page */}
-        <Route
-          path="/landing"
-          element={
-            <Suspense fallback={<PageLoader />}>
-              <Landing />
-            </Suspense>
-          }
-        />
+        {/* Unauthenticated Landing Page: Redirects to Port 4000 Landing App */}
+        <Route path="/landing" element={<RedirectToLanding />} />
 
         {/* Public Login Route */}
         <Route
@@ -134,7 +135,7 @@ function AppRoutes() {
           }
         />
 
-        {/* Root Route: If authenticated -> Dashboard in MainLayout, else Landing */}
+        {/* Root Route: If authenticated -> Dashboard in MainLayout, else redirect to Landing */}
         {user ? (
           <Route
             path="/"
@@ -151,14 +152,7 @@ function AppRoutes() {
             <Route index element={<Navigate to={getRoleHome(user.role)} replace />} />
           </Route>
         ) : (
-          <Route
-            path="/"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <Landing />
-              </Suspense>
-            }
-          />
+          <Route path="/" element={<RedirectToLanding />} />
         )}
 
         {/* Public Sandboxed External Driver Portal */}

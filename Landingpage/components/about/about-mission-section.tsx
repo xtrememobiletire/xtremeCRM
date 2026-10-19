@@ -161,10 +161,7 @@ export default function AboutMissionSection() {
         <div className="lg:hidden space-y-3 mb-6 sm:mb-8 text-left">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 bg-black dark:bg-[var(--brand-primary)]/85 inline-block shrink-0 rounded-none shadow-sm" />
-            <span
-              className="text-xs sm:text-sm tracking-widest uppercase text-zinc-800 dark:text-zinc-200"
-              style={{ fontFamily: '"Times New Roman", Times, serif' }}
-            >
+            <span className="text-xs sm:text-sm font-mono font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200">
               About Us
             </span>
           </div>
@@ -217,10 +214,7 @@ export default function AboutMissionSection() {
           <div className="hidden lg:block space-y-3">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 bg-black dark:bg-[var(--brand-primary)]/85 inline-block shrink-0 rounded-none shadow-sm" />
-              <span
-                className="text-xs sm:text-sm tracking-widest uppercase text-zinc-800 dark:text-zinc-200"
-                style={{ fontFamily: '"Times New Roman", Times, serif' }}
-              >
+              <span className="text-xs sm:text-sm font-mono font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200">
                 About Us
               </span>
             </div>

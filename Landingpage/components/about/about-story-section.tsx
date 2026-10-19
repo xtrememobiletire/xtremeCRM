@@ -81,10 +81,7 @@ export default function AboutStorySection() {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-[var(--brand-primary)]/85 inline-block shrink-0 rounded-none shadow-sm" />
-                <span
-                  className="text-xs tracking-widest uppercase text-zinc-600 dark:text-zinc-400"
-                  style={{ fontFamily: '"Times New Roman", Times, serif' }}
-                >
+                <span className="text-xs font-mono font-bold tracking-widest uppercase text-zinc-600 dark:text-zinc-400">
                   About Us
                 </span>
               </div>
@@ -151,10 +148,7 @@ export default function AboutStorySection() {
                   <p className="text-[11px] text-white/80 uppercase tracking-wider font-mono mb-0.5">
                     From the founders,
                   </p>
-                  <p
-                    className="text-xl sm:text-2xl font-bold tracking-tight text-white"
-                    style={{ fontFamily: '"Times New Roman", Times, serif' }}
-                  >
+                  <p className="text-xl sm:text-2xl font-bold tracking-tight text-white font-sans">
                     Harry King
                   </p>
                 </div>

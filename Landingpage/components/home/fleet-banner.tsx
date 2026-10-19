@@ -14,7 +14,7 @@ export default function FleetBanner() {
     <section className="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
       {/* 
         Section Header OUTSIDE the card:
-        - "Fleet Solutions" in Times New Roman style
+        - "Fleet Solutions" tag
         - "BUILT FOR FLEET MANAGERS" second header with decreased font size
       */}
       <div className="text-left mb-6 sm:mb-8">

@@ -120,10 +120,7 @@ export default function FleetHero() {
         
         {/* Main Headline */}
         <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-[64px] font-normal tracking-tight text-zinc-950 dark:text-white leading-[1.12] select-none">
-          <span
-            className="block italic font-serif"
-            style={{ fontFamily: '"Times New Roman", Times, serif' }}
-          >
+          <span className="block font-medium tracking-tight text-zinc-800 dark:text-zinc-200">
             Free Your Operations From Roadside Stress.
           </span>
           <span className="block font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mt-2 sm:mt-3">
@@ -139,12 +136,16 @@ export default function FleetHero() {
           >
             Register Fleet
           </Link>
-          <Link
-            href="/signin"
+          <a
+            href={
+              process.env.NEXT_PUBLIC_APP_URL
+                ? `${process.env.NEXT_PUBLIC_APP_URL}/login`
+                : "http://localhost:5173/login"
+            }
             className="inline-flex items-center justify-center px-8 sm:px-10 py-3 sm:py-3.5 rounded-none border border-zinc-900/80 dark:border-white/80 bg-transparent text-zinc-950 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium text-sm sm:text-base tracking-tight transition-all duration-300 shadow-sm active:scale-98 cursor-pointer"
           >
             SignIn to Fleet
-          </Link>
+          </a>
         </div>
 
       </div>

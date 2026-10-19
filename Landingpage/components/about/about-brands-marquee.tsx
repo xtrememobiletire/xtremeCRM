@@ -133,10 +133,7 @@ export default function AboutBrandsMarquee() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 bg-[var(--brand-primary)]/85 inline-block shrink-0 rounded-none shadow-sm" />
-              <span
-                className="text-xs tracking-widest uppercase text-zinc-600 dark:text-zinc-400"
-                style={{ fontFamily: '"Times New Roman", Times, serif' }}
-              >
+              <span className="text-xs font-mono font-bold tracking-widest uppercase text-zinc-600 dark:text-zinc-400">
                 Our Network
               </span>
             </div>

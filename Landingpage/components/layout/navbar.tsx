@@ -27,7 +27,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
     children: [
       { label: "Our Story", href: "#story", description: "Learn how Xtreme Mobile Tire revolutionized fleet tire repair." },
       { label: "Operating Model", href: "#model", description: "Our 24/7 on-site rapid dispatch mechanics." },
-      { label: "Certifications", href: "#certifications", description: "TIA certified technicians & fleet safety standards." },
+      { label: "Certifications", href: "#certifications", description: "TIA certified technicians and fleet safety standards." },
     ],
   },
   {
@@ -35,10 +35,10 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
     href: "#services",
     hasDropdown: true,
     children: [
-      { label: "Commercial Fleet Support", href: "#fleet", description: "Custom maintenance plans for heavy trucks & vans." },
+      { label: "Commercial Fleet Support", href: "#fleet", description: "Custom maintenance plans for heavy trucks and vans." },
       { label: "24/7 Emergency Roadside", href: "#roadside", description: "On-demand mobile tire blowout repair." },
       { label: "On-Site Tire Installation", href: "#installation", description: "Mounting, balancing, and pressure calibration." },
-      { label: "Fleet Tire Audits", href: "#audit", description: "Digital tread depth inspection & fleet reports." },
+      { label: "Fleet Tire Audits", href: "#audit", description: "Digital tread depth inspection and fleet reports." },
     ],
   },
   { label: "Our Team", href: "#team" },
@@ -50,7 +50,9 @@ export default function Navbar({
   brandName = "Xtreme Mobile Tire",
   logoSrc = "/logo.webp",
   navItems = DEFAULT_NAV_ITEMS,
-  signInHref = "#signin",
+  signInHref = process.env.NEXT_PUBLIC_APP_URL
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/login`
+    : "http://localhost:5173/login",
   signUpHref = "#signup",
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

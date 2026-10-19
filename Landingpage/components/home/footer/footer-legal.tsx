@@ -41,9 +41,16 @@ export default function FooterLegal({
           Terms of Service
         </Link>
         <span>/</span>
-        <Link href="/signin" className="hover:text-white transition-colors">
+        <a
+          href={
+            process.env.NEXT_PUBLIC_APP_URL
+              ? `${process.env.NEXT_PUBLIC_APP_URL}/login`
+              : "http://localhost:5173/login"
+          }
+          className="hover:text-white transition-colors"
+        >
           Fleet Portal
-        </Link>
+        </a>
       </div>
     </div>
   );

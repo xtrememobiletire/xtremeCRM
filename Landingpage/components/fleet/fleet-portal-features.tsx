@@ -83,10 +83,7 @@ export default function FleetPortalFeatures() {
         {/* Left Column: Bold Display Typography matching wireframe */}
         <div className="lg:col-span-5 flex flex-col justify-between space-y-6 sm:space-y-8">
           <div className="space-y-4">
-            <h3
-              className="text-4xl sm:text-5xl lg:text-[56px] font-serif font-normal text-zinc-950 dark:text-white leading-[1.08] tracking-tight select-none"
-              style={{ fontFamily: '"Times New Roman", Times, serif' }}
-            >
+            <h3 className="text-4xl sm:text-5xl lg:text-[56px] font-bold text-zinc-950 dark:text-white leading-[1.08] tracking-tight select-none">
               Everything
               <br />
               Included in Your
@@ -150,10 +147,7 @@ export default function FleetPortalFeatures() {
                       {FLEET_FEATURES[0].badge}
                     </span>
                   </div>
-                  <h4
-                    className="text-lg sm:text-xl font-normal text-zinc-950 dark:text-white mb-2 leading-snug"
-                    style={{ fontFamily: '"Times New Roman", Times, serif' }}
-                  >
+                  <h4 className="text-lg sm:text-xl font-bold text-zinc-950 dark:text-white mb-2 leading-snug">
                     {FLEET_FEATURES[0].title}
                   </h4>
                 </div>
@@ -189,10 +183,7 @@ export default function FleetPortalFeatures() {
                       {FLEET_FEATURES[1].badge}
                     </span>
                   </div>
-                  <h4
-                    className="text-lg sm:text-xl font-normal text-zinc-950 dark:text-white mb-2 leading-snug"
-                    style={{ fontFamily: '"Times New Roman", Times, serif' }}
-                  >
+                  <h4 className="text-lg sm:text-xl font-bold text-zinc-950 dark:text-white mb-2 leading-snug">
                     {FLEET_FEATURES[1].title}
                   </h4>
                 </div>
@@ -231,10 +222,7 @@ export default function FleetPortalFeatures() {
                       {FLEET_FEATURES[2].badge}
                     </span>
                   </div>
-                  <h4
-                    className="text-lg sm:text-xl font-normal text-zinc-950 dark:text-white mb-2 leading-snug"
-                    style={{ fontFamily: '"Times New Roman", Times, serif' }}
-                  >
+                  <h4 className="text-lg sm:text-xl font-bold text-zinc-950 dark:text-white mb-2 leading-snug">
                     {FLEET_FEATURES[2].title}
                   </h4>
                 </div>
@@ -270,10 +258,7 @@ export default function FleetPortalFeatures() {
                       {FLEET_FEATURES[3].badge}
                     </span>
                   </div>
-                  <h4
-                    className="text-lg sm:text-xl font-normal text-zinc-950 dark:text-white mb-2 leading-snug"
-                    style={{ fontFamily: '"Times New Roman", Times, serif' }}
-                  >
+                  <h4 className="text-lg sm:text-xl font-bold text-zinc-950 dark:text-white mb-2 leading-snug">
                     {FLEET_FEATURES[3].title}
                   </h4>
                 </div>

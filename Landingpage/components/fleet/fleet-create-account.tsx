@@ -178,11 +178,8 @@ export default function FleetCreateAccount() {
                 </span>
               </div>
 
-              {/* Wireframe Serif Display Headline */}
-              <h2
-                className="text-4xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-zinc-950 dark:text-white leading-[1.1] mb-6"
-                style={{ fontFamily: '"Times New Roman", Times, serif' }}
-              >
+              {/* Clean Modern Headline */}
+              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-zinc-950 dark:text-white leading-[1.1] mb-6">
                 Create Your
                 <br />
                 Fleet Account
@@ -284,13 +281,15 @@ export default function FleetCreateAccount() {
                               }`}
                               title={step.label}
                             >
-                              {isCompleted ? (
-                                <Check className="w-5 h-5 stroke-[2.5]" />
-                              ) : (
-                                <span className={isCurrent ? "font-bold text-sm sm:text-base text-white" : "text-xs font-mono"}>
-                                  {step.id}
-                                </span>
-                              )}
+                              <span
+                                className={
+                                  isCurrent || isCompleted
+                                    ? "font-bold text-sm sm:text-base text-white dark:text-black font-mono"
+                                    : "text-xs font-mono"
+                                }
+                              >
+                                {step.id}
+                              </span>
                             </button>
 
                             {/* Step Label beneath Circle */}
@@ -613,10 +612,7 @@ export default function FleetCreateAccount() {
                   </div>
 
                   <div className="space-y-2">
-                    <h3
-                      className="text-2xl sm:text-3xl font-normal text-zinc-950 dark:text-white"
-                      style={{ fontFamily: '"Times New Roman", Times, serif' }}
-                    >
+                    <h3 className="text-2xl sm:text-3xl font-bold text-zinc-950 dark:text-white">
                       Fleet Account Submitted!
                     </h3>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 font-sans max-w-md mx-auto">
@@ -643,12 +639,16 @@ export default function FleetCreateAccount() {
                   </div>
 
                   <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <Link
-                      href="/signin"
+                    <a
+                      href={
+                        process.env.NEXT_PUBLIC_APP_URL
+                          ? `${process.env.NEXT_PUBLIC_APP_URL}/login`
+                          : "http://localhost:5173/login"
+                      }
                       className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 rounded-none bg-zinc-950 text-white dark:bg-white dark:text-black hover:bg-[#DC2626] dark:hover:bg-[#DC2626] dark:hover:text-white font-medium text-sm transition-colors cursor-pointer"
                     >
                       Sign In to Fleet Portal
-                    </Link>
+                    </a>
                     <button
                       type="button"
                       onClick={handleReset}

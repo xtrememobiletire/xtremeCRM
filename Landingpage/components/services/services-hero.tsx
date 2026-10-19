@@ -118,18 +118,13 @@ export default function ServicesHero() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6 sm:space-y-7">
         
         {/* Main Headline */}
-        <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-[66px] font-normal tracking-tight text-zinc-950 dark:text-white leading-[1.08] select-none">
-          <span
-            className="block"
-            style={{ fontFamily: '"Times New Roman", Times, serif' }}
-          >
+        <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-[66px] font-bold tracking-tight text-zinc-950 dark:text-white leading-[1.08] select-none">
+          <span className="block">
             From Servicing to Full
           </span>
           <span className="inline-block">
-            <span style={{ fontFamily: '"Times New Roman", Times, serif' }}>
-              Repairs –{" "}
-            </span>
-            <span className="font-extrabold italic font-sans text-zinc-950 dark:text-white">
+            <span>Repairs – </span>
+            <span className="font-extrabold italic text-zinc-950 dark:text-white">
               We do it all
             </span>
           </span>

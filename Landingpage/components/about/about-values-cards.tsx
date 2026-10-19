@@ -54,20 +54,17 @@ export default function AboutValuesCards() {
       
       {/* 
         ========================================================================
-        SECTION HEADER (Matching Wireframe & Inspiration)
-        - Tag: ■  About Us (in Times New Roman)
+        SECTION HEADER (Matching Wireframe and Inspiration)
+        - Tag: ■  About Us
         - Title: Our Values
-        - Two-tone mission text matching media_1792304169476_7e8d42d8.png
+        - Two-tone mission text matching wireframe
         ========================================================================
       */}
       <div className="text-left mb-10 sm:mb-14">
         {/* Top Tag */}
         <div className="flex items-center gap-2 mb-2.5">
           <span className="w-2.5 h-2.5 bg-black dark:bg-[var(--brand-primary)] inline-block shrink-0 rounded-none shadow-sm" />
-          <span
-            className="text-xs sm:text-sm tracking-widest uppercase text-zinc-800 dark:text-zinc-200"
-            style={{ fontFamily: '"Times New Roman", Times, serif' }}
-          >
+          <span className="text-xs sm:text-sm font-mono font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200">
             About Us
           </span>
         </div>

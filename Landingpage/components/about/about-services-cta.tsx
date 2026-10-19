@@ -48,10 +48,7 @@ export default function AboutServicesCta() {
                 href="/services"
                 className="inline-flex items-center justify-between gap-6 pb-2.5 border-b-2 border-zinc-900/40 dark:border-white/50 hover:border-[var(--brand-primary)] dark:hover:border-[var(--brand-primary)] group/link transition-all duration-300 w-full max-w-[280px] sm:max-w-[340px]"
               >
-                <span
-                  className="text-xl sm:text-2xl text-zinc-950 dark:text-white group-hover/link:text-[var(--brand-primary)] transition-colors"
-                  style={{ fontFamily: '"Times New Roman", Times, serif' }}
-                >
+                <span className="text-xl sm:text-2xl font-bold text-zinc-950 dark:text-white group-hover/link:text-[var(--brand-primary)] transition-colors">
                   Our Services
                 </span>
                 

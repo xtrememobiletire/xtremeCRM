@@ -34,7 +34,9 @@ export default function Navbar({
   brandName = "Xtreme Mobile Tire",
   logoSrc = "/logo.webp",
   navItems = DEFAULT_NAV_ITEMS,
-  signInHref = "/signin",
+  signInHref = process.env.NEXT_PUBLIC_APP_URL
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/login`
+    : "http://localhost:5173/login",
   signUpHref = "/signup",
   onLogoClick,
   hide = false,
