@@ -28,6 +28,7 @@ export default function PageShell({ children, onLogoClick, hideNav: externalHide
         document.getElementById("create-fleet-account") ||
         document.querySelector("[data-hide-navbar='true']");
 
+      // If form doesn't exist on this page, ALWAYS keep navbar visible
       if (!formEl) {
         setInternalHideNav(false);
         return;
@@ -36,24 +37,28 @@ export default function PageShell({ children, onLogoClick, hideNav: externalHide
       const formRect = formEl.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
 
-      // Check if user is actively interacting with / focused on an input inside the form
+      // Check if user is actively focused inside the form
       const isInputFocused = formEl.contains(document.activeElement);
 
-      // "when we come to this form then dont show nav bar, then nav must dis apear"
-      // Trigger when the form enters the upper ~45% of the viewport or is within 340px of container top
-      const triggerThreshold = containerRect.top + Math.min(340, window.innerHeight * 0.45);
-      const isFormReached = formRect.top <= triggerThreshold;
+      // ONLY hide navbar when the user is ACTUALLY viewing the form:
+      // 1. Top of form has reached the active viewport area (within 280px of container top)
+      // 2. AND bottom of form is still visible in the viewport (has NOT scrolled off into the footer)
+      // 3. AND top of form is within container bounds (has NOT scrolled below screen)
+      const isFormActive =
+        formRect.top <= containerRect.top + 280 &&
+        formRect.bottom >= containerRect.top + 100 &&
+        formRect.top < containerRect.bottom - 100;
 
-      if (isInputFocused || isFormReached) {
+      if (isInputFocused || isFormActive) {
         setInternalHideNav(true);
       } else {
         setInternalHideNav(false);
       }
     };
 
-    // Evaluate on mount and on route change
+    // Evaluate immediately on mount / route change
     evaluateNavVisibility();
-    const timer = setTimeout(evaluateNavVisibility, 150);
+    const timer = setTimeout(evaluateNavVisibility, 100);
 
     let rafId: number | null = null;
     const onScroll = () => {
@@ -62,13 +67,38 @@ export default function PageShell({ children, onLogoClick, hideNav: externalHide
     };
 
     container.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll, { passive: true });
     document.addEventListener("focusin", evaluateNavVisibility);
+    document.addEventListener("focusout", () => {
+      setTimeout(evaluateNavVisibility, 50);
+    });
+
+    // Dual-layer guarantee with IntersectionObserver
+    let observer: IntersectionObserver | null = null;
+    const formEl =
+      document.getElementById("create-fleet-account") ||
+      document.querySelector("[data-hide-navbar='true']");
+
+    if (formEl && typeof IntersectionObserver !== "undefined") {
+      observer = new IntersectionObserver(
+        () => {
+          evaluateNavVisibility();
+        },
+        {
+          root: null,
+          threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+        }
+      );
+      observer.observe(formEl);
+    }
 
     return () => {
       clearTimeout(timer);
       if (rafId) cancelAnimationFrame(rafId);
+      if (observer) observer.disconnect();
       container.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
       document.removeEventListener("focusin", evaluateNavVisibility);
     };
