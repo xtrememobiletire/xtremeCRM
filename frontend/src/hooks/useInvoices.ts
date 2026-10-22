@@ -126,6 +126,7 @@ export function useGenerateFleetConsolidatedInvoice() {
       isTaxExempt?: boolean;
       dueDate?: string;
       notes?: string;
+      includeActiveJobs?: boolean;
     }) => invoiceService.generateFleetConsolidatedInvoice(payload),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });

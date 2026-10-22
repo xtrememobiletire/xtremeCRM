@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, type FormEvent } from 'react';
+import { toast } from 'sonner';
 import Modal from '../ui/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { Clock } from 'lucide-react';
@@ -100,6 +101,29 @@ export default function DispositionModal({
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!selectedDisposition) return;
+
+    if (selectedDisposition === 'CALLBACK') {
+      if (!callbackDate || !callbackTime) {
+        toast.error('Callback date and time are required');
+        return;
+      }
+      try {
+        const timeParts = callbackTime.match(/(\d{1,2}):(\d{2})/);
+        let hour = timeParts ? parseInt(timeParts[1], 10) : 0;
+        const minute = timeParts ? parseInt(timeParts[2], 10) : 0;
+        if (/pm/i.test(callbackTime) && hour < 12) hour += 12;
+        if (/am/i.test(callbackTime) && hour === 12) hour = 0;
+        const tz = callbackTimezone || resolveLeadTimezone(lead);
+        const utcDate = zonedWallTimeToUtc(callbackDate, hour, minute, tz);
+        if (utcDate.getTime() <= Date.now()) {
+          toast.error('Callback date and time must be set in the future');
+          return;
+        }
+      } catch {
+        toast.error('Invalid callback date or time');
+        return;
+      }
+    }
 
     onSubmit({
       id: lead.id,
@@ -309,7 +333,7 @@ export default function DispositionModal({
           </button>
           <button
             type="submit"
-            disabled={!selectedDisposition || isPending}
+            disabled={!selectedDisposition || isPending || (selectedDisposition === 'CALLBACK' && (!callbackDate || !callbackTime))}
             className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs cursor-pointer shadow-xs disabled:opacity-50 transition"
           >
             {isPending ? 'Logging...' : 'Save Outcome'}

@@ -30,7 +30,7 @@ export const FleetMap: React.FC<FleetMapProps> = ({
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
-    const validFleets = fleets.filter((f) => f.latitude && f.longitude);
+    const validFleets = fleets.filter((f) => typeof f.latitude === 'number' && typeof f.longitude === 'number' && !isNaN(f.latitude) && !isNaN(f.longitude));
     const coordsList: [number, number][] = [];
 
     validFleets.forEach((fleet) => {

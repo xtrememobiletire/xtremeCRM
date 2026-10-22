@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { api } from '../utils/api';
+import { queryClient } from '../lib/queryClient';
 
 export interface User {
   id: string;
@@ -46,11 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const nonSwitching = ['DRIVER', 'CALL_AGENT', 'FLEET_MANAGER', 'CUSTOMER_MEMBER', 'VIRTUAL_ASSISTANT'];
           if (u.countryCode && (nonSwitching.includes(u.role) || !localStorage.getItem('xtreme_country'))) {
             localStorage.setItem('xtreme_country', u.countryCode);
+        queryClient.clear();
           }
         }
       } catch {
         // If unauthenticated or token expired, clear invalid storage
-        setUser(null);
+        queryClient.clear();
+    setUser(null);
         localStorage.removeItem('xtreme_user');
         localStorage.removeItem('xtreme_token');
       } finally {
@@ -76,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('xtreme_user', JSON.stringify(formattedUser));
       if (u.countryCode) {
         localStorage.setItem('xtreme_country', u.countryCode);
+        queryClient.clear();
       }
     }
   };
@@ -84,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await api.post('/auth/logout');
     } catch {}
+    queryClient.clear();
     setUser(null);
     localStorage.removeItem('xtreme_user');
     localStorage.removeItem('xtreme_token');

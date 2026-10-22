@@ -8,3 +8,4 @@ export * from './invoice.schema.js';
 export * from './accounting.schema.js';
 export * from './message.schema.js';
 export * from './common.schema.js';
+export * from './lead.schema.js';

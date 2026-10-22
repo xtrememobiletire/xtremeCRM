@@ -302,7 +302,7 @@ export function useSSE() {
 
       const handleBulkLeadsChanged = () => {
         lastActivityRef.current = Date.now();
-        scheduleInvalidation(['lead-stats', 'leads', 'agent-queue', 'dashboard-stats']);
+        scheduleInvalidation(['lead-stats', 'leads', 'agent-queue', 'dashboard-stats', 'batches', 'management-batches', 'available-batches-va']);
       };
 
       const handleLeadStatsUpdated = () => {
@@ -452,6 +452,9 @@ export function useSSE() {
       listen('campaign:batch_started', handleBulkLeadsChanged);
       listen('batch:activated', handleBulkLeadsChanged);
       listen('batch:completed', handleBulkLeadsChanged);
+      listen('batch:updated', handleBulkLeadsChanged);
+      listen('lead:dispositioned', handleLeadUpdated);
+      listen('lead:converted', handleBulkLeadsChanged);
 
       // Job listeners
       listen('job:created', handleJobCreated);

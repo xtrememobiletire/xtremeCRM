@@ -16,8 +16,22 @@ import { sseManager } from '../services/sseManager.js';
 import { validateAndNormalizePhone } from '../utils/validators.js';
 import { logger } from '../utils/logger.js';
 import { resolveLeadTimezone, zonedWallTimeToUtc } from '../utils/timezone.js';
+import { geocodingService } from '../services/geocodingService.js';
 
 export const VA_LEAD_CAP = 1;
+
+export function getTenantFilter(req: Request) {
+  const user = (req as any).user;
+  if (['ADMIN', 'GENERAL_MANAGER', 'DEVELOPER', 'SUPER_ADMIN'].includes(user?.role)) {
+    const qCountry = (req.query?.countryCode as string) || (req.headers['x-country-code'] as string);
+    if (qCountry && qCountry !== 'ALL') {
+      return { countryCode: qCountry as any };
+    }
+    return {};
+  }
+  return { countryCode: (user?.countryCode || 'CA') as any };
+}
+
 
 export const leadController = {
   /**
@@ -438,8 +452,8 @@ export const leadController = {
   async getLeadById(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
-      const lead = await prisma.lead.findUnique({
-        where: { id },
+      const lead = await prisma.lead.findFirst({
+        where: { id, ...getTenantFilter(req) },
         include: {
           uploadedBy: {
             select: { id: true, fullName: true, role: true },
@@ -574,6 +588,10 @@ export const leadController = {
     try {
       const id = String(req.params.id);
       const user = (req as any).user;
+      const existingCheck = await prisma.lead.findFirst({
+        where: { id, ...getTenantFilter(req) },
+      });
+      if (!existingCheck) return sendError(res, 'Lead not found or access denied', 404);
       const {
         companyName,
         contactPerson,
@@ -725,10 +743,14 @@ export const leadController = {
   async advanceStage(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
+      const existingCheck = await prisma.lead.findFirst({
+        where: { id, ...getTenantFilter(req) },
+      });
+      if (!existingCheck) return sendError(res, 'Lead not found or access denied', 404);
       const { stage, assignedDispatcherId, notes, dispatcherNotes, vehicleTypes, commonTireSizes } = req.body;
 
-      const lead = await prisma.lead.findUnique({ where: { id } });
-      if (!lead) return sendError(res, 'Lead not found', 404);
+      const lead = await prisma.lead.findFirst({ where: { id, ...getTenantFilter(req) } });
+      if (!lead) return sendError(res, 'Lead not found or access denied', 404);
 
       const updateData: any = {
         stage,
@@ -783,14 +805,18 @@ export const leadController = {
   async disqualifyLead(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
+      const existingCheck = await prisma.lead.findFirst({
+        where: { id, ...getTenantFilter(req) },
+      });
+      if (!existingCheck) return sendError(res, 'Lead not found or access denied', 404);
       const { reason, notes } = req.body;
 
       if (!reason) {
         return sendError(res, 'Disqualification reason is required', 400);
       }
 
-      const lead = await prisma.lead.findUnique({ where: { id } });
-      if (!lead) return sendError(res, 'Lead not found', 404);
+      const lead = await prisma.lead.findFirst({ where: { id, ...getTenantFilter(req) } });
+      if (!lead) return sendError(res, 'Lead not found or access denied', 404);
 
       const updated = await prisma.lead.update({
         where: { id },
@@ -835,6 +861,10 @@ export const leadController = {
   async reactivateLead(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
+      const existingCheck = await prisma.lead.findFirst({
+        where: { id, ...getTenantFilter(req) },
+      });
+      if (!existingCheck) return sendError(res, 'Lead not found or access denied', 404);
       const lead = await prisma.lead.findUnique({ where: { id } });
       if (!lead) return sendError(res, 'Lead not found', 404);
 
@@ -891,6 +921,10 @@ export const leadController = {
   async transferLeadToDm(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
+      const existingCheck = await prisma.lead.findFirst({
+        where: { id, ...getTenantFilter(req) },
+      });
+      if (!existingCheck) return sendError(res, 'Lead not found or access denied', 404);
       const { transferNotes, callId } = req.body;
       const agent = req.user as any;
 
@@ -989,6 +1023,9 @@ export const leadController = {
         if (fleetEmail) {
           const passwordHash: string = await bcrypt.hash(rawPass, 10);
           const existingUser = await tx.user.findUnique({ where: { email: fleetEmail } });
+          if (existingUser && existingUser.role !== 'FLEET_MANAGER') {
+            throw new Error(`Email ${fleetEmail} is already registered to an account with role ${existingUser.role}`);
+          }
           if (existingUser) {
             if (existingUser.role === 'FLEET_MANAGER') {
               await tx.user.update({
@@ -1161,8 +1198,16 @@ export const leadController = {
         },
       });
 
-      const serviceLatitude = latitude !== undefined && latitude !== null ? Number(latitude) : null;
-      const serviceLongitude = longitude !== undefined && longitude !== null ? Number(longitude) : null;
+      let serviceLatitude = latitude !== undefined && latitude !== null ? Number(latitude) : null;
+      let serviceLongitude = longitude !== undefined && longitude !== null ? Number(longitude) : null;
+
+      if ((serviceLatitude === null || serviceLongitude === null || isNaN(serviceLatitude) || isNaN(serviceLongitude)) && (location || lead.address)) {
+        const geo = await geocodingService.geocodeAddress(location || lead.address, country);
+        if (geo.latitude != null && geo.longitude != null) {
+          serviceLatitude = geo.latitude;
+          serviceLongitude = geo.longitude;
+        }
+      }
 
       const job = await prisma.job.create({
         data: {
@@ -1464,7 +1509,13 @@ export const leadController = {
           normalized['description'] || 
           null;
 
-        const phone = String(rawPhone || '').trim();
+        let phone = String(rawPhone || '').trim();
+        if (rawPhone) {
+          const phoneValidation = validateAndNormalizePhone(rawPhone, targetCountry);
+          if (phoneValidation.isValid) {
+            phone = phoneValidation.normalized;
+          }
+        }
         const comp = String(companyName || '').trim();
 
         if (!phone && !comp) continue;
@@ -1499,58 +1550,62 @@ export const leadController = {
         return sendError(res, 'No valid lead rows found in file. Please ensure columns include Company, Contact, and Phone.', 400);
       }
 
-      // Check if attaching to an existing Batch record
-      let batch: any = null;
-      const targetBatchId = req.body.batchId as string;
-      if (targetBatchId) {
-        batch = await prisma.batch.findUnique({
-          where: { id: targetBatchId },
-        });
-        if (batch) {
-          const updateData: any = {
-            totalLeads: { increment: leadsToCreate.length },
-          };
-          if (activationMode === 'IMMEDIATE') {
-            updateData.status = 'ACTIVE';
-            updateData.scheduledDate = new Date();
+      // Wrap batch + lead creation in atomic transaction (PRD AC-1.2, Error 3)
+      const { batch, result } = await prisma.$transaction(async (tx) => {
+        let activeBatch: any = null;
+        const targetBatchId = req.body.batchId as string;
+        if (targetBatchId) {
+          activeBatch = await tx.batch.findFirst({
+            where: { id: targetBatchId, ...getTenantFilter(req) },
+          });
+          if (activeBatch) {
+            const updateData: any = {
+              totalLeads: { increment: leadsToCreate.length },
+            };
+            if (activationMode === 'IMMEDIATE') {
+              updateData.status = 'ACTIVE';
+              updateData.scheduledDate = new Date();
+            }
+            activeBatch = await tx.batch.update({
+              where: { id: activeBatch.id },
+              data: updateData,
+            });
           }
-          batch = await prisma.batch.update({
-            where: { id: batch.id },
-            data: updateData,
+        }
+
+        if (!activeBatch) {
+          const isScheduled = activationMode === 'SCHEDULED';
+          const batchStatus = isScheduled ? 'SCHEDULED' : 'ACTIVE';
+          const finalBatchName = batchName?.trim() || `Batch ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+          activeBatch = await tx.batch.create({
+            data: {
+              batchName: finalBatchName,
+              countryCode: targetCountry as any,
+              uploadedById: vaUserId,
+              totalLeads: leadsToCreate.length,
+              scheduledDate,
+              status: batchStatus as any,
+            },
           });
         }
-      }
 
-      // Create new Batch record if none specified or not found
-      if (!batch) {
-        const isScheduled = activationMode === 'SCHEDULED';
-        const batchStatus = isScheduled ? 'SCHEDULED' : 'ACTIVE';
-        const finalBatchName = batchName?.trim() || `Batch ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+        const effectiveCountry = activeBatch.countryCode || targetCountry;
+        const leadsWithBatch = leadsToCreate.map((l) => ({
+          ...l,
+          batchId: activeBatch.id,
+          countryCode: effectiveCountry,
+        }));
 
-        batch = await prisma.batch.create({
-          data: {
-            batchName: finalBatchName,
-            countryCode: targetCountry as any,
-            uploadedById: vaUserId,
-            totalLeads: leadsToCreate.length,
-            scheduledDate,
-            status: batchStatus as any,
-          },
+        const createdResult = await tx.lead.createMany({
+          data: leadsWithBatch,
+          skipDuplicates: true,
         });
-      }
+
+        return { batch: activeBatch, result: createdResult };
+      });
 
       const effectiveCountry = batch.countryCode || targetCountry;
-
-      // Link leads to batch
-      const leadsWithBatch = leadsToCreate.map((l) => ({
-        ...l,
-        batchId: batch.id,
-        countryCode: effectiveCountry,
-      }));
-
-      const result = await prisma.lead.createMany({
-        data: leadsWithBatch,
-      });
 
       // If active immediately, replenish online VAs to 1-lead cap
       if (batch.status === 'ACTIVE') {
@@ -1594,6 +1649,7 @@ export const leadController = {
         batchName: batch.batchName,
         status: batch.status,
         importedCount: result.count,
+        skippedCount: rawRows.length - result.count,
         totalRows: rawRows.length,
         sheetUsed: chosenSheetName,
       }, `Successfully imported ${result.count} leads into batch "${batch.batchName}" (${batch.status})`);
@@ -1637,10 +1693,13 @@ export const leadController = {
           return sendError(res, 'This batch has 0 unassigned leads remaining', 400);
         }
 
-        await prisma.batch.update({
-          where: { id: batchId },
+        const updatedBatch = await prisma.batch.updateMany({
+          where: { id: batchId, status: { not: 'COMPLETED' }, ...getTenantFilter(req) },
           data: { status: 'ACTIVE', scheduledDate: new Date() },
         });
+        if (updatedBatch.count === 0) {
+          return sendError(res, 'Batch has already been completed or claimed by another agent', 409);
+        }
       }
 
       const activeVas = await prisma.user.findMany({
@@ -2165,6 +2224,25 @@ export const leadController = {
         updateData.disqualificationReason = disqualificationReason || (disposition === 'WRONG_NUMBER' ? 'WRONG_NUMBER' : 'NOT_INTERESTED');
         updateData.disqualifiedNotes = notes || null;
         updateData.assignedAgentId = null;
+      } else if (disposition === 'DNC' || disposition === 'DO_NOT_CALL' || disposition === 'RNC') {
+        newStatus = 'DEAD';
+        newStage = 'DISQUALIFIED';
+        updateData.disqualifiedAtStage = lead.stage || 'VA_OUTREACH';
+        updateData.disqualificationReason = 'NOT_INTERESTED';
+        updateData.disqualifiedNotes = notes || 'Global Do Not Call requested';
+        updateData.assignedAgentId = null;
+        // Global DNC desynchronization fix: block all duplicate phone entries across all batches
+        await prisma.lead.updateMany({
+          where: { phone: lead.phone },
+          data: {
+            status: 'DEAD',
+            disposition: 'RNC',
+            stage: 'DISQUALIFIED',
+            assignedAgentId: null,
+            disqualificationReason: 'NOT_INTERESTED',
+            disqualifiedNotes: notes || 'Global Do Not Call requested',
+          },
+        });
       }
 
       updateData.status = newStatus;
@@ -2222,6 +2300,68 @@ export const leadController = {
       } catch {}
 
       return sendSuccess(res, { lead: updated }, 'Disposition logged successfully');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Assign Batch Leads to Agent (Management Only)
+   */
+  async assignBatch(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const { assignedToId, agentId } = req.body;
+      const targetAgentId = assignedToId || agentId;
+      if (!targetAgentId) return sendError(res, 'Agent ID (assignedToId) is required', 400);
+
+      const batch = await prisma.batch.findFirst({
+        where: { id, ...getTenantFilter(req) },
+      });
+      if (!batch) return sendError(res, 'Batch not found', 404);
+
+      const updated = await prisma.lead.updateMany({
+        where: {
+          batchId: id,
+          assignedAgentId: null,
+          status: { in: ['NEW', 'CALLED'] },
+          stage: 'VA_OUTREACH',
+        },
+        data: {
+          assignedAgentId: targetAgentId,
+          assignmentMethod: 'MANUAL',
+          assignedAt: new Date(),
+        },
+      });
+
+      return sendSuccess(res, { assignedCount: updated.count }, 'Batch successfully assigned to agent');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Delete Batch and Unlink Leads (Management Only)
+   */
+  async deleteBatch(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const batch = await prisma.batch.findFirst({
+        where: { id, ...getTenantFilter(req) },
+      });
+      if (!batch) return sendError(res, 'Batch not found', 404);
+
+      await prisma.$transaction(async (tx) => {
+        await tx.lead.updateMany({
+          where: { batchId: id },
+          data: { batchId: null },
+        });
+        await tx.batch.delete({
+          where: { id },
+        });
+      });
+
+      return sendSuccess(res, { deleted: true }, 'Batch successfully deleted');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }

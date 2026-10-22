@@ -105,6 +105,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
   const isDispatcher = user?.role === 'DISPATCHER';
   const isAgent = user?.role === 'CALL_AGENT';
   const isVa = user?.role === 'VIRTUAL_ASSISTANT';
+  const isLeadManager = user?.role === 'LEAD_MANAGER';
 
   // Live nav badge telemetry for /jobs, /fleet-jobs, /bookings, /invoices
   const { data: navCounts } = useQuery({
@@ -161,6 +162,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
     : isVa
     ? [
         { icon: PhoneOutgoing, label: 'Leads Queue', path: '/leads' },
+      ]
+    : isLeadManager
+    ? [
+        { icon: PhoneOutgoing, label: 'Leads Management', path: '/leads' },
       ]
     : isAgent
     ? [

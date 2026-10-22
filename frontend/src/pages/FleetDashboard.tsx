@@ -22,7 +22,6 @@ import MultiServiceSelector, { type SelectedServiceItem } from '../components/co
 import { DriverCombobox, type DriverOption } from '../components/common/DriverCombobox';
 import { VehicleCombobox, type VehicleOption } from '../components/common/VehicleCombobox';
 import { ArrivalWindowSelector, type ArrivalWindowData } from '../components/common/ArrivalWindowSelector';
-import { zonedWallTimeToUtc, getDefaultTimezoneForCountry, formatDate, formatTimeInTz, PKT_TIMEZONE } from '../utils/date';
 import { toast } from 'sonner';
 
 type Tab = 'dashboard' | 'vehicles' | 'drivers' | 'request' | 'status' | 'pending-invoices' | 'paid-invoices';
@@ -133,7 +132,7 @@ export default function FleetDashboard() {
         address: fleet.address,
         serviceLatitude: fleet.latitude ?? prev.serviceLatitude,
         serviceLongitude: fleet.longitude ?? prev.serviceLongitude,
-        contactPhone: fleet.contactPhone || fleet.phone || prev.contactPhone,
+        driverPhone: fleet.contactPhone || fleet.phone || prev.driverPhone,
       }));
     }
   }, [fleet?.address, fleet?.contactPhone, fleet?.phone, fleet?.latitude, fleet?.longitude, bookingForm.address]);

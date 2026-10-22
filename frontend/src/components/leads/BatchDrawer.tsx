@@ -70,6 +70,8 @@ export default function BatchDrawer({
     onSuccess: (data) => {
       toast.success(data?.message || 'Campaign batch activated successfully!');
       queryClient.invalidateQueries({ queryKey: ['batches'] });
+      queryClient.invalidateQueries({ queryKey: ['management-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['available-batches-va'] });
       queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['agent-queue'] });

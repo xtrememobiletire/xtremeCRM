@@ -45,6 +45,7 @@ function getRoleHome(role?: string) {
     case 'CALL_AGENT':
       return '/leads';
     case 'VIRTUAL_ASSISTANT':
+    case 'LEAD_MANAGER':
       return '/leads';
     case 'FLEET_MANAGER':
       return '/fleet-dashboard';
@@ -192,7 +193,7 @@ function AppRoutes() {
           }
         >
           <Route path="/dashboard" element={<RoleRoute allowedRoles={['DISPATCHER', 'ACCOUNTANT']}><Dashboard /></RoleRoute>} />
-          <Route path="/leads" element={<RoleRoute allowedRoles={['VIRTUAL_ASSISTANT', 'CALL_AGENT', 'DISPATCHER']}><Leads /></RoleRoute>} />
+          <Route path="/leads" element={<RoleRoute allowedRoles={['VIRTUAL_ASSISTANT', 'CALL_AGENT', 'LEAD_MANAGER', 'DISPATCHER']}><Leads /></RoleRoute>} />
           <Route path="/outbound" element={<Navigate to="/leads" replace />} />
           <Route path="/jobs" element={<RoleRoute allowedRoles={['DISPATCHER']}><Jobs /></RoleRoute>} />
           <Route path="/fleet-jobs" element={<RoleRoute allowedRoles={['DISPATCHER']}><FleetJobs /></RoleRoute>} />

@@ -30,7 +30,7 @@ export const CustomerMap: React.FC<CustomerMapProps> = ({
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
-    const validCustomers = customers.filter((c) => c.latitude && c.longitude);
+    const validCustomers = customers.filter((c) => typeof c.latitude === 'number' && typeof c.longitude === 'number' && !isNaN(c.latitude) && !isNaN(c.longitude));
     const coordsList: [number, number][] = [];
 
     validCustomers.forEach((cust) => {

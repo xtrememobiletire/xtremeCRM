@@ -3,6 +3,8 @@ import { telnyxService } from '../services/telnyxService.js';
 import { sendSuccess, sendError, isValidPhone } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
 import { sseManager } from '../services/sseManager.js';
+import { prisma } from '../config/database.js';
+import { logger } from '../utils/logger.js';
 
 export const telephonyController = {
   /**
@@ -39,23 +41,54 @@ export const telephonyController = {
 
   /**
    * Click-to-Call Outbound Initiation (FR-1.2)
+   * Validates E.164 phone format, calls carrier, and only increments callAttempts on success.
    */
   async makeCall(req: Request, res: Response) {
     try {
       const { toPhone, fromPhone, leadId } = req.body;
       if (!toPhone) return sendError(res, 'Destination phone number (toPhone) is required', 400);
 
+      // 1. Validate E.164 phone format via validators
       if (!isValidPhone(toPhone)) {
-        return sendError(res, 'Invalid destination phone number format', 400);
+        return sendError(res, 'Invalid destination phone number format. Must be a valid phone number in E.164 or North American format.', 400);
       }
 
       const agent = req.user as any;
-      const callId = `call_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const callerNumber = fromPhone || '+14165550192';
+
+      // 2. Execute Telnyx carrier call initiation
+      const dialResult = await telnyxService.dialOutbound({
+        to: toPhone,
+        from: callerNumber,
+        agentId: agent?.id,
+      });
+
+      if (!dialResult.success) {
+        return sendError(res, dialResult.error || 'Failed to initiate outbound call with telephony carrier', 502);
+      }
+
+      const callId = dialResult.callId || `call_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+      // 3. Only increment callAttempts and log call record after Telnyx call initiation succeeds
+      if (leadId) {
+        try {
+          await prisma.lead.update({
+            where: { id: leadId },
+            data: {
+              callAttemptsCount: { increment: 1 },
+              lastCalledAt: new Date(),
+              lastCalledByVaId: agent?.id || undefined,
+            },
+          });
+        } catch (dbErr) {
+          logger.warn(`[Telephony] Could not update lead ${leadId} call attempts:`, dbErr);
+        }
+      }
 
       return sendSuccess(res, {
         callId,
         toPhone,
-        fromPhone: fromPhone || '+14165550192',
+        fromPhone: callerNumber,
         leadId,
         initiatedBy: agent?.fullName || 'Agent',
         status: 'RINGING',

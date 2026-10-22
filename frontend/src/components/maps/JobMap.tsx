@@ -32,7 +32,7 @@ export const JobMap: React.FC<JobMapProps> = ({
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
-    const validJobs = jobs.filter((j) => j.serviceLatitude && j.serviceLongitude);
+    const validJobs = jobs.filter((j) => typeof j.serviceLatitude === 'number' && typeof j.serviceLongitude === 'number' && !isNaN(j.serviceLatitude) && !isNaN(j.serviceLongitude));
     const coordsList: [number, number][] = [];
 
     validJobs.forEach((job) => {

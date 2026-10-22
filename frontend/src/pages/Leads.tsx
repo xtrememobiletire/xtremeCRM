@@ -64,7 +64,7 @@ export default function Leads() {
   const isVa = user?.role === 'VIRTUAL_ASSISTANT';
   const isAgent = user?.role === 'CALL_AGENT';
   const isDispatcher = user?.role === 'DISPATCHER';
-  const isAdminOrGm = ['ADMIN', 'GENERAL_MANAGER'].includes(user?.role || '');
+  const isAdminOrGm = ['ADMIN', 'GENERAL_MANAGER', 'DEVELOPER', 'LEAD_MANAGER', 'SUPER_ADMIN'].includes(user?.role || '');
 
   // Dispatcher, GM, Admin, and Call Agents default to root unassigned tab so they can freely navigate
   const initialTab: LeadPoolTab = 'unassigned';

@@ -7,6 +7,12 @@ export interface TelnyxTransferOptions {
   customHeaders?: Record<string, string>;
 }
 
+export interface TelnyxDialOptions {
+  to: string;
+  from: string;
+  agentId?: string;
+}
+
 export const telnyxService = {
   /**
    * Embedded Telnyx WebRTC Softphone Token (PRD FR-1.2)
@@ -44,6 +50,53 @@ export const telnyxService = {
       token: `telnyx_simulated_token_${userId}`,
       connectionId: config.TELNYX.CONNECTION_ID || 'conn_simulated_xtremecrm',
       sipUsername: `agent_${userId}`,
+    };
+  },
+
+  /**
+   * Outbound Dial Initiation via Telnyx Call Control API
+   */
+  async dialOutbound(options: TelnyxDialOptions): Promise<{ success: boolean; callId?: string; error?: string }> {
+    const { to, from, agentId } = options;
+
+    if (config.TELNYX.API_KEY && config.TELNYX.CONNECTION_ID) {
+      try {
+        const response = await fetch('https://api.telnyx.com/v2/calls', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${config.TELNYX.API_KEY}`,
+          },
+          body: JSON.stringify({
+            connection_id: config.TELNYX.CONNECTION_ID,
+            to,
+            from,
+            custom_headers: {
+              agent_id: agentId || '',
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          const errMsg = errData.errors?.[0]?.detail || `Telnyx dial failed (HTTP ${response.status})`;
+          return { success: false, error: errMsg };
+        }
+
+        const resData = await response.json();
+        return {
+          success: true,
+          callId: resData.data?.call_control_id || `call_${Date.now()}`,
+        };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    }
+
+    // Development / Simulated mode
+    return {
+      success: true,
+      callId: `call_sim_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     };
   },
 

@@ -16,13 +16,10 @@ import {
   UploadCloud,
   Edit2,
   Save,
-  X,
-  History,
+History,
   Briefcase,
   Tag,
   Wrench,
-  ShieldCheck,
-  FileText
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';

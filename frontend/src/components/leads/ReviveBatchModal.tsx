@@ -2,13 +2,9 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { 
   RotateCcw, 
-  CheckCircle2, 
-  AlertTriangle, 
+AlertTriangle, 
   Loader2, 
-  CheckSquare, 
-  Square,
-  ShieldAlert,
-  Users,
+Users,
   Clock,
   PhoneOff
 } from 'lucide-react';
@@ -72,6 +68,9 @@ export default function ReviveBatchModal({
       await queryClient.invalidateQueries({ queryKey: ['available-batches-va'] });
       await queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
       await queryClient.invalidateQueries({ queryKey: ['leads'] });
+      await queryClient.invalidateQueries({ queryKey: ['lead-batches'] });
+      await queryClient.invalidateQueries({ queryKey: ['batches'] });
+      await queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
 
       onSuccess?.();
       onClose();
