@@ -2,7 +2,6 @@
 
 import HeroBadge from "./hero-badge";
 import SplitPillButton from "./split-pill-button";
-import GhostFibersBackground from "./ghost-fibers-bg";
 import HeroInteractiveHub from "./hero/hero-interactive-hub";
 
 interface HeroSectionProps {
@@ -29,20 +28,17 @@ export default function HeroSection({
       
       {/* 
         HERO BANNER:
-        GhostFibers and ambient crimson glow are strictly contained within this top hero banner only.
+        Ambient crimson glow is strictly contained within this top hero banner only.
         The 6 cards below sit outside on the clean canvas.
       */}
       <section className="relative w-full overflow-hidden flex flex-col items-center justify-center pt-8 sm:pt-12 pb-14 sm:pb-18 text-center">
-        {/* GhostFibers WebGL Canvas contained strictly to this banner */}
-        <GhostFibersBackground />
-
         {/* Soft Ambient Texture & Top Glow inside Hero Banner */}
         <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
           {/* Subtle warm Crimson glow fading from the top */}
           <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[550px] bg-gradient-to-b from-[var(--brand-light)]/70 via-transparent to-transparent blur-3xl rounded-full" />
           {/* Fine horizontal scanline/dot matrix pattern */}
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000008_1px,transparent_1px),linear-gradient(to_bottom,#00000008_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_70%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-          {/* Bottom fade out so the fibers smoothly vanish right below the CTA */}
+          {/* Bottom fade out */}
           <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-b from-transparent to-[var(--neutral-light)] dark:to-[#0c1222]" />
         </div>
 
@@ -82,7 +78,7 @@ export default function HeroSection({
       {/* 
         HERO INTERACTIVE HUB ARCHITECTURE:
         Surrounds the central video laptop with 5 status cards connected via animated circuit lines.
-        Rests cleanly outside the ghost fiber background on the natural container canvas.
+        Rests cleanly outside the hero banner on the natural container canvas.
       */}
       <HeroInteractiveHub />
 
