@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 interface ServiceCardItem {
   id: string;
@@ -8,6 +9,9 @@ interface ServiceCardItem {
   description: string;
   badge: string;
   status: string;
+  image: string;
+  ctaText: string;
+  ctaHref: string;
   icon: React.ReactNode;
 }
 
@@ -19,9 +23,13 @@ const SERVICE_ITEMS: ServiceCardItem[] = [
       "Professional mobile tire services available around the clock. Our fully equipped mobile units are ready day or night to keep your fleet running.",
     badge: "24/7 Rapid Mobile Bay",
     status: "Emergency Roadside & On-Site Repair",
+    image:
+      "https://res.cloudinary.com/ebjikx52/image/upload/v1792426881/xtreme/landing/service-mobile-van_jpg.jpg",
+    ctaText: "Request Dispatch",
+    ctaHref: "/booking",
     icon: (
-      <svg className="w-8 h-8 text-[var(--brand-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 10V3L4 14h7v7l9-11h-7z" />
+      <svg className="w-4 h-4 text-[var(--brand-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
       </svg>
     ),
   },
@@ -32,9 +40,13 @@ const SERVICE_ITEMS: ServiceCardItem[] = [
       "Specialized tire programs for commercial fleets. Minimize downtime, prevent delays, and keep your operations running smoothly with our expert service.",
     badge: "Commercial Fleet Hub",
     status: "Scheduled Shift Maintenance & Invoicing",
+    image:
+      "https://res.cloudinary.com/ebjikx52/image/upload/v1792426863/xtreme/landing/fleet-trucks_jpg.jpg",
+    ctaText: "Explore Fleet Plans",
+    ctaHref: "/fleet-solutions",
     icon: (
-      <svg className="w-8 h-8 text-[var(--brand-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      <svg className="w-4 h-4 text-[var(--brand-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
       </svg>
     ),
   },
@@ -45,9 +57,13 @@ const SERVICE_ITEMS: ServiceCardItem[] = [
       "Serving VA, MD, KY, NC, TN, Washington DC, and Ontario Canada. Dependable on-site tire solutions wherever your vehicles operate.",
     badge: "Multi-State & Canada Route",
     status: "VA • MD • KY • NC • TN • DC • ON",
+    image:
+      "https://res.cloudinary.com/ebjikx52/image/upload/v1792689325/xtreme/landing/coast-to-coast-coverage_jpg.jpg",
+    ctaText: "View Coverage Areas",
+    ctaHref: "/services",
     icon: (
-      <svg className="w-8 h-8 text-[var(--brand-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+      <svg className="w-4 h-4 text-[var(--brand-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
       </svg>
     ),
   },
@@ -55,17 +71,18 @@ const SERVICE_ITEMS: ServiceCardItem[] = [
 
 export default function ServicesCards() {
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+  const [clickedCard, setClickedCard] = useState<string | null>(null);
 
   return (
     <section className="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
       {/* 
         Section Header matching Image 1:
-        ■  RELIABLE MOBILE TIRE SOLUTIONS
-        Professional mobiletire services
+        ■  XTREME MOBILE TIRE SOLUTIONS
+        Professional mobile tire services
       */}
       <div className="text-left mb-8 sm:mb-12">
         <div className="flex items-center gap-2.5 mb-2.5">
-          <span className="w-2.5 h-2.5 bg-black dark:bg-white inline-block shrink-0" />
+          <span className="w-2.5 h-2.5 bg-black dark:bg-[var(--brand-primary)] inline-block shrink-0 rounded-none shadow-sm" />
           <span className="text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
             Xtreme Mobile Tire Solutions
           </span>
@@ -83,84 +100,151 @@ export default function ServicesCards() {
       {/* 3-Card Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
         {SERVICE_ITEMS.map((item) => {
-          const isHovered = hoveredCard === item.id;
+          const isActive = hoveredCard === item.id || clickedCard === item.id;
 
           return (
             <div
               key={item.id}
+              tabIndex={0}
+              role="button"
+              aria-expanded={isActive}
+              aria-label={`${item.title} - Click or hover to reveal service details`}
               onMouseEnter={() => setHoveredCard(item.id)}
               onMouseLeave={() => setHoveredCard(null)}
-              className="group relative rounded-none border border-black/15 dark:border-white/15 bg-zinc-100/90 dark:bg-zinc-900/60 hover:bg-zinc-50 dark:hover:bg-zinc-900/90 transition-all duration-500 shadow-sm hover:shadow-2xl hover:border-[var(--brand-primary)]/40 overflow-hidden flex flex-col justify-between p-6 sm:p-7 h-[420px] sm:h-[450px]"
+              onClick={() => setClickedCard((prev) => (prev === item.id ? null : item.id))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setClickedCard((prev) => (prev === item.id ? null : item.id));
+                }
+              }}
+              className="group relative rounded-none border border-black/15 dark:border-white/15 bg-zinc-950 text-white overflow-hidden shadow-lg hover:shadow-2xl hover:border-[var(--brand-primary)]/70 transition-all duration-500 h-[480px] sm:h-[500px] flex flex-col justify-between cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
             >
-              {/* Card Title */}
-              <div className="text-center shrink-0">
-                <h3 className="font-serif text-xl sm:text-2xl font-bold text-[var(--neutral-dark)] group-hover:text-[var(--brand-primary)] transition-colors leading-snug">
-                  {item.title}
-                </h3>
-              </div>
-
-              {/* 
-                Detail Description Text:
-                Revealed smoothly in the center when the user hovers over the card
-              */}
+              {/* ======================================================== */}
+              {/* TOP SECTION: Information Panel (Revealed on Hover/Click) */}
+              {/* ======================================================== */}
               <div
-                className={`flex-1 flex items-center justify-center text-center transition-all duration-500 px-2 ${
-                  isHovered
-                    ? "opacity-100 max-h-48 translate-y-0 my-3"
-                    : "opacity-0 max-h-0 -translate-y-4 overflow-hidden pointer-events-none my-0"
+                className={`w-full overflow-hidden transition-all duration-500 ease-in-out shrink-0 bg-[#0c101d] flex flex-col justify-between ${
+                  isActive
+                    ? "h-[260px] sm:h-[270px] opacity-100 p-6 border-b border-white/15"
+                    : "h-0 opacity-0 p-0 border-b-0 pointer-events-none"
                 }`}
               >
-                <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-normal">
-                  {item.description}
-                </p>
-              </div>
-
-              {/* 
-                Picture / Visual Container ("Picture Down When Hover"):
-                - Initially occupies prominent center space.
-                - When hovered: smoothly slides DOWN to the bottom of the card!
-              */}
-              <div
-                className={`relative w-full rounded-none overflow-hidden border border-black/10 dark:border-white/10 bg-gradient-to-br from-zinc-900 via-zinc-950 to-black text-white p-4 transition-all duration-500 ease-out flex flex-col justify-between shadow-md ${
-                  isHovered
-                    ? "h-28 sm:h-32 mt-auto translate-y-0"
-                    : "h-60 sm:h-64 my-auto translate-y-0"
-                }`}
-              >
-                {/* Background Pattern */}
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:1.5rem_1.5rem] pointer-events-none" />
-
-                {/* Top Badge */}
-                <div className="relative z-10 flex items-center justify-between">
-                  <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-none bg-white/10 text-zinc-300 border border-white/10">
-                    {item.badge}
-                  </span>
-                  <span className="w-2 h-2 rounded-none bg-[var(--brand-primary)] animate-pulse" />
-                </div>
-
-                {/* Center Visual Icon & Title */}
-                <div className="relative z-10 flex items-center justify-center gap-3 my-auto">
-                  <div className="p-2.5 rounded-none bg-white/[0.08] text-[var(--brand-primary)] group-hover:scale-110 transition-transform">
-                    {item.icon}
+                <div>
+                  {/* Badge & Close / Active Indicator */}
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-none bg-white/[0.08] text-zinc-200 border border-white/15">
+                      <span className="w-1.5 h-1.5 rounded-none bg-[var(--brand-primary)] animate-pulse" />
+                      {item.badge}
+                    </span>
+                    <span className="text-[10px] text-zinc-400 font-mono hidden sm:inline-flex items-center gap-1">
+                      <span>Active</span>
+                      <svg className="w-3 h-3 text-[var(--brand-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </span>
                   </div>
-                  {!isHovered && (
-                    <div className="text-left hidden sm:block">
-                      <div className="text-xs font-bold text-white tracking-wide">
-                        {item.badge}
-                      </div>
-                      <div className="text-[10px] text-zinc-400">
-                        {item.status}
-                      </div>
-                    </div>
-                  )}
+
+                  {/* Title in Information View */}
+                  <h3 className="font-serif text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug mb-2.5">
+                    {item.title}
+                  </h3>
+
+                  {/* Complete Service Description (Matching User Screenshots) */}
+                  <p className="text-xs sm:text-[13px] text-zinc-300 leading-relaxed font-normal">
+                    {item.description}
+                  </p>
                 </div>
 
-                {/* Bottom Status Line */}
-                <div className="relative z-10 pt-2 border-t border-white/10 text-center text-[10px] sm:text-[11px] text-zinc-400 truncate">
-                  {item.status}
+                {/* Bottom Row: Feature Pill + Action CTA */}
+                <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono text-zinc-300 truncate">
+                    {item.icon}
+                    <span className="truncate">{item.status}</span>
+                  </div>
+
+                  <Link
+                    href={item.ctaHref}
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-white hover:text-[var(--brand-primary)] transition-colors shrink-0 group/link"
+                  >
+                    <span>{item.ctaText}</span>
+                    <span className="transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5">↗</span>
+                  </Link>
                 </div>
               </div>
 
+              {/* ======================================================== */}
+              {/* PICTURE CONTAINER:                                       */}
+              {/* - Default: Takes 100% of card length (Full Bleed Photo)  */}
+              {/* - Hover/Click: Slides DOWN to bottom 45% of card!        */}
+              {/* ======================================================== */}
+              <div
+                className={`relative w-full overflow-hidden transition-all duration-500 ease-in-out ${
+                  isActive
+                    ? "h-[220px] sm:h-[230px]"
+                    : "h-full flex-1"
+                }`}
+              >
+                {/* Full-Bleed Photograph covering entire container length */}
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                />
+
+                {/* Subtle dark tint to maintain contrast */}
+                <div
+                  className={`absolute inset-0 transition-colors duration-500 ${
+                    isActive ? "bg-black/25" : "bg-black/35 group-hover:bg-black/25"
+                  }`}
+                />
+
+                {/* ======================================================== */}
+                {/* REST STATE OVERLAYS (Visible when card is not active):   */}
+                {/* Shows Badge at top, Title & Subtitle at bottom of photo  */}
+                {/* ======================================================== */}
+                <div
+                  className={`absolute inset-0 flex flex-col justify-between transition-opacity duration-300 ${
+                    isActive ? "opacity-0 pointer-events-none" : "opacity-100"
+                  }`}
+                >
+                  {/* Top Overlay Badge */}
+                  <div className="p-5 sm:p-6 bg-gradient-to-b from-black/85 via-black/30 to-transparent flex items-start justify-between">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-none bg-black/60 backdrop-blur-md text-zinc-100 border border-white/20 shadow-md">
+                      <span className="w-1.5 h-1.5 rounded-none bg-[var(--brand-primary)] animate-pulse" />
+                      {item.badge}
+                    </span>
+                  </div>
+
+                  {/* Bottom Overlay Title & Prompt */}
+                  <div className="p-5 sm:p-6 pt-16 bg-gradient-to-t from-black/95 via-black/65 to-transparent text-left">
+                    <h3 className="font-serif text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight group-hover:text-[var(--brand-primary)] transition-colors">
+                      {item.title}
+                    </h3>
+                    <div className="mt-2 flex items-center justify-between text-xs text-zinc-300">
+                      <span className="font-mono text-[11px] text-zinc-300 truncate max-w-[200px]">
+                        {item.status}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[11px] text-white/80 group-hover:text-white group-hover:translate-y-0.5 transition-all">
+                        <span>Details</span>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Active Mode Subtle Lower Label */}
+                {isActive && (
+                  <div className="absolute bottom-2 right-3 z-10 pointer-events-none">
+                    <span className="text-[10px] font-mono text-white/60 bg-black/60 px-2 py-0.5 rounded-none backdrop-blur-sm border border-white/10">
+                      Click to collapse ↑
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
