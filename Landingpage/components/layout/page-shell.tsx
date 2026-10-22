@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, ReactNode } from "react";
+import { useRef, ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Header from "@/components/home/header";
 import HomeFooter from "@/components/home/home-footer";
@@ -15,34 +15,6 @@ export default function PageShell({ children, onLogoClick }: PageShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [hideNavbar, setHideNavbar] = useState(false);
-
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      const footer = document.getElementById("footer");
-      if (!footer) return;
-      const footerRect = footer.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-
-      const isFooterEntered =
-        footerRect.top <= containerRect.top + containerRect.height * 0.6 ||
-        container.scrollTop + container.clientHeight >= container.scrollHeight - 60;
-
-      setHideNavbar(isFooterEntered);
-    };
-
-    container.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleScroll, { passive: true });
-    handleScroll();
-
-    return () => {
-      container.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
-    };
-  }, []);
 
   const handleDefaultLogoClick = () => {
     if (onLogoClick) {
@@ -69,10 +41,10 @@ export default function PageShell({ children, onLogoClick }: PageShellProps) {
       {/* INNER CANVAS CONTAINER (THE CARD: Pure Full Black in Dark Mode) */}
       <div className="relative z-10 w-full flex-1 h-full min-h-0 bg-[var(--neutral-light)] dark:bg-[#0c1222] text-[var(--neutral-dark)] sm:border sm:border-black/5 sm:dark:border-white/10 rounded-none sm:rounded-[36px] lg:rounded-[44px] overflow-hidden shadow-2xl flex flex-col">
         
-        {/* CURVED-NOTCH NAVBAR (ANCHORED AT TOP) */}
+        {/* CURVED-NOTCH NAVBAR (ANCHORED AT TOP - PERMANENTLY CONSISTENT ACROSS ALL PAGES) */}
         <div className="absolute top-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
           <div className="w-full pointer-events-auto">
-            <Header onLogoClick={handleDefaultLogoClick} hide={hideNavbar} />
+            <Header onLogoClick={handleDefaultLogoClick} hide={false} />
           </div>
         </div>
 
@@ -83,7 +55,7 @@ export default function PageShell({ children, onLogoClick }: PageShellProps) {
         >
           <div className="w-full flex flex-col flex-1">
             {children}
-            {/* Same Footer Section */}
+            {/* Consistent Home Footer */}
             <HomeFooter />
           </div>
         </div>

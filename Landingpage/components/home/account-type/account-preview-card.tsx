@@ -36,31 +36,13 @@ export default function AccountPreviewCard({
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
           className="w-full h-full flex flex-col flex-1"
         >
-          {/* Top Compartment: High-Resolution Photo matching Wireframe Picture Box */}
+          {/* Top Compartment: High-Resolution Photo (Clean, unobstructed) */}
           <div className="relative w-full h-64 sm:h-72 lg:h-80 overflow-hidden bg-zinc-950 shrink-0">
             <img
               src={activeOption.imageSrc}
               alt={activeOption.imageAlt}
               className="w-full h-full object-cover object-center transition-transform duration-700 ease-out hover:scale-105"
             />
-            {/* Subtle Vignette Gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none" />
-
-            {/* Top Status Badge */}
-            <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
-              <span className="px-3 py-1 rounded-none bg-black/70 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold uppercase tracking-wider shadow-lg">
-                {activeOption.badge}
-              </span>
-            </div>
-
-            {/* Bottom Photo Telemetry Tag */}
-            <div className="absolute bottom-3 left-4 right-4 z-10 flex items-center justify-between text-xs text-white">
-              <span className="inline-flex items-center gap-1.5 font-semibold text-[11px]">
-                <span className="w-2 h-2 rounded-none bg-[var(--brand-primary)] animate-pulse" />
-                {activeOption.imageTag}
-              </span>
-              <span className="text-[10px] text-zinc-300 font-mono">24/7 Support</span>
-            </div>
           </div>
 
           {/* Bottom Compartment: Bordered Text Box matching Wireframe (Simple modern font) */}

@@ -15,7 +15,7 @@ export default function FleetBanner() {
       {/* 
         Section Header OUTSIDE the card:
         - "Fleet Solutions" tag
-        - "BUILT FOR FLEET MANAGERS" second header with decreased font size
+        - "BUILT FOR FLEET MANAGERS" header
       */}
       <div className="text-left mb-6 sm:mb-8">
         <div className="flex items-center gap-2.5 mb-2.5">
@@ -55,9 +55,8 @@ export default function FleetBanner() {
           {/* ======================================================== */}
           <div className="lg:col-span-6 flex flex-col justify-between text-left">
             <div>
-
               {/* 
-                3. Bordered Benefits Box matching Wireframe:
+                Bordered Benefits Box:
                 - Generous internal padding and breathing room between lines
                 - Clean, legible simple sans-serif typography
                 - Sharp corners (rounded-none)
@@ -80,7 +79,7 @@ export default function FleetBanner() {
               </div>
             </div>
 
-            {/* 4. Bottom Action Row matching Wireframe: Button + Arrow */}
+            {/* Bottom Action Row: Button + Arrow */}
             <div className="pt-8 sm:pt-12 mt-auto">
               <Link
                 href="/fleet-solutions"
@@ -104,51 +103,34 @@ export default function FleetBanner() {
           </div>
 
           {/* ======================================================== */}
-          {/* RIGHT COLUMN: Realistic Commercial Fleet Image Card      */}
+          {/* RIGHT COLUMN: Fleet Image Card with White Bottom Section */}
           {/* ======================================================== */}
           <div className="lg:col-span-6 flex flex-col">
-            <div className="group/image relative w-full h-full min-h-[420px] sm:min-h-[480px] lg:min-h-[520px] rounded-none overflow-hidden border border-black/15 dark:border-white/10 bg-zinc-950 shadow-2xl flex flex-col justify-between">
+            <div className="group/image relative w-full h-full rounded-none overflow-hidden border border-black/15 dark:border-white/15 bg-white shadow-2xl flex flex-col">
               
-              {/* Background Photography (Heavy Commercial Fleet Truck) */}
-              <div className="absolute inset-0 overflow-hidden">
+              {/* Top Compartment: Commercial Fleet Photography (Clean, no badges) */}
+              <div className="relative w-full h-64 sm:h-72 lg:h-80 overflow-hidden bg-zinc-950 shrink-0">
                 <img
                   src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426861/xtreme/landing/fleet-manager_jpg.jpg"
                   alt="Commercial Fleet Logistics and Tire Maintenance"
                   className="w-full h-full object-cover object-center group-hover/image:scale-105 transition-transform duration-700 ease-out"
                 />
-                
-                {/* Radiant Gradient Vignette for dramatic luxury contrast */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10 pointer-events-none" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent pointer-events-none" />
               </div>
 
-              {/* Top Floating Badge */}
-              <div className="relative z-10 p-5 sm:p-6 flex items-center justify-between">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-black/60 backdrop-blur-md border border-white/20 text-white text-[11px] sm:text-xs font-bold uppercase tracking-wider shadow-lg">
-                  <span className="w-2 h-2 rounded-none bg-[var(--brand-primary)] animate-pulse" />
-                  B2B Fleet Portal
-                </span>
-                <span className="text-[11px] font-mono text-zinc-300 bg-black/50 backdrop-blur-md px-2 py-0.5 border border-white/10 rounded-none">
-                  PORTAL ACTIVE
-                </span>
-              </div>
-
-              {/* Bottom Telemetry Card */}
-              <div className="relative z-10 p-5 sm:p-6 mt-auto">
-                <div className="p-4 rounded-none bg-black/70 backdrop-blur-md border border-white/10 text-white">
-                  <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
-                    <span className="font-semibold text-[var(--brand-primary)] uppercase tracking-wider text-[10px]">
-                      Single Master Invoice
-                    </span>
-                    <span className="text-[10px]">Zero Driver Downtime</span>
-                  </div>
-                  <h4 className="text-base sm:text-lg font-bold text-white leading-tight">
-                    Dedicated Fleet Command
-                  </h4>
-                  <p className="text-xs text-zinc-300 mt-1 line-clamp-2">
-                    Priority on-site scheduling, automatic telemetry logs, and dedicated B2B account managers.
-                  </p>
+              {/* Bottom Compartment: Full Width White Box Below Picture with Dark Font */}
+              <div className="flex-1 p-6 sm:p-8 lg:p-9 border-t border-black/15 bg-white text-zinc-950 flex flex-col justify-center text-left">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-2 h-2 rounded-none bg-[var(--brand-primary)] shrink-0" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--brand-primary)] font-mono">
+                    Single Master Invoice
+                  </span>
                 </div>
+                <h4 className="text-lg sm:text-xl font-bold text-zinc-950 leading-tight mb-2">
+                  Dedicated Fleet Command
+                </h4>
+                <p className="font-sans text-sm sm:text-base text-zinc-600 leading-relaxed font-normal">
+                  Priority on-site scheduling, automatic telemetry logs, and dedicated B2B account managers.
+                </p>
               </div>
 
             </div>

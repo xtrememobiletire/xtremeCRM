@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef } from "react";
 import Header from "@/components/home/header";
 import HeroSection from "@/components/home/hero-section";
 import DispatchContactBar from "@/components/home/dispatch-contact-bar";
@@ -15,36 +15,6 @@ import ThemeToggle from "@/components/home/theme-toggle";
 
 export default function HomePage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [hideNavbar, setHideNavbar] = useState(false);
-
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      const footer = document.getElementById("footer");
-      if (!footer) return;
-      const footerRect = footer.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-
-      // When the top of the footer enters into the visible container area
-      // or user reaches near the bottom of scroll:
-      const isFooterEntered =
-        footerRect.top <= containerRect.top + containerRect.height * 0.6 ||
-        container.scrollTop + container.clientHeight >= container.scrollHeight - 60;
-
-      setHideNavbar(isFooterEntered);
-    };
-
-    container.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleScroll, { passive: true });
-    handleScroll();
-
-    return () => {
-      container.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
-    };
-  }, []);
 
   const handleLogoClick = () => {
     scrollContainerRef.current?.scrollTo({
@@ -76,11 +46,11 @@ export default function HomePage() {
           - Positioned absolute top-0 at z-50 so it stays anchored at the top of the card.
           - Inverted wing fillets seamlessly align with the top edge and outer bezel.
           - Receives onLogoClick to smoothly scroll the inner container to the top.
-          - Receives hide={hideNavbar} to smoothly slide out when user enters the footer section.
+          - Permanently anchored across all pages.
         */}
         <div className="absolute top-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
           <div className="w-full pointer-events-auto">
-            <Header onLogoClick={handleLogoClick} hide={hideNavbar} />
+            <Header onLogoClick={handleLogoClick} hide={false} />
           </div>
         </div>
 
