@@ -155,28 +155,24 @@ export default function FleetCreateAccount() {
           {/* ========================================================================
               LEFT COLUMN: High-Resolution Sports Car Background with Centered Title
               ======================================================================== */}
-          <div className="lg:col-span-5 xl:col-span-6 relative min-h-[380px] sm:min-h-[440px] lg:min-h-full flex items-center justify-center p-8 sm:p-12 text-center overflow-hidden">
+          <div className="lg:col-span-5 xl:col-span-6 relative min-h-[380px] sm:min-h-[440px] lg:min-h-full flex items-center justify-center p-6 sm:p-10 text-center overflow-hidden">
             {/* High-Resolution Performance Sports Car Photo */}
             <img
               src="/fleet-sports-car-bg.jpg"
               alt="Performance Automotive Sports Car"
-              className="absolute inset-0 w-full h-full object-cover object-center scale-105"
+              className="absolute inset-0 w-full h-full object-cover object-center"
             />
 
-            {/* Radiant Dark Vignettes for Maximum Contrast & Seamless Right Edge Fade */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/65 pointer-events-none" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-[#070b14] pointer-events-none hidden lg:block" />
+            {/* Subtle soft tint (leaves car body, wheels and tyres clearly visible) */}
+            <div className="absolute inset-0 bg-black/25 pointer-events-none" />
 
-            {/* Centered Heading with Performance Typography */}
-            <div className="relative z-10 max-w-md mx-auto text-center px-4">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold uppercase tracking-tight text-white font-sans drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)] leading-[1.12]">
+            {/* Centered Heading in the exact middle of the picture */}
+            <div className="relative z-10 w-full max-w-lg mx-auto text-center px-4 flex flex-col items-center justify-center">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-[46px] font-extrabold uppercase tracking-tight text-white font-sans drop-shadow-[0_4px_32px_rgba(0,0,0,0.95)] leading-[1.12]">
                 Create Your
                 <br />
                 Fleet Account
               </h2>
-              <p className="mt-3.5 text-xs sm:text-sm font-mono tracking-widest uppercase text-zinc-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
-                Instant B2B Onboarding • 24/7 Priority Dispatch
-              </p>
             </div>
           </div>
 
