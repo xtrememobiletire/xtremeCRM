@@ -67,6 +67,13 @@ export default function Navbar({
     };
   }, []);
 
+  // Auto-close mobile drawer when navbar is commanded to hide
+  useEffect(() => {
+    if (hide) {
+      setMobileMenuOpen(false);
+    }
+  }, [hide]);
+
   return (
     <>
       {/* 
@@ -102,11 +109,11 @@ export default function Navbar({
           <motion.div
             initial={false}
             animate={{
-              y: hide ? "-115%" : 0,
+              y: hide ? "-140%" : 0,
               opacity: hide ? 0 : 1,
             }}
             transition={{
-              duration: 0.25,
+              duration: 0.3,
               ease: [0.16, 1, 0.3, 1],
             }}
             className={`relative mx-auto -top-[2px] isolate [transform:translateZ(0)] [backface-visibility:hidden] ${

@@ -146,6 +146,7 @@ export default function FleetCreateAccount() {
   return (
     <section
       id="create-fleet-account"
+      data-hide-navbar="true"
       className="w-full pt-8 sm:pt-12 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
     >
       {/* Outer Luxury Automotive Container */}

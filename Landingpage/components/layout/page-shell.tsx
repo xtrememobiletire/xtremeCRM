@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, ReactNode } from "react";
+import { useRef, ReactNode, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Header from "@/components/home/header";
 import HomeFooter from "@/components/home/home-footer";
@@ -9,12 +9,72 @@ import ThemeToggle from "@/components/home/theme-toggle";
 interface PageShellProps {
   children?: ReactNode;
   onLogoClick?: () => void;
+  hideNav?: boolean;
 }
 
-export default function PageShell({ children, onLogoClick }: PageShellProps) {
+export default function PageShell({ children, onLogoClick, hideNav: externalHideNav }: PageShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [internalHideNav, setInternalHideNav] = useState(false);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const evaluateNavVisibility = () => {
+      // Find form element or section marked with data-hide-navbar
+      const formEl =
+        document.getElementById("create-fleet-account") ||
+        document.querySelector("[data-hide-navbar='true']");
+
+      if (!formEl) {
+        setInternalHideNav(false);
+        return;
+      }
+
+      const formRect = formEl.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+
+      // Check if user is actively interacting with / focused on an input inside the form
+      const isInputFocused = formEl.contains(document.activeElement);
+
+      // "when we come to this form then dont show nav bar, then nav must dis apear"
+      // Trigger when the form enters the upper ~45% of the viewport or is within 340px of container top
+      const triggerThreshold = containerRect.top + Math.min(340, window.innerHeight * 0.45);
+      const isFormReached = formRect.top <= triggerThreshold;
+
+      if (isInputFocused || isFormReached) {
+        setInternalHideNav(true);
+      } else {
+        setInternalHideNav(false);
+      }
+    };
+
+    // Evaluate on mount and on route change
+    evaluateNavVisibility();
+    const timer = setTimeout(evaluateNavVisibility, 150);
+
+    let rafId: number | null = null;
+    const onScroll = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(evaluateNavVisibility);
+    };
+
+    container.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    document.addEventListener("focusin", evaluateNavVisibility);
+
+    return () => {
+      clearTimeout(timer);
+      if (rafId) cancelAnimationFrame(rafId);
+      container.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      document.removeEventListener("focusin", evaluateNavVisibility);
+    };
+  }, [pathname]);
+
+  const activeHideNav = externalHideNav ?? internalHideNav;
 
   const handleDefaultLogoClick = () => {
     if (onLogoClick) {
@@ -44,7 +104,7 @@ export default function PageShell({ children, onLogoClick }: PageShellProps) {
         {/* CURVED-NOTCH NAVBAR (ANCHORED AT TOP - PERMANENTLY CONSISTENT ACROSS ALL PAGES) */}
         <div className="absolute top-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
           <div className="w-full pointer-events-auto">
-            <Header onLogoClick={handleDefaultLogoClick} hide={false} />
+            <Header onLogoClick={handleDefaultLogoClick} hide={activeHideNav} />
           </div>
         </div>
 

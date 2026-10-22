@@ -131,12 +131,19 @@ export default function FleetHero() {
 
         {/* Action Buttons matching Wireframe */}
         <div className="pt-2 flex flex-wrap items-center justify-center gap-4 sm:gap-5">
-          <Link
+          <a
             href="#create-fleet-account"
+            onClick={(e) => {
+              e.preventDefault();
+              const target = document.getElementById("create-fleet-account");
+              if (target) {
+                target.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            }}
             className="inline-flex items-center justify-center px-8 sm:px-10 py-3 sm:py-3.5 rounded-none border border-zinc-950 dark:border-white bg-zinc-950 text-white dark:bg-white dark:text-black hover:bg-[#DC2626] dark:hover:bg-[#DC2626] dark:hover:text-white dark:hover:border-[#DC2626] hover:border-[#DC2626] font-medium text-sm sm:text-base tracking-tight transition-all duration-300 shadow-sm active:scale-98 cursor-pointer"
           >
             Register Fleet
-          </Link>
+          </a>
           <a
             href={LOGIN_URL}
             className="inline-flex items-center justify-center px-8 sm:px-10 py-3 sm:py-3.5 rounded-none border border-zinc-900/80 dark:border-white/80 bg-transparent text-zinc-950 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium text-sm sm:text-base tracking-tight transition-all duration-300 shadow-sm active:scale-98 cursor-pointer"
