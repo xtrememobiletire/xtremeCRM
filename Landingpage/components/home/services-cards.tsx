@@ -126,25 +126,11 @@ export default function ServicesCards() {
               <div
                 className={`w-full overflow-hidden transition-all duration-500 ease-in-out shrink-0 bg-[#0c101d] flex flex-col justify-between ${
                   isActive
-                    ? "h-[260px] sm:h-[270px] opacity-100 p-6 border-b border-white/15"
+                    ? "h-[240px] sm:h-[250px] opacity-100 p-6 border-b border-white/15"
                     : "h-0 opacity-0 p-0 border-b-0 pointer-events-none"
                 }`}
               >
                 <div>
-                  {/* Badge & Close / Active Indicator */}
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-none bg-white/[0.08] text-zinc-200 border border-white/15">
-                      <span className="w-1.5 h-1.5 rounded-none bg-[var(--brand-primary)] animate-pulse" />
-                      {item.badge}
-                    </span>
-                    <span className="text-[10px] text-zinc-400 font-mono hidden sm:inline-flex items-center gap-1">
-                      <span>Active</span>
-                      <svg className="w-3 h-3 text-[var(--brand-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </span>
-                  </div>
-
                   {/* Title in Information View */}
                   <h3 className="font-serif text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug mb-2.5">
                     {item.title}
@@ -156,20 +142,19 @@ export default function ServicesCards() {
                   </p>
                 </div>
 
-                {/* Bottom Row: Feature Pill + Action CTA */}
-                <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono text-zinc-300 truncate">
-                    {item.icon}
-                    <span className="truncate">{item.status}</span>
-                  </div>
+                {/* Bottom Row: Direct Action CTA */}
+                <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+                  <span className="text-[11px] text-zinc-400 font-mono">
+                    {item.status}
+                  </span>
 
                   <Link
                     href={item.ctaHref}
                     onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-white hover:text-[var(--brand-primary)] transition-colors shrink-0 group/link"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--brand-primary)] hover:text-white transition-colors shrink-0 group/link"
                   >
                     <span>{item.ctaText}</span>
-                    <span className="transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5">↗</span>
+                    <span className="transition-transform group-hover/link:translate-x-1">&rarr;</span>
                   </Link>
                 </div>
               </div>
@@ -205,18 +190,10 @@ export default function ServicesCards() {
                 {/* Shows Badge at top, Title & Subtitle at bottom of photo  */}
                 {/* ======================================================== */}
                 <div
-                  className={`absolute inset-0 flex flex-col justify-between transition-opacity duration-300 ${
+                  className={`absolute inset-0 flex flex-col justify-end transition-opacity duration-300 ${
                     isActive ? "opacity-0 pointer-events-none" : "opacity-100"
                   }`}
                 >
-                  {/* Top Overlay Badge */}
-                  <div className="p-5 sm:p-6 bg-gradient-to-b from-black/85 via-black/30 to-transparent flex items-start justify-between">
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-none bg-black/60 backdrop-blur-md text-zinc-100 border border-white/20 shadow-md">
-                      <span className="w-1.5 h-1.5 rounded-none bg-[var(--brand-primary)] animate-pulse" />
-                      {item.badge}
-                    </span>
-                  </div>
-
                   {/* Bottom Overlay Title & Prompt */}
                   <div className="p-5 sm:p-6 pt-16 bg-gradient-to-t from-black/95 via-black/65 to-transparent text-left">
                     <h3 className="font-serif text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight group-hover:text-[var(--brand-primary)] transition-colors">

@@ -101,8 +101,8 @@ export default function SpeedometerGauge({
       
       {/* Semi-Circular Instrument SVG */}
       <svg
-        viewBox="0 0 480 290"
-        className="w-full h-auto overflow-visible drop-shadow-[0_0_18px_rgba(200,16,46,0.12)]"
+        viewBox="0 0 480 355"
+        className="w-full h-auto drop-shadow-[0_0_18px_rgba(200,16,46,0.12)]"
       >
         <defs>
           {/* Refined Crimson Red Soft Glow Filter */}

@@ -33,7 +33,7 @@ const STORY_BLOCKS: StoryBlock[] = [
 
 export default function AboutStorySection() {
   return (
-    <section className="relative z-10 w-full bg-transparent text-zinc-950 dark:text-white pt-4 sm:pt-6 lg:pt-8 pb-10 sm:pb-14 lg:pb-16 border-t border-black/5 dark:border-white/5">
+    <section className="relative z-10 w-full bg-transparent text-zinc-950 dark:text-white pt-20 sm:pt-28 lg:pt-36 pb-10 sm:pb-14 lg:pb-16 border-t border-black/5 dark:border-white/5">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         {/* 
           ========================================================================

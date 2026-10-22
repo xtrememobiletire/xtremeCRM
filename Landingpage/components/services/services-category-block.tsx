@@ -93,7 +93,7 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
               Section {category.index} • Comprehensive Coverage
             </span>
           </div>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-serif font-normal text-zinc-900 dark:text-white tracking-tight">
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">
             {category.title}
           </h2>
         </div>

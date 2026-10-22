@@ -142,7 +142,7 @@ export default function AboutMissionSection() {
   return (
     <section
       ref={sectionRef}
-      className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 lg:pt-16 pb-4 sm:pb-6 lg:pb-8"
+      className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 lg:pt-16 pb-20 sm:pb-28 lg:pb-36"
     >
       {/* 
         ========================================================================

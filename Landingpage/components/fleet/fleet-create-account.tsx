@@ -180,10 +180,8 @@ export default function FleetCreateAccount() {
               </div>
 
               {/* Clean Modern Headline */}
-              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-zinc-950 dark:text-white leading-[1.1] mb-6">
-                Create Your
-                <br />
-                Fleet Account
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-zinc-950 dark:text-white leading-tight mb-4">
+                Create Your Fleet Account
               </h2>
 
               <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 font-sans leading-relaxed mb-8 max-w-md">

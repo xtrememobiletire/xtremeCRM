@@ -120,7 +120,7 @@ export default function FleetHero() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6 sm:space-y-7">
         
         {/* Main Headline */}
-        <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-[64px] font-normal tracking-tight text-zinc-950 dark:text-white leading-[1.12] select-none">
+        <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold tracking-tight text-zinc-950 dark:text-white leading-tight select-none">
           <span className="block font-medium tracking-tight text-zinc-800 dark:text-zinc-200">
             Free Your Operations From Roadside Stress.
           </span>

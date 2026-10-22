@@ -202,24 +202,8 @@ export default function FleetOnboardingSteps() {
                   {/* Subtle Vignette Gradient */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none" />
 
-                  {/* Top Status Badge */}
-                  <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-none bg-black/70 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold uppercase tracking-wider shadow-lg">
-                      {activeStep.badge}
-                    </span>
                   </div>
-
-                  {/* Bottom Telemetry Tag */}
-                  <div className="absolute bottom-3 left-4 right-4 z-10 flex items-center justify-between text-xs text-white">
-                    <span className="inline-flex items-center gap-1.5 font-semibold text-[11px]">
-                      <span className="w-2 h-2 rounded-none bg-[#DC2626] animate-pulse" />
-                      {activeStep.telemetryTag}
-                    </span>
-                    <span className="text-[10px] text-zinc-300 font-mono">24/7 Support</span>
-                  </div>
-                </div>
-
-                {/* Bottom Compartment: Bordered Text Box matching Wireframe (Simple modern font) */}
+{/* Bottom Compartment: Bordered Text Box matching Wireframe (Simple modern font) */}
                 <div className="p-6 sm:p-8 lg:p-9 border-t border-zinc-300 dark:border-zinc-800 bg-zinc-50/90 dark:bg-white/[0.03] flex items-center justify-center text-center">
                   <p className="font-sans text-sm sm:text-base lg:text-lg text-zinc-600 dark:text-zinc-300 leading-relaxed font-normal max-w-lg">
                     {activeStep.summaryText}

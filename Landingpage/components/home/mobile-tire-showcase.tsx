@@ -103,17 +103,6 @@ export default function MobileTireShowcase() {
                 <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent pointer-events-none" />
               </div>
 
-              {/* Top Floating Badge */}
-              <div className="relative z-10 p-5 sm:p-6 flex items-center justify-between">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-black/60 backdrop-blur-md border border-white/20 text-white text-[11px] sm:text-xs font-bold uppercase tracking-wider shadow-lg">
-                  <span className="w-2 h-2 rounded-none bg-[var(--brand-primary)] animate-pulse" />
-                  Mobile Dispatch Bay
-                </span>
-                <span className="text-[11px] font-mono text-zinc-300 bg-black/50 backdrop-blur-md px-2 py-0.5 border border-white/10 rounded-none">
-                  24/7 ACTIVE
-                </span>
-              </div>
-
               {/* Bottom Image Details & Telemetry */}
               <div className="relative z-10 p-5 sm:p-6 mt-auto">
                 <div className="p-4 rounded-none bg-black/70 backdrop-blur-md border border-white/10 text-white">
