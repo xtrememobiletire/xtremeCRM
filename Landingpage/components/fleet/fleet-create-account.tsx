@@ -16,7 +16,6 @@ import {
   Truck,
   Lock,
   CheckCircle2,
-  ShieldCheck,
 } from "lucide-react";
 
 interface FormData {
@@ -46,9 +45,9 @@ const INITIAL_DATA: FormData = {
 };
 
 const STEPS = [
-  { id: 1, label: "Company", description: "Company profile and website" },
-  { id: 2, label: "Contact", description: "Email and phone details" },
-  { id: 3, label: "Fleet", description: "Operating address and fleet size" },
+  { id: 1, label: "Company", description: "Company profile & website" },
+  { id: 2, label: "Contact", description: "Email & phone details" },
+  { id: 3, label: "Fleet", description: "Operating address & units" },
   { id: 4, label: "Access", description: "Secure password setup" },
 ];
 
@@ -147,116 +146,63 @@ export default function FleetCreateAccount() {
   return (
     <section
       id="create-fleet-account"
-      className="w-full pt-8 sm:pt-12 pb-2 sm:pb-4 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
+      className="w-full pt-8 sm:pt-12 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
     >
-      {/* Outer Bordered Container matching Wireframe (Split into Two Halves) */}
-      <div className="relative border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-none overflow-hidden shadow-sm">
-        {/* Blueprint Crosshair Marks (+) at corners */}
-        <span className="absolute top-2.5 left-2.5 font-mono text-xs text-zinc-400 dark:text-zinc-600 select-none pointer-events-none z-10">
-          +
-        </span>
-        <span className="absolute top-2.5 right-2.5 font-mono text-xs text-zinc-400 dark:text-zinc-600 select-none pointer-events-none z-10">
-          +
-        </span>
-        <span className="absolute bottom-2.5 left-2.5 font-mono text-xs text-zinc-400 dark:text-zinc-600 select-none pointer-events-none z-10">
-          +
-        </span>
-        <span className="absolute bottom-2.5 right-2.5 font-mono text-xs text-zinc-400 dark:text-zinc-600 select-none pointer-events-none z-10">
-          +
-        </span>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[560px]">
+      {/* Outer Luxury Automotive Container */}
+      <div className="relative border border-zinc-800/80 bg-[#060911] rounded-2xl overflow-hidden shadow-2xl">
+        <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[580px] lg:min-h-[640px]">
           {/* ========================================================================
-              LEFT COLUMN: "Create Your Fleet Account" Headline and Context
+              LEFT COLUMN: High-Resolution Sports Car Background with Centered Title
               ======================================================================== */}
-          <div className="lg:col-span-5 p-8 sm:p-12 lg:p-16 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-zinc-300 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40">
-            <div>
-              {/* Eyebrow */}
-              <div className="flex items-center gap-2.5 mb-5">
-                <span className="w-2.5 h-2.5 bg-[#DC2626] rounded-none inline-block shadow-sm" />
-                <span className="text-xs sm:text-sm font-mono font-bold tracking-widest uppercase text-zinc-700 dark:text-zinc-300">
-                  Instant B2B Onboarding
-                </span>
-              </div>
+          <div className="lg:col-span-5 xl:col-span-6 relative min-h-[380px] sm:min-h-[440px] lg:min-h-full flex items-center justify-center p-8 sm:p-12 text-center overflow-hidden">
+            {/* High-Resolution Performance Sports Car Photo */}
+            <img
+              src="/fleet-sports-car-bg.jpg"
+              alt="Performance Automotive Sports Car"
+              className="absolute inset-0 w-full h-full object-cover object-center scale-105"
+            />
 
-              {/* Clean Modern Headline */}
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-zinc-950 dark:text-white leading-tight mb-4">
-                Create Your Fleet Account
+            {/* Radiant Dark Vignettes for Maximum Contrast & Seamless Right Edge Fade */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/65 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-[#070b14] pointer-events-none hidden lg:block" />
+
+            {/* Centered Heading with Performance Typography */}
+            <div className="relative z-10 max-w-md mx-auto text-center px-4">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold uppercase tracking-tight text-white font-sans drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)] leading-[1.12]">
+                Create Your
+                <br />
+                Fleet Account
               </h2>
-
-              <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 font-sans leading-relaxed mb-8 max-w-md">
-                Register your commercial fleet to receive your dedicated Fleet Account Code,
-                unlock direct driver dispatch, and access consolidated weekly invoicing.
-              </p>
-
-              {/* Commercial Value Props */}
-              <div className="space-y-3.5 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-none bg-[#DC2626]/10 dark:bg-[#DC2626]/20 border border-[#DC2626]/40 text-[#DC2626] flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                  </div>
-                  <span className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 font-sans font-medium">
-                    Instant Fleet Account Code upon submission
-                  </span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-none bg-[#DC2626]/10 dark:bg-[#DC2626]/20 border border-[#DC2626]/40 text-[#DC2626] flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                  </div>
-                  <span className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 font-sans font-medium">
-                    Consolidated weekly billing and Net 30 terms
-                  </span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-none bg-[#DC2626]/10 dark:bg-[#DC2626]/20 border border-[#DC2626]/40 text-[#DC2626] flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                  </div>
-                  <span className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 font-sans font-medium">
-                    Live GPS technician tracking for stranded drivers
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Support Note */}
-            <div className="pt-8 mt-8 border-t border-zinc-200 dark:border-zinc-800 flex items-center gap-3">
-              <ShieldCheck className="w-5 h-5 text-[#DC2626] shrink-0" />
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans">
-                Need immediate roadside dispatch? Call 24/7 Fleet Line:{" "}
-                <a
-                  href="tel:18005558473"
-                  className="font-semibold text-zinc-900 dark:text-white underline hover:text-[#DC2626] transition-colors cursor-pointer"
-                >
-                  +1 (800) 555-TIRE
-                </a>
+              <p className="mt-3.5 text-xs sm:text-sm font-mono tracking-widest uppercase text-zinc-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                Instant B2B Onboarding • 24/7 Priority Dispatch
               </p>
             </div>
           </div>
 
           {/* ========================================================================
-              RIGHT COLUMN: Interactive 4-Step / 2-Fields Form Card matching Wireframe
+              RIGHT COLUMN: High-End Obsidian Dark Glass Interactive Onboarding Form
               ======================================================================== */}
-          <div className="lg:col-span-7 p-6 sm:p-10 lg:p-14 flex items-center justify-center bg-white dark:bg-zinc-950">
-            <div className="w-full max-w-xl border border-zinc-300 dark:border-zinc-800 p-6 sm:p-8 lg:p-10 bg-white dark:bg-zinc-950 shadow-sm rounded-none">
+          <div className="lg:col-span-7 xl:col-span-6 p-6 sm:p-10 lg:p-12 flex items-center justify-center bg-[#070b14]/95 backdrop-blur-2xl border-t lg:border-t-0 lg:border-l border-white/10">
+            <div className="w-full max-w-xl">
               {!isSubmitted ? (
                 <div>
                   {/* ==================================================================
-                      STEP PROGRESS INDICATOR (4 Connected Circles with Check and Numbers)
+                      STEP PROGRESS INDICATOR (Sleek Connected Step Rings)
                       ================================================================== */}
                   <div className="relative mb-8 sm:mb-10">
                     <div className="flex items-center justify-between relative">
-                      {/* Base Background Connecting Line */}
-                      <div className="absolute top-5 sm:top-6 left-6 right-6 h-[2px] bg-zinc-200 dark:bg-zinc-800 z-0">
-                        {/* Active Progress Connecting Line */}
+                      {/* Background Connector Bar */}
+                      <div className="absolute top-5 left-5 right-5 h-[2px] bg-zinc-800 z-0">
+                        {/* Glowing Active Fill */}
                         <div
-                          className="h-full bg-gradient-to-r from-zinc-950 via-[#DC2626] to-[#DC2626] dark:from-white dark:via-[#DC2626] dark:to-[#DC2626] transition-all duration-300"
+                          className="h-full bg-gradient-to-r from-red-600 via-rose-600 to-red-500 transition-all duration-300 shadow-[0_0_12px_rgba(220,38,38,0.6)]"
                           style={{
                             width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%`,
                           }}
                         />
                       </div>
 
-                      {/* 4 Connected Circles */}
+                      {/* 4 Connected Circular Step Badges */}
                       {STEPS.map((step) => {
                         const isCompleted = step.id < currentStep;
                         const isCurrent = step.id === currentStep;
@@ -271,34 +217,30 @@ export default function FleetCreateAccount() {
                               type="button"
                               onClick={() => handleStepClick(step.id)}
                               disabled={isUpcoming}
-                              className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-mono text-xs sm:text-sm transition-all duration-200 ${
+                              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center font-mono text-xs sm:text-sm transition-all duration-300 ${
                                 isCompleted
-                                  ? "bg-zinc-950 dark:bg-white text-white dark:text-black border border-zinc-950 dark:border-white shadow-sm cursor-pointer hover:bg-[#DC2626] dark:hover:bg-[#DC2626] dark:hover:text-white"
+                                  ? "bg-zinc-800 text-white border border-zinc-700 shadow-md cursor-pointer hover:border-red-500 hover:text-red-400"
                                   : isCurrent
-                                  ? "bg-[#DC2626] text-white border-2 border-[#DC2626] shadow-[0_0_20px_rgba(220,38,38,0.4)] ring-4 ring-[#DC2626]/20 cursor-default font-bold"
-                                  : "bg-zinc-100 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 border border-zinc-300 dark:border-zinc-800 cursor-not-allowed font-medium"
+                                  ? "bg-gradient-to-br from-red-600 to-rose-700 text-white border-2 border-red-500 shadow-[0_0_24px_rgba(220,38,38,0.5)] ring-4 ring-red-500/20 font-bold"
+                                  : "bg-zinc-900/80 text-zinc-500 border border-white/5 cursor-not-allowed font-medium"
                               }`}
                               title={step.label}
                             >
-                              <span
-                                className={
-                                  isCurrent || isCompleted
-                                    ? "font-bold text-sm sm:text-base text-white dark:text-black font-mono"
-                                    : "text-xs font-mono"
-                                }
-                              >
-                                {step.id}
-                              </span>
+                              {isCompleted ? (
+                                <Check className="w-4 h-4 stroke-[2.5]" />
+                              ) : (
+                                <span>{step.id}</span>
+                              )}
                             </button>
 
-                            {/* Step Label beneath Circle */}
+                            {/* Step Title Label */}
                             <span
-                              className={`mt-2.5 text-[10px] sm:text-xs font-mono uppercase tracking-wider ${
+                              className={`mt-2 text-[10px] sm:text-xs font-mono uppercase tracking-wider transition-colors ${
                                 isCurrent
-                                  ? "text-[#DC2626] font-bold"
+                                  ? "text-red-500 font-bold"
                                   : isCompleted
-                                  ? "text-zinc-800 dark:text-zinc-300 font-semibold"
-                                  : "text-zinc-400 dark:text-zinc-600 font-medium"
+                                  ? "text-zinc-300 font-medium"
+                                  : "text-zinc-600"
                               }`}
                             >
                               {step.label}
@@ -308,26 +250,26 @@ export default function FleetCreateAccount() {
                       })}
                     </div>
 
-                    {/* Step Context Banner */}
-                    <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between text-xs font-mono">
+                    {/* Step Context Sub-bar */}
+                    <div className="mt-5 pt-3.5 border-t border-white/10 flex items-center justify-between text-xs font-mono">
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 bg-[#DC2626] rounded-none inline-block shadow-sm" />
-                        <span className="font-bold uppercase tracking-wider text-zinc-950 dark:text-white">
+                        <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]" />
+                        <span className="font-bold uppercase tracking-wider text-white">
                           Step {currentStep} of 4
                         </span>
-                        <span className="text-zinc-400 dark:text-zinc-600">—</span>
-                        <span className="text-zinc-600 dark:text-zinc-400 font-sans font-medium">
+                        <span className="text-zinc-600">—</span>
+                        <span className="text-zinc-400 font-sans font-medium">
                           {STEPS[currentStep - 1].description}
                         </span>
                       </div>
-                      <span className="text-[11px] font-mono text-zinc-400 dark:text-zinc-500 hidden sm:inline-block">
+                      <span className="text-[11px] font-mono text-zinc-500 hidden sm:inline-block">
                         2 fields per step
                       </span>
                     </div>
                   </div>
 
                   {/* ==================================================================
-                      FORM FIELDS CONTAINER (Strictly 2 Fields Visible at a Time)
+                      FORM FIELDS CONTAINER
                       ================================================================== */}
                   <form
                     onSubmit={(e) => {
@@ -342,32 +284,32 @@ export default function FleetCreateAccount() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -direction * 16 }}
                         transition={{ duration: 0.22, ease: "easeInOut" }}
-                        className="space-y-5 min-h-[220px]"
+                        className="space-y-4 min-h-[200px]"
                       >
                         {/* ---------------- STEP 1: Company Profile ---------------- */}
                         {currentStep === 1 && (
                           <>
                             {/* Field 1: Company Name */}
                             <div>
-                              <label className="block text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200 font-sans mb-1.5">
-                                Company Name <span className="text-[#DC2626]">*</span>
+                              <label className="block text-xs sm:text-sm font-medium text-zinc-300 font-sans mb-1.5">
+                                Company Name <span className="text-red-500">*</span>
                               </label>
                               <div className="relative">
-                                <Building2 className="w-4 h-4 text-zinc-400 dark:text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <Building2 className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                 <input
                                   type="text"
                                   value={formData.companyName}
                                   onChange={(e) => handleChange("companyName", e.target.value)}
-                                  placeholder="Xtreme Logistics Inc."
-                                  className={`w-full pl-10 pr-4 py-3 bg-zinc-50/70 dark:bg-zinc-900/90 border ${
+                                  placeholder="e.g. Xtreme Logistics Inc."
+                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
                                     errors.companyName
-                                      ? "border-red-500 focus:border-red-500 ring-1 ring-red-500"
-                                      : "border-zinc-300 dark:border-zinc-800 focus:border-[#DC2626] dark:focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626]"
-                                  } rounded-none text-sm sm:text-base text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none transition-all font-sans`}
+                                      ? "border-red-500 ring-1 ring-red-500"
+                                      : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                                  } rounded-xl text-sm sm:text-base text-white placeholder:text-zinc-600 focus:outline-none focus:bg-white/[0.07] transition-all font-sans`}
                                 />
                               </div>
                               {errors.companyName && (
-                                <p className="mt-1 text-xs text-red-500 font-sans font-medium">
+                                <p className="mt-1 text-xs text-red-400 font-sans font-medium">
                                   {errors.companyName}
                                 </p>
                               )}
@@ -376,19 +318,19 @@ export default function FleetCreateAccount() {
                             {/* Field 2: Company Website */}
                             <div>
                               <div className="flex items-center justify-between mb-1.5">
-                                <label className="block text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200 font-sans">
+                                <label className="block text-xs sm:text-sm font-medium text-zinc-300 font-sans">
                                   Company Website
                                 </label>
-                                <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-sans">Optional</span>
+                                <span className="text-[11px] text-zinc-500 font-sans">Optional</span>
                               </div>
                               <div className="relative">
-                                <Globe className="w-4 h-4 text-zinc-400 dark:text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <Globe className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                 <input
                                   type="text"
                                   value={formData.companyWebsite}
                                   onChange={(e) => handleChange("companyWebsite", e.target.value)}
                                   placeholder="https://yourcompany.com"
-                                  className="w-full pl-10 pr-4 py-3 bg-zinc-50/70 dark:bg-zinc-900/90 border border-zinc-300 dark:border-zinc-800 focus:border-[#DC2626] dark:focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626] rounded-none text-sm sm:text-base text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none transition-all font-sans"
+                                  className="w-full pl-10 pr-4 py-3 bg-white/[0.04] border border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-xl text-sm sm:text-base text-white placeholder:text-zinc-600 focus:outline-none focus:bg-white/[0.07] transition-all font-sans"
                                 />
                               </div>
                             </div>
@@ -400,25 +342,25 @@ export default function FleetCreateAccount() {
                           <>
                             {/* Field 1: Company Email */}
                             <div>
-                              <label className="block text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200 font-sans mb-1.5">
-                                Company Email <span className="text-[#DC2626]">*</span>
+                              <label className="block text-xs sm:text-sm font-medium text-zinc-300 font-sans mb-1.5">
+                                Company Email <span className="text-red-500">*</span>
                               </label>
                               <div className="relative">
-                                <Mail className="w-4 h-4 text-zinc-400 dark:text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <Mail className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                 <input
                                   type="email"
                                   value={formData.companyEmail}
                                   onChange={(e) => handleChange("companyEmail", e.target.value)}
                                   placeholder="info@yourcompany.com"
-                                  className={`w-full pl-10 pr-4 py-3 bg-zinc-50/70 dark:bg-zinc-900/90 border ${
+                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
                                     errors.companyEmail
-                                      ? "border-red-500 focus:border-red-500 ring-1 ring-red-500"
-                                      : "border-zinc-300 dark:border-zinc-800 focus:border-[#DC2626] dark:focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626]"
-                                  } rounded-none text-sm sm:text-base text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none transition-all font-sans`}
+                                      ? "border-red-500 ring-1 ring-red-500"
+                                      : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                                  } rounded-xl text-sm sm:text-base text-white placeholder:text-zinc-600 focus:outline-none focus:bg-white/[0.07] transition-all font-sans`}
                                 />
                               </div>
                               {errors.companyEmail && (
-                                <p className="mt-1 text-xs text-red-500 font-sans font-medium">
+                                <p className="mt-1 text-xs text-red-400 font-sans font-medium">
                                   {errors.companyEmail}
                                 </p>
                               )}
@@ -426,25 +368,25 @@ export default function FleetCreateAccount() {
 
                             {/* Field 2: Phone Number */}
                             <div>
-                              <label className="block text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200 font-sans mb-1.5">
-                                Phone Number <span className="text-[#DC2626]">*</span>
+                              <label className="block text-xs sm:text-sm font-medium text-zinc-300 font-sans mb-1.5">
+                                Phone Number <span className="text-red-500">*</span>
                               </label>
                               <div className="relative">
-                                <Phone className="w-4 h-4 text-zinc-400 dark:text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <Phone className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                 <input
                                   type="tel"
                                   value={formData.phoneNumber}
                                   onChange={(e) => handleChange("phoneNumber", e.target.value)}
                                   placeholder="+1 (000) 000-0000"
-                                  className={`w-full pl-10 pr-4 py-3 bg-zinc-50/70 dark:bg-zinc-900/90 border ${
+                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
                                     errors.phoneNumber
-                                      ? "border-red-500 focus:border-red-500 ring-1 ring-red-500"
-                                      : "border-zinc-300 dark:border-zinc-800 focus:border-[#DC2626] dark:focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626]"
-                                  } rounded-none text-sm sm:text-base text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none transition-all font-sans`}
+                                      ? "border-red-500 ring-1 ring-red-500"
+                                      : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                                  } rounded-xl text-sm sm:text-base text-white placeholder:text-zinc-600 focus:outline-none focus:bg-white/[0.07] transition-all font-sans`}
                                 />
                               </div>
                               {errors.phoneNumber && (
-                                <p className="mt-1 text-xs text-red-500 font-sans font-medium">
+                                <p className="mt-1 text-xs text-red-400 font-sans font-medium">
                                   {errors.phoneNumber}
                                 </p>
                               )}
@@ -457,25 +399,25 @@ export default function FleetCreateAccount() {
                           <>
                             {/* Field 1: Company Address */}
                             <div>
-                              <label className="block text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200 font-sans mb-1.5">
-                                Company Address <span className="text-[#DC2626]">*</span>
+                              <label className="block text-xs sm:text-sm font-medium text-zinc-300 font-sans mb-1.5">
+                                Company Address <span className="text-red-500">*</span>
                               </label>
                               <div className="relative">
-                                <MapPin className="w-4 h-4 text-zinc-400 dark:text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <MapPin className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                 <input
                                   type="text"
                                   value={formData.companyAddress}
                                   onChange={(e) => handleChange("companyAddress", e.target.value)}
                                   placeholder="123 Main St, City, Province/State"
-                                  className={`w-full pl-10 pr-4 py-3 bg-zinc-50/70 dark:bg-zinc-900/90 border ${
+                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
                                     errors.companyAddress
-                                      ? "border-red-500 focus:border-red-500 ring-1 ring-red-500"
-                                      : "border-zinc-300 dark:border-zinc-800 focus:border-[#DC2626] dark:focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626]"
-                                  } rounded-none text-sm sm:text-base text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none transition-all font-sans`}
+                                      ? "border-red-500 ring-1 ring-red-500"
+                                      : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                                  } rounded-xl text-sm sm:text-base text-white placeholder:text-zinc-600 focus:outline-none focus:bg-white/[0.07] transition-all font-sans`}
                                 />
                               </div>
                               {errors.companyAddress && (
-                                <p className="mt-1 text-xs text-red-500 font-sans font-medium">
+                                <p className="mt-1 text-xs text-red-400 font-sans font-medium">
                                   {errors.companyAddress}
                                 </p>
                               )}
@@ -483,26 +425,26 @@ export default function FleetCreateAccount() {
 
                             {/* Field 2: Number of Vehicles */}
                             <div>
-                              <label className="block text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200 font-sans mb-1.5">
-                                Number of Vehicles <span className="text-[#DC2626]">*</span>
+                              <label className="block text-xs sm:text-sm font-medium text-zinc-300 font-sans mb-1.5">
+                                Number of Commercial Vehicles <span className="text-red-500">*</span>
                               </label>
                               <div className="relative">
-                                <Truck className="w-4 h-4 text-zinc-400 dark:text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <Truck className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                 <input
                                   type="number"
                                   min="1"
                                   value={formData.numberOfVehicles}
                                   onChange={(e) => handleChange("numberOfVehicles", e.target.value)}
                                   placeholder="e.g. 10"
-                                  className={`w-full pl-10 pr-4 py-3 bg-zinc-50/70 dark:bg-zinc-900/90 border ${
+                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
                                     errors.numberOfVehicles
-                                      ? "border-red-500 focus:border-red-500 ring-1 ring-red-500"
-                                      : "border-zinc-300 dark:border-zinc-800 focus:border-[#DC2626] dark:focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626]"
-                                  } rounded-none text-sm sm:text-base text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none transition-all font-sans`}
+                                      ? "border-red-500 ring-1 ring-red-500"
+                                      : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                                  } rounded-xl text-sm sm:text-base text-white placeholder:text-zinc-600 focus:outline-none focus:bg-white/[0.07] transition-all font-sans`}
                                 />
                               </div>
                               {errors.numberOfVehicles && (
-                                <p className="mt-1 text-xs text-red-500 font-sans font-medium">
+                                <p className="mt-1 text-xs text-red-400 font-sans font-medium">
                                   {errors.numberOfVehicles}
                                 </p>
                               )}
@@ -515,25 +457,25 @@ export default function FleetCreateAccount() {
                           <>
                             {/* Field 1: Password */}
                             <div>
-                              <label className="block text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200 font-sans mb-1.5">
-                                Password <span className="text-[#DC2626]">*</span>
+                              <label className="block text-xs sm:text-sm font-medium text-zinc-300 font-sans mb-1.5">
+                                Set Password <span className="text-red-500">*</span>
                               </label>
                               <div className="relative">
-                                <Lock className="w-4 h-4 text-zinc-400 dark:text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                 <input
                                   type="password"
                                   value={formData.password}
                                   onChange={(e) => handleChange("password", e.target.value)}
-                                  placeholder="Create a password"
-                                  className={`w-full pl-10 pr-4 py-3 bg-zinc-50/70 dark:bg-zinc-900/90 border ${
+                                  placeholder="At least 6 characters"
+                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
                                     errors.password
-                                      ? "border-red-500 focus:border-red-500 ring-1 ring-red-500"
-                                      : "border-zinc-300 dark:border-zinc-800 focus:border-[#DC2626] dark:focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626]"
-                                  } rounded-none text-sm sm:text-base text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none transition-all font-sans`}
+                                      ? "border-red-500 ring-1 ring-red-500"
+                                      : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                                  } rounded-xl text-sm sm:text-base text-white placeholder:text-zinc-600 focus:outline-none focus:bg-white/[0.07] transition-all font-sans`}
                                 />
                               </div>
                               {errors.password && (
-                                <p className="mt-1 text-xs text-red-500 font-sans font-medium">
+                                <p className="mt-1 text-xs text-red-400 font-sans font-medium">
                                   {errors.password}
                                 </p>
                               )}
@@ -541,25 +483,25 @@ export default function FleetCreateAccount() {
 
                             {/* Field 2: Confirm Password */}
                             <div>
-                              <label className="block text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200 font-sans mb-1.5">
-                                Confirm Password <span className="text-[#DC2626]">*</span>
+                              <label className="block text-xs sm:text-sm font-medium text-zinc-300 font-sans mb-1.5">
+                                Confirm Password <span className="text-red-500">*</span>
                               </label>
                               <div className="relative">
-                                <Lock className="w-4 h-4 text-zinc-400 dark:text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                 <input
                                   type="password"
                                   value={formData.confirmPassword}
                                   onChange={(e) => handleChange("confirmPassword", e.target.value)}
-                                  placeholder="Repeat your password"
-                                  className={`w-full pl-10 pr-4 py-3 bg-zinc-50/70 dark:bg-zinc-900/90 border ${
+                                  placeholder="Repeat password"
+                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
                                     errors.confirmPassword
-                                      ? "border-red-500 focus:border-red-500 ring-1 ring-red-500"
-                                      : "border-zinc-300 dark:border-zinc-800 focus:border-[#DC2626] dark:focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626]"
-                                  } rounded-none text-sm sm:text-base text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none transition-all font-sans`}
+                                      ? "border-red-500 ring-1 ring-red-500"
+                                      : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                                  } rounded-xl text-sm sm:text-base text-white placeholder:text-zinc-600 focus:outline-none focus:bg-white/[0.07] transition-all font-sans`}
                                 />
                               </div>
                               {errors.confirmPassword && (
-                                <p className="mt-1 text-xs text-red-500 font-sans font-medium">
+                                <p className="mt-1 text-xs text-red-400 font-sans font-medium">
                                   {errors.confirmPassword}
                                 </p>
                               )}
@@ -570,27 +512,27 @@ export default function FleetCreateAccount() {
                     </AnimatePresence>
 
                     {/* ==================================================================
-                        ACTION BUTTONS (Bottom-Right "Next" Button matching Wireframe)
+                        ACTION BUTTONS
                         ================================================================== */}
-                    <div className="flex items-center justify-between pt-6 mt-6 border-t border-zinc-200 dark:border-zinc-800">
+                    <div className="flex items-center justify-between pt-6 mt-6 border-t border-white/10">
                       {currentStep > 1 ? (
                         <button
                           type="button"
                           onClick={handleBack}
-                          className="inline-flex items-center gap-2 px-5 py-3 rounded-none border border-zinc-300 dark:border-zinc-700 bg-transparent text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-sm font-medium transition-colors cursor-pointer"
+                          className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-white/15 bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/30 text-zinc-300 hover:text-white text-xs sm:text-sm font-medium transition-all cursor-pointer"
                         >
                           <ArrowLeft className="w-4 h-4" />
                           <span>Back</span>
                         </button>
                       ) : (
-                        <div /> /* Empty space to push Next to right */
+                        <div />
                       )}
 
                       <button
                         type="submit"
-                        className="inline-flex items-center justify-center gap-2.5 px-8 sm:px-10 py-3.5 rounded-none bg-zinc-950 text-white dark:bg-white dark:text-black hover:bg-[#DC2626] dark:hover:bg-[#DC2626] dark:hover:text-white font-medium text-sm sm:text-base tracking-tight transition-all duration-200 shadow-sm active:scale-98 cursor-pointer"
+                        className="inline-flex items-center justify-center gap-2.5 px-8 sm:px-10 py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-red-600/30 hover:shadow-red-600/50 active:scale-[0.98] transition-all cursor-pointer"
                       >
-                        <span>{currentStep === 4 ? "Submit Account" : "Next"}</span>
+                        <span>{currentStep === 4 ? "Submit Fleet Account" : "Next Step"}</span>
                         <ArrowRight className="w-4 h-4" />
                       </button>
                     </div>
@@ -606,48 +548,48 @@ export default function FleetCreateAccount() {
                   transition={{ duration: 0.3 }}
                   className="text-center py-6 sm:py-8 space-y-6"
                 >
-                  <div className="w-16 h-16 mx-auto rounded-none bg-zinc-950 dark:bg-white text-white dark:text-black flex items-center justify-center shadow-md">
-                    <CheckCircle2 className="w-9 h-9 text-[#DC2626]" />
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-red-600 to-rose-700 text-white flex items-center justify-center shadow-xl shadow-red-600/30">
+                    <CheckCircle2 className="w-9 h-9" />
                   </div>
 
                   <div className="space-y-2">
-                    <h3 className="text-2xl sm:text-3xl font-bold text-zinc-950 dark:text-white">
+                    <h3 className="text-2xl sm:text-3xl font-bold text-white">
                       Fleet Account Submitted!
                     </h3>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400 font-sans max-w-md mx-auto">
-                      Thank you, <span className="font-semibold text-zinc-900 dark:text-white">{formData.companyName}</span>.
-                      Your commercial application has been approved. A dedicated Fleet Account Code has been emailed to{" "}
-                      <span className="font-semibold text-zinc-900 dark:text-white">{formData.companyEmail}</span>.
+                    <p className="text-sm text-zinc-400 font-sans max-w-md mx-auto">
+                      Thank you, <span className="font-semibold text-white">{formData.companyName}</span>.
+                      Your commercial application has been processed. A dedicated Fleet Account Code has been emailed to{" "}
+                      <span className="font-semibold text-white">{formData.companyEmail}</span>.
                     </p>
                   </div>
 
                   {/* Summary Box */}
-                  <div className="border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-4 text-left space-y-2 text-xs font-mono">
-                    <div className="flex justify-between text-zinc-500">
+                  <div className="border border-white/10 bg-white/[0.03] rounded-xl p-4 text-left space-y-2.5 text-xs font-mono">
+                    <div className="flex justify-between text-zinc-400">
                       <span>STATUS:</span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">APPROVED AND READY</span>
+                      <span className="text-emerald-400 font-bold">APPROVED &amp; ACTIVE</span>
                     </div>
-                    <div className="flex justify-between text-zinc-500">
-                      <span>VEHICLES REGISTERED:</span>
-                      <span className="text-zinc-900 dark:text-white font-bold">{formData.numberOfVehicles} units</span>
+                    <div className="flex justify-between text-zinc-400">
+                      <span>UNITS REGISTERED:</span>
+                      <span className="text-white font-bold">{formData.numberOfVehicles} units</span>
                     </div>
-                    <div className="flex justify-between text-zinc-500">
-                      <span>PRIMARY PHONE:</span>
-                      <span className="text-zinc-900 dark:text-white font-bold">{formData.phoneNumber}</span>
+                    <div className="flex justify-between text-zinc-400">
+                      <span>DISPATCH PHONE:</span>
+                      <span className="text-white font-bold">{formData.phoneNumber}</span>
                     </div>
                   </div>
 
                   <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                     <a
                       href={LOGIN_URL}
-                      className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 rounded-none bg-zinc-950 text-white dark:bg-white dark:text-black hover:bg-[#DC2626] dark:hover:bg-[#DC2626] dark:hover:text-white font-medium text-sm transition-colors cursor-pointer"
+                      className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-red-600/30 cursor-pointer"
                     >
                       Sign In to Fleet Portal
                     </a>
                     <button
                       type="button"
                       onClick={handleReset}
-                      className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3.5 rounded-none border border-zinc-300 dark:border-zinc-700 bg-transparent text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm font-medium transition-colors cursor-pointer"
+                      className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3.5 rounded-xl border border-white/15 bg-white/[0.03] hover:bg-white/[0.08] text-zinc-300 hover:text-white text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer"
                     >
                       Register Another Fleet
                     </button>
