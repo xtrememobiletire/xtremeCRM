@@ -106,13 +106,22 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
   const isAgent = user?.role === 'CALL_AGENT';
   const isVa = user?.role === 'VIRTUAL_ASSISTANT';
 
-  // Live pending jobs count for sidebar badge
-  const { data: pendingJobsCount = 0 } = useQuery({
-    queryKey: ['pending-jobs-count', country],
-    queryFn: () => jobService.getPendingJobsCount(country),
+  // Live nav badge telemetry for /jobs, /fleet-jobs, /bookings, /invoices
+  const { data: navCounts } = useQuery({
+    queryKey: ['nav-counts', country],
+    queryFn: () => jobService.getNavCounts(country),
     refetchInterval: 15000,
     enabled: !isFleetManager && !isMember && !isDriver && !isVa,
   });
+
+  const getNavBadge = (path: string) => {
+    if (!navCounts) return 0;
+    if (path === '/jobs') return navCounts.jobs || 0;
+    if (path === '/fleet-jobs') return navCounts.fleetJobs || 0;
+    if (path === '/bookings') return navCounts.bookings || 0;
+    if (path === '/invoices') return navCounts.invoices || 0;
+    return 0;
+  };
 
   const navItems = isFleetManager
     ? [{ icon: Truck, label: 'Fleet Portal', path: '/fleet-dashboard' }]
@@ -300,23 +309,42 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
                 }
               >
                 <Icon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                {(!isCollapsed || isOpen) ? (
-                  <>
-                    <span className="truncate tracking-tight flex-1">{item.label}</span>
-                    {item.path === '/jobs' && pendingJobsCount > 0 && (
-                      <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs">
-                        {pendingJobsCount}
+                {(() => {
+                  const badgeCount = getNavBadge(item.path);
+                  if (!isCollapsed || isOpen) {
+                    return (
+                      <>
+                        <span className="truncate tracking-tight flex-1">{item.label}</span>
+                        {badgeCount > 0 && (
+                          <span
+                            className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded-full shadow-2xs border ${
+                              item.path === '/invoices'
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : item.path === '/bookings'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : item.path === '/fleet-jobs'
+                                ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                : 'bg-amber-50 text-amber-800 border-amber-300'
+                            }`}
+                          >
+                            {badgeCount}
+                          </span>
+                        )}
+                      </>
+                    );
+                  }
+
+                  if (badgeCount > 0) {
+                    return (
+                      <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
                       </span>
-                    )}
-                  </>
-                ) : (
-                  item.path === '/jobs' && pendingJobsCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                    </span>
-                  )
-                )}
+                    );
+                  }
+
+                  return null;
+                })()}
               </NavLink>
             );
           })}

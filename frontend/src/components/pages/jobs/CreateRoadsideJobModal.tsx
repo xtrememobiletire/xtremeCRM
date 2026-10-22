@@ -98,6 +98,9 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
   const [assignedDriverId, setAssignedDriverId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('POS');
   const [upfrontAmountInput, setUpfrontAmountInput] = useState('');
+  const [upfrontReceiptUrl, setUpfrontReceiptUrl] = useState('');
+  const [addressNotes, setAddressNotes] = useState('');
+  const [tireCount, setTireCount] = useState(1);
   const [notes, setNotes] = useState('');
 
   // Fetch regional drivers for selected formCountry
@@ -193,6 +196,9 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
     setAssignedDriverId('');
     setPaymentMethod('POS');
     setUpfrontAmountInput('');
+    setUpfrontReceiptUrl('');
+    setAddressNotes('');
+    setTireCount(1);
     setNotes('');
   };
 
@@ -224,6 +230,12 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
 
     const upfrontCents = upfrontAmountInput ? Math.round((parseFloat(upfrontAmountInput) || 0) * 100) : 0;
 
+    const structuredNotes = [
+      customerName ? `[Requested By: ${customerName.trim()}]` : '',
+      addressNotes ? `[Address Notes: ${addressNotes.trim()}]` : '',
+      notes ? notes.trim() : ''
+    ].filter(Boolean).join(' ');
+
     try {
       await createJobMutation.mutateAsync({
         countryCode: formCountry,
@@ -240,8 +252,9 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
         paymentMethod,
         driverId: assignedDriverId || undefined,
         upfrontAmountCents: upfrontCents,
+        upfrontReceiptUrl: upfrontReceiptUrl.trim() || undefined,
         notes,
-        problemNotes: notes || undefined,
+        problemNotes: structuredNotes || undefined,
         makeUserAccount,
         arrivalWindowStart: arrivalWindow.arrivalWindowStart || new Date(Date.now() + (arrivalWindow.estimatedArrivalMinutes || 30) * 60000).toISOString(),
         arrivalWindowEnd: arrivalWindow.arrivalWindowEnd || new Date(Date.now() + ((arrivalWindow.estimatedArrivalMinutes || 30) + 30) * 60000).toISOString(),
@@ -471,6 +484,18 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
               <span>GPS Coordinates locked: {serviceCoords.latitude.toFixed(4)}, {serviceCoords.longitude.toFixed(4)}</span>
             </div>
           )}
+          <div className="mt-2">
+            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+              Address Notes / Landmarks / Mile Marker
+            </label>
+            <input
+              type="text"
+              value={addressNotes}
+              onChange={(e) => setAddressNotes(e.target.value)}
+              placeholder="e.g. Northbound shoulder past Exit 42, near blue Esso gas station"
+              className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
+            />
+          </div>
         </div>
 
         {/* Step 6: Vehicle Make & Model */}
@@ -569,6 +594,16 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
             onChange={setServiceItems}
             isTaxIncluded={isTaxIncluded}
             onToggleTaxIncluded={setIsTaxIncluded}
+            showTireSelector={true}
+            tireCount={tireCount}
+            onTireCountChange={(count) => {
+              setTireCount(count);
+              setServiceItems((prev) =>
+                prev.map((item) =>
+                  item.category === 'TIRE_SERVICE' ? { ...item, quantity: count } : item
+                )
+              );
+            }}
           />
         </div>
 
@@ -704,6 +739,18 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
               Advance deposit of {currencySymbol}{parseFloat(upfrontAmountInput).toFixed(2)} will be credited to customer balance.
             </p>
           )}
+          <div className="mt-2">
+            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+              Receipt / Payment Proof URL (Optional)
+            </label>
+            <input
+              type="url"
+              value={upfrontReceiptUrl}
+              onChange={(e) => setUpfrontReceiptUrl(e.target.value)}
+              placeholder="https://... receipt image or payment link"
+              className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-2xs"
+            />
+          </div>
         </div>
 
         {/* Step 14: Notes & Instructions */}

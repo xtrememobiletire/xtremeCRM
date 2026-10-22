@@ -187,6 +187,7 @@ export const invoiceService = {
     fleetId?: string;
     countryCode?: string;
     issueDate?: string;
+    jobIds?: string[];
     dueDate?: string;
     items: Array<{ itemDetails: string; unitPriceCents: number; quantity: number }>;
     taxRatePercent?: number | null;
@@ -203,6 +204,7 @@ export const invoiceService = {
    * Fetch an existing job invoice or create and link one using optional tax,
    * line-item, due-date, discount, and deposit-credit settings. Prices/discounts are
    * in cents; creditDeposit defaults to true on the server.
+   * Supports updateExisting: true to re-sync line items without changing invoiceNumber.
    * @throws The API request error, including HTTP 404 for a missing job.
    */
   async generateInvoiceFromJob(
@@ -215,6 +217,7 @@ export const invoiceService = {
       paymentTerms?: string;
       notes?: string;
       discountCents?: number;
+      updateExisting?: boolean;
       lineItems?: Array<{ itemDetails?: string; description?: string; unitPriceCents: number; quantity: number }>;
     }
   ): Promise<InvoiceRecord> {
@@ -223,8 +226,8 @@ export const invoiceService = {
   },
 
   /**
-   * Invoice the selected completed, unbilled jobs belonging to the fleet; the
-   * server ignores other IDs, applies the fleet discount, and links eligible jobs.
+   * Invoice the selected completed or active unbilled jobs belonging to the fleet; the
+   * server applies the fleet discount, and links eligible jobs.
    * @throws The API request error, including rejection when no jobs are eligible.
    */
   async generateFleetConsolidatedInvoice(payload: {
@@ -234,6 +237,7 @@ export const invoiceService = {
     isTaxExempt?: boolean;
     dueDate?: string;
     notes?: string;
+    includeActiveJobs?: boolean;
   }): Promise<InvoiceRecord> {
     const res = await api.post('/invoices/consolidated', payload);
     return res.data.data;

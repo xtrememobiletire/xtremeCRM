@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Plus, Trash2, FileText, Loader2, CheckCircle2 } from 'lucide-react';
-import { useCreateInvoice } from '../../hooks/useInvoices';
+import { useCreateInvoice, useFleetBillingSummary } from '../../hooks/useInvoices';
 import { useFleets } from '../../hooks/useFleets';
 import { useCustomers } from '../../hooks/useCustomers';
 import type { InvoiceType } from '../../services/invoiceService';
@@ -28,6 +28,7 @@ export default function CreateInvoiceModal({
   const [invoiceType, setInvoiceType] = useState<InvoiceType>(defaultType);
   const [selectedFleetId, setSelectedFleetId] = useState<string>('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const [isTaxExempt, setIsTaxExempt] = useState(false);
   const [taxRatePercent, setTaxRatePercent] = useState<number>(
     country === 'CA' ? 13 : country === 'UK' ? 20 : 8.875
@@ -47,6 +48,9 @@ export default function CreateInvoiceModal({
 
   const { data: fleetsData } = useFleets();
   const { data: customersData } = useCustomers();
+  const { data: fleetBillingData } = useFleetBillingSummary(
+    invoiceType === 'FLEET' && selectedFleetId ? selectedFleetId : null
+  );
 
   if (!isOpen) return null;
 
@@ -125,6 +129,7 @@ export default function CreateInvoiceModal({
         customerId: invoiceType === 'CUSTOMER' || invoiceType === 'MEMBER' ? selectedCustomerId : undefined,
         countryCode: (['CA', 'US', 'UK'].includes(country) ? country : 'CA') as 'CA' | 'US' | 'UK',
         dueDate: new Date(dueDate).toISOString(),
+        jobIds: selectedJobIds.length > 0 ? selectedJobIds : undefined,
         items: validItems,
         taxRatePercent: isTaxExempt ? 0 : taxRatePercent,
         isTaxExempt,
@@ -206,6 +211,81 @@ export default function CreateInvoiceModal({
                   </option>
                 ))}
               </select>
+
+              {/* Unbilled Fleet Work Orders Picker */}
+              {fleetBillingData?.unbilledJobs && fleetBillingData.unbilledJobs.length > 0 && (
+                <div className="mt-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 text-xs">
+                      Attach Unbilled Fleet Jobs ({fleetBillingData.unbilledJobs.length} available)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedJobIds.length === fleetBillingData.unbilledJobs!.length) {
+                          setSelectedJobIds([]);
+                        } else {
+                          const allIds = fleetBillingData.unbilledJobs!.map((j: any) => j.id);
+                          setSelectedJobIds(allIds);
+                          const newItems = fleetBillingData.unbilledJobs!.map((j: any) => ({
+                            itemDetails: `Work Order ${j.jobCode} - ${j.serviceAddress || 'Fleet Service'}`,
+                            unitPrice: String((j.totalCents || 0) / 100),
+                            quantity: 1,
+                          }));
+                          if (newItems.length > 0) setItems(newItems);
+                        }
+                      }}
+                      className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
+                    >
+                      {selectedJobIds.length === fleetBillingData.unbilledJobs.length ? 'Deselect All' : 'Select & Auto-fill All'}
+                    </button>
+                  </div>
+                  <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                    {fleetBillingData.unbilledJobs.map((j: any) => {
+                      const isChecked = selectedJobIds.includes(j.id);
+                      return (
+                        <label
+                          key={j.id}
+                          className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition ${
+                            isChecked ? 'bg-blue-50/80 border-blue-300 text-blue-900' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedJobIds((prev) => [...prev, j.id]);
+                                  setItems((prev) => {
+                                    const filtered = prev.filter((it) => it.itemDetails.trim() !== '');
+                                    return [
+                                      ...filtered,
+                                      {
+                                        itemDetails: `Work Order ${j.jobCode} - ${j.serviceAddress || 'Fleet Service'}`,
+                                        unitPrice: String((j.totalCents || 0) / 100),
+                                        quantity: 1,
+                                      },
+                                    ];
+                                  });
+                                } else {
+                                  setSelectedJobIds((prev) => prev.filter((id) => id !== j.id));
+                                }
+                              }}
+                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="font-mono font-bold text-slate-900">{j.jobCode}</span>
+                            <span className="text-slate-500 truncate max-w-[200px]">{j.serviceAddress || 'Fleet Service'}</span>
+                          </div>
+                          <span className="font-mono font-bold text-slate-900">
+                            {currencySymbol}{((j.totalCents || 0) / 100).toFixed(2)}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

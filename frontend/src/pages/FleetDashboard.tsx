@@ -19,6 +19,10 @@ import StatCard from '../components/ui/StatCard';
 import InvoicePdfModal from '../components/invoices/InvoicePdfModal';
 import AddressAutocompleteInput from '../components/common/AddressAutocompleteInput';
 import MultiServiceSelector, { type SelectedServiceItem } from '../components/common/MultiServiceSelector';
+import { DriverCombobox, type DriverOption } from '../components/common/DriverCombobox';
+import { VehicleCombobox, type VehicleOption } from '../components/common/VehicleCombobox';
+import { ArrivalWindowSelector, type ArrivalWindowData } from '../components/common/ArrivalWindowSelector';
+import { zonedWallTimeToUtc, getDefaultTimezoneForCountry, formatDate, formatTimeInTz, PKT_TIMEZONE } from '../utils/date';
 import { toast } from 'sonner';
 
 type Tab = 'dashboard' | 'vehicles' | 'drivers' | 'request' | 'status' | 'pending-invoices' | 'paid-invoices';
@@ -63,19 +67,37 @@ export default function FleetDashboard() {
 
   // Booking Form State
   const [bookingForm, setBookingForm] = useState({
+    urgency: 'STANDARD' as 'STANDARD' | 'URGENT' | 'FUTURE',
     appointmentDate: '',
+    arrivalWindowStart: '',
+    arrivalWindowEnd: '',
+    estimatedArrivalMinutes: 30,
     driverId: '',
     recipientName: '',
+    driverPhone: '',
     vehicleId: '',
-    serviceName: 'Flat Tire Repair',
-    serviceType: 'STANDARD' as 'STANDARD' | 'EMERGENCY',
-    contactPhone: '',
+    unitNumber: '',
+    licensePlate: '',
+    vehicleMake: '',
+    vehicleModel: '',
+    vehicleYear: '',
+    vehicleDetails: '',
+    tireCount: 1,
     tireSize: '11R22.5',
     address: '',
+    addressNotes: '',
+    requestedByName: '',
+    upfrontAmountCents: 0,
+    upfrontReceiptUrl: '',
     serviceLatitude: null as number | null,
     serviceLongitude: null as number | null,
     serviceTimezone: '',
     notes: '',
+  });
+
+  const [arrivalWindow, setArrivalWindow] = useState<ArrivalWindowData>({
+    mode: 'WINDOW',
+    estimatedArrivalMinutes: 30,
   });
 
   const [serviceItems, setServiceItems] = useState<SelectedServiceItem[]>([
@@ -294,41 +316,73 @@ export default function FleetDashboard() {
     },
   });
 
-  // Driver selector helper (auto-fills phone & matched vehicle by plate)
-  const handleDriverSelect = (drvId: string) => {
-    const selectedDrv = drivers.find((d: any) => d.id === drvId);
-    if (!selectedDrv) {
-      setBookingForm((prev) => ({ ...prev, driverId: '', recipientName: '' }));
-      return;
-    }
-    const matchedVeh = selectedDrv.licensePlate
-      ? vehicles.find((v: any) => v.licensePlate?.toLowerCase() === selectedDrv.licensePlate?.toLowerCase())
+  // Format driver & vehicle options for searchable comboboxes
+  const driverOptions: DriverOption[] = useMemo(() => {
+    return drivers.map((d: any) => ({
+      id: d.id,
+      name: d.fullName,
+      phone: d.phone,
+      vehicleId: d.vehicleId || d.vehicle?.id,
+      unitNumber: d.vehicle?.unitNumber,
+      licensePlate: d.licensePlate || d.vehicle?.licensePlate,
+      vehicle: d.vehicle || null,
+    }));
+  }, [drivers]);
+
+  const vehicleOptions: VehicleOption[] = useMemo(() => {
+    return vehicles.map((v: any) => ({
+      id: v.id,
+      unitNumber: v.unitNumber,
+      licensePlate: v.licensePlate,
+      make: v.make,
+      model: v.model,
+      year: v.year,
+      vin: v.vin,
+    }));
+  }, [vehicles]);
+
+  const handleDriverSelect = (driver: { id?: string; name: string; phone: string; vehicleId?: string; unitNumber?: string; licensePlate?: string }) => {
+    const matchedVeh = driver.vehicleId
+      ? vehicles.find((v: any) => v.id === driver.vehicleId)
+      : driver.licensePlate
+      ? vehicles.find((v: any) => v.licensePlate?.toLowerCase() === driver.licensePlate?.toLowerCase())
       : null;
+
     setBookingForm((prev) => ({
       ...prev,
-      driverId: drvId,
-      recipientName: selectedDrv.fullName || prev.recipientName,
-      contactPhone: selectedDrv.phone || prev.contactPhone,
-      vehicleId: matchedVeh ? matchedVeh.id : prev.vehicleId,
+      driverId: driver.id || '',
+      recipientName: driver.name,
+      driverPhone: driver.phone || prev.driverPhone,
+      vehicleId: matchedVeh?.id || prev.vehicleId,
+      unitNumber: matchedVeh?.unitNumber || driver.unitNumber || prev.unitNumber,
+      licensePlate: matchedVeh?.licensePlate || driver.licensePlate || prev.licensePlate,
+      vehicleMake: matchedVeh?.make || prev.vehicleMake,
+      vehicleModel: matchedVeh?.model || prev.vehicleModel,
+      vehicleYear: matchedVeh?.year ? String(matchedVeh.year) : prev.vehicleYear,
       tireSize: matchedVeh?.tireSize || prev.tireSize,
     }));
   };
 
-  // Handle vehicle select in booking form
-  const handleVehicleSelect = (vehId: string) => {
-    const selected = vehicles.find((v: any) => v.id === vehId);
+  const handleVehicleSelect = (veh: { id?: string; unitNumber: string; licensePlate: string; make?: string; model?: string; year?: number; description?: string }) => {
+    const fullVeh = veh.id ? vehicles.find((v: any) => v.id === veh.id) : null;
     setBookingForm((prev) => ({
       ...prev,
-      vehicleId: vehId,
-      tireSize: selected?.tireSize || prev.tireSize,
+      vehicleId: veh.id || '',
+      unitNumber: veh.unitNumber,
+      licensePlate: veh.licensePlate,
+      vehicleMake: veh.make || fullVeh?.make || '',
+      vehicleModel: veh.model || fullVeh?.model || '',
+      vehicleYear: veh.year ? String(veh.year) : fullVeh?.year ? String(fullVeh.year) : '',
+      vehicleDetails: veh.description || '',
+      tireSize: fullVeh?.tireSize || prev.tireSize,
     }));
   };
 
   // Handle submit service
   const handleBookService = (e: React.FormEvent) => {
     e.preventDefault();
-    if (bookingForm.serviceType === 'STANDARD' && !bookingForm.appointmentDate) {
-      toast.error('Please choose an appointment date and time for scheduled service');
+    if (bookingForm.urgency === 'FUTURE' && !arrivalWindow.appointmentDate && !arrivalWindow.arrivalWindowStart) {
+      toast.error('Please choose a scheduled appointment date and arrival window');
       return;
     }
     if (serviceItems.length === 0) {
@@ -340,16 +394,46 @@ export default function FleetDashboard() {
       toast.error('Please enter a breakdown / service location address');
       return;
     }
-    const selectedVeh = vehicles.find((v: any) => v.id === bookingForm.vehicleId);
-    const finalAppointmentDate = bookingForm.serviceType === 'EMERGENCY'
-      ? new Date(Date.now() + 30 * 60000).toISOString()
-      : new Date(bookingForm.appointmentDate).toISOString();
+
+    const isUrgent = bookingForm.urgency === 'URGENT';
+    const nowMs = Date.now();
+    const finalAppointmentDate = isUrgent
+      ? new Date(nowMs + 30 * 60000).toISOString()
+      : arrivalWindow.appointmentDate || arrivalWindow.arrivalWindowStart || new Date().toISOString();
+    const winStartIso = isUrgent
+      ? new Date(nowMs + 30 * 60000).toISOString()
+      : arrivalWindow.arrivalWindowStart || finalAppointmentDate;
+    const winEndIso = isUrgent
+      ? new Date(nowMs + 60 * 60000).toISOString()
+      : arrivalWindow.arrivalWindowEnd || new Date(new Date(winStartIso).getTime() + 60 * 60000).toISOString();
 
     bookServiceMutation.mutate({
-      ...bookingForm,
+      urgency: bookingForm.urgency,
       appointmentDate: finalAppointmentDate,
+      arrivalWindowStart: winStartIso,
+      arrivalWindowEnd: winEndIso,
+      estimatedArrivalMinutes: isUrgent ? 30 : null,
       address: finalAddress,
       serviceAddress: finalAddress,
+      serviceLatitude: bookingForm.serviceLatitude,
+      serviceLongitude: bookingForm.serviceLongitude,
+      serviceTimezone: bookingForm.serviceTimezone,
+      recipientName: bookingForm.recipientName || undefined,
+      recipientPhone: bookingForm.driverPhone || fleet?.contactPhone || undefined,
+      driverId: bookingForm.driverId || undefined,
+      vehicleId: bookingForm.vehicleId || undefined,
+      unitNumber: bookingForm.unitNumber || undefined,
+      licensePlate: bookingForm.licensePlate || undefined,
+      vehicleMake: bookingForm.vehicleMake || undefined,
+      vehicleModel: bookingForm.vehicleModel || undefined,
+      vehicleYear: bookingForm.vehicleYear ? Number(bookingForm.vehicleYear) : undefined,
+      tireCount: bookingForm.tireCount,
+      tireSize: bookingForm.tireSize,
+      addressNotes: bookingForm.addressNotes || undefined,
+      requestedByName: bookingForm.requestedByName || user?.fullName || undefined,
+      upfrontAmountCents: bookingForm.upfrontAmountCents > 0 ? bookingForm.upfrontAmountCents : undefined,
+      upfrontReceiptUrl: bookingForm.upfrontReceiptUrl || undefined,
+      problemNotes: bookingForm.notes || undefined,
       fleetId: fleet?.id,
       serviceItems: serviceItems.map((s) => ({
         serviceName: s.serviceName,
@@ -358,20 +442,6 @@ export default function FleetDashboard() {
         quantity: s.quantity,
         notes: s.notes,
       })),
-      vehicleMake: selectedVeh?.make,
-      vehicleModel: selectedVeh?.model,
-      vehicleYear: selectedVeh?.year,
-      licensePlate: selectedVeh?.licensePlate,
-      unitNumber: selectedVeh?.unitNumber,
-      tireSize: selectedVeh?.tireSize || bookingForm.tireSize,
-      vehicle: selectedVeh ? {
-        make: selectedVeh.make,
-        model: selectedVeh.model,
-        year: selectedVeh.year,
-        tireSize: selectedVeh.tireSize,
-        licensePlate: selectedVeh.licensePlate,
-        unitNumber: selectedVeh.unitNumber,
-      } : undefined,
     });
   };
 
@@ -1021,152 +1091,110 @@ export default function FleetDashboard() {
               />
 
               <form onSubmit={handleBookService} className="card-surface p-6 space-y-4 text-xs">
-                {/* APPOINTMENT DATE & TIME */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      {bookingForm.serviceType === 'EMERGENCY' ? 'Appointment Timing' : 'Appointment Date & Time *'}
-                    </label>
-                    {bookingForm.serviceType === 'EMERGENCY' ? (
-                      <span className="text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shadow-2xs">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                        Immediate Roadside Dispatch (ASAP ~30m)
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-slate-400 font-medium">24/7 Hours</span>
-                    )}
+                {/* 1. SERVICE URGENCY PRIORITY */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                    <span>Service Urgency Priority *</span>
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {[
+                      {
+                        id: 'STANDARD',
+                        label: 'Standard Fleet Service',
+                        desc: 'Depot or scheduled yard work',
+                        color: 'border-blue-500 bg-blue-50 text-blue-800',
+                      },
+                      {
+                        id: 'URGENT',
+                        label: 'Urgent Breakdown',
+                        desc: 'Highway / roadside dead stop (ASAP)',
+                        color: 'border-red-500 bg-red-50 text-red-800',
+                      },
+                      {
+                        id: 'FUTURE',
+                        label: 'Future Appointment',
+                        desc: 'Pre-scheduled window & date',
+                        color: 'border-purple-500 bg-purple-50 text-purple-800',
+                      },
+                    ].map((u) => {
+                      const isSelected = bookingForm.urgency === u.id;
+                      return (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onClick={() => {
+                            setBookingForm((prev) => ({ ...prev, urgency: u.id as any }));
+                            if (u.id === 'URGENT') {
+                              setArrivalWindow((prev) => ({ ...prev, mode: 'ETA' }));
+                            } else {
+                              setArrivalWindow((prev) => ({ ...prev, mode: 'WINDOW' }));
+                            }
+                          }}
+                          className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                            isSelected
+                              ? `${u.color} font-bold shadow-2xs`
+                              : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="text-xs font-bold leading-tight">{u.label}</div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">{u.desc}</div>
+                        </button>
+                      );
+                    })}
                   </div>
-                  {bookingForm.serviceType === 'EMERGENCY' ? (
-                    <div className="mt-1.5 p-3 rounded-xl bg-red-50/50 border border-red-200 text-xs text-red-900 flex items-center justify-between">
-                      <span className="font-medium">Priority Dispatch will be initiated immediately upon submission (Estimated arrival window: ~30-45 mins).</span>
-                      <span className="text-[10px] font-mono font-bold text-red-700 bg-white border border-red-200 px-2 py-0.5 rounded-md">
-                        ASAP PRIORITY
+                </div>
+
+                {/* 2. APPOINTMENT TIMING & SERVICE WINDOW */}
+                <div>
+                  {bookingForm.urgency === 'URGENT' ? (
+                    <div className="p-3.5 rounded-xl bg-red-50/80 border border-red-200 text-xs text-red-900 flex items-center justify-between shadow-2xs">
+                      <div>
+                        <span className="font-bold block">Immediate Roadside Dispatch Triggered</span>
+                        <span className="text-[11px] opacity-90">Technician will be dispatched with priority (~30-45m arrival window).</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-red-700 bg-white border border-red-300 px-2.5 py-1 rounded-md shrink-0">
+                        PRIORITY ETA
                       </span>
                     </div>
                   ) : (
-                    <input
-                      type="datetime-local"
-                      value={bookingForm.appointmentDate}
-                      onChange={(e) => setBookingForm({ ...bookingForm, appointmentDate: e.target.value })}
-                      className="input-base mt-1.5 py-2.5 text-xs text-slate-800"
-                      required
-                    />
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                        <span>Promised Arrival Window ("Between Time") *</span>
+                        <span className="text-[11px] font-mono text-blue-600 font-bold">
+                          {arrivalWindow.displayLabel || 'Scheduled Window'}
+                        </span>
+                      </label>
+                      <ArrivalWindowSelector
+                        value={arrivalWindow}
+                        timezone={fleet?.timezone || 'America/Toronto'}
+                        countryCode={fleetCountry}
+                        onChange={setArrivalWindow}
+                      />
+                    </div>
                   )}
                 </div>
 
-                {/* DRIVER SELECTOR */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Select Fleet Driver (Optional)
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsAddDriverOpen(true)}
-                      className="text-[11px] text-red-600 hover:text-red-700 font-semibold inline-flex items-center gap-0.5 cursor-pointer"
-                    >
-                      <Plus size={12} />
-                      <span>Register New Driver</span>
-                    </button>
-                  </div>
-                  <select
-                    value={bookingForm.driverId}
-                    onChange={(e) => handleDriverSelect(e.target.value)}
-                    className="select-base mt-1.5 py-2.5 text-xs text-slate-800"
-                  >
-                    <option value="">Select an enrolled driver (auto-fills phone & assigned truck)...</option>
-                    {drivers.map((d: any) => (
-                      <option key={d.id} value={d.id}>
-                        {d.fullName} {d.phone ? `(${d.phone})` : ''} {d.licensePlate ? `• Plate: ${d.licensePlate}` : ''}
-                      </option>
-                    ))}
-                  </select>
+                {/* 3. DRIVER & VEHICLE SELECTION */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <DriverCombobox
+                    drivers={driverOptions}
+                    selectedDriverName={bookingForm.recipientName}
+                    selectedDriverPhone={bookingForm.driverPhone}
+                    onSelect={handleDriverSelect}
+                    onClear={() => setBookingForm((prev) => ({ ...prev, driverId: '', recipientName: '', driverPhone: '' }))}
+                  />
+
+                  <VehicleCombobox
+                    vehicles={vehicleOptions}
+                    selectedUnitNumber={bookingForm.unitNumber}
+                    selectedLicensePlate={bookingForm.licensePlate}
+                    selectedVehicleDetails={bookingForm.vehicleDetails}
+                    onSelect={handleVehicleSelect}
+                    onClear={() => setBookingForm((prev) => ({ ...prev, vehicleId: '', unitNumber: '', licensePlate: '', vehicleDetails: '' }))}
+                  />
                 </div>
 
-                {/* VEHICLE */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Select Fleet Vehicle
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsAddVehicleOpen(true)}
-                      className="text-[11px] text-red-600 hover:text-red-700 font-semibold inline-flex items-center gap-0.5 cursor-pointer"
-                    >
-                      <Plus size={12} />
-                      <span>Register New Unit</span>
-                    </button>
-                  </div>
-                  <select
-                    value={bookingForm.vehicleId}
-                    onChange={(e) => handleVehicleSelect(e.target.value)}
-                    className="select-base mt-1.5 py-2.5 text-xs text-slate-800"
-                  >
-                    <option value="">Select a registered vehicle...</option>
-                    {vehicles.map((v: any) => (
-                      <option key={v.id} value={v.id}>
-                        {v.unitNumber ? `[Unit ${v.unitNumber}] ` : ''}{v.licensePlate ? `[${v.licensePlate}] ` : ''}{v.year} {v.make} {v.model} • {v.tireSize || '11R22.5'}
-                      </option>
-                    ))}
-                  </select>
-
-                  {/* Selected Vehicle Detail Card */}
-                  {(() => {
-                    const selectedVeh = vehicles.find((v: any) => v.id === bookingForm.vehicleId);
-                    if (!selectedVeh) return null;
-                    const assignedDriver = drivers.find((d: any) => d.licensePlate && d.licensePlate === selectedVeh.licensePlate);
-                    return (
-                      <div className="mt-2.5 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {selectedVeh.unitNumber && (
-                              <span className="font-bold text-[11px] px-2 py-0.5 bg-slate-200 text-slate-800 rounded">
-                                Unit {selectedVeh.unitNumber}
-                              </span>
-                            )}
-                            <span className="font-mono font-bold px-2 py-0.5 bg-white border border-slate-200 rounded text-slate-900">
-                              {selectedVeh.licensePlate || 'NO PLATE'}
-                            </span>
-                            <span className="font-bold text-slate-900 text-sm">
-                              {selectedVeh.year} {selectedVeh.make} {selectedVeh.model}
-                            </span>
-                          </div>
-                          <div className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg font-semibold text-[11px] shrink-0 flex items-center gap-1">
-                            <ShieldCheck size={13} />
-                            <span>Fleet Unit</span>
-                          </div>
-                        </div>
-
-                        <div className="text-slate-500 text-[11px] flex flex-wrap items-center gap-3 pt-1 border-t border-slate-200/60">
-                          <span>Tire Spec: <strong className="font-mono text-red-700 font-semibold">{selectedVeh.tireSize || '11R22.5'}</strong></span>
-                          {selectedVeh.unitType && <span>&bull; Type: <span className="font-medium text-slate-700">{selectedVeh.unitType}</span></span>}
-                          {selectedVeh.color && <span>&bull; Color: <span className="font-medium text-slate-700">{selectedVeh.color}</span></span>}
-                          {selectedVeh.vin && <span>&bull; VIN: <span className="font-mono">{selectedVeh.vin}</span></span>}
-                        </div>
-
-                        {assignedDriver && (
-                          <div className="mt-1 pt-1.5 border-t border-slate-200/60 flex items-center justify-between gap-2 text-[11px]">
-                            <span className="text-slate-600">
-                              Assigned Driver: <strong className="text-slate-900">{assignedDriver.fullName}</strong> ({assignedDriver.phone})
-                            </span>
-                            {bookingForm.contactPhone !== assignedDriver.phone && (
-                              <button
-                                type="button"
-                                onClick={() => setBookingForm((prev) => ({ ...prev, contactPhone: assignedDriver.phone }))}
-                                className="text-blue-600 hover:text-blue-700 font-semibold underline text-[10px] cursor-pointer"
-                              >
-                                Use Driver Phone
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* MULTI-SERVICE WORK ORDER BUILDER */}
+                {/* 4. MULTI-SERVICE WORK ORDER BUILDER */}
                 <div className="pt-1">
                   <MultiServiceSelector
                     items={serviceItems}
@@ -1177,36 +1205,24 @@ export default function FleetDashboard() {
                     discountLabel={fleet?.discountPercent ? `Fleet Contract Discount (-${fleet.discountPercent}%)` : undefined}
                     allowPriceEdit={false}
                     showTaxToggle={false}
-                    title="Required Work Order Services"
+                    showTireSelector={true}
+                    tireCount={bookingForm.tireCount}
+                    onTireCountChange={(cnt) => setBookingForm((prev) => ({ ...prev, tireCount: cnt }))}
+                    title="Required Commercial Work Order Services"
                     hidePricing={true}
                   />
                 </div>
 
-                {/* SERVICE URGENCY */}
-                <div>
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Service Urgency
-                  </label>
-                  <select
-                    value={bookingForm.serviceType}
-                    onChange={(e) => setBookingForm({ ...bookingForm, serviceType: e.target.value as any })}
-                    className="select-base mt-1.5 py-2.5 text-xs text-slate-800"
-                  >
-                    <option value="STANDARD">Standard Scheduled Service</option>
-                    <option value="EMERGENCY">Roadside Emergency (Priority Dispatch)</option>
-                  </select>
-                </div>
-
-                {/* PHONE NUMBER & TIRE SIZE */}
+                {/* 5. TIRE SIZE & CONTACT PHONE */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Contact Phone
+                      Driver / Contact Phone
                     </label>
                     <input
                       type="text"
-                      value={bookingForm.contactPhone}
-                      onChange={(e) => setBookingForm({ ...bookingForm, contactPhone: e.target.value })}
+                      value={bookingForm.driverPhone}
+                      onChange={(e) => setBookingForm({ ...bookingForm, driverPhone: e.target.value })}
                       placeholder={fleet?.contactPhone || '1-866-686-9660'}
                       className="input-base mt-1.5 py-2.5 text-xs text-slate-800 font-mono"
                     />
@@ -1214,22 +1230,22 @@ export default function FleetDashboard() {
 
                   <div>
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Tire Size
+                      Tire Specification
                     </label>
                     <input
                       type="text"
                       value={bookingForm.tireSize}
                       onChange={(e) => setBookingForm({ ...bookingForm, tireSize: e.target.value })}
-                      placeholder="e.g. 11R22.5 or 235/65R17"
+                      placeholder="e.g. 11R22.5 or 295/75R22.5"
                       className="input-base mt-1.5 py-2.5 text-xs font-mono text-slate-800"
                     />
                   </div>
                 </div>
 
-                {/* ADDRESS */}
+                {/* 6. SERVICE ADDRESS */}
                 <div>
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Breakdown / Service Address *
+                    Breakdown / Service Location *
                   </label>
                   <div className="mt-1.5">
                     <AddressAutocompleteInput
@@ -1251,7 +1267,84 @@ export default function FleetDashboard() {
                   </div>
                 </div>
 
-                {/* NOTES */}
+                {/* 7. DEDICATED ADDRESS NOTES & REQUESTED BY */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Dedicated Address Notes
+                    </label>
+                    <input
+                      type="text"
+                      value={bookingForm.addressNotes}
+                      onChange={(e) => setBookingForm({ ...bookingForm, addressNotes: e.target.value })}
+                      placeholder="Bay #, Gate Code, Cross-street, Landmark..."
+                      className="input-base mt-1.5 py-2.5 text-xs text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Requested By (Dispatcher / Fleet Manager)
+                    </label>
+                    <input
+                      type="text"
+                      value={bookingForm.requestedByName}
+                      onChange={(e) => setBookingForm({ ...bookingForm, requestedByName: e.target.value })}
+                      placeholder={user?.fullName || 'Full Name of Person Requesting'}
+                      className="input-base mt-1.5 py-2.5 text-xs text-slate-800"
+                    />
+                  </div>
+                </div>
+
+                {/* 8. UPFRONT DEPOSIT & PAYMENT PROOF */}
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                      <DollarSign size={14} className="text-emerald-600" />
+                      <span>Upfront Deposit & Receipt Proof (Optional)</span>
+                    </span>
+                    {bookingForm.upfrontReceiptUrl && (
+                      <a
+                        href={bookingForm.upfrontReceiptUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-blue-200"
+                      >
+                        View Attached Receipt &rarr;
+                      </a>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Upfront Deposit Paid ({currencySymbol})
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={bookingForm.upfrontAmountCents ? (bookingForm.upfrontAmountCents / 100).toFixed(2) : ''}
+                        onChange={(e) => setBookingForm({ ...bookingForm, upfrontAmountCents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
+                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono font-bold"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Receipt / Proof URL
+                      </label>
+                      <input
+                        type="url"
+                        value={bookingForm.upfrontReceiptUrl}
+                        onChange={(e) => setBookingForm({ ...bookingForm, upfrontReceiptUrl: e.target.value })}
+                        placeholder="https://... image or receipt link"
+                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 9. SPECIAL INSTRUCTIONS / NOTES */}
                 <div>
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Wheel Position / Breakdown Instructions
@@ -1337,9 +1430,11 @@ export default function FleetDashboard() {
                             <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold border ${
                               j.urgency === 'URGENT'
                                 ? 'bg-red-50 text-red-700 border-red-200'
+                                : j.urgency === 'FUTURE'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
                                 : 'bg-slate-100 text-slate-700 border-slate-200'
                             }`}>
-                              {j.urgency === 'URGENT' ? 'Emergency' : 'Standard'}
+                              {j.urgency === 'URGENT' ? 'Emergency' : j.urgency === 'FUTURE' ? 'Scheduled' : 'Standard'}
                             </span>
                           </td>
                           <td className="py-3.5 px-4 text-slate-700 font-medium">

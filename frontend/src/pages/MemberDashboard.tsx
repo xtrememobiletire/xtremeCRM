@@ -58,10 +58,16 @@ export default function MemberDashboard() {
     tireSize: '225/65R17',
     color: '',
   });
-  const [urgencyType, setUrgencyType] = useState<'EMERGENCY' | 'SCHEDULED'>('EMERGENCY');
+  const [urgencyType, setUrgencyType] = useState<'STANDARD' | 'URGENT' | 'FUTURE'>('URGENT');
   const [appointmentDate, setAppointmentDate] = useState('');
   const [address, setAddress] = useState('');
+  const [addressNotes, setAddressNotes] = useState('');
+  const [requestedByName, setRequestedByName] = useState(user?.fullName || '');
+  const [upfrontAmountCents, setUpfrontAmountCents] = useState(0);
+  const [upfrontReceiptUrl, setUpfrontReceiptUrl] = useState('');
+  const [tireCount, setTireCount] = useState<number>(1);
   const [coords, setCoords] = useState<{ latitude: number; longitude: number; timezone?: string } | null>(null);
+  const [serviceTimezone, setServiceTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Toronto');
   const [notes, setNotes] = useState('');
   const [serviceItems, setServiceItems] = useState<SelectedServiceItem[]>([
     {
@@ -200,7 +206,7 @@ export default function MemberDashboard() {
       toast.error('Breakdown location address is required');
       return;
     }
-    if (urgencyType === 'SCHEDULED' && !appointmentDate) {
+    if (urgencyType === 'FUTURE' && !appointmentDate) {
       toast.error('Please choose a date and time for scheduled service');
       return;
     }
@@ -232,10 +238,13 @@ export default function MemberDashboard() {
       }
     }
 
-    const isEmergency = urgencyType === 'EMERGENCY';
+    const isEmergency = urgencyType === 'URGENT';
+    const isFuture = urgencyType === 'FUTURE';
     const nowIso = isEmergency
       ? new Date(Date.now() + 30 * 60000).toISOString()
-      : new Date(appointmentDate).toISOString();
+      : isFuture && appointmentDate
+      ? new Date(appointmentDate).toISOString()
+      : new Date().toISOString();
     const endIso = new Date(new Date(nowIso).getTime() + 60 * 60000).toISOString();
 
     const subtotalCents = serviceItems.reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0);
@@ -245,18 +254,27 @@ export default function MemberDashboard() {
     const taxAmountCents = Math.round(netSubtotalCents * taxRate);
     const totalCents = netSubtotalCents + taxAmountCents;
 
+    const structuredNotes = [
+      requestedByName ? `[Requested By: ${requestedByName.trim()}]` : '',
+      addressNotes ? `[Address Notes: ${addressNotes.trim()}]` : '',
+      `[Member Priority Request] Plate: ${targetVehicle?.licensePlate || inlineVehicle.licensePlate || 'N/A'}. Tire: ${targetTireSize}.`,
+      notes ? notes.trim() : ''
+    ].filter(Boolean).join(' ');
+
     bookMemberService.mutate({
       vehicleId: targetVehicleId,
       countryCode: country,
       serviceAddress: address.trim(),
       serviceLatitude: coords?.latitude || null,
       serviceLongitude: coords?.longitude || null,
-      serviceTimezone: coords?.timezone || undefined,
-      urgency: isEmergency ? 'URGENT' : 'STANDARD',
+      serviceTimezone: serviceTimezone || coords?.timezone || undefined,
+      urgency: urgencyType,
       appointmentDate: nowIso,
       arrivalWindowStart: nowIso,
       arrivalWindowEnd: endIso,
       estimatedArrivalAt: nowIso,
+      upfrontAmountCents: upfrontAmountCents || 0,
+      upfrontReceiptUrl: upfrontReceiptUrl.trim() || undefined,
       subtotalCents,
       discountCents,
       taxAmountCents,
@@ -283,7 +301,7 @@ export default function MemberDashboard() {
         unitPriceCents: s.unitPriceCents,
         notes: s.notes,
       })),
-      problemNotes: `[Member Priority Request] Plate: ${targetVehicle?.licensePlate || inlineVehicle.licensePlate || 'N/A'}. Tire: ${targetTireSize}. ${notes}`.trim(),
+      problemNotes: structuredNotes,
       source: 'MEMBER_PORTAL',
     });
   };
@@ -663,45 +681,63 @@ export default function MemberDashboard() {
             <label className="font-semibold text-slate-700 block mb-1.5 uppercase tracking-wider text-[11px]">
               Service Urgency & Timing *
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => setUrgencyType('EMERGENCY')}
+                onClick={() => setUrgencyType('URGENT')}
                 className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition cursor-pointer ${
-                  urgencyType === 'EMERGENCY'
-                    ? 'bg-red-50/70 border-red-300 text-red-900 shadow-2xs'
+                  urgencyType === 'URGENT'
+                    ? 'bg-red-50/70 border-red-300 text-red-900 shadow-2xs ring-1 ring-red-400'
                     : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${urgencyType === 'EMERGENCY' ? 'bg-red-600 animate-pulse' : 'bg-slate-400'}`} />
+                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${urgencyType === 'URGENT' ? 'bg-red-600 animate-pulse' : 'bg-slate-400'}`} />
                 <div>
                   <div className="font-bold text-xs flex items-center gap-1">
-                    <span>🚨 Immediate Emergency</span>
+                    <span>🚨 Urgent / Breakdown</span>
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">Priority mobile technician dispatch (ETA ~30–45 mins)</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Rapid mobile dispatch (ETA ~30–45 mins)</div>
                 </div>
               </button>
 
               <button
                 type="button"
-                onClick={() => setUrgencyType('SCHEDULED')}
+                onClick={() => setUrgencyType('STANDARD')}
                 className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition cursor-pointer ${
-                  urgencyType === 'SCHEDULED'
-                    ? 'bg-blue-50/70 border-blue-300 text-blue-900 shadow-2xs'
+                  urgencyType === 'STANDARD'
+                    ? 'bg-amber-50/70 border-amber-300 text-amber-900 shadow-2xs ring-1 ring-amber-400'
                     : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${urgencyType === 'SCHEDULED' ? 'bg-blue-600' : 'bg-slate-400'}`} />
+                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${urgencyType === 'STANDARD' ? 'bg-amber-600' : 'bg-slate-400'}`} />
                 <div>
                   <div className="font-bold text-xs flex items-center gap-1">
-                    <span>📅 Scheduled Service</span>
+                    <span>⚡ Standard</span>
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">Choose a specific date and time window</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Assistance today / standard dispatch queue</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUrgencyType('FUTURE')}
+                className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition cursor-pointer ${
+                  urgencyType === 'FUTURE'
+                    ? 'bg-blue-50/70 border-blue-300 text-blue-900 shadow-2xs ring-1 ring-blue-400'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${urgencyType === 'FUTURE' ? 'bg-blue-600' : 'bg-slate-400'}`} />
+                <div>
+                  <div className="font-bold text-xs flex items-center gap-1">
+                    <span>📅 Scheduled</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Reserve a specific date and arrival window</div>
                 </div>
               </button>
             </div>
 
-            {urgencyType === 'SCHEDULED' && (
+            {urgencyType === 'FUTURE' && (
               <div className="mt-2.5">
                 <label className="font-semibold text-slate-700 block mb-1">Appointment Date & Time *</label>
                 <input
@@ -877,11 +913,17 @@ export default function MemberDashboard() {
               items={serviceItems}
               onChange={setServiceItems}
               currencySymbol={currencySymbol}
-              taxRate={country === 'CA' ? 0.13 : country === 'UK' ? 0.20 : 0.08}
-              discountPercent={10}
-              discountLabel="VIP Member Roadside Discount (-10%)"
-              allowPriceEdit={false}
-              showTaxToggle={false}
+              hidePricing={true}
+              showTireSelector={true}
+              tireCount={tireCount}
+              onTireCountChange={(count) => {
+                setTireCount(count);
+                setServiceItems((prev) =>
+                  prev.map((item) =>
+                    item.category === 'TIRE_SERVICE' ? { ...item, quantity: count } : item
+                  )
+                );
+              }}
               title="Requested Roadside Services"
             />
           </div>
@@ -896,9 +938,64 @@ export default function MemberDashboard() {
                 onSelectLocation={(loc) => {
                   setAddress(loc.address);
                   setCoords({ latitude: loc.latitude, longitude: loc.longitude, timezone: loc.timezone });
+                  if (loc.timezone) setServiceTimezone(loc.timezone);
                 }}
                 placeholder="e.g. 100 King St West, Toronto or Hwy 401 Eastbound shoulder"
                 required
+              />
+            </div>
+            <div className="mt-2">
+              <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                Address Notes / Landmarks / Mile Marker
+              </label>
+              <input
+                type="text"
+                value={addressNotes}
+                onChange={(e) => setAddressNotes(e.target.value)}
+                placeholder="e.g. Northbound shoulder past Exit 42, near blue Esso gas station"
+                className="input-base py-1.5 text-xs text-slate-800"
+              />
+            </div>
+          </div>
+
+          {/* REQUESTED BY & UPFRONT DEPOSIT / RECEIPT PROOF */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+            <div>
+              <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                Requested By / Contact
+              </label>
+              <input
+                type="text"
+                value={requestedByName}
+                onChange={(e) => setRequestedByName(e.target.value)}
+                placeholder="e.g. Full Name"
+                className="input-base py-1.5 text-xs text-slate-800"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                Upfront Deposit ({currencySymbol})
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={upfrontAmountCents ? (upfrontAmountCents / 100).toFixed(2) : ''}
+                onChange={(e) => setUpfrontAmountCents(Math.round((parseFloat(e.target.value) || 0) * 100))}
+                placeholder="0.00"
+                className="input-base py-1.5 text-xs text-slate-800 font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                Receipt / Proof URL
+              </label>
+              <input
+                type="url"
+                value={upfrontReceiptUrl}
+                onChange={(e) => setUpfrontReceiptUrl(e.target.value)}
+                placeholder="https://... receipt link"
+                className="input-base py-1.5 text-xs text-slate-800"
               />
             </div>
           </div>
@@ -921,9 +1018,11 @@ export default function MemberDashboard() {
           >
             {bookMemberService.isPending
               ? 'Requesting Unit...'
-              : urgencyType === 'EMERGENCY'
-              ? '🚨 Dispatch Roadside Unit Now'
-              : 'Schedule Service Request'}
+              : urgencyType === 'URGENT'
+              ? '🚨 Dispatch Emergency Roadside Unit Now'
+              : urgencyType === 'FUTURE'
+              ? 'Schedule Service Request'
+              : 'Submit Standard Service Request'}
           </button>
         </form>
       )}
@@ -954,6 +1053,15 @@ export default function MemberDashboard() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-mono font-bold text-slate-900">{j.jobCode || `JOB-${j.id.slice(0, 6)}`}</span>
                     {getStatusBadge(j.status)}
+                    <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                      j.urgency === 'URGENT'
+                        ? 'bg-red-50 text-red-700 border-red-200'
+                        : j.urgency === 'FUTURE'
+                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                        : 'bg-slate-100 text-slate-700 border-slate-200'
+                    }`}>
+                      {j.urgency === 'URGENT' ? 'Emergency' : j.urgency === 'FUTURE' ? 'Scheduled' : 'Standard'}
+                    </span>
                     {j.serviceItems && j.serviceItems.length > 0 && (
                       <span className="font-semibold text-slate-800 text-xs">
                         {j.serviceItems[0].serviceName}

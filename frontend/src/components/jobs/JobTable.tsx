@@ -1,4 +1,4 @@
-import { Eye, UserCheck, AlertCircle, Clock, Zap, XCircle, Copy, ExternalLink } from 'lucide-react';
+import { Eye, UserCheck, AlertCircle, Clock, Zap, XCircle, Copy, ExternalLink, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import StatusBadge from '../ui/StatusBadge';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
@@ -18,6 +18,7 @@ interface JobTableProps {
   jobs: any[];
   onViewJob: (job: any) => void;
   onAssignDriver: (job: any) => void;
+  onInvoiceClick?: (job: any) => void;
 }
 
 /**
@@ -25,7 +26,7 @@ interface JobTableProps {
  * or nothing for an empty list. Drivers do not see assignment controls;
  * completed/cancelled jobs have assignment disabled.
  */
-export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTableProps) {
+export default function JobTable({ jobs, onViewJob, onAssignDriver, onInvoiceClick }: JobTableProps) {
   const { user } = useAuth();
   const isDriver = user?.role === 'DRIVER';
   const { currencySymbol } = useTenant();
@@ -324,6 +325,27 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver }: JobTablePr
                     title="View Job Details"
                   >
                     <Eye className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onInvoiceClick ? onInvoiceClick(job) : onViewJob(job)}
+                    className={`p-1.5 rounded-lg transition cursor-pointer ${
+                      job.invoiceId || job.invoice
+                        ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
+                        : job.status !== 'CANCELLED'
+                        ? 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+                        : 'text-slate-200 cursor-not-allowed opacity-40'
+                    }`}
+                    title={
+                      job.invoiceId || job.invoice
+                        ? `Invoice ready (Click to view)`
+                        : job.status !== 'CANCELLED'
+                        ? `Generate / View Invoice`
+                        : `Cancelled jobs cannot be invoiced`
+                    }
+                    disabled={job.status === 'CANCELLED' && !job.invoiceId && !job.invoice}
+                  >
+                    <FileText className="w-4 h-4" />
                   </button>
                   {!isDriver && (
                     <button

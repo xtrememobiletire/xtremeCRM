@@ -96,6 +96,11 @@ export default function VerifyAddressModal({
   const [assignedDriverId, setAssignedDriverId] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<string>('POS');
   const [problemNotes, setProblemNotes] = useState<string>('');
+  const [requestedByName, setRequestedByName] = useState<string>('');
+  const [addressNotes, setAddressNotes] = useState<string>('');
+  const [upfrontAmountCents, setUpfrontAmountCents] = useState<number>(0);
+  const [upfrontReceiptUrl, setUpfrontReceiptUrl] = useState<string>('');
+  const [tireCount, setTireCount] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Query Available Regional Drivers for Technician Assignment
@@ -127,7 +132,22 @@ export default function VerifyAddressModal({
       setServiceAddress(rawCustomerAddress);
       setRecipientName(booking.recipientName || booking.customer?.fullName || booking.customer?.name || '');
       setRecipientPhone(booking.recipientPhone || booking.customer?.phone || '');
-      setProblemNotes(booking.problemNotes || booking.notes || '');
+
+      const rawNotes = booking.problemNotes || booking.notes || '';
+      const reqMatch = rawNotes.match(/\[Requested By:\s*([^\]]+)\]/);
+      const addrMatch = rawNotes.match(/\[Address Notes:\s*([^\]]+)\]/);
+      setRequestedByName(booking.requestedByName || (reqMatch ? reqMatch[1].trim() : ''));
+      setAddressNotes(booking.addressNotes || (addrMatch ? addrMatch[1].trim() : ''));
+
+      const strippedNotes = rawNotes
+        .replace(/\[Requested By:\s*[^\]]+\]\s*/g, '')
+        .replace(/\[Address Notes:\s*[^\]]+\]\s*/g, '')
+        .trim();
+      setProblemNotes(strippedNotes);
+
+      setUpfrontAmountCents(booking.upfrontAmountCents || booking.depositCents || 0);
+      setUpfrontReceiptUrl(booking.upfrontReceiptUrl || booking.receiptUrl || '');
+      setTireCount(booking.tireCount || (booking.serviceItems?.[0]?.quantity) || 1);
 
       const lat = typeof booking.serviceLatitude === 'number' ? booking.serviceLatitude : null;
       const lng = typeof booking.serviceLongitude === 'number' ? booking.serviceLongitude : null;
@@ -318,6 +338,11 @@ export default function VerifyAddressModal({
         driverId: assignedDriverId || null,
         recipientName: recipientName || undefined,
         recipientPhone: recipientPhone || undefined,
+        requestedByName: requestedByName || undefined,
+        addressNotes: addressNotes || undefined,
+        upfrontAmountCents: upfrontAmountCents > 0 ? upfrontAmountCents : undefined,
+        upfrontReceiptUrl: upfrontReceiptUrl || undefined,
+        tireCount: tireCount || undefined,
         problemNotes: problemNotes || undefined,
         urgency,
         paymentMethod,
@@ -515,6 +540,35 @@ export default function VerifyAddressModal({
                 </div>
               </div>
             </div>
+
+            {/* Requested By & Address Notes */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                  Requested By (Dispatcher / Fleet Manager)
+                </label>
+                <input
+                  type="text"
+                  value={requestedByName}
+                  onChange={(e) => setRequestedByName(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-800"
+                  placeholder="e.g. John Doe (Dispatch Coordinator)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                  Dedicated Address Notes (Bay, Gate, Cross-Street)
+                </label>
+                <input
+                  type="text"
+                  value={addressNotes}
+                  onChange={(e) => setAddressNotes(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-800"
+                  placeholder="e.g. Bay 4, Gate Code #4829, opposite Shell"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Right: Mapbox Visual Pin Preview */}
@@ -649,6 +703,9 @@ export default function VerifyAddressModal({
             onToggleTaxIncluded={setIsTaxIncluded}
             discountPercent={discountPercent}
             discountLabel={discountLabel}
+            showTireSelector={true}
+            tireCount={tireCount}
+            onTireCountChange={setTireCount}
             title="Work Order Services & Financial Breakdown"
           />
         </div>
@@ -689,12 +746,6 @@ export default function VerifyAddressModal({
               <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
               <span>Dispatch Urgency Priority</span>
             </span>
-            {arrivalWindow.mode !== 'WINDOW' && (
-              <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                Locked to URGENT for Quick ETA
-              </span>
-            )}
           </label>
           <div className="grid grid-cols-3 gap-2">
             {[
@@ -716,28 +767,76 @@ export default function VerifyAddressModal({
                 desc: 'Pre-booked date & window',
                 color: 'border-purple-500 text-purple-700 bg-purple-50',
               },
-            ].map((u) => {
-              const isUrgentEta = arrivalWindow.mode !== 'WINDOW';
-              const isDisabled = isUrgentEta && u.id !== 'URGENT';
-              return (
-                <button
-                  key={u.id}
-                  type="button"
-                  disabled={isDisabled}
-                  onClick={() => !isDisabled && setUrgency(u.id as any)}
-                  className={`p-2.5 rounded-xl border text-left transition ${
-                    isDisabled
-                      ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400 border-slate-200 select-none'
-                      : urgency === u.id
-                      ? `${u.color} font-bold shadow-2xs cursor-pointer`
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 cursor-pointer'
-                  }`}
-                >
-                  <div className="text-xs font-bold leading-tight">{u.label}</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">{u.desc}</div>
-                </button>
-              );
-            })}
+            ].map((u) => (
+              <button
+                key={u.id}
+                type="button"
+                onClick={() => {
+                  setUrgency(u.id as any);
+                  if (u.id === 'URGENT') {
+                    setArrivalWindow((prev) => ({ ...prev, mode: 'ETA' }));
+                  } else if (u.id === 'FUTURE') {
+                    setArrivalWindow((prev) => ({ ...prev, mode: 'WINDOW' }));
+                  }
+                }}
+                className={`p-2.5 rounded-xl border text-left transition ${
+                  urgency === u.id
+                    ? `${u.color} font-bold shadow-2xs cursor-pointer`
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 cursor-pointer'
+                }`}
+              >
+                <div className="text-xs font-bold leading-tight">{u.label}</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">{u.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Section 5.5: Upfront Deposit & Proof of Receipt */}
+        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+              <CreditCard size={14} className="text-emerald-600" />
+              <span>Upfront Deposit & Receipt Proof</span>
+            </span>
+            {upfrontReceiptUrl && (
+              <a
+                href={upfrontReceiptUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-blue-200"
+              >
+                View Attached Receipt &rarr;
+              </a>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                Upfront Deposit Collected ({currencySymbol})
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={(upfrontAmountCents / 100).toFixed(2)}
+                onChange={(e) => setUpfrontAmountCents(Math.round((parseFloat(e.target.value) || 0) * 100))}
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono font-bold"
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                Upfront Receipt / Payment Proof URL
+              </label>
+              <input
+                type="url"
+                value={upfrontReceiptUrl}
+                onChange={(e) => setUpfrontReceiptUrl(e.target.value)}
+                placeholder="https://... receipt image or PDF link"
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
+              />
+            </div>
           </div>
         </div>
 

@@ -46,7 +46,10 @@ export default function Inbound() {
   const [urgency, setUrgency] = useState<'URGENT' | 'STANDARD' | 'FUTURE'>('URGENT');
   const [arrivalWindow, setArrivalWindow] = useState<ArrivalWindowData>({ mode: 'ETA', estimatedArrivalMinutes: 30 });
   const [notes, setNotes] = useState('');
+  const [addressNotes, setAddressNotes] = useState('');
   const [upfrontAmountDollars, setUpfrontAmountDollars] = useState('');
+  const [upfrontReceiptUrl, setUpfrontReceiptUrl] = useState('');
+  const [tireCount, setTireCount] = useState(1);
   const [isProvisionAccount, setIsProvisionAccount] = useState(true);
 
   useEffect(() => {
@@ -97,6 +100,12 @@ export default function Inbound() {
 
       const upfrontCents = upfrontAmountDollars ? Math.round((parseFloat(upfrontAmountDollars) || 0) * 100) : 0;
 
+      const structuredNotes = [
+        callerName ? `[Requested By: ${callerName.trim()}]` : '',
+        addressNotes ? `[Address Notes: ${addressNotes.trim()}]` : '',
+        notes ? notes.trim() : ''
+      ].filter(Boolean).join(' ');
+
       await jobService.createJob({
         customerName: callerName || 'Valued Customer',
         customerPhone: phoneValidation.normalized,
@@ -107,8 +116,9 @@ export default function Inbound() {
         serviceLongitude: serviceCoords.longitude ?? undefined,
         serviceTimezone: serviceCoords.timezone,
         notes,
-        problemNotes: notes || undefined,
+        problemNotes: structuredNotes || undefined,
         upfrontAmountCents: upfrontCents,
+        upfrontReceiptUrl: upfrontReceiptUrl.trim() || undefined,
         urgency,
         countryCode: formCountry,
         source: leadSource,
@@ -138,11 +148,14 @@ export default function Inbound() {
       setCallerPhone('');
       setCallerName('');
       setServiceAddress('');
+      setAddressNotes('');
       setServiceCoords({ latitude: null, longitude: null });
       setVehicleMakeModel('');
       setTireSize('');
       setNotes('');
       setUpfrontAmountDollars('');
+      setUpfrontReceiptUrl('');
+      setTireCount(1);
       setArrivalWindow({ mode: 'ETA', estimatedArrivalMinutes: 30 });
       setUrgency('URGENT');
       setServiceItems([
@@ -209,8 +222,14 @@ export default function Inbound() {
           timezone={serviceCoords.timezone}
           notes={notes}
           setNotes={setNotes}
+          addressNotes={addressNotes}
+          setAddressNotes={setAddressNotes}
           upfrontAmountDollars={upfrontAmountDollars}
           setUpfrontAmountDollars={setUpfrontAmountDollars}
+          upfrontReceiptUrl={upfrontReceiptUrl}
+          setUpfrontReceiptUrl={setUpfrontReceiptUrl}
+          tireCount={tireCount}
+          setTireCount={setTireCount}
           isProvisionAccount={isProvisionAccount}
           setIsProvisionAccount={setIsProvisionAccount}
           isBooking={isBooking}

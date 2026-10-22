@@ -57,6 +57,7 @@ export default function Invoices() {
   // Fleet Selection
   const [selectedFleetId, setSelectedFleetId] = useState<string>('');
   const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
+  const [includeActiveJobs, setIncludeActiveJobs] = useState<boolean>(true);
 
   // Fetch Invoices
   const { data: invoicesResponse, isLoading, refetch, isFetching } = useInvoices({
@@ -104,13 +105,17 @@ export default function Invoices() {
   );
 
   const unbilledJobs = useMemo(() => {
-    return (fleetBillingSummary?.unbilledJobs || fleetBillingSummary?.unbilledCompletedJobs || []) as Array<{
+    const list = (includeActiveJobs
+      ? (fleetBillingSummary?.unbilledJobs || fleetBillingSummary?.unbilledCompletedJobs || [])
+      : (fleetBillingSummary?.unbilledCompletedJobs || [])) as Array<{
       id: string;
       jobCode: string;
+      status?: string;
       totalCents?: number;
       [key: string]: any;
     }>;
-  }, [fleetBillingSummary]);
+    return list;
+  }, [fleetBillingSummary, includeActiveJobs]);
 
   const consolidatedMutation = useGenerateFleetConsolidatedInvoice();
 
@@ -168,6 +173,7 @@ export default function Invoices() {
       {
         fleetId: selectedFleetId,
         jobIds: selectedJobIds,
+        includeActiveJobs,
         taxRatePercent: consolidateIsTaxExempt ? 0 : consolidateTaxRate,
         isTaxExempt: consolidateIsTaxExempt,
         dueDate: consolidateDueDate,
@@ -352,22 +358,37 @@ export default function Invoices() {
           ) : (
             <div className="space-y-3">
               {/* Batch Action Bar */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-3 px-4 flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={selectedJobIds.length === unbilledJobs.length && unbilledJobs.length > 0}
-                    onChange={handleSelectAllUnbilled}
-                    className="w-4 h-4 text-blue-600 rounded border-slate-300"
-                  />
-                  <span>Select All ({unbilledJobs.length})</span>
-                </label>
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-3 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={selectedJobIds.length === unbilledJobs.length && unbilledJobs.length > 0}
+                      onChange={handleSelectAllUnbilled}
+                      className="w-4 h-4 text-blue-600 rounded border-slate-300"
+                    />
+                    <span>Select All ({unbilledJobs.length})</span>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-slate-600 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={includeActiveJobs}
+                      onChange={(e) => {
+                        setIncludeActiveJobs(e.target.checked);
+                        setSelectedJobIds([]);
+                      }}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>Include In-Progress Active Orders</span>
+                  </label>
+                </div>
 
                 <button
                   type="button"
                   onClick={handleOpenConsolidateModal}
                   disabled={selectedJobIds.length === 0 || consolidatedMutation.isPending}
-                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs disabled:opacity-40 transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs disabled:opacity-40 transition flex items-center gap-1.5 cursor-pointer shrink-0"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   <span>Consolidate ({selectedJobIds.length}) Jobs</span>
@@ -445,18 +466,25 @@ export default function Invoices() {
             </div>
 
             <div className="flex items-center gap-1 overflow-x-auto">
-              {['ALL', 'PENDING', 'PARTIAL', 'PAID', 'OVERDUE'].map((s) => (
+              {[
+                { id: 'ALL', label: 'All' },
+                { id: 'UNPAID_AND_PARTIAL', label: 'Unpaid & Partial' },
+                { id: 'PENDING', label: 'Pending' },
+                { id: 'PARTIAL', label: 'Partial' },
+                { id: 'OVERDUE', label: 'Overdue' },
+                { id: 'PAID', label: 'Paid' },
+              ].map(({ id, label }) => (
                 <button
-                  key={s}
+                  key={id}
                   type="button"
-                  onClick={() => setStatusFilter(s)}
+                  onClick={() => setStatusFilter(id)}
                   className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                    statusFilter === s
-                      ? 'bg-slate-900 text-white shadow-2xs'
+                    statusFilter === id
+                      ? 'bg-blue-600 text-white shadow-2xs'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  {s === 'ALL' ? 'All' : s}
+                  {label}
                 </button>
               ))}
             </div>

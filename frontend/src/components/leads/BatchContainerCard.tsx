@@ -4,7 +4,8 @@ import {
   Clock, 
   ArrowRight,
   Send,
-  XSquare
+  XSquare,
+  RotateCcw
 } from 'lucide-react';
 
 export interface BatchItem {
@@ -17,6 +18,8 @@ export interface BatchItem {
   unassignedLeads: number;
   heldLeads: number;
   completedLeads: number;
+  currentPass?: number;
+  maxPasses?: number;
   createdAt: string;
 }
 
@@ -26,6 +29,7 @@ interface BatchContainerCardProps {
   onStart?: (batchId: string) => void;
   onClose?: (batchId: string) => void;
   onDistribute?: (batchId: string) => void;
+  onRevive?: (batch: BatchItem) => void;
   isAdmin?: boolean;
 }
 
@@ -35,6 +39,7 @@ export default function BatchContainerCard({
   onStart,
   onClose,
   onDistribute,
+  onRevive,
   isAdmin = false,
 }: BatchContainerCardProps) {
   const isScheduled = batch.status === 'SCHEDULED';
@@ -58,6 +63,10 @@ export default function BatchContainerCard({
             <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold uppercase px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700">
               <span>{flagEmoji}</span>
               <span>{batch.countryCode}</span>
+            </span>
+
+            <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
+              Pass #{batch.currentPass || 1}/{batch.maxPasses || 4}
             </span>
 
             {isActive && (
@@ -152,6 +161,17 @@ export default function BatchContainerCard({
             title="Start Batch Immediately"
           >
             <Play size={13} />
+          </button>
+        )}
+
+        {isAdmin && onRevive && (
+          <button
+            type="button"
+            onClick={() => onRevive(batch)}
+            className="p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition cursor-pointer"
+            title={`Revive Campaign for Pass #${(batch.currentPass || 1) + 1}`}
+          >
+            <RotateCcw size={13} />
           </button>
         )}
 

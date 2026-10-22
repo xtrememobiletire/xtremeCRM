@@ -64,6 +64,7 @@ export function useCreateInvoice() {
       countryCode?: string;
       issueDate?: string;
       dueDate?: string;
+      jobIds?: string[];
       items: Array<{ itemDetails: string; unitPriceCents: number; quantity: number }>;
       taxRatePercent?: number | null;
       isTaxExempt?: boolean;
@@ -98,6 +99,7 @@ export function useGenerateJobInvoice() {
         paymentTerms?: string;
         notes?: string;
         discountCents?: number;
+        updateExisting?: boolean;
         lineItems?: Array<{ itemDetails?: string; description?: string; unitPriceCents: number; quantity: number }>;
       };
     }) => invoiceService.generateInvoiceFromJob(jobId, options),

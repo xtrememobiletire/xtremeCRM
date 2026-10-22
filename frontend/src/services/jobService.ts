@@ -154,6 +154,20 @@ export const jobService = {
     return res.data?.meta?.totalCount ?? res.data?.pagination?.total ?? 0;
   },
 
+  async getNavCounts(countryCode?: string): Promise<{
+    jobs: number;
+    fleetJobs: number;
+    bookings: number;
+    invoices: number;
+  }> {
+    const res = await api.get('/jobs/nav-counts', {
+      params: {
+        countryCode: countryCode && countryCode !== 'ALL' ? countryCode : undefined,
+      },
+    });
+    return res.data?.data || { jobs: 0, fleetJobs: 0, bookings: 0, invoices: 0 };
+  },
+
   async getJobById(id: string): Promise<JobItem> {
     const res = await api.get(`/jobs/${id}`);
     const j = res.data.data;
@@ -241,6 +255,11 @@ export const jobService = {
     driverId?: string | null;
     recipientName?: string;
     recipientPhone?: string;
+    requestedByName?: string;
+    addressNotes?: string;
+    upfrontAmountCents?: number;
+    upfrontReceiptUrl?: string;
+    tireCount?: number;
     problemNotes?: string;
     urgency?: string;
     paymentMethod?: string;

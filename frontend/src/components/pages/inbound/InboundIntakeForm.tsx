@@ -55,6 +55,12 @@ interface InboundIntakeFormProps {
   setNotes: (val: string) => void;
   upfrontAmountDollars?: string;
   setUpfrontAmountDollars?: (val: string) => void;
+  addressNotes?: string;
+  setAddressNotes?: (val: string) => void;
+  upfrontReceiptUrl?: string;
+  setUpfrontReceiptUrl?: (val: string) => void;
+  tireCount?: number;
+  setTireCount?: (val: number) => void;
   isProvisionAccount: boolean;
   setIsProvisionAccount: (val: boolean) => void;
   isBooking: boolean;
@@ -96,6 +102,12 @@ export default function InboundIntakeForm({
   setNotes,
   upfrontAmountDollars = '',
   setUpfrontAmountDollars,
+  addressNotes = '',
+  setAddressNotes,
+  upfrontReceiptUrl = '',
+  setUpfrontReceiptUrl,
+  tireCount = 1,
+  setTireCount,
   isProvisionAccount,
   setIsProvisionAccount,
   isBooking,
@@ -342,6 +354,20 @@ export default function InboundIntakeForm({
             className="w-full"
             required
           />
+          {setAddressNotes && (
+            <div className="mt-2">
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                Address Notes / Landmarks / Mile Marker
+              </label>
+              <input
+                type="text"
+                value={addressNotes}
+                onChange={(e) => setAddressNotes(e.target.value)}
+                placeholder="e.g. Northbound shoulder past Exit 42, near blue Esso gas station"
+                className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
+              />
+            </div>
+          )}
         </div>
 
         {/* Step 6: Vehicle Make & Model */}
@@ -409,6 +435,16 @@ export default function InboundIntakeForm({
             onChange={setServiceItems}
             isTaxIncluded={isTaxIncluded}
             onToggleTaxIncluded={setIsTaxIncluded}
+            showTireSelector={true}
+            tireCount={tireCount}
+            onTireCountChange={(count) => {
+              if (setTireCount) setTireCount(count);
+              setServiceItems(
+                serviceItems.map((item) =>
+                  item.category === 'TIRE_SERVICE' ? { ...item, quantity: count } : item
+                )
+              );
+            }}
           />
         </div>
 
@@ -543,6 +579,20 @@ export default function InboundIntakeForm({
                 className="w-full px-3.5 py-2 text-xs bg-white font-mono font-bold text-slate-900 focus:outline-none"
               />
             </div>
+            {setUpfrontReceiptUrl && (
+              <div className="mt-2">
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  Receipt / Payment Proof URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  value={upfrontReceiptUrl}
+                  onChange={(e) => setUpfrontReceiptUrl(e.target.value)}
+                  placeholder="https://... receipt image or payment link"
+                  className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-2xs"
+                />
+              </div>
+            )}
           </div>
         )}
 

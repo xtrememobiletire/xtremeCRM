@@ -210,6 +210,17 @@ export const leadService = {
     return res.data.data;
   },
 
+  async reviveBatch(batchId: string, options?: {
+    includeSoftDisqualified?: boolean;
+    includeUnworked?: boolean;
+    includeOverdueCallbacks?: boolean;
+    includeWrongNumbers?: boolean;
+    forceRevive?: boolean;
+  }) {
+    const res = await api.post(`/leads/batches/${batchId}/revive`, options || {});
+    return res.data.data;
+  },
+
   async claimCallbackLead(id: string): Promise<Lead> {
     const res = await api.post(`/leads/${id}/claim-callback`);
     return res.data.data;

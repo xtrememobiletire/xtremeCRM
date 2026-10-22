@@ -319,7 +319,7 @@ export function useSSE() {
         } catch {
           scheduleInvalidation(['jobs', 'technician-jobs', 'dispatch-jobs']);
         }
-        scheduleInvalidation(['dashboard-stats', 'pending-jobs-count']);
+        scheduleInvalidation(['dashboard-stats', 'pending-jobs-count', 'nav-counts']);
       };
 
       const handleJobCreated = (event: MessageEvent) => {
@@ -356,6 +356,7 @@ export function useSSE() {
           'bookings-queue',
           'dashboard-stats',
           'pending-jobs-count',
+          'nav-counts',
           'dispatch-map-jobs',
         ]);
       };
@@ -379,7 +380,7 @@ export function useSSE() {
         } catch {
           scheduleInvalidation(['bookings-queue']);
         }
-        scheduleInvalidation(['pending-jobs-count', 'dashboard-stats']);
+        scheduleInvalidation(['pending-jobs-count', 'dashboard-stats', 'nav-counts']);
       };
 
       const handleJobDeleted = (event: MessageEvent) => {
@@ -403,12 +404,12 @@ export function useSSE() {
         } catch {
           scheduleInvalidation(['jobs', 'technician-jobs']);
         }
-        scheduleInvalidation(['pending-jobs-count', 'dashboard-stats']);
+        scheduleInvalidation(['pending-jobs-count', 'dashboard-stats', 'nav-counts']);
       };
 
       const handleBulkJobsChanged = () => {
         lastActivityRef.current = Date.now();
-        scheduleInvalidation(['jobs', 'technician-jobs', 'dispatch-jobs', 'dashboard-stats', 'pending-jobs-count']);
+        scheduleInvalidation(['jobs', 'technician-jobs', 'dispatch-jobs', 'dashboard-stats', 'pending-jobs-count', 'nav-counts']);
       };
 
       // Customer & Fleet & Accounting Event Handlers
@@ -428,7 +429,7 @@ export function useSSE() {
        */
       const handleInvoiceChanged = () => {
         lastActivityRef.current = Date.now();
-        scheduleInvalidation(['invoices', 'accounting-invoices', 'fleet-billing-summary', 'accounting-reconciliation', 'accounting-summary']);
+        scheduleInvalidation(['invoices', 'accounting-invoices', 'fleet-billing-summary', 'accounting-reconciliation', 'accounting-summary', 'nav-counts']);
       };
 
       const listen = (eventName: string, handler: (e: MessageEvent) => void) => {
@@ -470,6 +471,8 @@ export function useSSE() {
       listen('fleet:updated', handleFleetChanged);
       listen('invoice:created', handleInvoiceChanged);
       listen('invoice:updated', handleInvoiceChanged);
+      listen('job:payment_verified', handleInvoiceChanged);
+      listen('payment:recorded', handleInvoiceChanged);
 
       es.onerror = () => {
         // If stream closed or errored, close instance and retry only if user remains logged in

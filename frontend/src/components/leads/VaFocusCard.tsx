@@ -13,14 +13,25 @@ import {
   Sparkles, 
   Calendar,
   Clock,
-  UploadCloud 
+  UploadCloud,
+  Edit2,
+  Save,
+  X,
+  History,
+  Briefcase,
+  Tag,
+  Wrench,
+  ShieldCheck,
+  FileText
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { 
   resolveLeadTimezone, 
   zonedWallTimeToUtc, 
   formatDualPktAndCustomerTime 
 } from '../../utils/date';
+import { leadService } from '../../services/leadService';
 
 interface VaFocusCardProps {
   lead: any;
@@ -95,6 +106,7 @@ export default function VaFocusCard({
   onOpenUpload,
   onOpenDispositionModal,
 }: VaFocusCardProps) {
+  const queryClient = useQueryClient();
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [selectedDisposition, setSelectedDisposition] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
@@ -103,6 +115,40 @@ export default function VaFocusCard({
   const [callbackDay, setCallbackDay] = useState('');
   const [callbackTime, setCallbackTime] = useState('');
   const [callbackTimezone, setCallbackTimezone] = useState('America/Toronto');
+
+  // In-App Call Timer state (zero DB columns)
+  const [callingStartTime, setCallingStartTime] = useState<number | null>(null);
+  const [callElapsedSeconds, setCallElapsedSeconds] = useState<number>(0);
+
+  // Inline Fleet Data Editing
+  const [isEditingData, setIsEditingData] = useState(false);
+  const [isSavingData, setIsSavingData] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    companyName: '',
+    phone: '',
+    altPhone: '',
+    email: '',
+    poaEmail: '',
+    fleetManager: '',
+    ceoOwnerName: '',
+    address: '',
+    website: '',
+    numberOfUnits: '',
+    vehicleTypes: '',
+    tireSizes: '',
+  });
+
+  // Call timer interval
+  useEffect(() => {
+    if (!callingStartTime) {
+      setCallElapsedSeconds(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setCallElapsedSeconds(Math.floor((Date.now() - callingStartTime) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [callingStartTime]);
 
   useEffect(() => {
     if (lead) {
@@ -113,6 +159,23 @@ export default function VaFocusCard({
       setCallbackDate('');
       setCallbackDay('');
       setCallbackTime('');
+      setCallingStartTime(null);
+      setIsEditingData(false);
+
+      setEditFormData({
+        companyName: lead.companyName || '',
+        phone: lead.phone || '',
+        altPhone: lead.altPhone || '',
+        email: lead.email || '',
+        poaEmail: lead.poaEmail || '',
+        fleetManager: lead.fleetManager || lead.contactPerson || '',
+        ceoOwnerName: lead.ceoOwnerName || '',
+        address: lead.address || '',
+        website: lead.website || '',
+        numberOfUnits: lead.numberOfUnits ? String(lead.numberOfUnits) : '',
+        vehicleTypes: Array.isArray(lead.vehicleTypes) ? lead.vehicleTypes.join(', ') : (lead.vehicleTypes || ''),
+        tireSizes: Array.isArray(lead.tireSizes) ? lead.tireSizes.join(', ') : (lead.commonTireSizes || lead.tireSizes || ''),
+      });
     }
   }, [lead?.id]);
 
@@ -128,6 +191,14 @@ export default function VaFocusCard({
     const utcDate = zonedWallTimeToUtc(callbackDate, hour, minute, tz);
     return formatDualPktAndCustomerTime(utcDate, tz);
   }, [callbackDate, callbackTime, callbackTimezone, lead]);
+
+  const hitHistory: any[] = useMemo(() => {
+    if (!lead) return [];
+    if (Array.isArray(lead.hitHistory) && lead.hitHistory.length > 0) {
+      return lead.hitHistory;
+    }
+    return [];
+  }, [lead?.hitHistory]);
 
   if (!lead) {
     return (
@@ -176,6 +247,18 @@ export default function VaFocusCard({
     }, 1500);
   };
 
+  const handleDial = () => {
+    if (!lead.phone) return;
+    navigator.clipboard.writeText(lead.phone);
+    setCallingStartTime(Date.now());
+    toast.success(`Copied ${lead.phone} to clipboard & started call timer!`);
+  };
+
+  const handleEndCall = () => {
+    setCallingStartTime(null);
+    toast.info('Call timer ended');
+  };
+
   const handleSelectDisposition = (disp: string) => {
     if (selectedDisposition === disp) {
       setSelectedDisposition(null);
@@ -198,18 +281,45 @@ export default function VaFocusCard({
       minute: '2-digit',
       hour12: false,
     }).formatToParts(target);
-    const y = parts.find((p) => p.type === 'year')?.value;
-    const m = parts.find((p) => p.type === 'month')?.value;
-    const d = parts.find((p) => p.type === 'day')?.value;
-    const hr = parts.find((p) => p.type === 'hour')?.value || '10';
-    const min = parts.find((p) => p.type === 'minute')?.value || '00';
-    if (y && m && d) {
-      setCallbackDate(`${y}-${m}-${d}`);
-      const dt = new Date(`${y}-${m}-${d}T00:00:00`);
-      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      setCallbackDay(days[dt.getDay()]);
+
+    const get = (type: string) => parts.find((p) => p.type === type)?.value || '';
+    const dateStr = `${get('year')}-${get('month')}-${get('day')}`;
+    const timeStr = `${get('hour')}:${get('minute')}`;
+
+    setCallbackDate(dateStr);
+    setCallbackTime(timeStr);
+
+    const dayName = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(target);
+    setCallbackDay(dayName);
+  };
+
+  const handleSaveFleetData = async () => {
+    try {
+      setIsSavingData(true);
+      await leadService.updateLead(lead.id, {
+        companyName: editFormData.companyName.trim() || undefined,
+        phone: editFormData.phone.trim() || undefined,
+        altPhone: editFormData.altPhone.trim() || null,
+        email: editFormData.email.trim() || null,
+        poaEmail: editFormData.poaEmail.trim() || null,
+        fleetManager: editFormData.fleetManager.trim() || null,
+        ceoOwnerName: editFormData.ceoOwnerName.trim() || null,
+        address: editFormData.address.trim() || null,
+        website: editFormData.website.trim() || null,
+        numberOfUnits: editFormData.numberOfUnits ? parseInt(editFormData.numberOfUnits, 10) : null,
+        vehicleTypes: editFormData.vehicleTypes.trim() || null,
+        commonTireSizes: editFormData.tireSizes.trim() || null,
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ['leads'] });
+      await queryClient.invalidateQueries({ queryKey: ['agent-queue'] });
+      toast.success('Fleet details updated successfully');
+      setIsEditingData(false);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Failed to update fleet details');
+    } finally {
+      setIsSavingData(false);
     }
-    setCallbackTime(`${hr}:${min}`);
   };
 
   const handleCommitDisposition = () => {
@@ -222,6 +332,18 @@ export default function VaFocusCard({
       return;
     }
 
+    // Build call duration tag if timer was running
+    let timerPrefix = '';
+    if (callingStartTime) {
+      const elapsed = Math.max(1, Math.floor((Date.now() - callingStartTime) / 1000));
+      const m = Math.floor(elapsed / 60);
+      const s = elapsed % 60;
+      timerPrefix = `[Call Duration: ${m}m ${s}s | Dialed: ${lead.phone}] `;
+      setCallingStartTime(null);
+    }
+
+    const finalNotes = timerPrefix + (notes.trim() ? notes.trim() : '');
+
     if (selectedDisposition === 'CALLBACK') {
       if (!callbackDate) {
         setShowCallbackPicker(true);
@@ -232,7 +354,7 @@ export default function VaFocusCard({
       onDisposition({
         id: lead.id,
         disposition: 'CALLBACK',
-        notes: notes.trim() || undefined,
+        notes: finalNotes || undefined,
         callbackDate,
         callbackDay: callbackDay || undefined,
         callbackTime: callbackTime || undefined,
@@ -253,7 +375,7 @@ export default function VaFocusCard({
     onDisposition({
       id: lead.id,
       disposition: selectedDisposition,
-      notes: notes.trim() || undefined,
+      notes: finalNotes || undefined,
     });
     setSelectedDisposition(null);
     setNotes('');
@@ -262,11 +384,11 @@ export default function VaFocusCard({
   const attempts = Number(lead.callAttemptsCount || 0);
 
   return (
-    <div className="max-w-2xl mx-auto bg-white border border-slate-200/90 rounded-3xl shadow-sm overflow-hidden">
-      {/* CARD HEADER */}
-      <div className="bg-slate-50/90 border-b border-slate-200/90 p-4 sm:p-5 text-slate-900">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
+    <div className="max-w-4xl mx-auto bg-white border border-slate-200/90 rounded-3xl shadow-sm overflow-hidden">
+      {/* Top Banner (Clean light header, NO dark black banner) */}
+      <div className="p-4 sm:p-6 bg-slate-50/80 border-b border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 font-mono text-[10px] font-bold uppercase tracking-wider border border-red-200">
                 1-Lead Focus Mode
@@ -300,8 +422,47 @@ export default function VaFocusCard({
             </div>
           </div>
 
-          {/* Header Action Buttons */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Header Action Buttons & Live Call Timer */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsEditingData(!isEditingData)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs transition cursor-pointer"
+            >
+              <Edit2 size={13} className="text-blue-600" />
+              <span>{isEditingData ? 'Close Editor' : 'Edit Fleet Data'}</span>
+            </button>
+
+            {/* In-App Call Timer & Dial Button */}
+            {callingStartTime ? (
+              <div className="flex items-center gap-1.5">
+                <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-rose-50 text-rose-700 border border-rose-200 font-mono font-bold text-xs shadow-2xs">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping shrink-0" />
+                  <span>
+                    Calling • {String(Math.floor(callElapsedSeconds / 60)).padStart(2, '0')}:{String(callElapsedSeconds % 60).padStart(2, '0')}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleEndCall}
+                  className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer border border-slate-200"
+                  title="End Call Timer"
+                >
+                  End Call
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleDial}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-xs transition shrink-0 active:scale-95 cursor-pointer"
+                title="Dial Prospect & Copy Phone"
+              >
+                <PhoneCall size={16} />
+                <span>Dial Prospect</span>
+              </button>
+            )}
+
             <button
               type="button"
               disabled={isSubmitting}
@@ -315,202 +476,512 @@ export default function VaFocusCard({
               <Calendar size={14} />
               <span>
                 {selectedDisposition
-                  ? `Set Disposition (${selectedDisposition.replace(/_/g, ' ')})`
+                  ? `Set (${selectedDisposition.replace(/_/g, ' ')})`
                   : 'Set Disposition'}
               </span>
             </button>
-            <a
-              href={`tel:${lead.phone}`}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-xs transition shrink-0 active:scale-95"
-            >
-              <PhoneCall size={16} />
-              <span className="hidden sm:inline">Dial Prospect</span>
-            </a>
           </div>
         </div>
       </div>
 
-      {/* DISCRETE DETAIL FIELDS WITH INDIVIDUAL COPY BUTTONS */}
-      <div className="p-4 sm:p-6 space-y-3.5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {/* Phone */}
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                <Phone size={14} />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] uppercase font-bold text-slate-400 font-mono">Primary Phone</div>
-                <div className="text-xs sm:text-sm font-bold text-slate-900 font-mono truncate">{lead.phone}</div>
+      <div className="p-4 sm:p-6 space-y-4">
+        {/* INLINE EDITING FORM (When isEditingData is TRUE) */}
+        {isEditingData ? (
+          <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-200 space-y-3 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-blue-200/80">
+              <span className="font-bold text-xs text-blue-900 flex items-center gap-1.5">
+                <Edit2 size={13} /> Edit All 12 Fleet Columns & Equipment
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingData(false)}
+                  className="px-2.5 py-1 text-xs text-slate-600 hover:text-slate-800 rounded-lg hover:bg-blue-100/60 font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingData}
+                  onClick={handleSaveFleetData}
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Save size={13} />
+                  <span>{isSavingData ? 'Saving...' : 'Save Changes'}</span>
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <a
-                href={`tel:${lead.phone}`}
-                title="Dial Phone"
-                className="p-1.5 rounded-lg hover:bg-emerald-100 text-emerald-700 transition"
-              >
-                <PhoneCall size={14} />
-              </a>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Company Name *</label>
+                <input
+                  type="text"
+                  value={editFormData.companyName}
+                  onChange={(e) => setEditFormData({ ...editFormData, companyName: e.target.value })}
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Primary Phone *</label>
+                <input
+                  type="text"
+                  value={editFormData.phone}
+                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Alternative Phone</label>
+                <input
+                  type="text"
+                  value={editFormData.altPhone}
+                  onChange={(e) => setEditFormData({ ...editFormData, altPhone: e.target.value })}
+                  placeholder="Secondary / Dispatch line"
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Official Email</label>
+                <input
+                  type="email"
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  placeholder="office@fleet.com"
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Direct / POA Email</label>
+                <input
+                  type="email"
+                  value={editFormData.poaEmail}
+                  onChange={(e) => setEditFormData({ ...editFormData, poaEmail: e.target.value })}
+                  placeholder="manager@fleet.com"
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Fleet / Operations Manager</label>
+                <input
+                  type="text"
+                  value={editFormData.fleetManager}
+                  onChange={(e) => setEditFormData({ ...editFormData, fleetManager: e.target.value })}
+                  placeholder="John Smith"
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">CEO / Owner Name</label>
+                <input
+                  type="text"
+                  value={editFormData.ceoOwnerName}
+                  onChange={(e) => setEditFormData({ ...editFormData, ceoOwnerName: e.target.value })}
+                  placeholder="Owner Name"
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Fleet Units (NOU)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editFormData.numberOfUnits}
+                  onChange={(e) => setEditFormData({ ...editFormData, numberOfUnits: e.target.value })}
+                  placeholder="e.g. 15"
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Website</label>
+                <input
+                  type="text"
+                  value={editFormData.website}
+                  onChange={(e) => setEditFormData({ ...editFormData, website: e.target.value })}
+                  placeholder="https://..."
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="sm:col-span-2 lg:col-span-3">
+                <label className="font-semibold text-slate-700 block mb-1">Company Physical Address</label>
+                <input
+                  type="text"
+                  value={editFormData.address}
+                  onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
+                  placeholder="123 Industrial Way, Suite A"
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Vehicle Types (Fleet Mix)</label>
+                <input
+                  type="text"
+                  value={editFormData.vehicleTypes}
+                  onChange={(e) => setEditFormData({ ...editFormData, vehicleTypes: e.target.value })}
+                  placeholder="Box Trucks, Semis, Sprinters"
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="font-semibold text-slate-700 block mb-1">Common Tire Sizes Used</label>
+                <input
+                  type="text"
+                  value={editFormData.tireSizes}
+                  onChange={(e) => setEditFormData({ ...editFormData, tireSizes: e.target.value })}
+                  placeholder="11R22.5, 295/75R22.5, 225/70R19.5"
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* READABLE 3-COLUMN GRID: ALL 12 CSV COLUMNS + SPECS */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {/* 1. Primary Phone */}
+            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <Phone size={13} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">1. Primary Phone</div>
+                  <div className="text-xs font-bold text-slate-900 font-mono truncate">{lead.phone || 'N/A'}</div>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => copyToClipboard(lead.phone, 'Phone')}
-                title="Copy Phone"
-                className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition cursor-pointer"
+                title="Copy Primary Phone"
+                className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-800 transition cursor-pointer"
               >
-                {copiedField === 'Phone' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                {copiedField === 'Phone' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
               </button>
+            </div>
+
+            {/* 2. Alt Phone */}
+            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center shrink-0">
+                  <Phone size={13} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">2. Alt Phone</div>
+                  <div className="text-xs font-medium text-slate-800 font-mono truncate">
+                    {lead.altPhone || <span className="text-slate-400 italic font-sans">Not recorded</span>}
+                  </div>
+                </div>
+              </div>
+              {lead.altPhone && (
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(lead.altPhone, 'Alternative Phone')}
+                  title="Copy Alt Phone"
+                  className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-800 transition cursor-pointer"
+                >
+                  {copiedField === 'Alternative Phone' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                </button>
+              )}
+            </div>
+
+            {/* 3. Official Email */}
+            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                  <Mail size={13} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">3. Official Email</div>
+                  <div className="text-xs font-medium text-slate-800 truncate">
+                    {lead.email || <span className="text-slate-400 italic">Not recorded</span>}
+                  </div>
+                </div>
+              </div>
+              {lead.email && (
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(lead.email, 'Email')}
+                  title="Copy Email"
+                  className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-800 transition cursor-pointer"
+                >
+                  {copiedField === 'Email' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                </button>
+              )}
+            </div>
+
+            {/* 4. Direct POA Email */}
+            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                  <Mail size={13} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">4. Direct / POA Email</div>
+                  <div className="text-xs font-medium text-slate-800 truncate">
+                    {lead.poaEmail || <span className="text-slate-400 italic">Not recorded</span>}
+                  </div>
+                </div>
+              </div>
+              {lead.poaEmail && (
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(lead.poaEmail, 'POA Email')}
+                  title="Copy POA Email"
+                  className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-800 transition cursor-pointer"
+                >
+                  {copiedField === 'POA Email' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                </button>
+              )}
+            </div>
+
+            {/* 5. Fleet Manager */}
+            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                  <User size={13} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">5. Fleet / Ops Manager</div>
+                  <div className="text-xs font-bold text-slate-900 truncate">
+                    {lead.fleetManager || lead.contactPerson || <span className="text-slate-400 italic font-normal">Not recorded</span>}
+                  </div>
+                </div>
+              </div>
+              {(lead.fleetManager || lead.contactPerson) && (
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(lead.fleetManager || lead.contactPerson, 'Fleet Manager')}
+                  title="Copy Fleet Manager"
+                  className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-800 transition cursor-pointer"
+                >
+                  {copiedField === 'Fleet Manager' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                </button>
+              )}
+            </div>
+
+            {/* 6. CEO / Owner Name */}
+            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <Briefcase size={13} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">6. CEO / Owner Name</div>
+                  <div className="text-xs font-semibold text-slate-800 truncate">
+                    {lead.ceoOwnerName || <span className="text-slate-400 italic font-normal">Not recorded</span>}
+                  </div>
+                </div>
+              </div>
+              {lead.ceoOwnerName && (
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(lead.ceoOwnerName, 'CEO / Owner')}
+                  title="Copy CEO / Owner"
+                  className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-800 transition cursor-pointer"
+                >
+                  {copiedField === 'CEO / Owner' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                </button>
+              )}
+            </div>
+
+            {/* 7. Fleet Units (NOU) */}
+            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
+                  <Truck size={13} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">7. Fleet Size (NOU)</div>
+                  <div className="text-xs font-bold text-slate-900 font-mono truncate">
+                    {lead.numberOfUnits ? `${lead.numberOfUnits} commercial units` : <span className="text-slate-400 italic font-normal font-sans">Not recorded</span>}
+                  </div>
+                </div>
+              </div>
+              {lead.numberOfUnits && (
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(String(lead.numberOfUnits), 'Fleet Units')}
+                  title="Copy Units"
+                  className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-800 transition cursor-pointer"
+                >
+                  {copiedField === 'Fleet Units' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                </button>
+              )}
+            </div>
+
+            {/* 8. Website */}
+            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                  <Globe size={13} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">8. Website</div>
+                  {lead.website ? (
+                    <a
+                      href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-semibold text-blue-600 hover:underline truncate block"
+                    >
+                      {lead.website}
+                    </a>
+                  ) : (
+                    <span className="text-xs text-slate-400 italic">Not recorded</span>
+                  )}
+                </div>
+              </div>
+              {lead.website && (
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(lead.website, 'Website')}
+                  title="Copy Website"
+                  className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-800 transition cursor-pointer"
+                >
+                  {copiedField === 'Website' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                </button>
+              )}
+            </div>
+
+            {/* 9. Vehicle Types */}
+            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center shrink-0">
+                  <Tag size={13} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">9. Vehicle Types</div>
+                  <div className="text-xs font-semibold text-slate-800 truncate">
+                    {Array.isArray(lead.vehicleTypes) ? lead.vehicleTypes.join(', ') : (lead.vehicleTypes || <span className="text-slate-400 italic font-normal">Not recorded</span>)}
+                  </div>
+                </div>
+              </div>
+              {lead.vehicleTypes && (
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(String(lead.vehicleTypes), 'Vehicle Types')}
+                  title="Copy Vehicle Types"
+                  className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-800 transition cursor-pointer"
+                >
+                  {copiedField === 'Vehicle Types' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                </button>
+              )}
+            </div>
+
+            {/* 10. Address (Spans 2 cols) */}
+            <div className="sm:col-span-2 flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-red-100 text-red-700 flex items-center justify-center shrink-0">
+                  <MapPin size={13} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">10. Physical Address</div>
+                  <div className="text-xs font-medium text-slate-800 truncate">
+                    {lead.address || <span className="text-slate-400 italic font-normal">Not recorded</span>}
+                  </div>
+                </div>
+              </div>
+              {lead.address && (
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(lead.address, 'Address')}
+                  title="Copy Address"
+                  className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-800 transition cursor-pointer"
+                >
+                  {copiedField === 'Address' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                </button>
+              )}
+            </div>
+
+            {/* 11 & 12. Tire Sizes Used */}
+            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                  <Wrench size={13} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">11-12. Tire Sizes</div>
+                  <div className="text-xs font-mono font-bold text-red-700 truncate">
+                    {Array.isArray(lead.tireSizes) ? lead.tireSizes.join(', ') : (lead.commonTireSizes || lead.tireSizes || <span className="text-slate-400 italic font-sans font-normal">Not recorded</span>)}
+                  </div>
+                </div>
+              </div>
+              {(lead.commonTireSizes || lead.tireSizes) && (
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(String(lead.commonTireSizes || lead.tireSizes), 'Tire Sizes')}
+                  title="Copy Tire Sizes"
+                  className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-800 transition cursor-pointer"
+                >
+                  {copiedField === 'Tire Sizes' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                </button>
+              )}
             </div>
           </div>
+        )}
 
-          {/* Contact Person */}
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                <User size={14} />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] uppercase font-bold text-slate-400 font-mono">Contact Person</div>
-                <div className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-                  {lead.contactPerson || 'Fleet Manager'}
-                </div>
-              </div>
+        {/* CHRONOLOGICAL HIT HISTORY FEED */}
+        {hitHistory.length > 0 ? (
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80">
+              <span className="font-bold text-slate-800 uppercase font-mono text-[10px] flex items-center gap-1.5">
+                <History size={12} className="text-slate-500" />
+                <span>Multi-Pass Calling Hit History ({hitHistory.length} Prior {hitHistory.length === 1 ? 'Hit' : 'Hits'})</span>
+              </span>
+              <span className="text-[10px] font-mono text-slate-500">
+                Max 4 Passes
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={() => copyToClipboard(lead.contactPerson || 'Fleet Manager', 'Contact Person')}
-              title="Copy Contact Person"
-              className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition cursor-pointer"
-            >
-              {copiedField === 'Contact Person' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-            </button>
+
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              {hitHistory.map((hit: any, idx: number) => (
+                <div key={idx} className="p-2.5 rounded-xl bg-white border border-slate-200 text-xs space-y-1 shadow-2xs">
+                  <div className="flex items-center justify-between flex-wrap gap-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-[9px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                        Pass #{hit.pass || idx + 1}
+                      </span>
+                      <span className={`font-bold text-[10px] px-2 py-0.2 rounded-full border ${
+                        hit.disposition === 'INTERESTED'
+                          ? 'bg-purple-100 text-purple-800 border-purple-200'
+                          : hit.disposition === 'CALLBACK'
+                          ? 'bg-blue-100 text-blue-800 border-blue-200'
+                          : hit.disposition === 'VOICEMAIL'
+                          ? 'bg-slate-100 text-slate-800 border-slate-200'
+                          : hit.disposition === 'WRONG_NUMBER' || hit.disposition === 'RNC'
+                          ? 'bg-rose-100 text-rose-800 border-rose-200'
+                          : 'bg-amber-100 text-amber-800 border-amber-200'
+                      }`}>
+                        {hit.disposition?.replace(/_/g, ' ') || 'DIALED'}
+                      </span>
+                      {hit.vaName && (
+                        <span className="text-[10px] text-slate-500 font-medium">by {hit.vaName}</span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {hit.timestamp ? new Date(hit.timestamp).toLocaleString() : ''}
+                    </span>
+                  </div>
+                  {hit.notes && (
+                    <p className="text-slate-700 whitespace-pre-wrap text-[11px] font-sans pl-1">
+                      {hit.notes}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-
-          {/* Alt Phone (if present) */}
-          {lead.altPhone && (
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0">
-                  <Phone size={14} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 font-mono">Alternative Phone</div>
-                  <div className="text-xs sm:text-sm font-semibold text-slate-800 font-mono truncate">{lead.altPhone}</div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(lead.altPhone, 'Alternative Phone')}
-                title="Copy Alt Phone"
-                className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition cursor-pointer"
-              >
-                {copiedField === 'Alternative Phone' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-              </button>
-            </div>
-          )}
-
-          {/* Email (if present) */}
-          {lead.email && (
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-                  <Mail size={14} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 font-mono">Official Email</div>
-                  <div className="text-xs sm:text-sm font-semibold text-slate-800 truncate">{lead.email}</div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(lead.email, 'Email')}
-                title="Copy Email"
-                className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition cursor-pointer"
-              >
-                {copiedField === 'Email' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-              </button>
-            </div>
-          )}
-
-          {/* Address */}
-          {lead.address && (
-            <div className="sm:col-span-2 flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                  <MapPin size={14} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 font-mono">Company Address</div>
-                  <div className="text-xs sm:text-sm font-medium text-slate-800 truncate">{lead.address}</div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(lead.address, 'Address')}
-                title="Copy Address"
-                className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition cursor-pointer"
-              >
-                {copiedField === 'Address' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-              </button>
-            </div>
-          )}
-
-          {/* Website (if present) */}
-          {lead.website && (
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
-                  <Globe size={14} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 font-mono">Website</div>
-                  <a
-                    href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-semibold text-teal-700 hover:underline truncate block"
-                  >
-                    {lead.website}
-                  </a>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(lead.website, 'Website')}
-                title="Copy Website"
-                className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition cursor-pointer"
-              >
-                {copiedField === 'Website' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-              </button>
-            </div>
-          )}
-
-          {/* Number of Units */}
-          {lead.numberOfUnits && (
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
-                  <Truck size={14} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 font-mono">Fleet Size (NOU)</div>
-                  <div className="text-xs sm:text-sm font-bold text-slate-900 font-mono truncate">{lead.numberOfUnits} commercial units</div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(String(lead.numberOfUnits), 'Fleet Units')}
-                title="Copy Fleet Units"
-                className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition cursor-pointer"
-              >
-                {copiedField === 'Fleet Units' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Existing Notes (if present) */}
-        {lead.notes && (
+        ) : lead.notes ? (
           <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200/70 text-xs">
             <div className="flex items-center justify-between mb-1">
               <span className="font-bold text-amber-900 uppercase font-mono text-[10px]">Previous Call Notes</span>
@@ -524,12 +995,12 @@ export default function VaFocusCard({
             </div>
             <p className="text-amber-900 whitespace-pre-wrap">{lead.notes}</p>
           </div>
-        )}
+        ) : null}
 
         {/* Call Notes Input */}
         <div>
           <label className="block text-xs font-bold text-slate-700 uppercase font-mono mb-1">
-            Call Notes (Optional)
+            Hit Notes
           </label>
           <textarea
             value={notes}

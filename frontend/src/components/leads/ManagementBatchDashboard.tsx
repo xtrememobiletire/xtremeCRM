@@ -21,6 +21,7 @@ interface ManagementBatchDashboardProps {
   onStartBatch?: (batchId: string) => void;
   onCloseBatch?: (batchId: string) => void;
   onDistributeBatch?: (batchId: string) => void;
+  onReviveBatch?: (batch: BatchItem) => void;
   isAdmin?: boolean;
 }
 
@@ -34,6 +35,7 @@ export default function ManagementBatchDashboard({
   onStartBatch,
   onCloseBatch,
   onDistributeBatch,
+  onReviveBatch,
   isAdmin = false,
 }: ManagementBatchDashboardProps) {
   const [selectedStatus, setSelectedStatus] = useState<'ACTIVE' | 'SCHEDULED' | 'COMPLETED'>('ACTIVE');
@@ -217,6 +219,7 @@ export default function ManagementBatchDashboard({
               onStart={onStartBatch}
               onClose={onCloseBatch}
               onDistribute={onDistributeBatch}
+              onRevive={onReviveBatch}
               isAdmin={isAdmin}
             />
           ))}

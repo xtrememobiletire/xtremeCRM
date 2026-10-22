@@ -28,6 +28,9 @@ export interface MultiServiceSelectorProps {
   showTaxToggle?: boolean;
   title?: string;
   hidePricing?: boolean;
+  showTireSelector?: boolean;
+  tireCount?: number;
+  onTireCountChange?: (count: number) => void;
 }
 
 export default function MultiServiceSelector({
@@ -46,10 +49,16 @@ export default function MultiServiceSelector({
   showTaxToggle = true,
   title = 'Services & Breakdown Work Order',
   hidePricing = false,
+  showTireSelector = false,
+  tireCount = 1,
+  onTireCountChange,
 }: MultiServiceSelectorProps) {
   const activeItems = selectedItems || items || [];
   const handleToggleTax = setIsTaxIncluded || onToggleTaxIncluded || (() => {});
   const [selectedCatalogId, setSelectedCatalogId] = useState<string>('');
+  const [isCustomTires, setIsCustomTires] = useState<boolean>(![1, 2, 4, 6, 8, 10, 18].includes(tireCount));
+  const hasTireService = activeItems.some((i) => i.category === 'TIRE_SERVICE');
+  const shouldRenderTireBar = showTireSelector || !!onTireCountChange || hasTireService;
 
   const handleAddService = (catalogId: string) => {
     if (!catalogId) return;
@@ -272,6 +281,81 @@ export default function MultiServiceSelector({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* No. Of Tires Quick Pill Bar */}
+      {shouldRenderTireBar && (
+        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/90 space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-red-500"></span>
+              No. Of Tires Required:
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[1, 2, 4, 6, 8, 10, 18].map((preset) => {
+                const isSelected = !isCustomTires && tireCount === preset;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => {
+                      setIsCustomTires(false);
+                      onTireCountChange?.(preset);
+                    }}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition cursor-pointer ${
+                      isSelected
+                        ? 'bg-red-50 border-red-500 text-red-700 shadow-2xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    {preset} {preset === 1 ? 'Tire' : 'Tires'}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setIsCustomTires(true)}
+                className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition cursor-pointer ${
+                  isCustomTires
+                    ? 'bg-red-50 border-red-500 text-red-700 shadow-2xs'
+                    : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                Custom
+              </button>
+            </div>
+          </div>
+
+          {isCustomTires && (
+            <div className="flex items-center gap-2 pt-1 border-t border-slate-200">
+              <span className="text-[11px] font-semibold text-slate-600">Enter Exact Tire Count:</span>
+              <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => onTireCountChange?.(Math.max(1, (tireCount || 1) - 1))}
+                  className="px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={tireCount || 1}
+                  onChange={(e) => onTireCountChange?.(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-16 px-2 py-1 text-xs font-mono font-bold text-center text-slate-900 border-x border-slate-200 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => onTireCountChange?.((tireCount || 1) + 1)}
+                  className="px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

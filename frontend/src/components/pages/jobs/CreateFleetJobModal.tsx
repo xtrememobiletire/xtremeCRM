@@ -118,6 +118,10 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
   const [assignedDriverId, setAssignedDriverId] = useState('');
   const [notes, setNotes] = useState('');
   const [upfrontAmountDollars, setUpfrontAmountDollars] = useState('');
+  const [addressNotes, setAddressNotes] = useState('');
+  const [requestedByName, setRequestedByName] = useState('');
+  const [upfrontReceiptUrl, setUpfrontReceiptUrl] = useState('');
+  const [tireCount, setTireCount] = useState(1);
 
   // Selected Fleet Object
   const selectedFleet = useMemo(() => {
@@ -173,8 +177,10 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
       setDriverName(fd.fullName || '');
       setDriverPhone(fd.phone ? formatAsYouType(fd.phone, formCountry) : '');
 
-      // If registered driver has an assigned vehicle / license plate, auto-fill it
-      if (fd.licensePlate) {
+      // If registered driver has an assigned vehicleId or license plate, auto-fill it
+      if ((fd as any).vehicleId) {
+        handleSelectVehicle((fd as any).vehicleId, fleetVehicles);
+      } else if (fd.licensePlate) {
         const match = fleetVehicles.find((v) => v.licensePlate?.toLowerCase() === fd.licensePlate?.toLowerCase());
         if (match) handleSelectVehicle(match.id, fleetVehicles);
       }
@@ -228,6 +234,10 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
     setAssignedDriverId('');
     setNotes('');
     setUpfrontAmountDollars('');
+    setUpfrontReceiptUrl('');
+    setAddressNotes('');
+    setRequestedByName('');
+    setTireCount(1);
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -266,6 +276,12 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
 
     const upfrontCents = upfrontAmountDollars ? Math.round((parseFloat(upfrontAmountDollars) || 0) * 100) : 0;
 
+    const structuredNotes = [
+      requestedByName ? `[Requested By: ${requestedByName.trim()}]` : '',
+      addressNotes ? `[Address Notes: ${addressNotes.trim()}]` : '',
+      `Unit: ${unitNumber || 'N/A'}${notes ? ` | ${notes}` : ''}`,
+    ].filter(Boolean).join(' ');
+
     try {
       await createJobMutation.mutateAsync({
         countryCode: formCountry,
@@ -284,8 +300,9 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
         source: 'FLEET_PORTAL',
         driverId: assignedDriverId || undefined,
         upfrontAmountCents: upfrontCents,
+        upfrontReceiptUrl: upfrontReceiptUrl.trim() || undefined,
         notes: `Unit: ${unitNumber || 'N/A'}${notes ? ` | ${notes}` : ''}`,
-        problemNotes: notes || undefined,
+        problemNotes: structuredNotes || undefined,
         arrivalWindowStart: arrivalWindow.arrivalWindowStart || new Date(Date.now() + (arrivalWindow.estimatedArrivalMinutes || 30) * 60000).toISOString(),
         arrivalWindowEnd: arrivalWindow.arrivalWindowEnd || new Date(Date.now() + ((arrivalWindow.estimatedArrivalMinutes || 30) + 30) * 60000).toISOString(),
         estimatedArrivalMinutes: arrivalWindow.estimatedArrivalMinutes || 30,
@@ -503,21 +520,36 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
           </select>
         </div>
 
-        {/* Step 4: Driver / Operator Name */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">4</span>
-            <User className="w-3.5 h-3.5 text-slate-400" />
-            <span>Driver / Operator Name <span className="text-red-500">*</span></span>
-          </label>
-          <input
-            type="text"
-            value={driverName}
-            onChange={(e) => setDriverName(e.target.value)}
-            placeholder="e.g. Mike Vance"
-            required
-            className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
-          />
+        {/* Step 4: Driver / Operator Name & Requested By */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-red-100 text-red-700 text-[10px] font-mono flex items-center justify-center font-bold">4</span>
+              <User className="w-3.5 h-3.5 text-slate-400" />
+              <span>Driver / Operator Name <span className="text-red-500">*</span></span>
+            </label>
+            <input
+              type="text"
+              value={driverName}
+              onChange={(e) => setDriverName(e.target.value)}
+              placeholder="e.g. Mike Vance"
+              required
+              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <UserCheck className="w-3.5 h-3.5 text-slate-400" />
+              <span>Requested By / Dispatcher</span>
+            </label>
+            <input
+              type="text"
+              value={requestedByName}
+              onChange={(e) => setRequestedByName(e.target.value)}
+              placeholder="e.g. Sarah Connor (Fleet Manager)"
+              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
+            />
+          </div>
         </div>
 
         {/* Step 5: Driver / Operator Phone */}
@@ -652,6 +684,18 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
               <span>GPS Coordinates locked: {serviceCoords.latitude.toFixed(4)}, {serviceCoords.longitude.toFixed(4)}</span>
             </div>
           )}
+          <div className="mt-2">
+            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+              Address Notes / Landmarks / Gate Code / Dock #
+            </label>
+            <input
+              type="text"
+              value={addressNotes}
+              onChange={(e) => setAddressNotes(e.target.value)}
+              placeholder="e.g. Loading dock #14, gate code 4492, driver in tractor"
+              className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
+            />
+          </div>
         </div>
 
         {/* Step 9: Commercial Work Order Services */}
@@ -669,6 +713,16 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
             onChange={setServiceItems}
             isTaxIncluded={isTaxIncluded}
             onToggleTaxIncluded={setIsTaxIncluded}
+            showTireSelector={true}
+            tireCount={tireCount}
+            onTireCountChange={(count) => {
+              setTireCount(count);
+              setServiceItems((prev) =>
+                prev.map((item) =>
+                  item.category === 'TIRE_SERVICE' ? { ...item, quantity: count } : item
+                )
+              );
+            }}
           />
         </div>
 
@@ -813,6 +867,18 @@ export default function CreateFleetJobModal({ isOpen, onClose }: CreateFleetJobM
               onChange={(e) => setUpfrontAmountDollars(e.target.value)}
               placeholder="0.00"
               className="w-full px-3.5 py-2 text-xs bg-white font-mono font-bold text-slate-900 focus:outline-none"
+            />
+          </div>
+          <div className="mt-2">
+            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+              Receipt / Wire Transfer Proof URL (Optional)
+            </label>
+            <input
+              type="url"
+              value={upfrontReceiptUrl}
+              onChange={(e) => setUpfrontReceiptUrl(e.target.value)}
+              placeholder="https://... receipt image or payment link"
+              className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-2xs"
             />
           </div>
         </div>

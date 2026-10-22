@@ -28,6 +28,7 @@ export default function GenerateInvoicePopover({
   onSuccess,
 }: GenerateInvoicePopoverProps) {
   const isFleet = Boolean(job.fleetId || job.fleet);
+  const isReSync = Boolean(job.invoiceId || job.invoice);
   const defaultTaxRate = job.countryCode === 'CA' ? 13 : job.countryCode === 'UK' ? 20 : 8.875;
   const upfrontCents = job.upfrontAmountCents || 0;
   const currencySymbol = job.currency === 'GBP' ? '£' : job.countryCode === 'CA' ? 'CA$' : '$';
@@ -131,6 +132,7 @@ export default function GenerateInvoicePopover({
       {
         jobId: job.id,
         options: {
+          updateExisting: isReSync,
           taxRatePercent: isTaxExempt ? 0 : taxRatePercent,
           isTaxExempt,
           creditDeposit,
@@ -146,7 +148,7 @@ export default function GenerateInvoicePopover({
       },
       {
         onSuccess: (data) => {
-          toast.success(`Invoice ${data.invoiceNumber} ready!`);
+          toast.success(isReSync ? `Invoice ${data.invoiceNumber} re-synced successfully!` : `Invoice ${data.invoiceNumber} ready!`);
           onSuccess?.(data);
           onClose();
         },
@@ -168,9 +170,15 @@ export default function GenerateInvoicePopover({
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900">
-                {isFleet ? 'Generate Fleet Invoice' : 'Generate Customer Invoice'}
+                {isReSync
+                  ? `Re-Sync Invoice ${job.invoice?.invoiceNumber ? '#' + job.invoice.invoiceNumber : ''}`
+                  : isFleet
+                  ? 'Generate Fleet Invoice'
+                  : 'Generate Customer Invoice'}
               </h3>
-              <p className="text-[11px] text-slate-500 font-mono">{job.jobCode}</p>
+              <p className="text-[11px] text-slate-500 font-mono">
+                {isReSync ? 'Update line items, pricing, or tax' : job.jobCode}
+              </p>
             </div>
           </div>
           <button
@@ -446,12 +454,12 @@ export default function GenerateInvoicePopover({
             {generateMutation.isPending ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Generating...
+                {isReSync ? 'Updating...' : 'Generating...'}
               </>
             ) : (
               <>
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                Create Invoice
+                {isReSync ? 'Save & Re-Sync Invoice' : 'Create Invoice'}
               </>
             )}
           </button>

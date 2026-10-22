@@ -6,6 +6,8 @@ import {
   getCurrentHourInTz,
   zonedWallTimeToUtc,
   formatTimeInTz,
+  formatDate,
+  PKT_TIMEZONE,
 } from '../../utils/date';
 
 export interface ArrivalWindowData {
@@ -73,6 +75,61 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
   const [endHour, setEndHour] = useState<number>(afterNext % 12 === 0 ? 12 : afterNext % 12);
   const [endMinute, setEndMinute] = useState<string>('00');
   const [endAmPm, setEndAmPm] = useState<'AM' | 'PM'>(afterNext >= 12 ? 'PM' : 'AM');
+
+  // Synchronize state when incoming value has a specified window/appointment date
+  useEffect(() => {
+    const rawTarget = value?.arrivalWindowStart || value?.appointmentDate;
+    if (!rawTarget) return;
+    const d = new Date(rawTarget);
+    if (isNaN(d.getTime())) return;
+
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: activeTz,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: false,
+      }).formatToParts(d);
+
+      const y = parts.find((p) => p.type === 'year')?.value;
+      const m = parts.find((p) => p.type === 'month')?.value;
+      const day = parts.find((p) => p.type === 'day')?.value;
+      const h24 = Number(parts.find((p) => p.type === 'hour')?.value ?? 0) % 24;
+      const min = parts.find((p) => p.type === 'minute')?.value ?? '00';
+
+      if (y && m && day) {
+        setWindowDate(`${y}-${m}-${day}`);
+      }
+
+      const sAmpm: 'AM' | 'PM' = h24 >= 12 ? 'PM' : 'AM';
+      const sH = h24 % 12 === 0 ? 12 : h24 % 12;
+      setStartHour(sH);
+      setStartMinute(min);
+      setStartAmPm(sAmpm);
+
+      if (value?.arrivalWindowEnd) {
+        const endD = new Date(value.arrivalWindowEnd);
+        if (!isNaN(endD.getTime())) {
+          const endParts = new Intl.DateTimeFormat('en-US', {
+            timeZone: activeTz,
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: false,
+          }).formatToParts(endD);
+          const eh24 = Number(endParts.find((p) => p.type === 'hour')?.value ?? 0) % 24;
+          const emin = endParts.find((p) => p.type === 'minute')?.value ?? '00';
+          const eAmpm: 'AM' | 'PM' = eh24 >= 12 ? 'PM' : 'AM';
+          const eH = eh24 % 12 === 0 ? 12 : eh24 % 12;
+          setEndHour(eH);
+          setEndMinute(emin);
+          setEndAmPm(eAmpm);
+        }
+      }
+    } catch {}
+  }, [value?.arrivalWindowStart, value?.appointmentDate, value?.arrivalWindowEnd, activeTz]);
 
   // Helper to convert 12h + AM/PM to 24h
   const to24Hour = (hour: number, ampm: 'AM' | 'PM') => {
@@ -457,6 +514,32 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
             <span className="font-bold bg-white px-2 py-0.5 rounded border border-blue-200 text-blue-700">
               {startHour}:{startMinute} {startAmPm} – {endHour}:{endMinute} {endAmPm} ({activeTz.split('/')[1]?.replace(/_/g, ' ') || activeTz})
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* Live Dual-Timezone Comparison Strip (Customer Local vs PKT Shift Window) */}
+      {(value?.arrivalWindowStart || value?.appointmentDate) && (
+        <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 text-slate-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0"></span>
+            <div>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Customer Local Window</span>
+              <span className="font-bold text-slate-900 font-mono text-xs">
+                {formatDate(value.arrivalWindowStart || value.appointmentDate, activeTz)}
+                {value.arrivalWindowEnd && ` – ${formatTimeInTz(value.arrivalWindowEnd, activeTz)}`}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 pt-2 sm:pt-0 sm:border-l sm:border-blue-200 sm:pl-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0"></span>
+            <div>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">PKT Shift Window (Karachi)</span>
+              <span className="font-bold text-slate-900 font-mono text-xs">
+                {formatDate(value.arrivalWindowStart || value.appointmentDate, PKT_TIMEZONE)}
+                {value.arrivalWindowEnd && ` – ${formatTimeInTz(value.arrivalWindowEnd, PKT_TIMEZONE)}`}
+              </span>
+            </div>
           </div>
         </div>
       )}

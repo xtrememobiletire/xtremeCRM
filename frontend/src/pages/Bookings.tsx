@@ -18,6 +18,7 @@ import EmptyState from '../components/ui/EmptyState';
 import { jobService } from '../services/jobService';
 import { useTenant } from '../context/TenantContext';
 import { toast } from 'sonner';
+import { formatDate, formatTimeInTz, getDefaultTimezoneForCountry, PKT_TIMEZONE } from '../utils/date';
 
 export type BookingCategoryTab = 'ALL' | 'PUBLIC_WEB' | 'MEMBER' | 'FLEET';
 
@@ -290,10 +291,24 @@ export default function Bookings() {
                     <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">
                       AWAITING TRIAGE
                     </span>
-                    <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                      <Clock size={12} />
-                      <span>{new Date(b.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    </span>
+                    {b.arrivalWindowStart || b.appointmentDate ? (
+                      <div className="flex flex-wrap items-center gap-2 px-2 py-0.5 rounded-lg bg-blue-50/80 border border-blue-200 text-[11px] font-mono">
+                        <span className="flex items-center gap-1 text-slate-800 font-bold">
+                          <Clock size={11} className="text-blue-600" />
+                          <span>Customer: {formatDate(b.arrivalWindowStart || b.appointmentDate, b.serviceTimezone || getDefaultTimezoneForCountry(b.countryCode || selectedCountry))}</span>
+                          {b.arrivalWindowEnd && <span>– {formatTimeInTz(b.arrivalWindowEnd, b.serviceTimezone || getDefaultTimezoneForCountry(b.countryCode || selectedCountry))}</span>}
+                        </span>
+                        <span className="flex items-center gap-1 text-emerald-800 font-bold pl-2 border-l border-blue-200">
+                          <span>PKT: {formatDate(b.arrivalWindowStart || b.appointmentDate, PKT_TIMEZONE)}</span>
+                          {b.arrivalWindowEnd && <span>– {formatTimeInTz(b.arrivalWindowEnd, PKT_TIMEZONE)}</span>}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                        <Clock size={12} className="text-slate-400" />
+                        <span>Created: {formatDate(b.createdAt, b.serviceTimezone || getDefaultTimezoneForCountry(b.countryCode || selectedCountry))}</span>
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">

@@ -30,6 +30,7 @@ import DispositionModal from '../components/leads/DispositionModal';
 import TrialServiceModal from '../components/leads/TrialServiceModal';
 import VaFocusCard from '../components/leads/VaFocusCard';
 import ManagementBatchDashboard from '../components/leads/ManagementBatchDashboard';
+import ReviveBatchModal from '../components/leads/ReviveBatchModal';
 import VaBatchHub from '../components/leads/VaBatchHub';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../context/AuthContext';
@@ -107,6 +108,7 @@ export default function Leads() {
 
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [vaInSession, setVaInSession] = useState(false);
+  const [batchToRevive, setBatchToRevive] = useState<any | null>(null);
 
   // Upper Management container view mode: 'BATCHES' | 'DRILLDOWN' | 'GLOBAL'
   const [managementViewMode, setManagementViewMode] = useState<'BATCHES' | 'DRILLDOWN' | 'GLOBAL'>('BATCHES');
@@ -659,6 +661,7 @@ export default function Leads() {
             onStartBatch={(id) => startBatchByIdMutation.mutate(id)}
             onCloseBatch={(id) => closeBatchMutation.mutate(id)}
             onDistributeBatch={isAdminOrGm ? () => distributeMutation.mutate() : undefined}
+            onReviveBatch={(batch) => setBatchToRevive(batch)}
             onOpenUpload={() => setIsUploadModalOpen(true)}
             onRefresh={refetchBatchesMgmt}
             isAdmin={isAdminOrGm}
@@ -2487,6 +2490,19 @@ export default function Leads() {
         defaultCountry={country}
         defaultBatchId={selectedBatchId || inspectedBatchId}
       />
+
+      {/* Multi-Pass Batch Revival Modal */}
+      {batchToRevive && (
+        <ReviveBatchModal
+          isOpen={Boolean(batchToRevive)}
+          batch={batchToRevive}
+          onClose={() => setBatchToRevive(null)}
+          onSuccess={() => {
+            refetchBatchesMgmt();
+            refetchBatches();
+          }}
+        />
+      )}
     </div>
   );
 }

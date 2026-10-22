@@ -13,7 +13,8 @@ import {
   Save,
   Wrench,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  RefreshCw
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import Modal from '../../ui/Modal';
@@ -593,15 +594,29 @@ export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDe
 
           <div className="flex items-center gap-2">
             {job.invoice?.id || job.invoiceId || selectedInvoiceId ? (
-              <button
-                type="button"
-                onClick={() => setSelectedInvoiceId(job.invoice?.id || job.invoiceId || selectedInvoiceId)}
-                className="btn-secondary py-1.5 px-3 text-xs inline-flex items-center gap-1.5 text-slate-800 hover:bg-slate-100 cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5 text-red-600" />
-                <span>View / Print PDF</span>
-              </button>
-            ) : (status === 'COMPLETED' && canManageInvoices) ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setSelectedInvoiceId(job.invoice?.id || job.invoiceId || selectedInvoiceId)}
+                  className="btn-secondary py-1.5 px-3 text-xs inline-flex items-center gap-1.5 text-slate-800 hover:bg-slate-100 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5 text-red-600" />
+                  <span>View / Print PDF</span>
+                </button>
+                {canManageInvoices && (
+                  <button
+                    type="button"
+                    disabled={job.invoice?.status === 'PAID'}
+                    title={job.invoice?.status === 'PAID' ? 'Paid invoices cannot be modified' : 'Re-sync invoice with work order changes'}
+                    onClick={() => setShowGeneratePopover(true)}
+                    className="btn-secondary py-1.5 px-3 text-xs inline-flex items-center gap-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 border-blue-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Re-Sync Invoice</span>
+                  </button>
+                )}
+              </>
+            ) : (status !== 'CANCELLED' && canManageInvoices) ? (
               <button
                 type="button"
                 onClick={() => setShowGeneratePopover(true)}
@@ -610,8 +625,10 @@ export default function FleetJobDetailModal({ isOpen, onClose, job }: FleetJobDe
                 <FileText className="w-3.5 h-3.5" />
                 <span>Generate Invoice</span>
               </button>
+            ) : status === 'CANCELLED' ? (
+              <span className="text-[11px] text-slate-400 font-medium italic">Cancelled jobs cannot be invoiced</span>
             ) : (
-              <span className="text-[11px] text-slate-400 font-medium italic">Available upon completion</span>
+              <span className="text-[11px] text-slate-400 font-medium italic">Permission required to invoice</span>
             )}
           </div>
         </div>
