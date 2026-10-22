@@ -10,7 +10,7 @@ interface FooterLegalProps {
 
 export default function FooterLegal({
   brandName = "Xtreme Mobile Tire",
-  logoSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp",
+  logoSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792687627/logo.jpg",
 }: FooterLegalProps) {
   return (
     <div className="w-full pt-8 pb-4 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-zinc-400 font-mono">
