@@ -49,7 +49,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
 
 export default function Navbar({
   brandName = "Xtreme Mobile Tire",
-  logoSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792687627/logo.jpg",
+  logoSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp",
   navItems = DEFAULT_NAV_ITEMS,
   signInHref = LOGIN_URL,
   signUpHref = "/signup",
@@ -124,17 +124,18 @@ export default function Navbar({
                   <img
                     src={logoSrc}
                     alt={brandName}
-                    className="w-5 h-5 rounded-full object-contain"
+                    className="h-10 sm:h-12 lg:h-14 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
                   />
                 ) : (
-                  <span className="relative flex items-center justify-center w-5 h-5 rounded-full bg-white text-zinc-950 transition-transform duration-300 group-hover:scale-110 shadow-sm">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-primary)]" />
-                  </span>
+                  <>
+                    <span className="relative flex items-center justify-center w-5 h-5 rounded-full bg-white text-zinc-950 transition-transform duration-300 group-hover:scale-110 shadow-sm">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-primary)]" />
+                    </span>
+                    <span className="font-bold text-white text-[15px] sm:text-base tracking-tight group-hover:text-zinc-200 transition-colors">
+                      {brandName}
+                    </span>
+                  </>
                 )}
-
-                <span className="font-bold text-white text-[15px] sm:text-base tracking-tight group-hover:text-zinc-200 transition-colors">
-                  {brandName}
-                </span>
               </a>
 
               {/* DESKTOP NAV LINKS (hidden on mobile) */}

@@ -11,7 +11,7 @@ export interface HeaderProps {
 
 export default function Header({
   brandName = "Xtreme Mobile Tire",
-  logoSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792687627/logo.jpg",
+  logoSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp",
   onLogoClick,
   hide = false,
 }: HeaderProps) {

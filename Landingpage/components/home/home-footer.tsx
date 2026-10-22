@@ -12,7 +12,7 @@ interface HomeFooterProps {
 
 export default function HomeFooter({
   brandName = "Xtreme Mobile Tire",
-  logoSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792687627/logo.jpg",
+  logoSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp",
   className = "",
 }: HomeFooterProps) {
   return (
@@ -41,12 +41,12 @@ export default function HomeFooter({
               <Link
                 href="/"
                 aria-label="Return to Home"
-                className="inline-flex items-center px-3.5 py-2.5 bg-black/80 border border-white/15 rounded-lg shadow-sm hover:border-[var(--brand-primary)] transition-colors group cursor-pointer"
+                className="inline-flex items-center px-4 py-3 bg-black/80 border border-white/15 rounded-xl shadow-sm hover:border-[var(--brand-primary)] transition-colors group cursor-pointer"
               >
                 <img
                   src={logoSrc}
                   alt={brandName}
-                  className="h-8 sm:h-9 w-auto object-contain transition-transform group-hover:scale-105"
+                  className="h-12 sm:h-14 md:h-16 w-auto object-contain transition-transform group-hover:scale-105"
                 />
               </Link>
 

@@ -10,7 +10,7 @@ interface FooterLegalProps {
 
 export default function FooterLegal({
   brandName = "Xtreme Mobile Tire",
-  logoSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792687627/logo.jpg",
+  logoSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp",
 }: FooterLegalProps) {
   return (
     <div className="w-full pt-8 pb-4 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-zinc-400 font-mono">
@@ -20,7 +20,7 @@ export default function FooterLegal({
           <img
             src={logoSrc}
             alt={brandName}
-            className="h-6 w-auto object-contain transition-transform group-hover:scale-105"
+            className="h-8 sm:h-9 w-auto object-contain transition-transform group-hover:scale-105"
           />
         </Link>
         <span className="text-zinc-600 dark:text-zinc-500">|</span>

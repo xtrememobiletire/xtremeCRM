@@ -33,7 +33,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
 
 export default function Navbar({
   brandName = "Xtreme Mobile Tire",
-  logoSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792687627/logo.jpg",
+  logoSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp",
   navItems = DEFAULT_NAV_ITEMS,
   signInHref = LOGIN_URL,
   signUpHref = "/signup",
@@ -220,7 +220,7 @@ export default function Navbar({
                     <img
                       src={logoSrc}
                       alt={brandName}
-                      className="h-8 sm:h-9 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
+                      className="h-10 sm:h-12 lg:h-14 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
                     />
                   ) : (
                     <>
@@ -382,7 +382,7 @@ export default function Navbar({
                         <img
                           src={logoSrc}
                           alt={brandName}
-                          className="h-8 w-auto object-contain"
+                          className="h-10 sm:h-12 w-auto object-contain"
                         />
                       ) : (
                         <>
