@@ -57,6 +57,78 @@ const validPaymentMethod = (
   return null;
 };
 
+export async function syncLinkedInvoiceFromJob(tx: any, jobId: string, actorId?: string) {
+  try {
+    const job = await tx.job.findUnique({
+      where: { id: jobId },
+      include: { serviceItems: true },
+    });
+    if (!job || !job.invoiceId) return null;
+
+    const invoice = await tx.invoice.findUnique({
+      where: { id: job.invoiceId },
+      include: {
+        items: true,
+        jobs: { select: { id: true, upfrontAmountCents: true, totalCents: true, paymentStatus: true } },
+      },
+    });
+
+    if (!invoice || invoice.status === 'PAID') return null;
+
+    const isSingleJob = invoice.jobs.length <= 1;
+    const depositCents = isSingleJob
+      ? (job.upfrontAmountCents || 0)
+      : invoice.jobs.reduce((sum: number, j: any) => sum + (j.upfrontAmountCents || 0), 0);
+
+    let additionalPaid = 0;
+    if (job.paymentStatus === 'VERIFIED_PAID' && isSingleJob) {
+      const netDue = Math.max(0, invoice.totalCents - depositCents - invoice.amountPaidCents);
+      additionalPaid = netDue;
+      if (additionalPaid > 0) {
+        await tx.invoicePayment.create({
+          data: {
+            invoiceId: invoice.id,
+            amountCents: additionalPaid,
+            paymentMethod: job.paymentMethod || 'CASH',
+            referenceId: `Job ${job.jobCode} on-scene settlement`,
+            recordedById: actorId,
+          },
+        });
+      }
+    }
+
+    const newAmountPaid = invoice.amountPaidCents + additionalPaid;
+    const newBalanceDue = Math.max(0, invoice.totalCents - depositCents - newAmountPaid);
+    let newStatus = invoice.status;
+    if (newBalanceDue === 0) {
+      newStatus = 'PAID';
+    } else if (newAmountPaid > 0 || depositCents > 0 || job.paymentStatus === 'PARTIAL') {
+      newStatus = 'PARTIAL';
+    }
+
+    const updatedInv = await tx.invoice.update({
+      where: { id: invoice.id },
+      data: {
+        depositCents,
+        amountPaidCents: newAmountPaid,
+        balanceDueCents: newBalanceDue,
+        status: newStatus,
+        ...(newStatus === 'PAID' && !invoice.paidAt ? { paidAt: new Date() } : {}),
+      },
+      include: {
+        items: true,
+        customer: true,
+        fleet: true,
+      },
+    });
+
+    return updatedInv;
+  } catch (err) {
+    console.warn(`[syncLinkedInvoiceFromJob] Failed for job ${jobId}:`, err);
+    return null;
+  }
+}
+
 export const jobController = {
   async getAllJobs(req: Request, res: Response) {
     try {
@@ -940,7 +1012,7 @@ export const jobController = {
         }
       }
 
-      const updated = await prisma.$transaction(
+      const txResult = await prisma.$transaction(
         async (tx: any) => {
           if (Array.isArray(serviceItems)) {
             await tx.jobServiceItem.deleteMany({ where: { jobId: id } });
@@ -958,7 +1030,7 @@ export const jobController = {
             }
           }
 
-          return tx.job.update({
+          const updatedJob = await tx.job.update({
             where: { id },
             data: updateData,
             include: {
@@ -975,12 +1047,20 @@ export const jobController = {
               serviceItems: true,
             },
           });
+
+          const syncedInvoice = await syncLinkedInvoiceFromJob(tx, id, callerId);
+          return { updated: updatedJob, syncedInvoice };
         },
         {
           maxWait: 15000,
           timeout: 30000,
         }
       );
+
+      const { updated, syncedInvoice } = txResult;
+      if (syncedInvoice) {
+        sseManager.broadcast(`sse:dispatch:${syncedInvoice.countryCode}`, 'invoice:updated', syncedInvoice);
+      }
 
       // Auto-advance prospective lead to ADMIN_APPROVAL if complimentary trial job completed
       if (status === 'COMPLETED' && isTrialJob && job.leadId) {
@@ -1244,6 +1324,10 @@ export const jobController = {
         licensePlate,
         discountCents: incomingDiscountCents,
         serviceItems: incomingServiceItems,
+        requestedByName,
+        addressNotes,
+        upfrontAmountCents,
+        upfrontReceiptUrl,
       } = req.body;
 
       const job = await prisma.job.findUnique({
@@ -1309,9 +1393,37 @@ export const jobController = {
         const pVal = validateAndNormalizePhone(recipientPhone, job.countryCode);
         updateData.recipientPhone = pVal.isValid ? pVal.normalized : recipientPhone;
       }
-      if (problemNotes) updateData.problemNotes = problemNotes;
+
+      // Preserve & format structured tags inside problemNotes
+      if (requestedByName !== undefined || addressNotes !== undefined || problemNotes !== undefined) {
+        const rawBase = problemNotes !== undefined ? problemNotes : (job.problemNotes || '');
+        const reqName = requestedByName !== undefined ? String(requestedByName).trim() : null;
+        const addrNote = addressNotes !== undefined ? String(addressNotes).trim() : null;
+
+        const existingReqMatch = rawBase.match(/\[Requested By:\s*([^\]]+)\]/);
+        const existingAddrMatch = rawBase.match(/\[Address Notes:\s*([^\]]+)\]/);
+        const finalReqName = reqName !== null ? reqName : (existingReqMatch ? existingReqMatch[1].trim() : '');
+        const finalAddrNote = addrNote !== null ? addrNote : (existingAddrMatch ? existingAddrMatch[1].trim() : '');
+
+        const stripped = rawBase
+          .replace(/\[Requested By:\s*[^\]]+\]\s*/g, '')
+          .replace(/\[Address Notes:\s*[^\]]+\]\s*/g, '')
+          .trim();
+
+        const reqTag = finalReqName ? `[Requested By: ${finalReqName}] ` : '';
+        const addrTag = finalAddrNote ? `[Address Notes: ${finalAddrNote}] ` : '';
+        updateData.problemNotes = `${reqTag}${addrTag}${stripped}`.trim();
+      }
+
       if (urgency) updateData.urgency = normalizeUrgency(urgency);
       if (paymentMethod !== undefined) updateData.paymentMethod = validPaymentMethod(paymentMethod);
+
+      if (upfrontAmountCents !== undefined && upfrontAmountCents !== null) {
+        updateData.upfrontAmountCents = Math.round(Number(upfrontAmountCents));
+      }
+      if (upfrontReceiptUrl !== undefined) {
+        updateData.upfrontReceiptUrl = upfrontReceiptUrl ? String(upfrontReceiptUrl).trim() : null;
+      }
 
       // Update or create vehicle specs (Crucial for mobile tire vans to stock the right tire)
       if (vehicleMake || vehicleModel || vehicleYear || vehicleColor !== undefined || tireSize || licensePlate !== undefined || unitNumber !== undefined) {
@@ -2068,6 +2180,55 @@ export const jobController = {
       return sendSuccess(res, { status: effectiveStatus, rawStatus: updated.status, externalDispatchStatus: updated.externalDispatchStatus }, 'Dispatch status updated successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
+    }
+  },
+
+  getNavCounts: async (req: Request, res: Response) => {
+    try {
+      const countryCode = req.query.countryCode ? String(req.query.countryCode) : (req as any).countryCode;
+      const whereBase: any = {};
+      if (countryCode && countryCode !== 'ALL') {
+        whereBase.countryCode = countryCode;
+      }
+
+      const [jobsCount, fleetJobsCount, bookingsCount, invoicesCount] = await Promise.all([
+        prisma.job.count({
+          where: {
+            ...whereBase,
+            isFleetJob: false,
+            status: { in: ['PENDING', 'ASSIGNED', 'IN_PROGRESS'] },
+          },
+        }),
+        prisma.job.count({
+          where: {
+            ...whereBase,
+            isFleetJob: true,
+            status: { in: ['PENDING', 'ASSIGNED', 'IN_PROGRESS'] },
+          },
+        }),
+        prisma.job.count({
+          where: {
+            ...whereBase,
+            isAddressVerified: false,
+            status: { in: ['PENDING', 'CONFIRMED'] },
+          },
+        }),
+        prisma.invoice.count({
+          where: {
+            ...(whereBase.countryCode ? { countryCode: whereBase.countryCode } : {}),
+            status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] },
+          },
+        }),
+      ]);
+
+      return sendSuccess(res, {
+        jobs: jobsCount,
+        fleetJobs: fleetJobsCount,
+        bookings: bookingsCount,
+        invoices: invoicesCount,
+      });
+    } catch (err: any) {
+      return sendError(res, err.message, 500);
     }
   },
 };

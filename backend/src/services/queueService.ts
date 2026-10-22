@@ -213,6 +213,10 @@ export async function refillAgentQueueAtomic(
           AND (${batchId || null}::text IS NOT NULL OR l.country_code = ${countryCode || 'CA'}::"CountryCode")
           AND (l.last_called_by_va_id IS NULL OR l.last_called_by_va_id != ${vaId} OR l.last_called_at <= NOW() - INTERVAL '2 hours')
           AND (
+            l.batch_id IS NULL OR
+            l.call_attempts_count < COALESCE((SELECT b.current_pass FROM batches b WHERE b.id = l.batch_id), 1)
+          )
+          AND (
             (${batchId || null}::text IS NOT NULL AND l.batch_id = ${batchId || null})
             OR l.batch_id IS NULL
             OR EXISTS (
@@ -283,22 +287,26 @@ export async function checkAndCompleteBatches(countryCode: string): Promise<void
     });
 
     for (const batch of activeBatches) {
-      const pendingCount = await prisma.lead.count({
+      const remainingForPass = await prisma.lead.count({
         where: {
           batchId: batch.id,
           status: { notIn: ['DEAD', 'CONVERTED'] },
+          callAttemptsCount: { lt: batch.currentPass },
         },
       });
 
-      if (pendingCount === 0 && batch._count.leads > 0) {
+      if (remainingForPass === 0 && batch._count.leads > 0) {
         await prisma.batch.update({
           where: { id: batch.id },
           data: { status: 'COMPLETED' },
         });
-        logger.info(`[Batch] Batch "${batch.batchName}" (${batch.id}) fully completed!`);
+        logger.info(`[Batch] Batch "${batch.batchName}" (${batch.id}) completed pass ${batch.currentPass}/${batch.maxPasses}!`);
         sseManager.broadcast(`sse:leads:${countryCode}`, 'batch:completed', {
           batchId: batch.id,
           batchName: batch.batchName,
+          currentPass: batch.currentPass,
+          maxPasses: batch.maxPasses,
+          canRevive: batch.currentPass < batch.maxPasses,
         });
         sseManager.broadcast(`sse:leads:${countryCode}`, 'lead:stats_updated', { countryCode });
       }

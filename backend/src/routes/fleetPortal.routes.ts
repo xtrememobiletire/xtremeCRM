@@ -214,6 +214,7 @@ router.get('/drivers', async (req: Request, res: Response) => {
 
     const drivers = await prisma.fleetDriver.findMany({
       where: { fleetId: fleet.id },
+      include: { vehicle: true },
       orderBy: { createdAt: 'desc' },
     });
     return sendSuccess(res, drivers);
@@ -231,7 +232,7 @@ router.post('/drivers', async (req: Request, res: Response) => {
     const fleet = await getScopedFleet(req);
     if (!fleet) return sendError(res, 'Fleet not found', 404);
 
-    const { fullName, phone, licensePlate } = req.body;
+    const { fullName, phone, licensePlate, vehicleId } = req.body;
     if (!fullName || !phone) {
       return sendError(res, 'Full Name and Phone Number are required', 400);
     }
@@ -245,13 +246,22 @@ router.post('/drivers', async (req: Request, res: Response) => {
       return sendError(res, 'Driver with this phone already exists in your fleet', 409);
     }
 
+    let plate = licensePlate ? licensePlate.trim().toUpperCase() : null;
+    let finalVehicleId = vehicleId || null;
+    if (finalVehicleId && !plate) {
+      const v = await prisma.vehicle.findUnique({ where: { id: finalVehicleId } });
+      if (v) plate = v.licensePlate || v.unitNumber || null;
+    }
+
     const driver = await prisma.fleetDriver.create({
       data: {
         fleetId: fleet.id,
+        vehicleId: finalVehicleId,
         fullName: fullName.trim(),
         phone: cleanPhone,
-        licensePlate: licensePlate ? licensePlate.trim().toUpperCase() : null,
+        licensePlate: plate,
       },
+      include: { vehicle: true },
     });
 
     return sendSuccess(res, driver, 'Driver registered successfully', 201);
@@ -290,16 +300,22 @@ router.patch('/drivers/:id', async (req: Request, res: Response) => {
     if (!fleet) return sendError(res, 'Fleet not found', 404);
 
     const id = String(req.params.id);
-    const { fullName, phone, licensePlate } = req.body;
+    const { fullName, phone, licensePlate, vehicleId } = req.body;
+
+    let plate = licensePlate !== undefined ? (licensePlate ? licensePlate.trim().toUpperCase() : null) : undefined;
+    let vId = vehicleId !== undefined ? (vehicleId || null) : undefined;
+    if (vId && plate === undefined) {
+      const v = await prisma.vehicle.findUnique({ where: { id: vId } });
+      if (v) plate = v.licensePlate || v.unitNumber || null;
+    }
 
     await prisma.fleetDriver.updateMany({
       where: { id, fleetId: fleet.id },
       data: {
         ...(fullName && { fullName: fullName.trim() }),
         ...(phone && { phone: phone.trim() }),
-        ...(licensePlate !== undefined && {
-          licensePlate: licensePlate ? licensePlate.trim().toUpperCase() : null,
-        }),
+        ...(plate !== undefined && { licensePlate: plate }),
+        ...(vId !== undefined && { vehicleId: vId }),
       },
     });
 
@@ -407,6 +423,11 @@ router.post('/request-service', async (req: Request, res: Response) => {
       tireSize,
       notes,
       problemNotes,
+      urgency,
+      requestedByName,
+      addressNotes,
+      upfrontAmountCents,
+      upfrontReceiptUrl,
     } = req.body;
 
     const serviceAddress = (explicitAddress || address || fleet.address || '').trim();
@@ -535,6 +556,22 @@ router.post('/request-service', async (req: Request, res: Response) => {
 
     const creatorId = (req.user as any)?.id || fleet.managerUserId || (await prisma.user.findFirst())?.id;
 
+    let resolvedUrgency: 'STANDARD' | 'URGENT' | 'FUTURE' = 'STANDARD';
+    if (urgency && ['STANDARD', 'URGENT', 'FUTURE'].includes(urgency)) {
+      resolvedUrgency = urgency;
+    } else if (isEmergency) {
+      resolvedUrgency = 'URGENT';
+    } else if (rawScheduled) {
+      resolvedUrgency = 'FUTURE';
+    }
+
+    const reqByName = (requestedByName || req.body.recipientName || '').trim();
+    const addrNotes = (addressNotes || '').trim();
+    const reqTag = reqByName ? `[Requested By: ${reqByName}] ` : '';
+    const addrTag = addrNotes ? `[Address Notes: ${addrNotes}] ` : '';
+    const baseNotes = notes || problemNotes || '';
+    const combinedNotes = `${reqTag}${addrTag}[Fleet Self-Request] ${vehNote}Tire Spec: ${finalTireSize}.${baseNotes ? ` ${baseNotes}` : ''}`.trim();
+
     const createdJob = await prisma.job.create({
       data: {
         jobCode,
@@ -544,7 +581,7 @@ router.post('/request-service', async (req: Request, res: Response) => {
         countryCode: country,
         source: 'FLEET_PORTAL',
         status: 'PENDING',
-        urgency: isEmergency ? 'URGENT' : 'STANDARD',
+        urgency: resolvedUrgency,
         serviceAddress,
         serviceLatitude: lat,
         serviceLongitude: lng,
@@ -555,7 +592,9 @@ router.post('/request-service', async (req: Request, res: Response) => {
         estimatedArrivalAt: scheduledDateObj,
         recipientName: driverName,
         recipientPhone: driverPhone,
-        problemNotes: `[Fleet Self-Request] ${vehNote}Tire Spec: ${finalTireSize}. ${notes || problemNotes || ''}`.trim(),
+        problemNotes: combinedNotes,
+        upfrontAmountCents: upfrontAmountCents ? Math.round(Number(upfrontAmountCents)) : 0,
+        upfrontReceiptUrl: upfrontReceiptUrl ? String(upfrontReceiptUrl).trim() : null,
         currency: currency as any,
         subtotalCents,
         taxRateBps,

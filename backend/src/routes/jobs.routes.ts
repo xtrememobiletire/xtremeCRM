@@ -94,6 +94,13 @@ router.get(
 );
 
 /**
+ * @route   GET /api/jobs/nav-counts
+ * @desc    Get live operational telemetry counts for navigation badges
+ * @access  Private
+ */
+router.get('/nav-counts', jobController.getNavCounts);
+
+/**
  * @route   GET /api/jobs/:id
  * @desc    Get single job by ID
  * @access  Private

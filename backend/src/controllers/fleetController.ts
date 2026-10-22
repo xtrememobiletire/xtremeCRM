@@ -585,6 +585,7 @@ export const fleetController = {
       const id = String(req.params.id);
       const drivers = await prisma.fleetDriver.findMany({
         where: { fleetId: id },
+        include: { vehicle: true },
         orderBy: { createdAt: 'desc' },
       });
       return sendSuccess(res, drivers);
@@ -596,7 +597,7 @@ export const fleetController = {
   async addFleetDriver(req: Request, res: Response) {
     try {
       const fleetId = String(req.params.id);
-      const { fullName, phone, licensePlate } = req.body;
+      const { fullName, phone, licensePlate, vehicleId } = req.body;
 
       if (!phone) {
         return sendError(res, 'Phone number is required for fleet driver', 400);
@@ -622,13 +623,22 @@ export const fleetController = {
         return sendError(res, 'Driver with this phone already exists in this fleet', 409);
       }
 
+      let plate = licensePlate ? String(licensePlate).trim().toUpperCase() : null;
+      let finalVehicleId = vehicleId || null;
+      if (finalVehicleId && !plate) {
+        const v = await prisma.vehicle.findUnique({ where: { id: finalVehicleId } });
+        if (v) plate = v.licensePlate || v.unitNumber || null;
+      }
+
       const driver = await prisma.fleetDriver.create({
         data: {
           fleetId,
-          fullName,
+          vehicleId: finalVehicleId,
+          fullName: fullName ? String(fullName).trim() : 'Fleet Driver',
           phone: normalizedPhone,
-          licensePlate,
+          licensePlate: plate,
         },
+        include: { vehicle: true },
       });
 
       return sendSuccess(res, driver, 'Driver added successfully', 201);
@@ -666,6 +676,8 @@ export const fleetController = {
   async getFleetBillingSummary(req: Request, res: Response) {
     try {
       const fleetId = String(req.params.id);
+      const includeActiveJobs = req.query.includeActiveJobs === 'true' || req.query.includeActiveJobs === '1';
+
       const fleet = await prisma.fleet.findUnique({
         where: { id: fleetId },
         select: { id: true, name: true, fleetCode: true, countryCode: true, discountPercent: true },
@@ -677,13 +689,14 @@ export const fleetController = {
           where: {
             fleetId,
             invoiceId: null,
-            status: 'COMPLETED',
+            status: includeActiveJobs ? { not: 'CANCELLED' } : 'COMPLETED',
+            isTestService: false,
           },
           include: {
             vehicle: true,
             serviceItems: true,
           },
-          orderBy: { completedAt: 'desc' },
+          orderBy: { createdAt: 'desc' },
         }),
         prisma.invoice.findMany({
           where: {

@@ -58,6 +58,7 @@ router.post('/agent-queue/claim', authenticate, leadController.claimNextLead);
 router.post('/start-batch', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.startBatch);
 router.post('/batches/:id/start', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.startBatch);
 router.post('/batches/:id/close', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.closeBatch);
+router.post('/batches/:id/revive', authenticate, authorize(['ADMIN', 'GENERAL_MANAGER']), leadController.reviveBatch);
 
 /**
  * @route   GET /api/leads

@@ -573,7 +573,20 @@ export const leadController = {
   async updateLead(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
+      const user = (req as any).user;
       const {
+        companyName,
+        contactPerson,
+        fleetManager,
+        ceoOwnerName,
+        phone,
+        altPhone,
+        email,
+        poaEmail,
+        address,
+        website,
+        numberOfUnits,
+        estimatedFleetSize,
         status,
         stage,
         disposition,
@@ -586,14 +599,34 @@ export const leadController = {
         vehicleTypes,
         commonTireSizes,
         dispatcherNotes,
+        disqualificationReason,
+        disqualifiedNotes,
       } = req.body;
 
+      const existingLead = await prisma.lead.findUnique({ where: { id } });
+      if (!existingLead) return sendError(res, 'Lead not found', 404);
+
       const data: any = {};
+      if (companyName !== undefined) data.companyName = companyName;
+      if (contactPerson !== undefined) data.contactPerson = contactPerson;
+      if (fleetManager !== undefined) data.fleetManager = fleetManager;
+      if (ceoOwnerName !== undefined) data.ceoOwnerName = ceoOwnerName;
+      if (phone !== undefined) data.phone = phone;
+      if (altPhone !== undefined) data.altPhone = altPhone;
+      if (email !== undefined) data.email = email;
+      if (poaEmail !== undefined) data.poaEmail = poaEmail;
+      if (address !== undefined) data.address = address;
+      if (website !== undefined) data.website = website;
+      if (numberOfUnits !== undefined) data.numberOfUnits = numberOfUnits !== null ? Number(numberOfUnits) : null;
+      if (estimatedFleetSize !== undefined) data.estimatedFleetSize = estimatedFleetSize !== null ? Number(estimatedFleetSize) : null;
+
       if (status !== undefined) data.status = status;
       if (stage !== undefined) data.stage = stage;
       if (disposition !== undefined) data.disposition = disposition;
       if (notes !== undefined) data.notes = notes;
       if (dispatcherNotes !== undefined) data.dispatcherNotes = dispatcherNotes;
+      if (disqualificationReason !== undefined) data.disqualificationReason = disqualificationReason;
+      if (disqualifiedNotes !== undefined) data.disqualifiedNotes = disqualifiedNotes;
       if (priority !== undefined) data.priority = Number(priority);
       if (assignedAgentId !== undefined) {
         data.assignedAgentId = assignedAgentId || null;
@@ -605,6 +638,32 @@ export const leadController = {
       if (whatsappNotes !== undefined) data.whatsappNotes = whatsappNotes;
       if (vehicleTypes !== undefined) data.vehicleTypes = vehicleTypes;
       if (commonTireSizes !== undefined) data.commonTireSizes = commonTireSizes;
+
+      // Track field diff in hitHistory
+      const fieldDiff: Record<string, { from: any; to: any }> = {};
+      const coreFields = [
+        'companyName', 'contactPerson', 'fleetManager', 'ceoOwnerName',
+        'phone', 'altPhone', 'email', 'poaEmail', 'address', 'website',
+        'numberOfUnits', 'estimatedFleetSize', 'vehicleTypes', 'commonTireSizes'
+      ];
+      for (const f of coreFields) {
+        if (data[f] !== undefined && data[f] !== (existingLead as any)[f]) {
+          fieldDiff[f] = { from: (existingLead as any)[f], to: data[f] };
+        }
+      }
+
+      if (Object.keys(fieldDiff).length > 0) {
+        const existingHits = Array.isArray(existingLead.hitHistory) ? (existingLead.hitHistory as any[]) : [];
+        const editorName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : 'Staff';
+        const editRecord = {
+          action: 'FIELD_EDIT',
+          editedAt: new Date().toISOString(),
+          editedById: user?.id,
+          editedByName: editorName,
+          diff: fieldDiff,
+        };
+        data.hitHistory = [...existingHits, editRecord];
+      }
 
       const updated = await prisma.lead.update({
         where: { id },
@@ -1669,6 +1728,175 @@ export const leadController = {
   },
 
   /**
+   * Revive Outreach Campaign Batch to next pass (Pass 2, 3, 4+)
+   * Increments currentPass, resets qualifying leads, resets batch to ACTIVE, and triggers queue refill.
+   */
+  async reviveBatch(req: Request, res: Response) {
+    try {
+      const user = (req as any).user;
+      const isAdminOrGm = ['ADMIN', 'GENERAL_MANAGER'].includes(user?.role);
+
+      const id = String(req.params.id);
+      const {
+        includeSoftDisqualified = true,
+        includeNoAnswerVoicemail = true,
+        includeOverdueCallbacks = false,
+        includeWrongNumbers = false,
+        adminOverride = false,
+        maxPasses,
+      } = req.body || {};
+
+      const batch = await prisma.batch.findUnique({
+        where: { id },
+        include: {
+          _count: { select: { leads: true } },
+        },
+      });
+      if (!batch) return sendError(res, 'Batch not found', 404);
+
+      // Check max passes limit (default 4) unless adminOverride is supplied by Admin/GM
+      const effectiveMaxPasses = maxPasses ? Number(maxPasses) : batch.maxPasses;
+      if (batch.currentPass >= effectiveMaxPasses) {
+        if (!adminOverride || !isAdminOrGm) {
+          return sendError(
+            res,
+            `Batch has already reached its maximum allowed passes (${batch.currentPass}/${effectiveMaxPasses}). An Administrator or General Manager must provide an override to revive further.`,
+            400
+          );
+        }
+      }
+
+      const nextPass = batch.currentPass + 1;
+
+      // Build criteria for leads to revive/recycle into next pass
+      const whereConditions: any[] = [];
+
+      // 1. Unresponsive / Voicemail / Soft Disqualified leads
+      if (includeSoftDisqualified) {
+        whereConditions.push({
+          batchId: id,
+          status: 'DEAD',
+          disqualificationReason: { in: ['UNRESPONSIVE', 'VOICEMAIL', 'NO_ANSWER'] },
+        });
+      }
+
+      // 2. Unworked or unreached leads from previous pass
+      if (includeNoAnswerVoicemail) {
+        whereConditions.push({
+          batchId: id,
+          status: { in: ['CALLED', 'NEW'] },
+          disposition: { in: ['NO_ANSWER', 'VOICEMAIL', 'RNC', null] },
+        });
+      }
+
+      // 3. Overdue callbacks if opted in
+      if (includeOverdueCallbacks) {
+        whereConditions.push({
+          batchId: id,
+          status: 'CALLBACK',
+          callbackDate: { lt: new Date() },
+        });
+      }
+
+      // 4. Wrong numbers if explicitly opted in
+      if (includeWrongNumbers) {
+        whereConditions.push({
+          batchId: id,
+          status: 'DEAD',
+          disqualificationReason: 'WRONG_NUMBER',
+        });
+      }
+
+      if (whereConditions.length === 0) {
+        whereConditions.push({
+          batchId: id,
+          status: { notIn: ['CONVERTED'] },
+        });
+      }
+
+      // Execute in ACID transaction
+      const result = await prisma.$transaction(async (tx) => {
+        const resetResult = await tx.lead.updateMany({
+          where: {
+            OR: whereConditions,
+          },
+          data: {
+            status: 'NEW',
+            stage: 'VA_OUTREACH',
+            disposition: null,
+            assignedAgentId: null,
+            assignmentMethod: null,
+            assignedAt: null,
+            disqualifiedAtStage: null,
+            disqualificationReason: null,
+            disqualifiedNotes: null,
+          },
+        });
+
+        const updatedBatch = await tx.batch.update({
+          where: { id },
+          data: {
+            status: 'ACTIVE',
+            currentPass: nextPass,
+            maxPasses: effectiveMaxPasses,
+            scheduledDate: new Date(),
+          },
+        });
+
+        return { updatedBatch, resetCount: resetResult.count };
+      });
+
+      // Refill queues for active VAs in this country
+      const activeVas = await prisma.user.findMany({
+        where: {
+          role: { in: ['CALL_AGENT', 'VIRTUAL_ASSISTANT'] },
+          countryCode: batch.countryCode,
+          deletedAt: null,
+        },
+      });
+
+      for (const va of activeVas) {
+        try {
+          await refillAgentQueueAtomic(va.id, batch.countryCode, 1, batch.id);
+        } catch {}
+      }
+
+      sseManager.broadcast(`sse:leads:${batch.countryCode}`, 'batch:revived', {
+        batchId: batch.id,
+        batchName: batch.batchName,
+        currentPass: nextPass,
+        maxPasses: effectiveMaxPasses,
+        revivedCount: result.resetCount,
+      });
+      sseManager.broadcast(`sse:leads:${batch.countryCode}`, 'lead:stats_updated', { countryCode: batch.countryCode });
+
+      try {
+        const io = getIO();
+        io.to(`dispatch:${batch.countryCode}`).emit('batch:revived', {
+          batchId: batch.id,
+          batchName: batch.batchName,
+          currentPass: nextPass,
+          maxPasses: effectiveMaxPasses,
+          revivedCount: result.resetCount,
+        });
+      } catch {}
+
+      return sendSuccess(
+        res,
+        {
+          batch: result.updatedBatch,
+          revivedCount: result.resetCount,
+          currentPass: nextPass,
+          maxPasses: effectiveMaxPasses,
+        },
+        `Batch "${batch.batchName}" successfully revived to Pass ${nextPass}! ${result.resetCount} leads reset and queued.`
+      );
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
    * Get Active Queue for VA / Call Agent with 1-Lead Cap Auto-Replenishment
    */
   async getAgentQueue(req: Request, res: Response) {
@@ -1808,16 +2036,39 @@ export const leadController = {
         return sendError(res, 'Only Administrators or General Managers can convert leads to active Fleets', 403);
       }
 
-      const lead = await prisma.lead.findUnique({ where: { id } });
+      const lead = await prisma.lead.findUnique({
+        where: { id },
+        include: { batch: true },
+      });
       if (!lead) return sendError(res, 'Lead not found', 404);
 
       let newStatus: any = 'CALLED';
       let newStage: any = 'VA_OUTREACH';
       let parsedCallbackDate: Date | null = null;
 
+      const currentPass = lead.batch?.currentPass || 1;
+      const attemptNum = (lead.callAttemptsCount || 0) + 1;
+      const agentName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : 'VA Agent';
+
+      const existingHits = Array.isArray(lead.hitHistory) ? (lead.hitHistory as any[]) : [];
+      const newHit: any = {
+        pass: currentPass,
+        attempt: attemptNum,
+        disposition,
+        notes: notes || '',
+        calledAt: new Date().toISOString(),
+        agentId: user?.id,
+        agentName,
+        callbackDate: null,
+      };
+
+      const dateStr = new Date().toLocaleString('en-US', { timeZone: 'America/Toronto', hour12: true });
+      const newNoteEntry = `[Hit #${attemptNum} (Pass ${currentPass}) | ${disposition} | ${dateStr} | ${agentName}]: ${notes || 'No notes'}`;
+
       const updateData: any = {
         disposition: disposition as any,
-        notes: notes || undefined,
+        hitHistory: [...existingHits, newHit],
+        notes: lead.notes ? `${lead.notes}\n\n${newNoteEntry}` : newNoteEntry,
       };
 
       if (disposition === 'CONVERTED') {
@@ -1856,6 +2107,8 @@ export const leadController = {
         updateData.callbackDate = parsedCallbackDate;
         updateData.callbackDay = callbackDay || undefined;
         updateData.callbackTime = callbackTime || undefined;
+        newHit.callbackDate = parsedCallbackDate ? parsedCallbackDate.toISOString() : null;
+        updateData.hitHistory = [...existingHits, newHit];
         // Keep unassigned in Callback Pool until callbackDate arrives (lastCalledByVaId stores sticky VA)
         const isFutureCallback = parsedCallbackDate && parsedCallbackDate.getTime() > Date.now();
         updateData.assignedAgentId = isFutureCallback ? null : (agentId || lead.assignedAgentId || null);

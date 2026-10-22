@@ -379,6 +379,8 @@ model FleetDriver {
   id           String   @id @default(uuid())
   fleetId      String   @map("fleet_id")
   fleet        Fleet    @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+  vehicleId    String?  @map("vehicle_id")
+  vehicle      Vehicle? @relation("DriverAssignedVehicle", fields: [vehicleId], references: [id], onDelete: SetNull)
   fullName     String   @map("full_name")
   phone        String   // E.164 formatted driver phone for 24/7 roadside caller verification
   licensePlate String?  @map("license_plate") // Fast plate search for roadside breakdown
@@ -388,6 +390,7 @@ model FleetDriver {
 
   @@unique([fleetId, phone])
   @@index([fleetId])
+  @@index([vehicleId])
   @@index([phone])
   @@index([licensePlate])
   @@map("fleet_drivers")
@@ -416,7 +419,8 @@ model Vehicle {
   createdAt    DateTime    @default(now()) @db.Timestamptz @map("created_at")
   updatedAt    DateTime    @updatedAt @db.Timestamptz @map("updated_at")
 
-  jobs Job[]
+  jobs            Job[]
+  assignedDrivers FleetDriver[] @relation("DriverAssignedVehicle")
 
   @@unique([countryCode, licensePlate])
   @@index([customerId])
@@ -712,6 +716,8 @@ model Batch {
   uploadedById  String      @map("uploaded_by_id")
   uploadedBy    User        @relation("UploadedBatches", fields: [uploadedById], references: [id])
   totalLeads    Int         @default(0) @map("total_leads")
+  currentPass   Int         @default(1) @map("current_pass")
+  maxPasses     Int         @default(4) @map("max_passes")
   scheduledDate DateTime?   @default(now()) @db.Timestamptz @map("scheduled_date")
   status        BatchStatus @default(ACTIVE)
   leads         Lead[]
@@ -792,6 +798,9 @@ model Lead {
 
   // Link to converted Fleet (1-to-1)
   resultingFleet     Fleet?            @relation("LeadConvertedToFleet")
+
+  // Multi-Pass Hit History
+  hitHistory         Json?             @default("[]") @map("hit_history")
 
   createdAt          DateTime          @default(now()) @db.Timestamptz @map("created_at")
   updatedAt          DateTime          @updatedAt @db.Timestamptz @map("updated_at")
