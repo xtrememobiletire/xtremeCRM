@@ -25,6 +25,7 @@ export interface NavbarProps {
 }
 
 const DEFAULT_NAV_ITEMS: NavItem[] = [
+  { label: "Home", href: "/" },
   { label: "About us", href: "/about" },
   { label: "Services", href: "/services" },
   { label: "Fleet Solutions", href: "/fleet-solutions" },
@@ -252,10 +253,18 @@ export default function Navbar({
                         }
                       }}
                     >
-                      <a
+                      <Link
+                        onClick={(e) => {
+                          if (item.href === "/" && pathname === "/") {
+                            if (onLogoClick) {
+                              e.preventDefault();
+                              onLogoClick();
+                            }
+                          }
+                        }}
                         href={item.href}
                         className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-none text-xs xl:text-[13px] font-medium transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--brand-primary)] ${
-                          desktopDropdown === item.label
+                          pathname === item.href || (item.href === "/" && pathname === "/") || desktopDropdown === item.label
                             ? "text-white bg-white/[0.08] dark:bg-white/[0.12]"
                             : "text-zinc-400 hover:text-white hover:bg-white/[0.06] dark:hover:bg-white/[0.1]"
                         }`}
@@ -264,7 +273,7 @@ export default function Navbar({
                         {item.hasDropdown && (
                           <svg
                             className={`w-3 h-3 transition-transform duration-200 text-zinc-400 ${
-                              desktopDropdown === item.label ? "rotate-180 text-white" : ""
+                              pathname === item.href || (item.href === "/" && pathname === "/") || desktopDropdown === item.label ? "rotate-180 text-white" : ""
                             }`}
                             viewBox="0 0 24 24"
                             fill="none"
@@ -276,7 +285,7 @@ export default function Navbar({
                             <path d="m6 9 6 6 6-6" />
                           </svg>
                         )}
-                      </a>
+                      </Link>
 
                       {/* Desktop Dropdown Menu with solid matching dark tone */}
                       <AnimatePresence>
@@ -286,10 +295,10 @@ export default function Navbar({
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 4, scale: 0.98 }}
                             transition={{ duration: 0.18, ease: "easeOut" }}
-                            className="absolute top-full left-0 mt-2 w-64 p-2 bg-[#050811] dark:bg-[#2d2022] border border-white/10 dark:border-white/15 rounded-none shadow-2xl shadow-black/90 dark:shadow-[0_20px_50px_rgba(0,0,0,0.95)] z-50 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                            className="absolute top-full left-0 mt-2 w-64 p-2 bg-[#050811] dark:bg-[#0c0c0e] border border-white/10 dark:border-white/15 rounded-none shadow-2xl shadow-black/90 dark:shadow-[0_20px_50px_rgba(0,0,0,0.95)] z-50 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
                           >
                             {item.children.map((subItem) => (
-                              <a
+                              <Link
                                 key={subItem.label}
                                 href={subItem.href}
                                 className="block p-2.5 rounded-none hover:bg-white/[0.06] dark:hover:bg-white/[0.08] transition-colors group"
@@ -302,7 +311,7 @@ export default function Navbar({
                                     {subItem.description}
                                   </div>
                                 )}
-                              </a>
+                              </Link>
                             ))}
                           </motion.div>
                         )}
@@ -361,7 +370,7 @@ export default function Navbar({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -14, scale: 0.98 }}
                   transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute top-0 left-0 right-0 z-50 lg:hidden bg-[#050811] dark:bg-[#2d2022] text-white rounded-t-none rounded-b-2xl sm:rounded-b-[28px] p-4 sm:p-5 shadow-2xl shadow-black/90 border-b border-x border-white/[0.06] dark:border-white/15"
+                  className="absolute top-0 left-0 right-0 z-50 lg:hidden bg-[#050811] dark:bg-[#0c0c0e] text-white rounded-t-none rounded-b-2xl sm:rounded-b-[28px] p-4 sm:p-5 shadow-2xl shadow-black/90 border-b border-x border-white/[0.06] dark:border-white/15"
                 >
                   {/* Top Row: Logo on left, Close '✕' on right */}
                   <div className="flex items-center justify-between gap-3 pb-3 border-b border-white/[0.08]">
@@ -430,13 +439,21 @@ export default function Navbar({
                           className="border-b border-white/[0.06] last:border-b-0"
                         >
                           <div className="flex items-center justify-between py-2.5">
-                            <a
+                            <Link
                               href={item.href}
-                              onClick={() => !item.hasDropdown && setMobileMenuOpen(false)}
+                              onClick={(e) => {
+                                if (!item.hasDropdown) setMobileMenuOpen(false);
+                                if (item.href === "/" && pathname === "/") {
+                                  if (onLogoClick) {
+                                    e.preventDefault();
+                                    onLogoClick();
+                                  }
+                                }
+                              }}
                               className="text-sm font-semibold text-zinc-100 hover:text-white transition-colors"
                             >
                               {item.label}
-                            </a>
+                            </Link>
 
                             {item.hasDropdown && (
                               <button
@@ -474,14 +491,14 @@ export default function Navbar({
                               >
                                 <div className="pb-3 pl-3 space-y-2 border-l border-white/10 ml-1 mb-2">
                                   {item.children.map((sub) => (
-                                    <a
+                                    <Link
                                       key={sub.label}
                                       href={sub.href}
                                       onClick={() => setMobileMenuOpen(false)}
                                       className="block text-xs text-zinc-400 hover:text-[var(--brand-primary)] transition-colors py-1"
                                     >
                                       {sub.label}
-                                    </a>
+                                    </Link>
                                   ))}
                                 </div>
                               </motion.div>

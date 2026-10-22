@@ -3,7 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Phone, ArrowUpRight } from "lucide-react";
+import { Phone, Mail, ArrowUpRight } from "lucide-react";
 
 export default function FleetDowntimeBanner() {
   return (
@@ -110,6 +110,14 @@ export default function FleetDowntimeBanner() {
             className="hover:text-[#DC2626] transition-colors cursor-pointer whitespace-nowrap"
           >
             <span className="font-semibold">+44 1630 234331</span> <span className="text-zinc-500 text-xs">(UK)</span>
+          </a>
+          <span className="text-zinc-400 dark:text-zinc-600 hidden sm:inline select-none">|</span>
+          <a
+            href="mailto:Info@Xtrememobiletire.com"
+            className="inline-flex items-center gap-1.5 hover:text-[#DC2626] transition-colors cursor-pointer whitespace-nowrap"
+          >
+            <Mail className="w-3.5 h-3.5 text-[#DC2626] shrink-0" />
+            <span className="font-semibold">Info@Xtrememobiletire.com</span>
           </a>
         </div>
       </div>
