@@ -119,9 +119,9 @@ export default function MobileTireShowcase() {
                 <div className="p-4 rounded-none bg-black/70 backdrop-blur-md border border-white/10 text-white">
                   <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
                     <span className="font-semibold text-[var(--brand-primary)] uppercase tracking-wider text-[10px]">
-                      Certified On-Site Mounting
+                      Professional On-Site Mounting
                     </span>
-                    <span className="text-[10px]">TIA Compliant</span>
+                    <span className="text-[10px]">Commercial Grade</span>
                   </div>
                   <h4 className="text-base sm:text-lg font-bold text-white leading-tight">
                     Next-Gen Mobile Bay Unit

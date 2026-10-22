@@ -28,7 +28,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
     children: [
       { label: "Our Story", href: "#story", description: "Learn how Xtreme Mobile Tire revolutionized fleet tire repair." },
       { label: "Operating Model", href: "#model", description: "Our 24/7 on-site rapid dispatch mechanics." },
-      { label: "Certifications", href: "#certifications", description: "TIA certified technicians and fleet safety standards." },
+      { label: "Fleet Standards", href: "#standards", description: "Professional mobile technicians and fleet safety standards." },
     ],
   },
   {

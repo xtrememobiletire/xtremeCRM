@@ -104,7 +104,7 @@ export default function FooterNavColumns() {
             </li>
             <li>
               <Link href="/about" className="hover:text-white transition-colors">
-                TIA Certified Technicians
+                Expert Mobile Technicians
               </Link>
             </li>
             <li>

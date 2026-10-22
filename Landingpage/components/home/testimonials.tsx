@@ -42,7 +42,7 @@ const TESTIMONIALS: TestimonialItem[] = [
     avatarSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426722/xtreme/landing/avatar-3_jpg.jpg",
     avatarAlt: "Elena Rostova - Titan Heavy Haulage",
     quote:
-      "The automated tread depth telemetry and bi-weekly master billing gave our management team absolute transparency. Their TIA certified mobile mechanics are the best in the industry.",
+      "The automated tread depth telemetry and bi-weekly master billing gave our management team absolute transparency. Their expert mobile mechanics are the best in the industry.",
   },
   {
     id: "david",

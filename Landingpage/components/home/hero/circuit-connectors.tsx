@@ -37,7 +37,7 @@ export default function CircuitConnectors() {
       end: { cx: 869, cy: 436 },
       delay: 0.15,
     },
-    // 3. CENTER LEFT: TIA Safety Protocol -> Laptop Top Screen
+    // 3. CENTER LEFT: Safety Protocol -> Laptop Top Screen
     {
       id: "center-left",
       d: "M 375 144 L 375 344",
@@ -45,7 +45,7 @@ export default function CircuitConnectors() {
       end: { cx: 375, cy: 344 },
       delay: 0.2,
     },
-    // 4. CENTER MIDDLE: TIA Master Techs -> Laptop Top Screen
+    // 4. CENTER MIDDLE: Master Techs -> Laptop Top Screen
     {
       id: "center-middle",
       d: "M 500 144 L 500 344",
@@ -53,7 +53,7 @@ export default function CircuitConnectors() {
       end: { cx: 500, cy: 344 },
       delay: 0.22,
     },
-    // 5. CENTER RIGHT: TIA 100% Compliant -> Laptop Top Screen
+    // 5. CENTER RIGHT: 100% Insured -> Laptop Top Screen
     {
       id: "center-right",
       d: "M 625 144 L 625 344",

@@ -93,7 +93,7 @@ export default function HeroInteractiveHub() {
             />
           </div>
 
-          {/* 2. TOP-CENTER CARD: TIA Certified Service (With 3-Slot Inset Tray) */}
+          {/* 2. TOP-CENTER CARD: Commercial Fleet Safety (With 3-Slot Inset Tray) */}
           <div className="absolute top-6 left-1/2 -translate-x-1/2 w-[380px] sm:w-[400px] z-20">
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -104,7 +104,7 @@ export default function HeroInteractiveHub() {
               {/* Header Title & Subtitle */}
               <div className="text-center px-1">
                 <h4 className="text-xs sm:text-[13px] font-bold text-slate-900 dark:text-white leading-tight tracking-tight">
-                  TIA Certified Service
+                  Commercial Fleet Safety
                 </h4>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-normal leading-tight">
                   Commercial safety standards & compliance
@@ -130,7 +130,7 @@ export default function HeroInteractiveHub() {
                   <svg className="w-3.5 h-3.5 text-slate-700 dark:text-slate-200 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-[8.5px] font-medium text-slate-700 dark:text-slate-300 truncate">100% Compliant</span>
+                  <span className="text-[8.5px] font-medium text-slate-700 dark:text-slate-300 truncate">100% Insured</span>
                 </div>
               </div>
             </motion.div>
@@ -201,7 +201,7 @@ export default function HeroInteractiveHub() {
             <div className="rounded-lg border border-slate-300/80 dark:border-slate-700/80 bg-gradient-to-b from-[#f1f5f9]/98 to-[#e2e8f0]/98 dark:from-[#151f32]/95 dark:to-[#0d1524]/95 backdrop-blur-md p-3.5 shadow-md">
               <div className="text-center px-1">
                 <h4 className="text-xs sm:text-[13px] font-bold text-slate-900 dark:text-white leading-tight tracking-tight">
-                  TIA Certified Service
+                  Commercial Fleet Safety
                 </h4>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-normal leading-tight">
                   Commercial safety standards & compliance
@@ -215,7 +215,7 @@ export default function HeroInteractiveHub() {
                   <span className="text-[9px] font-medium text-slate-700 dark:text-slate-300">Master Techs</span>
                 </div>
                 <div className="bg-white dark:bg-white/[0.08] rounded-md border border-slate-200/80 dark:border-white/10 py-1.5 px-2 flex flex-col items-center justify-center text-center shadow-sm">
-                  <span className="text-[9px] font-medium text-slate-700 dark:text-slate-300">100% Compliant</span>
+                  <span className="text-[9px] font-medium text-slate-700 dark:text-slate-300">100% Insured</span>
                 </div>
               </div>
             </div>
