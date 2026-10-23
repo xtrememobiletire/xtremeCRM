@@ -204,14 +204,23 @@ class MailService {
 </html>
     `;
 
+    const senderEmail = config.SMTP.FROM_EMAIL || config.SMTP.USER;
+    const isGmailSender = senderEmail.toLowerCase().endsWith('@gmail.com');
+    // Align reply-to with sender for Gmail accounts to prevent anti-spoofing flags
+    const replyTo = isGmailSender ? senderEmail : ((config.SMTP as any).REPLY_TO || senderEmail);
+
     const info = await transporter.sendMail({
-      from: `"${config.SMTP.FROM_NAME}" <${config.SMTP.FROM_EMAIL}>`,
-      replyTo: (config.SMTP as any).REPLY_TO || 'info@xtrememobiletire.com',
+      from: `"${config.SMTP.FROM_NAME}" <${senderEmail}>`,
+      replyTo,
       to,
       subject,
       text,
       html,
       attachments,
+      headers: {
+        'X-Entity-Ref-ID': `invoice-${invoiceNumber}`,
+        'X-Auto-Response-Suppress': 'OOF, AutoReply',
+      },
     });
 
     console.log(`[SMTP] Invoice email #${invoiceNumber} successfully sent to ${to}. MessageId: ${info.messageId}`);
