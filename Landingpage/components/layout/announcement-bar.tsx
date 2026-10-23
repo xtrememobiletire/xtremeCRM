@@ -30,7 +30,7 @@ export default function AnnouncementBar({
     <div
       role="region"
       aria-label="Announcement"
-      className="relative z-50 w-full bg-[#080c14] border-b border-white/[0.08] text-white px-4 py-2 transition-all duration-300 ease-in-out"
+      className="relative z-50 w-full bg-black border-b border-white/[0.08] text-white px-4 py-2 transition-all duration-300 ease-in-out"
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 text-xs sm:text-sm">
         {/* Left / Center content */}

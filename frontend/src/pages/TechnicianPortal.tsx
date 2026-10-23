@@ -197,20 +197,18 @@ export default function TechnicianPortal() {
   }) => {
     if (!paymentModalJob) return;
 
-    const formData = new FormData();
-    formData.append('status', 'COMPLETED');
-    formData.append('paymentMethod', data.paymentMethod);
-    formData.append('amountCents', String(data.amountCents));
-    if (data.paymentMethod === 'CASH') {
-      formData.append('cashAmountCents', String(data.amountCents));
-    }
-    if (data.receiptFile) {
-      formData.append('receipt', data.receiptFile);
-    }
-
+    // Image storage halted pending Cloudflare R2 integration; sending clean JSON payload
     setUpdatingJobId(paymentModalJob.id);
     updateStatusMutation.mutate(
-      { id: paymentModalJob.id, formData },
+      {
+        id: paymentModalJob.id,
+        payload: {
+          status: 'COMPLETED',
+          paymentMethod: data.paymentMethod,
+          amountCents: data.amountCents,
+          ...(data.paymentMethod === 'CASH' ? { cashAmountCents: data.amountCents } : {}),
+        },
+      },
       {
         onSuccess: () => {
           toast.success('Job marked completed! Payout recorded in History.');

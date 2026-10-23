@@ -27,10 +27,10 @@ export default function HomePage() {
     /* 
       OUTER FRAME VIEWPORT (FIXED BEZEL):
       - Fixed to 100vh (h-screen) with overflow-hidden so the outer framing never scrolls.
-      - bg-[#050811] provides the outer dark frame and matches the curved notch background.
+      - bg-black provides the outer dark frame and matches the curved notch background.
       - p-0 sm:p-3 lg:p-4 creates the luxury framed canvas margin on desktop & tablet.
     */
-    <div className="relative h-screen w-full bg-[#050811] p-0 sm:p-3 lg:p-4 flex flex-col justify-start transition-colors selection:bg-[var(--brand-primary)] selection:text-white overflow-hidden">
+    <div className="relative h-screen w-full bg-black p-0 sm:p-3 lg:p-4 flex flex-col justify-start transition-colors selection:bg-[var(--brand-primary)] selection:text-white overflow-hidden">
       
       {/* 
         INNER CANVAS CONTAINER (THE CARD):
@@ -39,7 +39,7 @@ export default function HomePage() {
         - overflow-hidden clips the scrollable content inside the curved corners.
         - Because the container card itself stays locked in the frame, its corner curves NEVER break or drift!
       */}
-      <div className="relative z-10 w-full flex-1 h-full min-h-0 bg-[var(--neutral-light)] dark:bg-[#0c1222] text-[var(--neutral-dark)] sm:border sm:border-black/5 sm:dark:border-white/10 rounded-none sm:rounded-[36px] lg:rounded-[44px] overflow-hidden shadow-2xl flex flex-col">
+      <div className="relative z-10 w-full flex-1 h-full min-h-0 bg-[var(--neutral-light)] dark:bg-black text-[var(--neutral-dark)] sm:border sm:border-black/5 sm:dark:border-white/10 rounded-none sm:rounded-[36px] lg:rounded-[44px] overflow-hidden shadow-2xl flex flex-col">
 
         {/* 
           CURVED-NOTCH NAVBAR (ANCHORED AT TOP):

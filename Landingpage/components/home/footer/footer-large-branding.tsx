@@ -22,7 +22,7 @@ export default function FooterLargeBranding({
         style={{
           fontSize: "clamp(3.8rem, 21vw, 6.5rem)",
           backgroundImage:
-            "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 34%, #8E95A5 60%, #050811 95%)",
+            "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 34%, #8E95A5 60%, #000000 95%)",
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
         }}
@@ -36,7 +36,7 @@ export default function FooterLargeBranding({
         style={{
           fontSize: "clamp(2.2rem, 11.4vw, 11rem)",
           backgroundImage:
-            "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 32%, #8E95A5 58%, #050811 95%)",
+            "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 32%, #8E95A5 58%, #000000 95%)",
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
         }}

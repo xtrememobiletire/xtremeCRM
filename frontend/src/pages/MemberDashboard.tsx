@@ -61,14 +61,12 @@ export default function MemberDashboard() {
   const [urgencyType, setUrgencyType] = useState<'STANDARD' | 'URGENT' | 'FUTURE'>('URGENT');
   const [appointmentDate, setAppointmentDate] = useState('');
   const [address, setAddress] = useState('');
-  const [addressNotes, setAddressNotes] = useState('');
-  const [requestedByName, setRequestedByName] = useState(user?.fullName || '');
   const [upfrontAmountCents, setUpfrontAmountCents] = useState(0);
-  const [upfrontReceiptUrl, setUpfrontReceiptUrl] = useState('');
   const [tireCount, setTireCount] = useState<number>(1);
   const [coords, setCoords] = useState<{ latitude: number; longitude: number; timezone?: string } | null>(null);
   const [serviceTimezone, setServiceTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Toronto');
   const [notes, setNotes] = useState('');
+  const [localReceiptPreview, setLocalReceiptPreview] = useState<string | null>(null);
   const [serviceItems, setServiceItems] = useState<SelectedServiceItem[]>([
     {
       serviceId: 'TIRE_REPAIR',
@@ -254,12 +252,7 @@ export default function MemberDashboard() {
     const taxAmountCents = Math.round(netSubtotalCents * taxRate);
     const totalCents = netSubtotalCents + taxAmountCents;
 
-    const structuredNotes = [
-      requestedByName ? `[Requested By: ${requestedByName.trim()}]` : '',
-      addressNotes ? `[Address Notes: ${addressNotes.trim()}]` : '',
-      `[Member Priority Request] Plate: ${targetVehicle?.licensePlate || inlineVehicle.licensePlate || 'N/A'}. Tire: ${targetTireSize}.`,
-      notes ? notes.trim() : ''
-    ].filter(Boolean).join(' ');
+
 
     bookMemberService.mutate({
       vehicleId: targetVehicleId,
@@ -274,7 +267,6 @@ export default function MemberDashboard() {
       arrivalWindowEnd: endIso,
       estimatedArrivalAt: nowIso,
       upfrontAmountCents: upfrontAmountCents || 0,
-      upfrontReceiptUrl: upfrontReceiptUrl.trim() || undefined,
       subtotalCents,
       discountCents,
       taxAmountCents,
@@ -301,7 +293,7 @@ export default function MemberDashboard() {
         unitPriceCents: s.unitPriceCents,
         notes: s.notes,
       })),
-      problemNotes: structuredNotes,
+      problemNotes: notes ? notes.trim() : undefined,
       source: 'MEMBER_PORTAL',
     });
   };
@@ -944,60 +936,52 @@ export default function MemberDashboard() {
                 required
               />
             </div>
-            <div className="mt-2">
-              <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
-                Address Notes / Landmarks / Mile Marker
-              </label>
-              <input
-                type="text"
-                value={addressNotes}
-                onChange={(e) => setAddressNotes(e.target.value)}
-                placeholder="e.g. Northbound shoulder past Exit 42, near blue Esso gas station"
-                className="input-base py-1.5 text-xs text-slate-800"
-              />
-            </div>
           </div>
 
-          {/* REQUESTED BY & UPFRONT DEPOSIT / RECEIPT PROOF */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-            <div>
-              <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
-                Requested By / Contact
-              </label>
-              <input
-                type="text"
-                value={requestedByName}
-                onChange={(e) => setRequestedByName(e.target.value)}
-                placeholder="e.g. Full Name"
-                className="input-base py-1.5 text-xs text-slate-800"
-              />
+          {/* UPFRONT DEPOSIT & LOCAL RECEIPT PROOF (Cloudflare Readiness) */}
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                  Upfront Deposit ({currencySymbol})
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={upfrontAmountCents ? (upfrontAmountCents / 100).toFixed(2) : ''}
+                  onChange={(e) => setUpfrontAmountCents(Math.round((parseFloat(e.target.value) || 0) * 100))}
+                  placeholder="0.00"
+                  className="input-base py-2 text-xs text-slate-800 font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                  Proof Photo (Local Preview)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setLocalReceiptPreview(URL.createObjectURL(file));
+                    } else {
+                      setLocalReceiptPreview(null);
+                    }
+                  }}
+                  className="w-full text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300"
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
-                Upfront Deposit ({currencySymbol})
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={upfrontAmountCents ? (upfrontAmountCents / 100).toFixed(2) : ''}
-                onChange={(e) => setUpfrontAmountCents(Math.round((parseFloat(e.target.value) || 0) * 100))}
-                placeholder="0.00"
-                className="input-base py-1.5 text-xs text-slate-800 font-mono"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
-                Receipt / Proof URL
-              </label>
-              <input
-                type="url"
-                value={upfrontReceiptUrl}
-                onChange={(e) => setUpfrontReceiptUrl(e.target.value)}
-                placeholder="https://... receipt link"
-                className="input-base py-1.5 text-xs text-slate-800"
-              />
-            </div>
+            {localReceiptPreview && (
+              <div className="p-2 rounded-xl bg-white border border-slate-200 flex items-center gap-3">
+                <img src={localReceiptPreview} alt="Receipt preview" className="w-12 h-12 object-cover rounded-lg border border-slate-200" />
+                <span className="text-[11px] text-slate-500 font-medium">
+                  Preview attached locally (Cloudflare storage pending — image is not stored on server)
+                </span>
+              </div>
+            )}
           </div>
 
           <div>

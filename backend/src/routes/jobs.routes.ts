@@ -15,7 +15,7 @@ import {
   idParamSchema,
 } from '../schemas/index.js';
 import { tenantScope } from '../middleware/tenantScope.js';
-import { upload } from '../config/multer.js';
+import { upload, memoryUpload } from '../config/multer.js';
 
 const router = Router();
 
@@ -129,7 +129,7 @@ router.post(
  */
 router.patch(
   '/:id/status',
-  upload.single('receipt'),
+  memoryUpload.single('receipt'),
   validateRequest({
     params: idParamSchema,
     body: UpdateJobStatusSchema,

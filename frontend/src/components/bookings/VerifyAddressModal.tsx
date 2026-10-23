@@ -2,19 +2,17 @@ import { useState, useEffect, useRef } from 'react';
 import {
   MapPin,
   CheckCircle2,
-  AlertCircle,
   Phone,
   User,
-  Car,
-  Wrench,
   CreditCard,
-  AlertTriangle,
   Clock,
   UserCheck,
-  Navigation,
   Building2,
   ShieldCheck,
-  Check,
+  FileText,
+  Zap,
+  Calendar,
+  AlertCircle,
 } from 'lucide-react';
 import Modal from '../ui/Modal';
 import AddressAutocompleteInput, { type GeocodeLocation } from '../common/AddressAutocompleteInput';
@@ -49,7 +47,7 @@ export default function VerifyAddressModal({
   const countryCode = (booking?.countryCode || tenantCountry || 'CA') as 'CA' | 'US' | 'UK';
   const taxRate = countryCode === 'CA' ? 0.13 : countryCode === 'UK' ? 0.20 : 0.08;
 
-  // Address & Geocoding
+  // Block 1: Address & Geocoding + Customer Contact
   const [serviceAddress, setServiceAddress] = useState<string>('');
   const [serviceCoords, setServiceCoords] = useState<{
     latitude: number | null;
@@ -59,12 +57,10 @@ export default function VerifyAddressModal({
     latitude: null,
     longitude: null,
   });
-
-  // Customer Contact
   const [recipientName, setRecipientName] = useState<string>('');
   const [recipientPhone, setRecipientPhone] = useState<string>('');
 
-  // Vehicle & Tire Information
+  // Block 2: Vehicle & Tire Information
   const [vehicleMake, setVehicleMake] = useState<string>('');
   const [vehicleModel, setVehicleModel] = useState<string>('');
   const [vehicleYear, setVehicleYear] = useState<string>('');
@@ -73,7 +69,12 @@ export default function VerifyAddressModal({
   const [licensePlate, setLicensePlate] = useState<string>('');
   const [vehicleColor, setVehicleColor] = useState<string>('');
 
-  // Work Order Services
+  // Block 3: Urgency, Arrival Window & Services
+  const [urgency, setUrgency] = useState<'URGENT' | 'STANDARD' | 'FUTURE'>('URGENT');
+  const [arrivalWindow, setArrivalWindow] = useState<ArrivalWindowData>({
+    mode: 'ETA',
+    estimatedArrivalMinutes: 30,
+  });
   const [serviceItems, setServiceItems] = useState<SelectedServiceItem[]>([
     {
       serviceId: 'TIRE_REPAIR',
@@ -85,22 +86,11 @@ export default function VerifyAddressModal({
   ]);
   const [isTaxIncluded, setIsTaxIncluded] = useState<boolean>(false);
 
-  // Arrival Window & Urgency
-  const [arrivalWindow, setArrivalWindow] = useState<ArrivalWindowData>({
-    mode: 'ETA',
-    estimatedArrivalMinutes: 30,
-  });
-  const [urgency, setUrgency] = useState<'URGENT' | 'STANDARD' | 'FUTURE'>('URGENT');
-
-  // Technician Assignment & Payment Method
+  // Block 4: Billing, Optional Technician Assignment & Triage Release
   const [assignedDriverId, setAssignedDriverId] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<string>('POS');
   const [problemNotes, setProblemNotes] = useState<string>('');
-  const [requestedByName, setRequestedByName] = useState<string>('');
-  const [addressNotes, setAddressNotes] = useState<string>('');
   const [upfrontAmountCents, setUpfrontAmountCents] = useState<number>(0);
-  const [upfrontReceiptUrl, setUpfrontReceiptUrl] = useState<string>('');
-  const [tireCount, setTireCount] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Query Available Regional Drivers for Technician Assignment
@@ -134,20 +124,14 @@ export default function VerifyAddressModal({
       setRecipientPhone(booking.recipientPhone || booking.customer?.phone || '');
 
       const rawNotes = booking.problemNotes || booking.notes || '';
-      const reqMatch = rawNotes.match(/\[Requested By:\s*([^\]]+)\]/);
-      const addrMatch = rawNotes.match(/\[Address Notes:\s*([^\]]+)\]/);
-      setRequestedByName(booking.requestedByName || (reqMatch ? reqMatch[1].trim() : ''));
-      setAddressNotes(booking.addressNotes || (addrMatch ? addrMatch[1].trim() : ''));
-
       const strippedNotes = rawNotes
         .replace(/\[Requested By:\s*[^\]]+\]\s*/g, '')
         .replace(/\[Address Notes:\s*[^\]]+\]\s*/g, '')
+        .replace(/\[Fleet Self-Request\]\s*/g, '')
         .trim();
       setProblemNotes(strippedNotes);
 
       setUpfrontAmountCents(booking.upfrontAmountCents || booking.depositCents || 0);
-      setUpfrontReceiptUrl(booking.upfrontReceiptUrl || booking.receiptUrl || '');
-      setTireCount(booking.tireCount || (booking.serviceItems?.[0]?.quantity) || 1);
 
       const lat = typeof booking.serviceLatitude === 'number' ? booking.serviceLatitude : null;
       const lng = typeof booking.serviceLongitude === 'number' ? booking.serviceLongitude : null;
@@ -272,7 +256,7 @@ export default function VerifyAddressModal({
       const coords: [number, number] = [serviceCoords.longitude, serviceCoords.latitude];
       const el = document.createElement('div');
       el.className =
-        'w-8 h-8 rounded-full bg-red-600 border-2 border-white shadow-xl flex items-center justify-center text-white';
+        'w-8 h-8 rounded-full bg-red-600 border-2 border-white shadow-xl flex items-center justify-center text-white font-bold';
       el.innerHTML =
         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>';
 
@@ -310,7 +294,7 @@ export default function VerifyAddressModal({
 
     setIsSubmitting(true);
     try {
-      const isEtaMode = arrivalWindow.mode === 'ETA';
+      const isEtaMode = urgency === 'URGENT' || arrivalWindow.mode === 'ETA';
       const nowMs = Date.now();
       const etaMinutes = arrivalWindow.estimatedArrivalMinutes || 30;
 
@@ -338,11 +322,7 @@ export default function VerifyAddressModal({
         driverId: assignedDriverId || null,
         recipientName: recipientName || undefined,
         recipientPhone: recipientPhone || undefined,
-        requestedByName: requestedByName || undefined,
-        addressNotes: addressNotes || undefined,
         upfrontAmountCents: upfrontAmountCents > 0 ? upfrontAmountCents : undefined,
-        upfrontReceiptUrl: upfrontReceiptUrl || undefined,
-        tireCount: tireCount || undefined,
         problemNotes: problemNotes || undefined,
         urgency,
         paymentMethod,
@@ -388,544 +368,481 @@ export default function VerifyAddressModal({
   const modalTitle = isFleet
     ? `Verify & Dispatch Fleet Request • ${booking.fleet?.name || 'Corporate Account'} • #${booking.jobCode || booking.jobNumber}`
     : isMember
-    ? `Verify & Dispatch VIP Member • ${recipientName || 'Member'} • #${booking.jobCode || booking.jobNumber}`
-    : `Verify & Dispatch Website Inbound • #${booking.jobCode || booking.jobNumber}`;
-
-  const selectedDriverObj = drivers.find((d) => d.id === assignedDriverId);
+    ? `Verify VIP Member Booking • ${recipientName || 'Member'} • #${booking.jobCode || booking.jobNumber}`
+    : `Verify Public Self-Booking • #${booking.jobCode || booking.jobNumber}`;
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={isSubmitting ? () => {} : onClose}
       title={modalTitle}
-      maxWidth="max-w-4xl"
+      maxWidth="max-w-5xl"
     >
-      <div className="space-y-4 max-h-[85vh] overflow-y-auto pr-1">
-        {/* Context-Aware Account Banner */}
-        <div
-          className={`p-3.5 rounded-xl border text-xs ${
-            isFleet
-              ? 'bg-blue-50/80 border-blue-200 text-blue-900'
-              : isMember
-              ? 'bg-amber-50/80 border-amber-200 text-amber-900'
-              : 'bg-slate-50 border-slate-200 text-slate-800'
-          }`}
-        >
-          <div className="flex items-start gap-2.5">
+      <div className="space-y-5">
+        {/* BLOCK 1: LOCATION & ON-SCENE CONTACT (2-Column Grid) */}
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-600"></span>
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                Block 1: Location & On-Scene Contact
+              </h4>
+            </div>
             {isFleet ? (
-              <Building2 size={16} className="text-blue-600 shrink-0 mt-0.5" />
+              <span className="px-2.5 py-0.5 rounded-md bg-slate-900 text-white text-[11px] font-bold flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5" /> Fleet Account
+              </span>
             ) : isMember ? (
-              <ShieldCheck size={16} className="text-amber-600 shrink-0 mt-0.5" />
+              <span className="px-2.5 py-0.5 rounded-md bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5" /> VIP Member
+              </span>
             ) : (
-              <AlertCircle size={16} className="text-slate-600 shrink-0 mt-0.5" />
+              <span className="px-2.5 py-0.5 rounded-md bg-amber-500 text-white text-[11px] font-bold">
+                Public Web Booking
+              </span>
             )}
-            <div className="flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-bold">
-                  {isFleet
-                    ? `Commercial Fleet Account: ${booking.fleet?.name || 'Contracted Fleet'}`
-                    : isMember
-                    ? 'VIP Membership Request (10% Tier Discount Applied)'
-                    : 'Customer Raw Web Inbound'}
-                </span>
-                <span
-                  className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                    isFleet
-                      ? 'bg-blue-100 text-blue-800 border-blue-300'
-                      : isMember
-                      ? 'bg-amber-100 text-amber-800 border-amber-300'
-                      : 'bg-slate-200 text-slate-700 border-slate-300'
-                  }`}
-                >
-                  {isFleet ? 'FLEET ACCOUNT' : isMember ? 'VIP MEMBER' : 'PUBLIC WEB'}
-                </span>
-              </div>
-              <p className="font-mono mt-0.5 font-semibold text-slate-900">
-                "{rawCustomerAddress || 'No raw address entered by customer'}"
-              </p>
-              <p className="text-[11px] mt-1 opacity-90">
-                {isFleet
-                  ? 'Verify depot/highway breakdown coordinates, confirm tire specifications, and set arrival window before releasing to technician.'
-                  : isMember
-                  ? 'Confirm member location and assign priority dispatch van.'
-                  : 'Call customer to confirm location and exact tire specifications before dispatching.'}
-              </p>
-            </div>
           </div>
-        </div>
 
-        {/* Section 1: Canonical Address & Interactive Mapbox Preview */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-          <div className="md:col-span-7 space-y-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <MapPin size={13} className="text-red-600" />
-                  <span>Verified Service / Yard Address *</span>
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono">Mapbox Places ({countryCode})</span>
-              </label>
-              <AddressAutocompleteInput
-                value={serviceAddress}
-                onChange={setServiceAddress}
-                onSelectLocation={(loc: GeocodeLocation) => {
-                  setServiceAddress(loc.address);
-                  setServiceCoords({
-                    latitude: loc.latitude,
-                    longitude: loc.longitude,
-                    timezone: loc.timezone,
-                  });
-                }}
-                countryCode={countryCode}
-                placeholder={`Search ${countryCode} street address, depot, or highway exit...`}
-                className="w-full"
-                required
-              />
-            </div>
-
-            {/* GPS & Timezone Status */}
-            <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between">
-              <span className="text-slate-500 font-medium">GPS Geocoding:</span>
-              {serviceCoords.latitude && serviceCoords.longitude ? (
-                <span className="font-mono font-bold text-emerald-600 flex items-center gap-1">
-                  <Check size={13} />
-                  <span>
-                    {serviceCoords.latitude.toFixed(4)}, {serviceCoords.longitude.toFixed(4)}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* Left Column: Form Controls */}
+            <div className="lg:col-span-7 space-y-3">
+              {rawCustomerAddress && (
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
+                    Original Submitted Address
                   </span>
-                  {serviceCoords.timezone && (
-                    <span className="text-slate-500 text-[10px] font-normal ml-1">
-                      ({serviceCoords.timezone})
-                    </span>
-                  )}
-                </span>
-              ) : (
-                <span className="text-amber-600 font-medium flex items-center gap-1">
-                  <Navigation size={12} />
-                  Pending location lock
-                </span>
+                  <p className="font-mono text-slate-800 break-words">{rawCustomerAddress}</p>
+                </div>
               )}
-            </div>
 
-            {/* Contact Details */}
-            <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                  On-Scene Recipient Name
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Verified Mapbox Address <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
-                  <User size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <AddressAutocompleteInput
+                  value={serviceAddress}
+                  onChange={setServiceAddress}
+                  onSelectLocation={(loc: GeocodeLocation) => {
+                    setServiceAddress(loc.address);
+                    setServiceCoords({
+                      latitude: loc.latitude,
+                      longitude: loc.longitude,
+                      timezone: loc.timezone,
+                    });
+                  }}
+                  countryCode={countryCode}
+                  placeholder="Verify street address, highway exit, or landmark"
+                  className="w-full"
+                />
+              </div>
+
+              {/* GPS Coordinates lock indicator */}
+              <div className="flex items-center justify-between text-xs p-2 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-slate-600 font-medium flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-red-600" />
+                  GPS Coordinate Lock:
+                </span>
+                {serviceCoords.latitude && serviceCoords.longitude ? (
+                  <span className="font-mono text-emerald-700 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    {serviceCoords.latitude.toFixed(4)}, {serviceCoords.longitude.toFixed(4)} ({serviceCoords.timezone || 'Local'})
+                  </span>
+                ) : (
+                  <span className="text-amber-700 font-bold flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                    Select an address above to lock GPS
+                  </span>
+                )}
+              </div>
+
+              {/* On-Scene Contact */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                    <User className="w-3.5 h-3.5 text-slate-400" />
+                    Contact Name
+                  </label>
                   <input
                     type="text"
                     value={recipientName}
                     onChange={(e) => setRecipientName(e.target.value)}
-                    className="w-full pl-7 pr-2 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
-                    placeholder="Operator / Driver"
+                    placeholder="Driver or On-Scene Contact"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                  Contact Phone
-                </label>
-                <div className="relative">
-                  <Phone size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                    <Phone className="w-3.5 h-3.5 text-slate-400" />
+                    Contact Phone
+                  </label>
                   <input
-                    type="text"
+                    type="tel"
                     value={recipientPhone}
                     onChange={(e) => setRecipientPhone(e.target.value)}
-                    className="w-full pl-7 pr-2 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono"
                     placeholder="+1 (555) 000-0000"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-mono font-medium focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Requested By & Address Notes */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                  Requested By (Dispatcher / Fleet Manager)
-                </label>
-                <input
-                  type="text"
-                  value={requestedByName}
-                  onChange={(e) => setRequestedByName(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-800"
-                  placeholder="e.g. John Doe (Dispatch Coordinator)"
-                />
+            {/* Right Column: Live Mapbox Pin Preview */}
+            <div className="lg:col-span-5 flex flex-col">
+              <div className="text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                <span>Map Pin Location</span>
+                <span className="text-[10px] text-slate-400 font-mono">Mapbox GL</span>
               </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                  Dedicated Address Notes (Bay, Gate, Cross-Street)
-                </label>
-                <input
-                  type="text"
-                  value={addressNotes}
-                  onChange={(e) => setAddressNotes(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-800"
-                  placeholder="e.g. Bay 4, Gate Code #4829, opposite Shell"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Mapbox Visual Pin Preview */}
-          <div className="md:col-span-5 h-48 md:h-auto rounded-xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100 relative min-h-[180px]">
-            <div ref={containerRef} className="w-full h-full" />
-            <div className="absolute bottom-2 left-2 bg-slate-900/80 backdrop-blur-xs text-white text-[10px] px-2 py-1 rounded-md font-mono flex items-center gap-1">
-              <Navigation size={10} className="text-red-400" />
-              <span>Mapbox Satellite / Streets</span>
+              <div
+                ref={containerRef}
+                className="w-full h-48 lg:h-full min-h-[190px] rounded-xl border border-slate-200 overflow-hidden relative shadow-inner"
+              />
             </div>
           </div>
         </div>
 
-        {/* Section 2: Vehicle Specs & Tire Size */}
-        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
-              <Car size={14} className="text-red-600" />
-              <span>Vehicle Specifications & Tire Size</span>
-            </span>
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] text-slate-500 font-semibold mr-1">Quick Tire:</span>
-              {COMMON_TIRE_SIZES.map((sz) => (
-                <button
-                  key={sz}
-                  type="button"
-                  onClick={() => setTireSize(sz)}
-                  className={`px-1.5 py-0.5 text-[10px] font-mono rounded border transition ${
-                    tireSize === sz
-                      ? 'bg-red-50 border-red-300 text-red-700 font-bold'
-                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-                  }`}
-                >
-                  {sz}
-                </button>
-              ))}
+        {/* BLOCK 2: VEHICLE & TIRE SPECIFICATION (model Vehicle) */}
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-900"></span>
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                Block 2: Vehicle & Tire Specification
+              </h4>
             </div>
+            {isFleet && unitNumber && (
+              <span className="px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-[11px] font-bold">
+                UNIT #{unitNumber}
+              </span>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {isFleet && (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Unit #</label>
+                <input
+                  type="text"
+                  value={unitNumber}
+                  onChange={(e) => setUnitNumber(e.target.value)}
+                  placeholder="e.g. S-42"
+                  className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+            )}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Unit #</label>
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">Year</label>
               <input
                 type="text"
-                value={unitNumber}
-                onChange={(e) => setUnitNumber(e.target.value)}
-                placeholder="Unit 18"
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono"
+                value={vehicleYear}
+                onChange={(e) => setVehicleYear(e.target.value)}
+                placeholder="2024"
+                className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
             </div>
-
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Make</label>
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">Make</label>
               <input
                 type="text"
                 value={vehicleMake}
                 onChange={(e) => setVehicleMake(e.target.value)}
                 placeholder="Freightliner / Ford"
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
+                className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
             </div>
-
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Model</label>
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">Model</label>
               <input
                 type="text"
                 value={vehicleModel}
                 onChange={(e) => setVehicleModel(e.target.value)}
                 placeholder="Cascadia / F-550"
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
+                className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
             </div>
-
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Year</label>
-              <input
-                type="text"
-                value={vehicleYear}
-                onChange={(e) => setVehicleYear(e.target.value)}
-                placeholder="2022"
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Color</label>
-              <input
-                type="text"
-                value={vehicleColor}
-                onChange={(e) => setVehicleColor(e.target.value)}
-                placeholder="White / Black"
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Plate</label>
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">Plate</label>
               <input
                 type="text"
                 value={licensePlate}
                 onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
-                placeholder="CFMR 482"
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono uppercase"
+                placeholder="ON-XXXXXX"
+                className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white font-mono font-bold uppercase focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
             </div>
-
             <div>
-              <label className="block text-[11px] font-bold text-red-600 mb-1">Tire Size *</label>
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">Color</label>
+              <input
+                type="text"
+                value={vehicleColor}
+                onChange={(e) => setVehicleColor(e.target.value)}
+                placeholder="White / Blue"
+                className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-slate-900"
+              />
+            </div>
+          </div>
+
+          {/* Tire Size & Quick Selection Chips */}
+          <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-700">Tire Size:</span>
               <input
                 type="text"
                 value={tireSize}
                 onChange={(e) => setTireSize(e.target.value)}
                 placeholder="11R22.5"
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border-2 border-red-300 focus:border-red-500 bg-white font-mono font-bold text-slate-800"
+                className="w-36 px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-medium text-slate-500">Quick Sizes:</span>
+              {COMMON_TIRE_SIZES.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => setTireSize(size)}
+                  className={`px-2.5 py-1 text-xs font-mono font-bold rounded-lg border transition cursor-pointer ${
+                    tireSize === size
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Section 3: Commercial & Roadside Work Order Services */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <Wrench className="w-3.5 h-3.5 text-red-600" />
-            <span>Commercial & Roadside Work Order Services</span>
-          </label>
-          <MultiServiceSelector
-            countryCode={countryCode}
-            currencySymbol={currencySymbol}
-            taxRate={taxRate}
-            selectedItems={serviceItems}
-            onChange={setServiceItems}
-            isTaxIncluded={isTaxIncluded}
-            onToggleTaxIncluded={setIsTaxIncluded}
-            discountPercent={discountPercent}
-            discountLabel={discountLabel}
-            showTireSelector={true}
-            tireCount={tireCount}
-            onTireCountChange={setTireCount}
-            title="Work Order Services & Financial Breakdown"
-          />
-        </div>
+        {/* BLOCK 3: URGENCY, PROMISED ARRIVAL WINDOW & WORK ORDER SERVICES */}
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-600"></span>
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                Block 3: Urgency, Schedule & Work Order Services
+              </h4>
+            </div>
+          </div>
 
-        {/* Section 4: Arrival Timing & Service Window ("Between Time") */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-blue-600" />
-              <span>Arrival Timing & Service Window ("Between Time")</span>
-            </span>
-            <span className="text-[11px] font-mono text-blue-600 font-bold">
-              {arrivalWindow.displayLabel || 'Default ~30m'}
-            </span>
-          </label>
-          <ArrivalWindowSelector
-            value={arrivalWindow}
-            timezone={serviceCoords.timezone}
-            countryCode={countryCode}
-            onChange={(data) => {
-              setArrivalWindow(data);
-              if (data.mode === 'ETA') {
-                setUrgency('URGENT');
-              } else if (data.mode === 'WINDOW') {
-                const isFutureDate =
-                  data.appointmentDate &&
-                  new Date(data.appointmentDate).toDateString() !== new Date().toDateString();
-                setUrgency(isFutureDate ? 'FUTURE' : 'STANDARD');
-              }
-            }}
-          />
-        </div>
-
-        {/* Section 5: Dispatch Urgency Priority */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-              <span>Dispatch Urgency Priority</span>
-            </span>
-          </label>
-          <div className="grid grid-cols-3 gap-2">
+          {/* Urgency 3-Card Selector */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             {[
               {
-                id: 'URGENT',
-                label: 'Urgent / Breakdown',
-                desc: 'Highway dead stop / ASAP',
-                color: 'border-red-500 text-red-700 bg-red-50',
+                id: 'URGENT' as const,
+                label: 'Urgent Breakdown',
+                desc: 'Highway or roadside emergency requiring ASAP dispatch',
+                icon: Zap,
+                badge: 'Immediate',
               },
               {
-                id: 'STANDARD',
-                label: 'Standard Yard Service',
-                desc: 'Normal queue turnaround',
-                color: 'border-blue-500 text-blue-700 bg-blue-50',
+                id: 'STANDARD' as const,
+                label: 'Standard Service',
+                desc: 'Depot or yard tire service within guaranteed same-day window',
+                icon: Clock,
+                badge: 'Same-Day',
               },
               {
-                id: 'FUTURE',
+                id: 'FUTURE' as const,
                 label: 'Future Appointment',
-                desc: 'Pre-booked date & window',
-                color: 'border-purple-500 text-purple-700 bg-purple-50',
+                desc: 'Scheduled fleet maintenance for a future date/time',
+                icon: Calendar,
+                badge: 'Scheduled',
               },
-            ].map((u) => (
-              <button
-                key={u.id}
-                type="button"
-                onClick={() => {
-                  setUrgency(u.id as any);
-                  if (u.id === 'URGENT') {
-                    setArrivalWindow((prev) => ({ ...prev, mode: 'ETA' }));
-                  } else if (u.id === 'FUTURE') {
-                    setArrivalWindow((prev) => ({ ...prev, mode: 'WINDOW' }));
-                  }
-                }}
-                className={`p-2.5 rounded-xl border text-left transition ${
-                  urgency === u.id
-                    ? `${u.color} font-bold shadow-2xs cursor-pointer`
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 cursor-pointer'
-                }`}
-              >
-                <div className="text-xs font-bold leading-tight">{u.label}</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">{u.desc}</div>
-              </button>
-            ))}
+            ].map((u) => {
+              const isSelected = urgency === u.id;
+              const Icon = u.icon;
+              return (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => {
+                    setUrgency(u.id);
+                    if (u.id === 'URGENT') {
+                      setArrivalWindow({ mode: 'ETA', estimatedArrivalMinutes: 30 });
+                    } else {
+                      setArrivalWindow((prev) => ({ ...prev, mode: 'WINDOW' }));
+                    }
+                  }}
+                  className={`p-3 rounded-xl border text-left transition flex flex-col justify-between gap-1.5 cursor-pointer ${
+                    isSelected
+                      ? 'border-red-600 bg-red-50/60 shadow-xs'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-bold flex items-center gap-1.5 ${isSelected ? 'text-red-700' : 'text-slate-800'}`}>
+                      <Icon className={`w-4 h-4 ${isSelected ? 'text-red-600' : 'text-slate-500'}`} />
+                      {u.label}
+                    </span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      isSelected ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {u.badge}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-snug">{u.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Arrival Window Selector */}
+          <ArrivalWindowSelector
+            value={arrivalWindow}
+            onChange={setArrivalWindow}
+            timezone={serviceCoords.timezone || booking?.serviceTimezone}
+            countryCode={countryCode}
+            hideModeToggle={true}
+            showPktWindow={true}
+          />
+
+          {/* Work Order Services */}
+          <div className="pt-2 border-t border-slate-100">
+            <MultiServiceSelector
+              items={serviceItems}
+              onChange={setServiceItems}
+              countryCode={countryCode}
+              currencySymbol={currencySymbol}
+              taxRate={taxRate}
+              isTaxIncluded={isTaxIncluded}
+              setIsTaxIncluded={setIsTaxIncluded}
+              discountPercent={discountPercent}
+              discountLabel={discountLabel}
+              allowPriceEdit={true}
+              title="Work Order Services & Price Breakdown"
+            />
           </div>
         </div>
 
-        {/* Section 5.5: Upfront Deposit & Proof of Receipt */}
-        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
-              <CreditCard size={14} className="text-emerald-600" />
-              <span>Upfront Deposit & Receipt Proof</span>
-            </span>
-            {upfrontReceiptUrl && (
-              <a
-                href={upfrontReceiptUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-blue-200"
-              >
-                View Attached Receipt &rarr;
-              </a>
-            )}
+        {/* BLOCK 4: BILLING, OPTIONAL TECHNICIAN ASSIGNMENT & TRIAGE RELEASE */}
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-900"></span>
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                Block 4: Billing, Driver Assignment & Triage Release
+              </h4>
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Payment Method */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                Upfront Deposit Collected ({currencySymbol})
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                <CreditCard className="w-3.5 h-3.5 text-slate-400" />
+                Payment Method
+              </label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+              >
+                {isFleet ? (
+                  <>
+                    <option value="INVOICE_NET30">Direct Invoice (Net 30 Terms)</option>
+                    <option value="POS">Credit / Debit on Scene (POS)</option>
+                    <option value="E_TRANSFER">E-Transfer</option>
+                    <option value="CASH">Cash</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="POS">Credit / Debit on Scene (POS Terminal)</option>
+                    <option value="E_TRANSFER">E-Transfer</option>
+                    <option value="CASH">Cash</option>
+                    <option value="CREDIT_CARD">Credit Card (Saved on File)</option>
+                  </>
+                )}
+              </select>
+            </div>
+
+            {/* Upfront Amount */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Upfront Deposit ({currencySymbol})
               </label>
               <input
                 type="number"
                 step="0.01"
                 min="0"
-                value={(upfrontAmountCents / 100).toFixed(2)}
+                value={upfrontAmountCents ? (upfrontAmountCents / 100).toFixed(2) : ''}
                 onChange={(e) => setUpfrontAmountCents(Math.round((parseFloat(e.target.value) || 0) * 100))}
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono font-bold"
                 placeholder="0.00"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
             </div>
+
+            {/* Driver Assignment (Optional) */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                Upfront Receipt / Payment Proof URL
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                <UserCheck className="w-3.5 h-3.5 text-slate-400" />
+                Technician Assignment (Optional)
               </label>
-              <input
-                type="url"
-                value={upfrontReceiptUrl}
-                onChange={(e) => setUpfrontReceiptUrl(e.target.value)}
-                placeholder="https://... receipt image or PDF link"
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
-              />
+              <select
+                value={assignedDriverId}
+                onChange={(e) => setAssignedDriverId(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+              >
+                <option value="">Leave Unassigned (Release to Pending Queue)</option>
+                {drivers.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.fullName} {d.phone ? `(${d.phone})` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
-        </div>
 
-        {/* Section 6: Technician Assignment & Payment Method */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Problem Notes */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-              <UserCheck size={14} className="text-blue-600" />
-              <span>Assign Regional Technician (Optional)</span>
+            <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+              <FileText className="w-3.5 h-3.5 text-slate-400" />
+              Special Instructions / Dispatcher Notes
             </label>
-            <select
-              value={assignedDriverId}
-              onChange={(e) => setAssignedDriverId(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-red-500/20"
-            >
-              <option value="">-- Leave Unassigned (Release to PENDING Queue) --</option>
-              {drivers.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.fullName} ({d.email}) {d.phone ? `• ${d.phone}` : ''}
-                </option>
-              ))}
-            </select>
-            {selectedDriverObj && (
-              <p className="text-[11px] text-emerald-600 font-medium mt-1 flex items-center gap-1">
-                <Check size={12} />
-                <span>Will directly dispatch and assign to {selectedDriverObj.fullName} (Status: ASSIGNED).</span>
-              </p>
-            )}
+            <textarea
+              value={problemNotes}
+              onChange={(e) => setProblemNotes(e.target.value)}
+              placeholder="e.g. Front driver-side flat, gate code #4829, truck parked behind warehouse"
+              rows={2}
+              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 resize-none font-medium"
+            />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-              <CreditCard size={14} className="text-slate-500" />
-              <span>Billing & Payment Method</span>
-            </label>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-red-500/20"
+          {/* Action Release Bar */}
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer disabled:opacity-50"
             >
-              <option value="INVOICE_NET30">Fleet Net 30 Corporate Invoicing</option>
-              <option value="POS">POS (Mobile Card Terminal on Scene)</option>
-              <option value="E_TRANSFER">E-Transfer / Interac</option>
-              <option value="CASH">Cash on Scene</option>
-              <option value="MOTO">MOTO (Phone Credit Card)</option>
-              <option value="STRIPE">Stripe Credit Card Online</option>
-            </select>
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={isSubmitting}
+              className={`px-5 py-2.5 text-xs font-bold text-white rounded-xl transition shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50 ${
+                assignedDriverId
+                  ? 'bg-slate-900 hover:bg-slate-800 active:bg-black'
+                  : 'bg-red-600 hover:bg-red-700 active:bg-red-800'
+              }`}
+            >
+              {isSubmitting ? (
+                <span>Processing...</span>
+              ) : assignedDriverId ? (
+                <>
+                  <UserCheck className="w-4 h-4" />
+                  <span>Verify & Dispatch Directly to Technician</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Verify & Release to Pending Queue</span>
+                </>
+              )}
+            </button>
           </div>
-        </div>
-
-        {/* Section 7: Breakdown Notes */}
-        <div>
-          <label className="block text-[11px] font-bold text-slate-600 mb-1">
-            Breakdown & Service Instructions (For Technician)
-          </label>
-          <textarea
-            value={problemNotes}
-            onChange={(e) => setProblemNotes(e.target.value)}
-            rows={2}
-            className="w-full p-2 text-xs rounded-xl border border-slate-200 bg-white"
-            placeholder="Add driver safety instructions, cross-streets, trailer unit number, or special yard instructions..."
-          />
-        </div>
-
-        {/* Footer Actions */}
-        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn-secondary px-3.5 py-2 text-xs cursor-pointer"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={!serviceAddress || isSubmitting}
-            className="btn-primary px-4 py-2 text-xs flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 font-bold"
-          >
-            <CheckCircle2 size={14} />
-            <span>
-              {isSubmitting
-                ? 'Verifying & Dispatched...'
-                : selectedDriverObj
-                ? `Verify & Dispatch to ${selectedDriverObj.fullName}`
-                : 'Confirm & Release to Dispatch Queue'}
-            </span>
-          </button>
         </div>
       </div>
     </Modal>

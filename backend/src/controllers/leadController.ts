@@ -617,6 +617,9 @@ export const leadController = {
         vehicleTypes,
         commonTireSizes,
         dispatcherNotes,
+        callbackDate,
+        callbackDay,
+        callbackTime,
         disqualificationReason,
         disqualifiedNotes,
       } = req.body;
@@ -658,6 +661,11 @@ export const leadController = {
         data.vehicleTypes = Array.isArray(vehicleTypes) ? vehicleTypes.join(', ') : vehicleTypes;
       }
       if (commonTireSizes !== undefined) data.commonTireSizes = commonTireSizes;
+      if (callbackDate !== undefined) {
+        data.callbackDate = callbackDate ? new Date(callbackDate) : null;
+      }
+      if (callbackDay !== undefined) data.callbackDay = callbackDay;
+      if (callbackTime !== undefined) data.callbackTime = callbackTime;
 
       // Track field diff in hitHistory
       const fieldDiff: Record<string, { from: any; to: any }> = {};
@@ -1842,7 +1850,13 @@ export const leadController = {
           status: 'DEAD',
           OR: [
             { disqualificationReason: 'UNRESPONSIVE' },
-            { disposition: { in: ['NO_ANSWER', 'VOICEMAIL', 'RNC'] } },
+            {
+              disposition: { in: ['NO_ANSWER', 'VOICEMAIL', 'RNC'] },
+              OR: [
+                { disqualificationReason: null },
+                { disqualificationReason: 'UNRESPONSIVE' },
+              ],
+            },
           ],
         });
       }
@@ -1852,7 +1866,10 @@ export const leadController = {
         whereConditions.push({
           batchId: id,
           status: { in: ['CALLED', 'NEW'] },
-          disposition: { in: ['NO_ANSWER', 'VOICEMAIL', 'RNC', null] },
+          OR: [
+            { disposition: { in: ['NO_ANSWER', 'VOICEMAIL', 'RNC'] } },
+            { disposition: null },
+          ],
         });
       }
 

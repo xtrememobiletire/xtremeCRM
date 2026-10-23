@@ -151,13 +151,7 @@ export const jobController = {
       const where: any = {};
       if (countryCode && countryCode !== 'ALL') where.countryCode = countryCode;
       if (status === 'ACTIVE') {
-        if (isFleetQuery) {
-          where.status = { notIn: ['COMPLETED', 'CANCELLED'] };
-        } else {
-          where.status = { notIn: ['COMPLETED', 'CANCELLED', 'UNVERIFIED_PUBLIC'] };
-        }
-      } else if (status === 'PENDING' && isFleetQuery) {
-        where.status = { in: ['PENDING', 'UNVERIFIED_PUBLIC'] };
+        where.status = { notIn: ['COMPLETED', 'CANCELLED', 'UNVERIFIED_PUBLIC'] };
       } else if (status) {
         where.status = status;
       }
@@ -230,15 +224,9 @@ export const jobController = {
 
       // 2. Active / Unverified status isolation
       if (status === 'ACTIVE') {
-        if (isFleetQuery) {
-          andConditions.push({ status: { notIn: ['COMPLETED', 'CANCELLED'] } });
-        } else {
-          andConditions.push({ status: { notIn: ['COMPLETED', 'CANCELLED', 'UNVERIFIED_PUBLIC'] } });
-        }
+        andConditions.push({ status: { notIn: ['COMPLETED', 'CANCELLED', 'UNVERIFIED_PUBLIC'] } });
       } else if (!status) {
-        if (!isFleetQuery) {
-          andConditions.push({ status: { not: 'UNVERIFIED_PUBLIC' } });
-        }
+        andConditions.push({ status: { not: 'UNVERIFIED_PUBLIC' } });
       }
 
       // 3. Job Category refinement
@@ -799,7 +787,7 @@ export const jobController = {
           repairerFeeCents,
           paymentMethod: validPaymentMethod(data.paymentMethod),
           paymentStatus: initialPaymentStatus,
-          status: (data.source === 'LANDING_PAGE_SELF_BOOK' || data.source === 'MEMBER_PORTAL')
+          status: (['LANDING_PAGE_SELF_BOOK', 'WEBSITE', 'MEMBER_PORTAL', 'FLEET_PORTAL'].includes(data.source) || ['CUSTOMER_MEMBER', 'FLEET_MANAGER'].includes((req.user as any)?.role))
             ? 'UNVERIFIED_PUBLIC'
             : validatedDriverId
               ? 'ASSIGNED'
@@ -986,16 +974,9 @@ export const jobController = {
           }
         }
 
-        const uploadedReceiptUrl = req.file ? `/uploads/receipts/${req.file.filename}` : receiptUrl;
-        if ((chosenMethod === 'POS' || chosenMethod === 'E_TRANSFER') && !uploadedReceiptUrl && !job.receiptUrl) {
-          return sendError(res, `Payment receipt proof photo is strictly mandatory when completing with ${chosenMethod.replace('_', ' ')}`, 400);
-        }
-
+        // Driver image proof checked client-side; disk storage halted pending Cloudflare R2
         updateData.completedAt = new Date();
         updateData.paymentMethod = chosenMethod;
-        if (uploadedReceiptUrl) {
-          updateData.receiptUrl = uploadedReceiptUrl;
-        }
 
         if (chosenMethod === 'CASH') {
           updateData.cashCollectedCents = effectiveAmountCents;
@@ -2191,28 +2172,115 @@ export const jobController = {
         whereBase.countryCode = countryCode;
       }
 
-      const [jobsCount, fleetJobsCount, bookingsCount, invoicesCount] = await Promise.all([
+      const [
+        jobsPending,
+        jobsInProgress,
+        jobsActive,
+        jobsCompleted,
+        fleetJobsPending,
+        fleetJobsInProgress,
+        fleetJobsActive,
+        fleetJobsCompleted,
+        bookingsUnverified,
+        bookingsPublicWeb,
+        bookingsMember,
+        bookingsFleet,
+        invoicesCount,
+      ] = await Promise.all([
+        // 1. Regular Jobs (/jobs)
         prisma.job.count({
           where: {
             ...whereBase,
-            isFleetJob: false,
-            status: { in: ['PENDING', 'ASSIGNED', 'IN_PROGRESS'] },
+            fleetId: null,
+            isTestService: false,
+            status: 'PENDING',
           },
         }),
         prisma.job.count({
           where: {
             ...whereBase,
-            isFleetJob: true,
-            status: { in: ['PENDING', 'ASSIGNED', 'IN_PROGRESS'] },
+            fleetId: null,
+            isTestService: false,
+            status: { in: ['ASSIGNED', 'IN_PROGRESS'] },
           },
         }),
         prisma.job.count({
           where: {
             ...whereBase,
-            isAddressVerified: false,
-            status: { in: ['PENDING', 'CONFIRMED'] },
+            fleetId: null,
+            isTestService: false,
+            status: { notIn: ['COMPLETED', 'CANCELLED', 'UNVERIFIED_PUBLIC'] },
           },
         }),
+        prisma.job.count({
+          where: {
+            ...whereBase,
+            fleetId: null,
+            isTestService: false,
+            status: 'COMPLETED',
+          },
+        }),
+
+        // 2. Fleet Jobs (/fleet-jobs)
+        prisma.job.count({
+          where: {
+            ...whereBase,
+            OR: [{ fleetId: { not: null } }, { isTestService: true }],
+            status: 'PENDING',
+          },
+        }),
+        prisma.job.count({
+          where: {
+            ...whereBase,
+            OR: [{ fleetId: { not: null } }, { isTestService: true }],
+            status: { in: ['ASSIGNED', 'IN_PROGRESS'] },
+          },
+        }),
+        prisma.job.count({
+          where: {
+            ...whereBase,
+            OR: [{ fleetId: { not: null } }, { isTestService: true }],
+            status: { notIn: ['COMPLETED', 'CANCELLED', 'UNVERIFIED_PUBLIC'] },
+          },
+        }),
+        prisma.job.count({
+          where: {
+            ...whereBase,
+            OR: [{ fleetId: { not: null } }, { isTestService: true }],
+            status: 'COMPLETED',
+          },
+        }),
+
+        // 3. Bookings (/bookings)
+        prisma.job.count({
+          where: {
+            ...whereBase,
+            status: 'UNVERIFIED_PUBLIC',
+          },
+        }),
+        prisma.job.count({
+          where: {
+            ...whereBase,
+            status: 'UNVERIFIED_PUBLIC',
+            source: { in: ['LANDING_PAGE_SELF_BOOK', 'WEBSITE'] },
+          },
+        }),
+        prisma.job.count({
+          where: {
+            ...whereBase,
+            status: 'UNVERIFIED_PUBLIC',
+            source: 'MEMBER_PORTAL',
+          },
+        }),
+        prisma.job.count({
+          where: {
+            ...whereBase,
+            status: 'UNVERIFIED_PUBLIC',
+            OR: [{ source: 'FLEET_PORTAL' }, { fleetId: { not: null } }],
+          },
+        }),
+
+        // 4. Invoices
         prisma.invoice.count({
           where: {
             ...(whereBase.countryCode ? { countryCode: whereBase.countryCode } : {}),
@@ -2222,9 +2290,21 @@ export const jobController = {
       ]);
 
       return sendSuccess(res, {
-        jobs: jobsCount,
-        fleetJobs: fleetJobsCount,
-        bookings: bookingsCount,
+        jobs: jobsPending,
+        jobsPending,
+        jobsInProgress,
+        jobsActive,
+        jobsCompleted,
+        fleetJobs: fleetJobsPending,
+        fleetJobsPending,
+        fleetJobsInProgress,
+        fleetJobsActive,
+        fleetJobsCompleted,
+        bookings: bookingsUnverified,
+        bookingsUnverified,
+        bookingsPublicWeb,
+        bookingsMember,
+        bookingsFleet,
         invoices: invoicesCount,
       });
     } catch (err: any) {

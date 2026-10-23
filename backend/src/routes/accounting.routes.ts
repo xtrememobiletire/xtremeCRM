@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { accountingController } from '../controllers/accountingController.js';
 import { authenticate } from '../middleware/auth.js';
 import { authorize } from '../middleware/authorize.js';
-import upload from '../config/multer.js';
+import upload, { memoryUpload } from '../config/multer.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import {
   stateJobExpensesSchema,
@@ -114,7 +114,7 @@ router.patch(
 router.post(
   '/receipt/:id',
   validateRequest({ params: idParamSchema }),
-  upload.single('receipt'),
+  memoryUpload.single('receipt'),
   accountingController.uploadReceipt
 );
 
@@ -126,7 +126,7 @@ router.post(
 router.post(
   ['/material-receipt/:id', '/jobs/:id/material-receipt'],
   validateRequest({ params: idParamSchema }),
-  upload.single('materialReceipt'),
+  memoryUpload.single('materialReceipt'),
   accountingController.uploadMaterialReceipt
 );
 

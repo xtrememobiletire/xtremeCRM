@@ -94,6 +94,7 @@ export default function FleetDashboard() {
     notes: '',
   });
 
+  const [localReceiptPreview, setLocalReceiptPreview] = useState<string | null>(null);
   const [arrivalWindow, setArrivalWindow] = useState<ArrivalWindowData>({
     mode: 'WINDOW',
     estimatedArrivalMinutes: 30,
@@ -428,10 +429,7 @@ export default function FleetDashboard() {
       vehicleYear: bookingForm.vehicleYear ? Number(bookingForm.vehicleYear) : undefined,
       tireCount: bookingForm.tireCount,
       tireSize: bookingForm.tireSize,
-      addressNotes: bookingForm.addressNotes || undefined,
-      requestedByName: bookingForm.requestedByName || user?.fullName || undefined,
       upfrontAmountCents: bookingForm.upfrontAmountCents > 0 ? bookingForm.upfrontAmountCents : undefined,
-      upfrontReceiptUrl: bookingForm.upfrontReceiptUrl || undefined,
       problemNotes: bookingForm.notes || undefined,
       fleetId: fleet?.id,
       serviceItems: serviceItems.map((s) => ({
@@ -1168,6 +1166,7 @@ export default function FleetDashboard() {
                         timezone={fleet?.timezone || 'America/Toronto'}
                         countryCode={fleetCountry}
                         onChange={setArrivalWindow}
+                        showPktWindow={false}
                       />
                     </div>
                   )}
@@ -1266,52 +1265,13 @@ export default function FleetDashboard() {
                   </div>
                 </div>
 
-                {/* 7. DEDICATED ADDRESS NOTES & REQUESTED BY */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Dedicated Address Notes
-                    </label>
-                    <input
-                      type="text"
-                      value={bookingForm.addressNotes}
-                      onChange={(e) => setBookingForm({ ...bookingForm, addressNotes: e.target.value })}
-                      placeholder="Bay #, Gate Code, Cross-street, Landmark..."
-                      className="input-base mt-1.5 py-2.5 text-xs text-slate-800"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Requested By (Dispatcher / Fleet Manager)
-                    </label>
-                    <input
-                      type="text"
-                      value={bookingForm.requestedByName}
-                      onChange={(e) => setBookingForm({ ...bookingForm, requestedByName: e.target.value })}
-                      placeholder={user?.fullName || 'Full Name of Person Requesting'}
-                      className="input-base mt-1.5 py-2.5 text-xs text-slate-800"
-                    />
-                  </div>
-                </div>
-
-                {/* 8. UPFRONT DEPOSIT & PAYMENT PROOF */}
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                {/* UPFRONT DEPOSIT & LOCAL RECEIPT PROOF (Cloudflare Readiness) */}
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
                       <DollarSign size={14} className="text-emerald-600" />
-                      <span>Upfront Deposit & Receipt Proof (Optional)</span>
+                      <span>Upfront Deposit & Proof Photo (Optional)</span>
                     </span>
-                    {bookingForm.upfrontReceiptUrl && (
-                      <a
-                        href={bookingForm.upfrontReceiptUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-blue-200"
-                      >
-                        View Attached Receipt &rarr;
-                      </a>
-                    )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
@@ -1324,23 +1284,37 @@ export default function FleetDashboard() {
                         min="0"
                         value={bookingForm.upfrontAmountCents ? (bookingForm.upfrontAmountCents / 100).toFixed(2) : ''}
                         onChange={(e) => setBookingForm({ ...bookingForm, upfrontAmountCents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
-                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono font-bold"
+                        className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900"
                         placeholder="0.00"
                       />
                     </div>
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                        Receipt / Proof URL
+                        Receipt Photo (Local Preview)
                       </label>
                       <input
-                        type="url"
-                        value={bookingForm.upfrontReceiptUrl}
-                        onChange={(e) => setBookingForm({ ...bookingForm, upfrontReceiptUrl: e.target.value })}
-                        placeholder="https://... image or receipt link"
-                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setLocalReceiptPreview(URL.createObjectURL(file));
+                          } else {
+                            setLocalReceiptPreview(null);
+                          }
+                        }}
+                        className="w-full text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300"
                       />
                     </div>
                   </div>
+                  {localReceiptPreview && (
+                    <div className="p-2 rounded-xl bg-white border border-slate-200 flex items-center gap-3">
+                      <img src={localReceiptPreview} alt="Receipt preview" className="w-12 h-12 object-cover rounded-lg border border-slate-200" />
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        Preview attached locally (Cloudflare storage pending — image is not stored on server)
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* 9. SPECIAL INSTRUCTIONS / NOTES */}

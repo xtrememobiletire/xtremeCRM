@@ -31,16 +31,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={cn("font-sans dark", sans.variable, serif.variable)} suppressHydrationWarning>
+    <html lang="en" className={cn("font-sans", sans.variable, serif.variable)} suppressHydrationWarning>
       <head>
         <link rel="icon" href="https://res.cloudinary.com/ebjikx52/image/upload/v1792426897/xtreme/frontend/favicon_png.png" type="image/png" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=sessionStorage.getItem("theme");if(t==="light"){document.documentElement.classList.remove("dark");}}catch(e){}})();`,
+            __html: `(function(){try{var t=sessionStorage.getItem("theme");if(t==="dark"){document.documentElement.classList.add("dark");}else{document.documentElement.classList.remove("dark");}}catch(e){}})();`,
           }}
         />
       </head>
-      <body className="min-h-screen bg-neutral-light text-neutral-dark dark:bg-neutral-dark dark:text-neutral-light antialiased">
+      <body className="min-h-screen bg-white text-zinc-900 dark:bg-black dark:text-zinc-100 antialiased">
         {children}
       </body>
     </html>

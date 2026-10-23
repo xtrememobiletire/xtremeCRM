@@ -9,7 +9,7 @@ export default function FooterLocationCards() {
       {/* ======================================================== */}
       {/* 1. UNITED STATES LOCATION CARD (EXACT INSPIRATION STYLE) */}
       {/* ======================================================== */}
-      <div className="group relative rounded-none bg-[#141722] hover:bg-[#181d2c] border border-white/10 hover:border-white/20 p-6 sm:p-7 flex items-center justify-between gap-4 transition-all duration-300 shadow-xl">
+      <div className="group relative rounded-none bg-zinc-900/90 hover:bg-zinc-800/90 border border-white/10 hover:border-white/20 p-6 sm:p-7 flex items-center justify-between gap-4 transition-all duration-300 shadow-xl">
         <div className="space-y-3 flex-1 min-w-0">
           <div className="flex items-center gap-2.5">
             <h4 className="text-xl sm:text-2xl font-bold tracking-tight text-white group-hover:text-[var(--brand-primary)] transition-colors font-sans">
@@ -68,7 +68,7 @@ export default function FooterLocationCards() {
       {/* ======================================================== */}
       {/* 2. CANADA LOCATION CARD (EXACT INSPIRATION STYLE)        */}
       {/* ======================================================== */}
-      <div className="group relative rounded-none bg-[#141722] hover:bg-[#181d2c] border border-white/10 hover:border-white/20 p-6 sm:p-7 flex items-center justify-between gap-4 transition-all duration-300 shadow-xl">
+      <div className="group relative rounded-none bg-zinc-900/90 hover:bg-zinc-800/90 border border-white/10 hover:border-white/20 p-6 sm:p-7 flex items-center justify-between gap-4 transition-all duration-300 shadow-xl">
         <div className="space-y-3 flex-1 min-w-0">
           <div className="flex items-center gap-2.5">
             <h4 className="text-xl sm:text-2xl font-bold tracking-tight text-white group-hover:text-[var(--brand-primary)] transition-colors font-sans">

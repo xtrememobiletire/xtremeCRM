@@ -1,4 +1,5 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Truck, 
@@ -12,7 +13,8 @@ import {
   Building2,
   Sparkles,
   Zap,
-  Eye
+  Eye,
+  Globe
 } from 'lucide-react';
 
 const FleetJobDetailModal = lazy(() => import('../components/pages/jobs/FleetJobDetailModal'));
@@ -26,6 +28,16 @@ import { jobService } from '../services/jobService';
 import { fleetService } from '../services/fleetService';
 import { useTenant } from '../context/TenantContext';
 import { formatDate, formatJobWindowDual, resolveJobTimezone, formatTimeInTz } from '../utils/date';
+
+const cleanProblemNotes = (notes?: string | null) => {
+  if (!notes) return '';
+  return notes
+    .replace(/\[Requested By:\s*[^\]]+\]\s*/gi, '')
+    .replace(/\[Address Notes:\s*[^\]]+\]\s*/gi, '')
+    .replace(/\[Fleet Self-Request\]\s*/gi, '')
+    .replace(/\[Member Priority Request\]\s*/gi, '')
+    .trim();
+};
 
 export default function FleetJobs() {
   const { country: tenantCountry } = useTenant();
@@ -75,6 +87,7 @@ export default function FleetJobs() {
   const rawJobs = (jobsResponse?.data || []).filter(
     (j: any) => {
       if (!j.fleetId && !j.isTestService) return false;
+      if (j.status === 'UNVERIFIED_PUBLIC') return false;
       if (lifecycleTab === 'ACTIVE' && j.status === 'COMPLETED') return false;
       if (lifecycleTab === 'COMPLETED' && j.status !== 'COMPLETED') return false;
       return true;
@@ -109,17 +122,18 @@ export default function FleetJobs() {
 
   // Calculate high-level summary counters
   const counters = useMemo(() => {
-    const total = summaryResponse?.pagination?.total ?? summaryJobs.length;
-    const pending = summaryJobs.filter((j: any) => ['PENDING', 'UNVERIFIED_PUBLIC'].includes(j.status)).length;
+    const pending = summaryJobs.filter((j: any) => j.status === 'PENDING').length;
     const inProgress = summaryJobs.filter((j: any) => ['ASSIGNED', 'IN_PROGRESS'].includes(j.status)).length;
-    const completed = summaryJobs.filter((j: any) => j.status === 'COMPLETED').length;
+    const unverified = summaryJobs.filter((j: any) => j.status === 'UNVERIFIED_PUBLIC').length;
+    const completed = summaryJobs.filter((j: any) => ['COMPLETED', 'PAID'].includes(j.status)).length;
     return {
-      total,
+      total: pending + inProgress,
       pending,
       inProgress,
+      unverified,
       completed,
     };
-  }, [summaryJobs, summaryResponse]);
+  }, [summaryJobs]);
 
   return (
     <div className="space-y-6">
@@ -176,17 +190,14 @@ export default function FleetJobs() {
 
       {/* Summary Metrics Banner */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Fleet Orders</div>
-          <div className="text-2xl font-black font-mono text-slate-900 mt-1">{counters.total}</div>
-        </div>
         <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200 shadow-xs">
           <div className="text-xs font-semibold text-amber-700 uppercase tracking-wider flex items-center gap-1.5">
             <Clock size={14} />
-            <span>Pending Dispatch</span>
+            <span>Pending Fleet Jobs</span>
           </div>
           <div className="text-2xl font-black font-mono text-amber-900 mt-1">{counters.pending}</div>
         </div>
+
         <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200 shadow-xs">
           <div className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
             <Truck size={14} />
@@ -194,10 +205,25 @@ export default function FleetJobs() {
           </div>
           <div className="text-2xl font-black font-mono text-blue-900 mt-1">{counters.inProgress}</div>
         </div>
+
+        <Link
+          to="/bookings"
+          className="p-4 rounded-xl bg-purple-50/60 border border-purple-200 hover:border-purple-300 shadow-xs transition block group"
+        >
+          <div className="text-xs font-semibold text-purple-700 uppercase tracking-wider flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <Globe size={14} />
+              <span>Unverified Fleet Bookings</span>
+            </span>
+            <span className="text-[10px] font-bold text-purple-600 group-hover:underline">Triage &rarr;</span>
+          </div>
+          <div className="text-2xl font-black font-mono text-purple-900 mt-1">{counters.unverified}</div>
+        </Link>
+
         <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 shadow-xs">
           <div className="text-xs font-semibold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
             <CheckCircle2 size={14} />
-            <span>Completed</span>
+            <span>Completed Fleet Jobs</span>
           </div>
           <div className="text-2xl font-black font-mono text-emerald-900 mt-1">{counters.completed}</div>
         </div>
@@ -404,9 +430,9 @@ export default function FleetJobs() {
                           <MapPin size={13} className="text-red-500 shrink-0" />
                           <span className="truncate">{job.serviceAddress || job.locationAddress}</span>
                         </div>
-                        {job.problemNotes && (
+                        {cleanProblemNotes(job.problemNotes) && (
                           <div className="text-[11px] text-slate-500 truncate mt-0.5">
-                            {job.problemNotes}
+                            {cleanProblemNotes(job.problemNotes)}
                           </div>
                         )}
                       </td>

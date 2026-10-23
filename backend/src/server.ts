@@ -21,26 +21,7 @@ server.listen(config.PORT, () => {
   logger.info("🚀 XtremeCRM backend running at http://localhost:" + config.PORT);
   logger.info("🌍 Environment: " + config.NODE_ENV);
 
-  // Auto-migrate any existing fleet jobs with UNVERIFIED_PUBLIC to PENDING
-  prisma.job.updateMany({
-    where: {
-      status: 'UNVERIFIED_PUBLIC',
-      OR: [
-        { fleetId: { not: null } },
-        { source: 'FLEET_PORTAL' },
-      ],
-    },
-    data: {
-      status: 'PENDING',
-    },
-  }).then((res) => {
-    if (res.count > 0) {
-      logger.info(`[Self-Heal] Migrated ${res.count} legacy UNVERIFIED_PUBLIC fleet job(s) to PENDING`);
-    }
-  }).catch((err) => {
-    logger.error('[Self-Heal] Failed to heal legacy fleet jobs:', err);
   });
-});
 
 // Graceful Shutdown
 const shutdown = async (signal: string) => {

@@ -20,9 +20,9 @@ export default function HomeFooter({
       ROUNDED FLOATING FOOTER CARD:
       - Mobile: Full width (w-full), zero bottom margin (mb-0), rounded-b-none (attached flush to bottom).
       - Desktop/Tablet (sm+): Floating card with side and bottom gaps (w-[calc(100%-3rem)], mb-6, rounded-b-[36px]).
-      - Solid dark black background (#050811) with border-white/10
+      - Solid dark black background (bg-black) with border-white/10
     */
-    <footer id="footer" className={`relative z-10 w-full sm:w-[calc(100%-3rem)] lg:w-[calc(100%-4rem)] mx-auto bg-[#050811] text-white border-t sm:border border-white/10 rounded-t-[28px] sm:rounded-t-[38px] lg:rounded-t-[48px] rounded-b-none sm:rounded-b-[36px] lg:rounded-b-[44px] ${className ? className : "mt-6 sm:mt-8"} pt-10 sm:pt-16 pb-0 overflow-hidden shadow-2xl flex flex-col justify-between mb-0 sm:mb-6`}>
+    <footer id="footer" className={`relative z-10 w-full sm:w-[calc(100%-3rem)] lg:w-[calc(100%-4rem)] mx-auto bg-black text-white border-t sm:border border-white/10 rounded-t-[28px] sm:rounded-t-[38px] lg:rounded-t-[48px] rounded-b-none sm:rounded-b-[36px] lg:rounded-b-[44px] ${className ? className : "mt-6 sm:mt-8"} pt-10 sm:pt-16 pb-0 overflow-hidden shadow-2xl flex flex-col justify-between mb-0 sm:mb-6`}>
       
       {/* Increased Width Content Container */}
       <div className="w-full max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 space-y-10 sm:space-y-12 flex-1">
@@ -30,7 +30,7 @@ export default function HomeFooter({
         {/* ======================================================== */}
         {/* 3-COLUMN WIREFRAME BOXED CONTAINER                       */}
         {/* ======================================================== */}
-        <div className="border border-white/10 rounded-2xl bg-[#0a0e1a]/90 backdrop-blur-md shadow-2xl grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-white/10 overflow-hidden">
+        <div className="border border-white/10 rounded-2xl bg-[#0c0c0e]/95 backdrop-blur-md shadow-2xl grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-white/10 overflow-hidden">
           
           {/* ======================================================== */}
           {/* COLUMN 1 (LEFT): Logo, Simple Quote & 4 Social Links     */}

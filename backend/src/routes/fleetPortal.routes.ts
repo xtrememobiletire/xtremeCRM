@@ -565,12 +565,7 @@ router.post('/request-service', async (req: Request, res: Response) => {
       resolvedUrgency = 'FUTURE';
     }
 
-    const reqByName = (requestedByName || req.body.recipientName || '').trim();
-    const addrNotes = (addressNotes || '').trim();
-    const reqTag = reqByName ? `[Requested By: ${reqByName}] ` : '';
-    const addrTag = addrNotes ? `[Address Notes: ${addrNotes}] ` : '';
-    const baseNotes = notes || problemNotes || '';
-    const combinedNotes = `${reqTag}${addrTag}[Fleet Self-Request] ${vehNote}Tire Spec: ${finalTireSize}.${baseNotes ? ` ${baseNotes}` : ''}`.trim();
+    const cleanNotes = (problemNotes || notes || '').trim() || null;
 
     const createdJob = await prisma.job.create({
       data: {
@@ -580,7 +575,7 @@ router.post('/request-service', async (req: Request, res: Response) => {
         vehicleId: finalVehicleId,
         countryCode: country,
         source: 'FLEET_PORTAL',
-        status: 'PENDING',
+        status: 'UNVERIFIED_PUBLIC',
         urgency: resolvedUrgency,
         serviceAddress,
         serviceLatitude: lat,
@@ -592,9 +587,9 @@ router.post('/request-service', async (req: Request, res: Response) => {
         estimatedArrivalAt: scheduledDateObj,
         recipientName: driverName,
         recipientPhone: driverPhone,
-        problemNotes: combinedNotes,
+        problemNotes: cleanNotes,
         upfrontAmountCents: upfrontAmountCents ? Math.round(Number(upfrontAmountCents)) : 0,
-        upfrontReceiptUrl: upfrontReceiptUrl ? String(upfrontReceiptUrl).trim() : null,
+        upfrontReceiptUrl: null,
         currency: currency as any,
         subtotalCents,
         taxRateBps,
@@ -616,6 +611,8 @@ router.post('/request-service', async (req: Request, res: Response) => {
 
     try {
       sseManager.broadcast(`sse:dispatch:${country}`, 'job:created', createdJob);
+      sseManager.broadcast(`sse:dispatch:${country}`, 'booking:created', createdJob);
+      sseManager.broadcast(`sse:dispatch:${country}`, 'job:triage_new', createdJob);
     } catch {
       // sse ignore
     }

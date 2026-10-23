@@ -101,7 +101,7 @@ export default function Testimonials() {
         - Sharp corners (rounded-none)
         - Continuous circular status progress on active client avatar
       */}
-      <div className="relative w-full rounded-none bg-white/70 dark:bg-[#080d1a]/85 backdrop-blur-md border border-black/15 dark:border-white/10 p-6 sm:p-8 lg:p-9 overflow-hidden shadow-2xl">
+      <div className="relative w-full rounded-none bg-white/70 dark:bg-zinc-950/90 backdrop-blur-md border border-black/15 dark:border-white/10 p-6 sm:p-8 lg:p-9 overflow-hidden shadow-2xl">
         
         {/* Subtle Ambient Crimson Glow */}
         <div className="pointer-events-none absolute -right-24 -top-24 w-96 h-96 bg-[var(--brand-primary)]/10 blur-3xl rounded-none" />

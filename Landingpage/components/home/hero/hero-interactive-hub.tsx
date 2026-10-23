@@ -29,7 +29,7 @@ function HubCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className={`group relative h-[120px] rounded-lg border border-slate-300/80 dark:border-slate-700/80 bg-gradient-to-b from-[#f1f5f9]/98 to-[#e2e8f0]/98 dark:from-[#151f32]/95 dark:to-[#0d1524]/95 backdrop-blur-md p-3 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.8)] dark:shadow-[0_14px_32px_-5px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-[var(--brand-primary)]/40 transition-all duration-300 flex flex-col justify-between ${className}`}
+      className={`group relative h-[120px] rounded-lg border border-slate-300/80 dark:border-zinc-800/80 bg-gradient-to-b from-[#f1f5f9]/98 to-[#e2e8f0]/98 dark:from-zinc-900/95 dark:to-zinc-950/95 backdrop-blur-md p-3 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.8)] dark:shadow-[0_14px_32px_-5px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-[var(--brand-primary)]/40 transition-all duration-300 flex flex-col justify-between ${className}`}
     >
       {/* Title & Subtitle */}
       <div className="text-center px-0.5">
@@ -60,7 +60,7 @@ export default function HeroInteractiveHub() {
         - Subtle rounded-2xl chassis
         - Micro-grid tech texture
       */}
-      <div className="relative rounded-2xl border border-slate-300/60 dark:border-slate-800/80 bg-[#edf2f7]/95 dark:bg-[#070b16]/98 backdrop-blur-md p-6 sm:p-8 lg:p-10 overflow-hidden shadow-2xl">
+      <div className="relative rounded-2xl border border-slate-300/60 dark:border-zinc-800/80 bg-[#edf2f7]/95 dark:bg-zinc-950/98 backdrop-blur-md p-6 sm:p-8 lg:p-10 overflow-hidden shadow-2xl">
         
         {/* Subtle Ambient Radial Glow */}
         <div className="pointer-events-none absolute -right-24 -top-24 w-80 h-80 bg-[var(--brand-primary)]/10 blur-3xl rounded-full" />
@@ -99,7 +99,7 @@ export default function HeroInteractiveHub() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease: "easeOut" }}
-              className="group relative h-[120px] rounded-lg border border-slate-300/80 dark:border-slate-700/80 bg-gradient-to-b from-[#f1f5f9]/98 to-[#e2e8f0]/98 dark:from-[#151f32]/95 dark:to-[#0d1524]/95 backdrop-blur-md p-3 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.8)] dark:shadow-[0_14px_32px_-5px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-[var(--brand-primary)]/40 transition-all duration-300 flex flex-col justify-between"
+              className="group relative h-[120px] rounded-lg border border-slate-300/80 dark:border-zinc-800/80 bg-gradient-to-b from-[#f1f5f9]/98 to-[#e2e8f0]/98 dark:from-zinc-900/95 dark:to-zinc-950/95 backdrop-blur-md p-3 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.8)] dark:shadow-[0_14px_32px_-5px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-[var(--brand-primary)]/40 transition-all duration-300 flex flex-col justify-between"
             >
               {/* Header Title & Subtitle */}
               <div className="text-center px-1">
@@ -198,7 +198,7 @@ export default function HeroInteractiveHub() {
 
           {/* Top-Center Card */}
           <div className="w-full">
-            <div className="rounded-lg border border-slate-300/80 dark:border-slate-700/80 bg-gradient-to-b from-[#f1f5f9]/98 to-[#e2e8f0]/98 dark:from-[#151f32]/95 dark:to-[#0d1524]/95 backdrop-blur-md p-3.5 shadow-md">
+            <div className="rounded-lg border border-slate-300/80 dark:border-zinc-800/80 bg-gradient-to-b from-[#f1f5f9]/98 to-[#e2e8f0]/98 dark:from-zinc-900/95 dark:to-zinc-950/95 backdrop-blur-md p-3.5 shadow-md">
               <div className="text-center px-1">
                 <h4 className="text-xs sm:text-[13px] font-bold text-slate-900 dark:text-white leading-tight tracking-tight">
                   Commercial Fleet Safety

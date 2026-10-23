@@ -150,7 +150,7 @@ export default function FleetCreateAccount() {
       className="w-full pt-8 sm:pt-12 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
     >
       {/* Outer Luxury Automotive Container */}
-      <div className="relative border border-zinc-800/80 bg-[#060911] rounded-2xl overflow-hidden shadow-2xl">
+      <div className="relative border border-zinc-800/80 bg-zinc-950 rounded-2xl overflow-hidden shadow-2xl">
         <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[580px] lg:min-h-[640px]">
           {/* ========================================================================
               LEFT COLUMN: High-Resolution Sports Car Background with Centered Title
@@ -179,7 +179,7 @@ export default function FleetCreateAccount() {
           {/* ========================================================================
               RIGHT COLUMN: High-End Obsidian Dark Glass Interactive Onboarding Form
               ======================================================================== */}
-          <div className="lg:col-span-7 xl:col-span-6 p-6 sm:p-10 lg:p-12 flex items-center justify-center bg-[#070b14]/95 backdrop-blur-2xl border-t lg:border-t-0 lg:border-l border-white/10">
+          <div className="lg:col-span-7 xl:col-span-6 p-6 sm:p-10 lg:p-12 flex items-center justify-center bg-black/95 backdrop-blur-2xl border-t lg:border-t-0 lg:border-l border-white/10">
             <div className="w-full max-w-xl">
               {!isSubmitted ? (
                 <div>

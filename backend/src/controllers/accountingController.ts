@@ -457,14 +457,13 @@ export const accountingController = {
       const file = req.file;
       if (!file) return sendError(res, 'No receipt file uploaded', 400);
 
-      const receiptUrl = `/uploads/receipts/${file.filename}`;
-      const updated = await prisma.job.update({
+      // Memory storage: Disk writes halted pending Cloudflare R2
+      const updated = await prisma.job.findUnique({
         where: { id },
-        data: { receiptUrl },
         select: { id: true, jobCode: true, receiptUrl: true },
       });
 
-      return sendSuccess(res, updated, 'Receipt uploaded successfully');
+      return sendSuccess(res, updated, 'Receipt received (Cloudflare storage pending)');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }
@@ -476,14 +475,13 @@ export const accountingController = {
       const file = req.file;
       if (!file) return sendError(res, 'No material receipt file uploaded', 400);
 
-      const materialReceiptUrl = `/uploads/receipts/${file.filename}`;
-      const updated = await prisma.job.update({
+      // Memory storage: Disk writes halted pending Cloudflare R2
+      const updated = await prisma.job.findUnique({
         where: { id },
-        data: { materialReceiptUrl },
         select: { id: true, jobCode: true, materialReceiptUrl: true },
       });
 
-      return sendSuccess(res, updated, 'Material receipt uploaded successfully');
+      return sendSuccess(res, updated, 'Material receipt received (Cloudflare storage pending)');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }

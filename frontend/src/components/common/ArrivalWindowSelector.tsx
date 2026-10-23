@@ -26,6 +26,8 @@ interface ArrivalWindowSelectorProps {
   onModeChange?: (mode: 'ETA' | 'WINDOW') => void;
   timezone?: string;
   countryCode?: string;
+  showPktWindow?: boolean;
+  hideModeToggle?: boolean;
 }
 
 const ETA_PRESETS = [
@@ -44,6 +46,8 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
   onModeChange,
   timezone,
   countryCode,
+  showPktWindow = false,
+  hideModeToggle = false,
 }) => {
   const activeTz = timezone || getDefaultTimezoneForCountry(countryCode);
   const todayStr = getTodayInTz(activeTz);
@@ -248,39 +252,41 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
   return (
     <div className={`space-y-3 ${className}`}>
       {/* Mode Toggle */}
-      <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-lg border border-slate-200">
-        <button
-          type="button"
-          onClick={() => {
-            setMode('ETA');
-            handleEtaSelect(selectedEta);
-          }}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-semibold transition ${
-            mode === 'ETA'
-              ? 'bg-white text-blue-700 shadow-sm border border-slate-200/60'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Zap className="w-3.5 h-3.5 text-amber-500" />
-          <span>Quick ETA / Urgent</span>
-        </button>
+      {!hideModeToggle && (
+        <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl border border-slate-200">
+          <button
+            type="button"
+            onClick={() => {
+              setMode('ETA');
+              handleEtaSelect(selectedEta);
+            }}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
+              mode === 'ETA'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 text-red-500" />
+            <span>Quick ETA / Urgent</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            setMode('WINDOW');
-            updateWindowTimes(windowDate, startHour, startMinute, startAmPm, endHour, endMinute, endAmPm);
-          }}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-semibold transition ${
-            mode === 'WINDOW'
-              ? 'bg-white text-blue-700 shadow-sm border border-slate-200/60'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Clock className="w-3.5 h-3.5 text-blue-500" />
-          <span>Between Time (Arrival Window)</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => {
+              setMode('WINDOW');
+              updateWindowTimes(windowDate, startHour, startMinute, startAmPm, endHour, endMinute, endAmPm);
+            }}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
+              mode === 'WINDOW'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 text-slate-400" />
+            <span>Between Time (Arrival Window)</span>
+          </button>
+        </div>
+      )}
 
       {/* Mode 1: Quick ETA Pills */}
       {mode === 'ETA' && (
@@ -293,7 +299,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                 onClick={() => handleEtaSelect(preset.minutes)}
                 className={`py-2 px-2.5 rounded-lg border text-xs font-medium text-center transition flex flex-col items-center justify-center gap-0.5 ${
                   selectedEta === preset.minutes
-                    ? 'border-blue-600 bg-blue-50/70 text-blue-700 shadow-sm font-semibold'
+                    ? 'border-slate-900 bg-slate-900 text-white shadow-xs font-bold'
                     : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
@@ -366,7 +372,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                 setWindowDate(d);
                 updateWindowTimes(d, startHour, startMinute, startAmPm, endHour, endMinute, endAmPm);
               }}
-              className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
             />
           </div>
 
@@ -385,7 +391,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                     setStartHour(h);
                     updateWindowTimes(windowDate, h, startMinute, startAmPm, endHour, endMinute, endAmPm);
                   }}
-                  className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((h) => (
                     <option key={h} value={h}>
@@ -401,7 +407,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                     setStartMinute(m);
                     updateWindowTimes(windowDate, startHour, m, startAmPm, endHour, endMinute, endAmPm);
                   }}
-                  className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 >
                   {['00', '15', '30', '45'].map((m) => (
                     <option key={m} value={m}>
@@ -417,7 +423,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                       updateWindowTimes(windowDate, startHour, startMinute, 'AM', endHour, endMinute, endAmPm);
                     }}
                     className={`px-2 py-1 text-xs font-bold transition ${
-                      startAmPm === 'AM' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                      startAmPm === 'AM' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     AM
@@ -429,7 +435,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                       updateWindowTimes(windowDate, startHour, startMinute, 'PM', endHour, endMinute, endAmPm);
                     }}
                     className={`px-2 py-1 text-xs font-bold transition ${
-                      startAmPm === 'PM' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                      startAmPm === 'PM' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     PM
@@ -451,7 +457,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                     setEndHour(h);
                     updateWindowTimes(windowDate, startHour, startMinute, startAmPm, h, endMinute, endAmPm);
                   }}
-                  className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((h) => (
                     <option key={h} value={h}>
@@ -467,7 +473,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                     setEndMinute(m);
                     updateWindowTimes(windowDate, startHour, startMinute, startAmPm, endHour, m, endAmPm);
                   }}
-                  className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 >
                   {['00', '15', '30', '45'].map((m) => (
                     <option key={m} value={m}>
@@ -483,7 +489,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                       updateWindowTimes(windowDate, startHour, startMinute, startAmPm, endHour, endMinute, 'AM');
                     }}
                     className={`px-2 py-1 text-xs font-bold transition ${
-                      endAmPm === 'AM' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                      endAmPm === 'AM' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     AM
@@ -495,7 +501,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                       updateWindowTimes(windowDate, startHour, startMinute, startAmPm, endHour, endMinute, 'PM');
                     }}
                     className={`px-2 py-1 text-xs font-bold transition ${
-                      endAmPm === 'PM' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                      endAmPm === 'PM' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     PM
@@ -506,23 +512,23 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
           </div>
 
           {/* Active summary banner */}
-          <div className="p-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-center justify-between">
-            <span className="font-semibold flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-blue-600" />
-              Driver Promised Arrival Window:
+          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs flex items-center justify-between">
+            <span className="font-bold flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-red-600" />
+              Promised Arrival Window:
             </span>
-            <span className="font-bold bg-white px-2 py-0.5 rounded border border-blue-200 text-blue-700">
+            <span className="font-bold bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-slate-900 font-mono">
               {startHour}:{startMinute} {startAmPm} – {endHour}:{endMinute} {endAmPm} ({activeTz.split('/')[1]?.replace(/_/g, ' ') || activeTz})
             </span>
           </div>
         </div>
       )}
 
-      {/* Live Dual-Timezone Comparison Strip (Customer Local vs PKT Shift Window) */}
+      {/* Live Window Comparison Strip */}
       {(value?.arrivalWindowStart || value?.appointmentDate) && (
-        <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 text-slate-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-red-600 shrink-0"></span>
             <div>
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Customer Local Window</span>
               <span className="font-bold text-slate-900 font-mono text-xs">
@@ -531,16 +537,18 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-2 pt-2 sm:pt-0 sm:border-l sm:border-blue-200 sm:pl-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0"></span>
-            <div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">PKT Shift Window (Karachi)</span>
-              <span className="font-bold text-slate-900 font-mono text-xs">
-                {formatDate(value.arrivalWindowStart || value.appointmentDate, PKT_TIMEZONE)}
-                {value.arrivalWindowEnd && ` – ${formatTimeInTz(value.arrivalWindowEnd, PKT_TIMEZONE)}`}
-              </span>
+          {showPktWindow && (
+            <div className="flex items-center gap-2 pt-2 sm:pt-0 sm:border-l sm:border-slate-200 sm:pl-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-600 shrink-0"></span>
+              <div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">PKT Shift Window (Karachi)</span>
+                <span className="font-bold text-slate-900 font-mono text-xs">
+                  {formatDate(value.arrivalWindowStart || value.appointmentDate, PKT_TIMEZONE)}
+                  {value.arrivalWindowEnd && ` – ${formatTimeInTz(value.arrivalWindowEnd, PKT_TIMEZONE)}`}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

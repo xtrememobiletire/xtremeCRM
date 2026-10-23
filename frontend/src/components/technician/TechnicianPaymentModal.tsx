@@ -185,6 +185,9 @@ export default function TechnicianPaymentModal({
             {receiptPreview ? (
               <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-950/5 p-1 flex items-center justify-center">
                 <img src={receiptPreview} alt="Receipt preview" className="max-h-40 rounded-lg object-contain" />
+                <p className="text-[10px] text-slate-500 font-medium text-center mt-1">
+                  Preview verified locally (Cloudflare storage pending — receipt is not stored on server)
+                </p>
                 <button
                   type="button"
                   onClick={handleClearFile}

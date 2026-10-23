@@ -26,7 +26,7 @@ export default function AccountPreviewCard({
   }
 
   return (
-    <div className="relative w-full h-full rounded-none overflow-hidden border border-black/15 dark:border-white/15 bg-white dark:bg-[#070b14] shadow-2xl flex flex-col">
+    <div className="relative w-full h-full rounded-none overflow-hidden border border-black/15 dark:border-white/15 bg-white dark:bg-zinc-950 shadow-2xl flex flex-col">
       <AnimatePresence mode="wait">
         <motion.div
           key={activeOption.key}

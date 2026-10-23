@@ -112,7 +112,7 @@ export default function AboutValuesCards() {
               {/* TOP SECTION: Information Panel (Revealed on Hover/Click) */}
               {/* ======================================================== */}
               <div
-                className={`w-full overflow-hidden transition-all duration-500 ease-in-out shrink-0 bg-[#0c101d] flex flex-col justify-between ${
+                className={`w-full overflow-hidden transition-all duration-500 ease-in-out shrink-0 bg-zinc-950 flex flex-col justify-between ${
                   isActive
                     ? "h-[240px] sm:h-[250px] opacity-100 p-6 border-b border-white/15"
                     : "h-0 opacity-0 p-0 border-b-0 pointer-events-none"

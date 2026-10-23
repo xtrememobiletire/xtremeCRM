@@ -121,21 +121,21 @@ export default function Navbar({
             }`}
           >
             {/* Top 3px Continuous Bleed Strip (Covers any subpixel rounding gap) */}
-            <div className="absolute -top-[2px] left-0 right-0 h-[4px] bg-[#050811] dark:bg-[#0c0c0e] pointer-events-none z-10" />
+            <div className="absolute -top-[2px] left-0 right-0 h-[4px] bg-black dark:bg-[#0c0c0e] pointer-events-none z-10" />
 
             {/* Left Inverted Wing (Fillet) with smooth curvature */}
             <div
               className="hidden lg:block absolute -top-[2px] -left-[30px] w-[32px] h-[32px] pointer-events-none z-10 dark:backdrop-blur-2xl"
             >
               <svg
-                className="w-full h-full text-[#050811]"
+                className="w-full h-full text-black"
                 viewBox="0 -2 32 34"
                 preserveAspectRatio="none"
                 shapeRendering="geometricPrecision"
               >
                 <path
                   d="M0,-2 L32,-2 L32,30 L30,30 C30,12 18,0 0,0 Z"
-                  className="fill-[#050811] dark:fill-[#0c0c0e]"
+                  className="fill-black dark:fill-[#0c0c0e]"
                 />
                 <path
                   d="M30,30 C30,12 18,0 0,0"
@@ -151,14 +151,14 @@ export default function Navbar({
               className="hidden lg:block absolute -top-[2px] -right-[30px] w-[32px] h-[32px] pointer-events-none z-10 dark:backdrop-blur-2xl"
             >
               <svg
-                className="w-full h-full text-[#050811]"
+                className="w-full h-full text-black"
                 viewBox="0 -2 32 34"
                 preserveAspectRatio="none"
                 shapeRendering="geometricPrecision"
               >
                 <path
                   d="M0,-2 L32,-2 L32,0 C14,0 2,12 2,30 L0,30 Z"
-                  className="fill-[#050811] dark:fill-[#0c0c0e]"
+                  className="fill-black dark:fill-[#0c0c0e]"
                 />
                 <path
                   d="M2,30 C2,12 14,0 32,0"
@@ -177,7 +177,7 @@ export default function Navbar({
             */}
             <nav
               aria-label="Main Navigation"
-              className="relative bg-[#050811] dark:bg-[#0c0c0e]/95 dark:backdrop-blur-2xl text-white shadow-2xl shadow-black/40 dark:shadow-[0_15px_35px_rgba(0,0,0,0.8)] dark:border-b dark:border-x dark:border-white/15 rounded-t-none rounded-b-2xl sm:rounded-b-[26px] lg:rounded-b-[28px] py-2.5 sm:py-3 px-4 sm:px-6 lg:px-7"
+              className="relative bg-black dark:bg-[#0c0c0e]/95 dark:backdrop-blur-2xl text-white shadow-2xl shadow-black/40 dark:shadow-[0_15px_35px_rgba(0,0,0,0.8)] dark:border-b dark:border-x dark:border-white/15 rounded-t-none rounded-b-2xl sm:rounded-b-[26px] lg:rounded-b-[28px] py-2.5 sm:py-3 px-4 sm:px-6 lg:px-7"
             >
               <div className="flex items-center justify-between gap-3">
                 
@@ -276,7 +276,7 @@ export default function Navbar({
                               animate={{ opacity: 1, y: 0, scale: 1 }}
                               exit={{ opacity: 0, y: 4, scale: 0.98 }}
                               transition={{ duration: 0.18, ease: "easeOut" }}
-                              className="absolute top-full left-0 mt-2 w-64 p-2 bg-[#050811] dark:bg-[#0c0c0e] border border-white/10 dark:border-white/15 rounded-none shadow-2xl shadow-black/90 dark:shadow-[0_20px_50px_rgba(0,0,0,0.95)] z-50 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                              className="absolute top-full left-0 mt-2 w-64 p-2 bg-black dark:bg-[#0c0c0e] border border-white/10 dark:border-white/15 rounded-none shadow-2xl shadow-black/90 dark:shadow-[0_20px_50px_rgba(0,0,0,0.95)] z-50 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
                             >
                               {item.children.map((subItem) => (
                                 <Link
@@ -351,7 +351,7 @@ export default function Navbar({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -14, scale: 0.98 }}
                   transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute top-0 left-0 right-0 z-50 lg:hidden bg-[#050811] dark:bg-[#0c0c0e] text-white rounded-t-none rounded-b-2xl sm:rounded-b-[28px] p-4 sm:p-6 shadow-2xl shadow-black/90 border-b border-x border-white/[0.06] dark:border-white/15"
+                  className="absolute top-0 left-0 right-0 z-50 lg:hidden bg-black dark:bg-[#0c0c0e] text-white rounded-t-none rounded-b-2xl sm:rounded-b-[28px] p-4 sm:p-6 shadow-2xl shadow-black/90 border-b border-x border-white/[0.06] dark:border-white/15"
                 >
                   {/* Top Row: Logo on left, Close '✕' on right */}
                   <div className="flex items-center justify-between gap-3 pb-4 border-b border-white/[0.08]">
