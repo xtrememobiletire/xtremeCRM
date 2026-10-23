@@ -98,11 +98,13 @@ export default function BookingModal({
   const [serviceTitle] = useState<string>(initialServiceTitle);
 
   // Step 1: Calendar & Time State
-  const today = useMemo(() => new Date(), []);
   const [currentMonth, setCurrentMonth] = useState<Date>(
-    new Date(today.getFullYear(), today.getMonth(), 1)
+    () => new Date(2026, 9, 1)
   );
-  const [selectedDate, setSelectedDate] = useState<Date>(today);
+  const [selectedDate, setSelectedDate] = useState<Date>(
+    () => new Date(2026, 9, 27)
+  );
+  const [todayStartMs, setTodayStartMs] = useState<number | null>(null);
   const [selectedTime, setSelectedTime] = useState<string>("Immediate (ASAP)");
   const [selectedTimezone, setSelectedTimezone] = useState<string>("America/Toronto");
   const [timeCategory, setTimeCategory] = useState<"morning" | "afternoon" | "evening" | "overnight">("afternoon");
@@ -115,13 +117,26 @@ export default function BookingModal({
     lastName: "",
     email: "",
     phone: "",
-    year: new Date().getFullYear().toString(),
+    year: "2026",
     make: "",
     model: "",
     trim: "",
     address: "",
     notes: "",
   });
+
+  // Client-side initialization to avoid Next.js prerender date impurity
+  React.useEffect(() => {
+    const now = new Date();
+    setSelectedDate(now);
+    setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1));
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    setTodayStartMs(startOfToday);
+    setFormData((prev) => ({
+      ...prev,
+      year: prev.year || now.getFullYear().toString(),
+    }));
+  }, []);
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -451,7 +466,13 @@ export default function BookingModal({
                           selectedDate.getDate() === dObj.getDate();
 
                         const isPast =
-                          dObj.setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0);
+                          todayStartMs !== null
+                            ? new Date(
+                                currentMonth.getFullYear(),
+                                currentMonth.getMonth(),
+                                dayNum
+                              ).getTime() < todayStartMs
+                            : false;
 
                         return (
                           <button

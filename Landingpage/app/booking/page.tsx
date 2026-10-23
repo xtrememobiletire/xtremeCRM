@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import PageShell from "@/components/layout/page-shell";
 import BookingModal from "@/components/booking/booking-modal";
 import { Wrench, ShieldCheck, Clock } from "lucide-react";
 
-export default function BookingPage() {
+function BookingContent() {
   const [isModalOpen, setIsModalOpen] = useState(true);
 
   return (
@@ -65,5 +65,13 @@ export default function BookingPage() {
         />
       </div>
     </PageShell>
+  );
+}
+
+export default function BookingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black" />}>
+      <BookingContent />
+    </Suspense>
   );
 }
