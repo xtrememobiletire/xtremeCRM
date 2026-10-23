@@ -244,10 +244,10 @@ export default function Navbar({
                             }
                           }}
                           href={item.href}
-                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-none text-xs xl:text-[13px] font-medium transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--brand-primary)] ${
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs xl:text-[13px] transition-colors duration-200 focus:outline-none ${
                             isActive || desktopDropdown === item.label
-                              ? "text-white bg-white/[0.08] dark:bg-white/[0.12]"
-                              : "text-zinc-400 hover:text-white hover:bg-white/[0.06] dark:hover:bg-white/[0.1]"
+                              ? "text-white font-semibold"
+                              : "text-zinc-400 font-medium hover:text-white"
                           }`}
                         >
                           <span>{item.label}</span>
