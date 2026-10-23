@@ -237,9 +237,9 @@ export default function InvoicePdfModal({
         <div className="flex flex-wrap items-center justify-between px-5 py-3.5 bg-slate-900 text-white border-b border-slate-800 shrink-0 gap-3 no-print">
           <div className="flex items-center gap-3">
             <img
-              src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426897/xtreme/frontend/favicon_png.png"
+              src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp"
               alt="Xtreme"
-              className="w-8 h-8 rounded-lg object-contain bg-slate-800 p-0.5 border border-slate-700 shrink-0"
+              className="h-8 w-auto object-contain shrink-0"
             />
             <div>
               <div className="flex items-center gap-2">
@@ -488,9 +488,9 @@ export default function InvoicePdfModal({
                   <div>
                     <div className="flex items-center gap-3">
                       <img
-                        src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426897/xtreme/frontend/favicon_png.png"
+                        src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp"
                         alt="Xtreme Mobile Tire"
-                        className="w-11 h-11 object-contain shrink-0"
+                        className="h-12 w-auto object-contain shrink-0"
                       />
                       <div>
                         <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-none">
