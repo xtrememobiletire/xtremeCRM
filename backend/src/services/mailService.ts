@@ -56,6 +56,7 @@ class MailService {
     dueDate?: string;
     currency?: string;
     balanceDue?: string;
+    subject?: string;
     pdfBuffer: Buffer;
   }): Promise<{ messageId: string }> {
     const {
@@ -65,12 +66,13 @@ class MailService {
       issueDate = new Date().toISOString().split('T')[0],
       dueDate = 'Upon receipt',
       balanceDue = '$0.00',
+      subject: customSubject,
       pdfBuffer,
     } = params;
 
     const transporter = this.getTransporter();
 
-    const subject = `Your Invoice #${invoiceNumber} - Xtreme Mobile Tire`;
+    const subject = customSubject || `Xtreme Mobile Tire - Invoice #${invoiceNumber}`;
 
     // Only attach the official itemized invoice PDF
     const attachments: any[] = [
@@ -105,7 +107,7 @@ class MailService {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Invoice #${invoiceNumber} - Xtreme Mobile Tire</title>
+  <title>${subject}</title>
   <style>
     body { margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
     table { border-collapse: collapse; }

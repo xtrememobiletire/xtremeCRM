@@ -1225,6 +1225,9 @@ export const invoiceController = {
 
       const pdfBuffer = await generateInvoicePdf(pdfData);
 
+      const customSubject = req.body.subject?.trim();
+      const emailSubject = customSubject || `Xtreme Mobile Tire - Invoice #${invoice.invoiceNumber}`;
+
       await mailService.sendInvoiceEmail({
         to: targetEmail,
         clientName: pdfData.billTo.name,
@@ -1233,6 +1236,7 @@ export const invoiceController = {
         dueDate: pdfData.dueDate,
         currency: invoice.currency,
         balanceDue: pdfData.summary.balanceDue,
+        subject: emailSubject,
         pdfBuffer,
       });
 

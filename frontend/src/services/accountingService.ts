@@ -137,7 +137,7 @@ export const accountingService = {
 
   async sendInvoiceEmail(
     id: string,
-    payload: { recipientEmail: string; clientName?: string; clientAddress?: string; clientPhone?: string }
+    payload: { recipientEmail: string; clientName?: string; clientAddress?: string; clientPhone?: string; subject?: string }
   ) {
     const res = await api.post(`/invoices/${id}/send-email`, payload);
     return res.data;

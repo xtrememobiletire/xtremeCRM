@@ -78,6 +78,7 @@ export default function InvoicePdfModal({
   const [clientAddress, setClientAddress] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -96,6 +97,7 @@ export default function InvoicePdfModal({
           setClientAddress(res.billTo?.address || '');
           setClientPhone(res.billTo?.phone || '');
           setClientEmail(res.billTo?.email || '');
+          setEmailSubject(`Xtreme Mobile Tire - Invoice #${res.invoiceNumber || ''}`);
           if (initialSendMode) setIsEditingAddress(true);
         })
         .catch(() => {
@@ -125,6 +127,7 @@ export default function InvoicePdfModal({
     setClientAddress(data.billTo?.address || '');
     setClientPhone(data.billTo?.phone || '');
     setClientEmail(data.billTo?.email || '');
+    setEmailSubject(`Xtreme Mobile Tire - Invoice #${data.invoiceNumber || ''}`);
     toast.success('Addresses reset to default record');
   };
 
@@ -172,6 +175,7 @@ export default function InvoicePdfModal({
         clientName,
         clientAddress,
         clientPhone,
+        subject: emailSubject.trim() || undefined,
       });
       toast.success(`Invoice #${data?.invoiceNumber || ''} emailed successfully to ${clientEmail.trim()}!`);
     } catch (err: any) {
@@ -426,6 +430,16 @@ export default function InvoicePdfModal({
                       className="w-full px-2 py-1 border border-slate-200 rounded text-xs mt-0.5"
                     />
                   </div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 uppercase block font-semibold">Email Subject / Title</label>
+                  <input
+                    type="text"
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    placeholder="e.g. Xtreme Mobile Tire - Invoice #..."
+                    className="w-full px-2 py-1 border border-slate-200 rounded text-xs mt-0.5 font-medium"
+                  />
                 </div>
               </div>
             </div>
