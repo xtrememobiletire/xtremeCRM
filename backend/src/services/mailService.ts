@@ -87,20 +87,13 @@ class MailService {
     const text = [
       `Dear ${clientName},`,
       '',
-      `Thank you for choosing Xtreme Mobile Tire. Please find attached your invoice #${invoiceNumber}.`,
+      `Thank you for trusting Xtreme Mobile Tire with your vehicle and fleet service. Please find attached your invoice #${invoiceNumber}.`,
       '',
-      `Invoice: #${invoiceNumber}`,
-      `Issue Date: ${issueDate}`,
-      `Payment Due: ${dueDate}`,
-      `Balance Due: ${balanceDue}`,
-      '',
-      `Xtreme Mobile Tire Inc.`,
-      `Toll-Free Dispatch: +1 (804) 326-5442 (US) | +1 (437) 375-5674 (CA) | +44 1630 234331 (UK)`,
-      `Email: info@xtrememobiletire.com`,
-      `Web: https://xtrememobiletire.com`,
+      `Best regards,`,
+      `Xtreme Mobile Tire Team`,
     ].join('\n');
 
-    // Clean, elegant, minimalist HTML body with user's Cloudinary logo
+    // Clean, elegant, minimalist professional HTML body
     const html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -112,18 +105,10 @@ class MailService {
     body { margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
     table { border-collapse: collapse; }
     .email-container { max-width: 580px; margin: 30px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05); }
-    .content { padding: 32px 32px 28px 32px; }
-    .greeting { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
-    .intro-p { font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 20px 0; }
-    .summary-card { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #dc2626; border-radius: 8px; margin: 20px 0 10px 0; }
-    .summary-cell { padding: 10px 16px; font-size: 13px; color: #64748b; }
-    .summary-val { padding: 10px 16px; font-size: 13px; font-weight: 700; color: #0f172a; text-align: right; }
-    .summary-total { border-top: 1px solid #cbd5e1; background-color: #f1f5f9; }
-    .summary-total-label { padding: 12px 16px; font-size: 14px; font-weight: 800; color: #0f172a; text-transform: uppercase; }
-    .summary-total-val { padding: 12px 16px; font-size: 16px; font-weight: 900; color: #dc2626; text-align: right; }
-    .footer { background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 32px; font-size: 12px; color: #64748b; line-height: 1.6; }
-    .footer strong { color: #334155; }
-    .footer a { color: #dc2626; text-decoration: none; font-weight: 600; }
+    .content { padding: 36px 32px 36px 32px; }
+    .greeting { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 14px; }
+    .intro-p { font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 24px 0; }
+    .signoff { font-size: 14px; line-height: 1.6; color: #334155; margin: 0; }
   </style>
 </head>
 <body>
@@ -135,44 +120,21 @@ class MailService {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #0b1120; border-bottom: 3px solid #dc2626; padding: 22px 0;">
             <tr>
               <td align="center" valign="middle">
-                <img src="https://res.cloudinary.com/ebjikx52/image/upload/f_png,q_auto/v1792426904/xtreme/frontend/logo_webp.png" alt="Xtreme Mobile Tire" width="150" style="display: block; width: 150px; max-width: 150px; height: auto; margin: 0 auto; border: 0;" />
+                <img src="https://res.cloudinary.com/ebjikx52/image/upload/f_png,q_auto/v1792426904/xtreme/frontend/logo_webp.png" alt="Xtreme Mobile Tire" width="160" style="display: block; width: 160px; max-width: 160px; height: auto; margin: 0 auto; border: 0;" />
               </td>
             </tr>
           </table>
 
-          <!-- Main Content -->
+          <!-- Main Content: Clean Professional Text -->
           <div class="content">
             <div class="greeting">Dear ${clientName},</div>
             <p class="intro-p">
               Thank you for trusting Xtreme Mobile Tire with your vehicle and fleet service. Please find attached your invoice <strong>#${invoiceNumber}</strong>.
             </p>
-
-            <!-- Invoice Summary Box -->
-            <table role="presentation" class="summary-card" cellpadding="0" cellspacing="0">
-              <tr>
-                <td class="summary-cell">Invoice Number:</td>
-                <td class="summary-val">#${invoiceNumber}</td>
-              </tr>
-              <tr>
-                <td class="summary-cell">Issue Date:</td>
-                <td class="summary-val">${issueDate}</td>
-              </tr>
-              <tr>
-                <td class="summary-cell">Payment Due:</td>
-                <td class="summary-val">${dueDate}</td>
-              </tr>
-              <tr class="summary-total">
-                <td class="summary-total-label">BALANCE DUE:</td>
-                <td class="summary-total-val">${balanceDue}</td>
-              </tr>
-            </table>
-          </div>
-
-          <!-- Clean Footer -->
-          <div class="footer">
-            <strong>Xtreme Mobile Tire Inc.</strong><br>
-            Toll-Free Dispatch: +1 (804) 326-5442 (US) | +1 (437) 375-5674 (CA) | +44 1630 234331 (UK)<br>
-            Direct Support: <a href="mailto:info@xtrememobiletire.com">info@xtrememobiletire.com</a> | <a href="https://xtrememobiletire.com">xtrememobiletire.com</a>
+            <p class="signoff">
+              Best regards,<br>
+              <strong>Xtreme Mobile Tire Team</strong>
+            </p>
           </div>
         </div>
       </td>
