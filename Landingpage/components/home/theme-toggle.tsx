@@ -2,12 +2,16 @@
 
 import { useState, useEffect } from "react";
 
+const THEME_KEY = "xtreme_theme";
+
 export default function ThemeToggle() {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     try {
-      const saved = sessionStorage.getItem("theme");
+      sessionStorage.removeItem("theme");
+      localStorage.removeItem("theme");
+      const saved = sessionStorage.getItem(THEME_KEY);
       if (saved === "dark") {
         setIsDark(true);
         document.documentElement.classList.add("dark");
@@ -22,7 +26,7 @@ export default function ThemeToggle() {
     const next = !isDark;
     setIsDark(next);
     try {
-      sessionStorage.setItem("theme", next ? "dark" : "light");
+      sessionStorage.setItem(THEME_KEY, next ? "dark" : "light");
     } catch {}
     if (typeof document !== "undefined") {
       document.documentElement.classList.toggle("dark", next);
