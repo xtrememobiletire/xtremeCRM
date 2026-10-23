@@ -6,7 +6,7 @@ import {
   MapPin, Phone, Mail, Globe, Plus, Trash2,
   LogOut, ArrowLeft, Building2, X,
   Calendar, Layers, ShieldCheck, DollarSign,
-  Wrench, ArrowRight, Radio, Bell, Menu
+  Wrench, ArrowRight, Radio, Bell, Menu, Zap
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -708,10 +708,10 @@ export default function FleetDashboard() {
                   title="ACTIVE SERVICE JOBS"
                   value={activeJobsCount.toString()}
                   subtitle="Units en route or on scene"
-                  subtitleColor="text-blue-600"
+                  subtitleColor="text-slate-600"
                   icon={Clock}
-                  iconBg="bg-blue-50"
-                  iconColor="text-blue-600"
+                  iconBg="bg-slate-100"
+                  iconColor="text-slate-900"
                 />
                 <StatCard
                   title="ASSIGNED DRIVERS"
@@ -791,7 +791,7 @@ export default function FleetDashboard() {
                                     j.status === 'COMPLETED'
                                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                       : j.status === 'IN_PROGRESS' || j.status === 'ARRIVED'
-                                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                      ? 'bg-slate-900 text-white'
                                       : 'bg-amber-50 text-amber-700 border border-amber-200'
                                   }`}>
                                     {['UNVERIFIED_PUBLIC', 'PENDING'].includes(j.status) ? 'AWAITING DISPATCH' : j.status}
@@ -1079,266 +1079,479 @@ export default function FleetDashboard() {
             </div>
           )}
 
-          {/* 4. REQUEST NEW SERVICE TAB */}
+          {/* 4. REQUEST NEW SERVICE TAB - FULL-WIDTH RESPONSIVE 2-COLUMN LAYOUT */}
           {activeTab === 'request' && (
-            <div className="max-w-2xl space-y-4">
-              <PageHeader
-                title="Request Roadside Service"
-                subtitle="Book standard or emergency roadside assistance directly with corporate dispatch"
-              />
-
-              <form onSubmit={handleBookService} className="card-surface p-6 space-y-4 text-xs">
-                {/* 1. SERVICE URGENCY PRIORITY */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
-                    <span>Service Urgency Priority *</span>
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {[
-                      {
-                        id: 'STANDARD',
-                        label: 'Standard Fleet Service',
-                        desc: 'Depot or scheduled yard work',
-                        color: 'border-blue-500 bg-blue-50 text-blue-800',
-                      },
-                      {
-                        id: 'URGENT',
-                        label: 'Urgent Breakdown',
-                        desc: 'Highway / roadside dead stop (ASAP)',
-                        color: 'border-red-500 bg-red-50 text-red-800',
-                      },
-                      {
-                        id: 'FUTURE',
-                        label: 'Future Appointment',
-                        desc: 'Pre-scheduled window & date',
-                        color: 'border-purple-500 bg-purple-50 text-purple-800',
-                      },
-                    ].map((u) => {
-                      const isSelected = bookingForm.urgency === u.id;
-                      return (
-                        <button
-                          key={u.id}
-                          type="button"
-                          onClick={() => {
-                            setBookingForm((prev) => ({ ...prev, urgency: u.id as any }));
-                            if (u.id === 'URGENT') {
-                              setArrivalWindow((prev) => ({ ...prev, mode: 'ETA' }));
-                            } else {
-                              setArrivalWindow((prev) => ({ ...prev, mode: 'WINDOW' }));
-                            }
-                          }}
-                          className={`p-3 rounded-xl border text-left transition cursor-pointer ${
-                            isSelected
-                              ? `${u.color} font-bold shadow-2xs`
-                              : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className="text-xs font-bold leading-tight">{u.label}</div>
-                          <div className="text-[11px] text-slate-500 mt-0.5">{u.desc}</div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 2. APPOINTMENT TIMING & SERVICE WINDOW */}
+            <div className="w-full max-w-7xl mx-auto space-y-6">
+              {/* Header Banner */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-200">
                 <div>
-                  {bookingForm.urgency === 'URGENT' ? (
-                    <div className="p-3.5 rounded-xl bg-red-50/80 border border-red-200 text-xs text-red-900 flex items-center justify-between shadow-2xs">
-                      <div>
-                        <span className="font-bold block">Immediate Roadside Dispatch Triggered</span>
-                        <span className="text-[11px] opacity-90">Technician will be dispatched with priority (~30-45m arrival window).</span>
-                      </div>
-                      <span className="text-[10px] font-mono font-bold text-red-700 bg-white border border-red-300 px-2.5 py-1 rounded-md shrink-0">
-                        PRIORITY ETA
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
-                        <span>Promised Arrival Window ("Between Time") *</span>
-                        <span className="text-[11px] font-mono text-blue-600 font-bold">
-                          {arrivalWindow.displayLabel || 'Scheduled Window'}
-                        </span>
-                      </label>
-                      <ArrivalWindowSelector
-                        value={arrivalWindow}
-                        timezone={fleet?.timezone || 'America/Toronto'}
-                        countryCode={fleetCountry}
-                        onChange={setArrivalWindow}
-                        showPktWindow={false}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* 3. DRIVER & VEHICLE SELECTION */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <DriverCombobox
-                    drivers={driverOptions}
-                    selectedDriverName={bookingForm.recipientName}
-                    selectedDriverPhone={bookingForm.driverPhone}
-                    onSelect={handleDriverSelect}
-                    onClear={() => setBookingForm((prev) => ({ ...prev, driverId: '', recipientName: '', driverPhone: '' }))}
-                  />
-
-                  <VehicleCombobox
-                    vehicles={vehicleOptions}
-                    selectedUnitNumber={bookingForm.unitNumber}
-                    selectedLicensePlate={bookingForm.licensePlate}
-                    selectedVehicleDetails={bookingForm.vehicleDetails}
-                    onSelect={handleVehicleSelect}
-                    onClear={() => setBookingForm((prev) => ({ ...prev, vehicleId: '', unitNumber: '', licensePlate: '', vehicleDetails: '' }))}
-                  />
-                </div>
-
-                {/* 4. MULTI-SERVICE WORK ORDER BUILDER */}
-                <div className="pt-1">
-                  <MultiServiceSelector
-                    items={serviceItems}
-                    onChange={setServiceItems}
-                    currencySymbol={currencySymbol}
-                    taxRate={taxRate}
-                    discountPercent={fleet?.discountPercent || 0}
-                    discountLabel={fleet?.discountPercent ? `Fleet Contract Discount (-${fleet.discountPercent}%)` : undefined}
-                    allowPriceEdit={false}
-                    showTaxToggle={false}
-                    showTireSelector={true}
-                    tireCount={bookingForm.tireCount}
-                    onTireCountChange={(cnt) => setBookingForm((prev) => ({ ...prev, tireCount: cnt }))}
-                    title="Required Commercial Work Order Services"
-                    hidePricing={true}
-                  />
-                </div>
-
-                {/* 5. TIRE SIZE & CONTACT PHONE */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Driver / Contact Phone
-                    </label>
-                    <input
-                      type="text"
-                      value={bookingForm.driverPhone}
-                      onChange={(e) => setBookingForm({ ...bookingForm, driverPhone: e.target.value })}
-                      placeholder={fleet?.contactPhone || '1-866-686-9660'}
-                      className="input-base mt-1.5 py-2.5 text-xs text-slate-800 font-mono"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Tire Specification
-                    </label>
-                    <input
-                      type="text"
-                      value={bookingForm.tireSize}
-                      onChange={(e) => setBookingForm({ ...bookingForm, tireSize: e.target.value })}
-                      placeholder="e.g. 11R22.5 or 295/75R22.5"
-                      className="input-base mt-1.5 py-2.5 text-xs font-mono text-slate-800"
-                    />
-                  </div>
-                </div>
-
-                {/* 6. SERVICE ADDRESS */}
-                <div>
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Breakdown / Service Location *
-                  </label>
-                  <div className="mt-1.5">
-                    <AddressAutocompleteInput
-                      value={bookingForm.address}
-                      countryCode={fleetCountry}
-                      onChange={(val) => setBookingForm((prev) => ({ ...prev, address: val }))}
-                      onSelectLocation={(loc) => {
-                        setBookingForm((prev) => ({
-                          ...prev,
-                          address: loc.address,
-                          serviceLatitude: loc.latitude,
-                          serviceLongitude: loc.longitude,
-                          serviceTimezone: loc.timezone,
-                        }));
-                      }}
-                      placeholder="Enter street address, highway exit, or depot location"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* UPFRONT DEPOSIT & LOCAL RECEIPT PROOF (Cloudflare Readiness) */}
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
-                      <DollarSign size={14} className="text-emerald-600" />
-                      <span>Upfront Deposit & Proof Photo (Optional)</span>
+                  <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+                    <span>Request Roadside & Fleet Service</span>
+                    <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-red-100 text-red-700 border border-red-200">
+                      Direct Dispatch
                     </span>
+                  </h1>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                    Book priority emergency roadside assistance or schedule routine yard fleet maintenance directly with dispatch
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700">
+                    <Building2 className="w-4 h-4 text-slate-500" />
+                    <span>{fleet?.companyName || 'Corporate Fleet'}</span>
+                    <span className="font-mono text-red-600 font-bold ml-1">({fleet?.accountCode || 'XMT-5132'})</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                        Upfront Deposit Paid ({currencySymbol})
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={bookingForm.upfrontAmountCents ? (bookingForm.upfrontAmountCents / 100).toFixed(2) : ''}
-                        onChange={(e) => setBookingForm({ ...bookingForm, upfrontAmountCents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
-                        className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900"
-                        placeholder="0.00"
+                </div>
+              </div>
+
+              <form onSubmit={handleBookService}>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* LEFT COLUMN: Core Service Parameters (Span 7 on lg, 8 on xl) */}
+                  <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+                    {/* SECTION 1: Service Urgency & Arrival Window */}
+                    <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-5">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center font-bold text-sm">
+                            1
+                          </div>
+                          <div>
+                            <h3 className="text-sm sm:text-base font-bold text-slate-900">Service Priority & Timing</h3>
+                            <p className="text-xs text-slate-500">Choose between immediate roadside dispatch or scheduled service</p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-semibold text-slate-500">Required *</span>
+                      </div>
+
+                      {/* 3 Urgency Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {[
+                          {
+                            id: 'URGENT',
+                            label: 'Urgent Breakdown',
+                            subtitle: 'Highway or dead stop (ASAP)',
+                            tag: 'PRIORITY ETA',
+                            icon: Zap,
+                            activeClass: 'border-red-600 bg-red-50/70 text-red-950 ring-2 ring-red-600/20 shadow-xs',
+                            badgeClass: 'bg-red-600 text-white',
+                          },
+                          {
+                            id: 'STANDARD',
+                            label: 'Standard Service',
+                            subtitle: 'Depot, yard, or scheduled stop',
+                            tag: 'TODAY WINDOW',
+                            icon: Truck,
+                            activeClass: 'border-slate-900 bg-slate-900 text-white shadow-sm',
+                            badgeClass: 'bg-white text-slate-900',
+                          },
+                          {
+                            id: 'FUTURE',
+                            label: 'Future Appointment',
+                            subtitle: 'Pre-scheduled calendar date',
+                            tag: 'RESERVED',
+                            icon: Calendar,
+                            activeClass: 'border-slate-900 bg-slate-900 text-white shadow-sm',
+                            badgeClass: 'bg-white text-slate-900',
+                          },
+                        ].map((u) => {
+                          const isSelected = bookingForm.urgency === u.id;
+                          const IconComponent = u.icon;
+                          return (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={() => {
+                                setBookingForm((prev) => ({ ...prev, urgency: u.id as any }));
+                                if (u.id === 'URGENT') {
+                                  setArrivalWindow((prev) => ({ ...prev, mode: 'ETA' }));
+                                } else {
+                                  setArrivalWindow((prev) => ({ ...prev, mode: 'WINDOW' }));
+                                }
+                              }}
+                              className={`p-4 rounded-xl border text-left transition-all duration-150 cursor-pointer flex flex-col justify-between gap-3 ${
+                                isSelected
+                                  ? u.activeClass
+                                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/80'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <div className={`p-2 rounded-lg ${isSelected ? (u.id === 'URGENT' ? 'bg-red-100' : 'bg-slate-800') : 'bg-slate-100'}`}>
+                                  <IconComponent className={`w-4 h-4 ${isSelected ? (u.id === 'URGENT' ? 'text-red-600' : 'text-white') : 'text-slate-600'}`} />
+                                </div>
+                                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                                  isSelected ? u.badgeClass : 'bg-slate-100 text-slate-600'
+                                }`}>
+                                  {u.tag}
+                                </span>
+                              </div>
+                              <div>
+                                <div className={`text-sm font-bold ${isSelected && u.id !== 'URGENT' ? 'text-white' : 'text-slate-900'}`}>
+                                  {u.label}
+                                </div>
+                                <div className={`text-xs mt-0.5 ${isSelected && u.id !== 'URGENT' ? 'text-slate-300' : 'text-slate-500'}`}>
+                                  {u.subtitle}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Timing Panel: Driven cleanly by urgency */}
+                      <div>
+                        {bookingForm.urgency === 'URGENT' ? (
+                          <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-950 flex items-start justify-between gap-3 shadow-2xs">
+                            <div className="flex items-start gap-3">
+                              <div className="p-2 rounded-lg bg-red-600 text-white shrink-0 mt-0.5 shadow-xs">
+                                <Zap className="w-5 h-5 animate-pulse" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-bold text-red-950 flex items-center gap-2">
+                                  <span>Priority Roadside Dispatch Triggered</span>
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white text-red-700 border border-red-300">
+                                    ~30-45 MIN ETA
+                                  </span>
+                                </div>
+                                <p className="text-xs text-red-800 mt-1 leading-relaxed">
+                                  Your ticket will be routed directly to the corporate emergency dispatch board with high priority. A certified roadside technician will be assigned immediately.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-3 pt-2">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                <Clock className="w-4 h-4 text-slate-700" />
+                                <span>Promised Arrival Window</span>
+                              </label>
+                              {arrivalWindow.displayLabel && (
+                                <span className="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
+                                  {arrivalWindow.displayLabel}
+                                </span>
+                              )}
+                            </div>
+                            <ArrivalWindowSelector
+                              value={arrivalWindow}
+                              timezone={fleet?.timezone || 'America/Toronto'}
+                              countryCode={fleetCountry}
+                              onChange={setArrivalWindow}
+                              showPktWindow={false}
+                              hideModeToggle={true}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* SECTION 2: Vehicle & Assigned Driver */}
+                    <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-5">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-900 flex items-center justify-center font-bold text-sm">
+                            2
+                          </div>
+                          <div>
+                            <h3 className="text-sm sm:text-base font-bold text-slate-900">Commercial Vehicle & Assigned Driver</h3>
+                            <p className="text-xs text-slate-500">Select registered fleet units or enter breakdown vehicle details</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                            Assigned Driver / Contact
+                          </label>
+                          <DriverCombobox
+                            drivers={driverOptions}
+                            selectedDriverName={bookingForm.recipientName}
+                            selectedDriverPhone={bookingForm.driverPhone}
+                            onSelect={handleDriverSelect}
+                            onClear={() => setBookingForm((prev) => ({ ...prev, driverId: '', recipientName: '', driverPhone: '' }))}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                            Fleet Vehicle / Unit #
+                          </label>
+                          <VehicleCombobox
+                            vehicles={vehicleOptions}
+                            selectedUnitNumber={bookingForm.unitNumber}
+                            selectedLicensePlate={bookingForm.licensePlate}
+                            selectedVehicleDetails={bookingForm.vehicleDetails}
+                            onSelect={handleVehicleSelect}
+                            onClear={() => setBookingForm((prev) => ({ ...prev, vehicleId: '', unitNumber: '', licensePlate: '', vehicleDetails: '' }))}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                            Driver / Contact Direct Phone
+                          </label>
+                          <div className="relative">
+                            <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <input
+                              type="text"
+                              value={bookingForm.driverPhone}
+                              onChange={(e) => setBookingForm({ ...bookingForm, driverPhone: e.target.value })}
+                              placeholder={fleet?.contactPhone || '1-866-686-9660'}
+                              className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 min-h-[44px]"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                            Tire Specification (Size / Ply)
+                          </label>
+                          <input
+                            type="text"
+                            value={bookingForm.tireSize}
+                            onChange={(e) => setBookingForm({ ...bookingForm, tireSize: e.target.value })}
+                            placeholder="e.g. 11R22.5 or 295/75R22.5"
+                            className="w-full px-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 min-h-[44px]"
+                          />
+                          {/* Quick commercial tire size chips */}
+                          <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                            <span className="text-[11px] text-slate-400 font-medium mr-0.5">Common:</span>
+                            {['11R22.5', '295/75R22.5', '275/70R22.5', '255/70R22.5', '225/70R19.5'].map((chip) => (
+                              <button
+                                key={chip}
+                                type="button"
+                                onClick={() => setBookingForm((prev) => ({ ...prev, tireSize: chip }))}
+                                className={`px-2 py-0.5 rounded text-[11px] font-mono transition cursor-pointer border ${
+                                  bookingForm.tireSize === chip
+                                    ? 'bg-slate-900 text-white border-slate-900 font-bold'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 hover:text-slate-900'
+                                }`}
+                              >
+                                {chip}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SECTION 3: Breakdown Location & Notes */}
+                    <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-5">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-900 flex items-center justify-center font-bold text-sm">
+                            3
+                          </div>
+                          <div>
+                            <h3 className="text-sm sm:text-base font-bold text-slate-900">Breakdown Location & Instructions</h3>
+                            <p className="text-xs text-slate-500">Provide exact coordinates, highway exit, or customer yard address</p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-semibold text-slate-500">Required *</span>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                          Breakdown / Service Location *
+                        </label>
+                        <AddressAutocompleteInput
+                          value={bookingForm.address}
+                          countryCode={fleetCountry}
+                          onChange={(val) => setBookingForm((prev) => ({ ...prev, address: val }))}
+                          onSelectLocation={(loc) => {
+                            setBookingForm((prev) => ({
+                              ...prev,
+                              address: loc.address,
+                              serviceLatitude: loc.latitude,
+                              serviceLongitude: loc.longitude,
+                              serviceTimezone: loc.timezone,
+                            }));
+                          }}
+                          placeholder="Enter street address, highway mile marker, cross street, or yard address"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                          Wheel Position & Breakdown Instructions
+                        </label>
+                        <textarea
+                          value={bookingForm.notes}
+                          onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
+                          placeholder="e.g. Trailer right-rear outer tire blowout, driver waiting safely on right shoulder with hazard lights on..."
+                          rows={3}
+                          className="w-full p-3 text-sm text-slate-900 placeholder:text-slate-400 rounded-xl border border-slate-200 bg-white focus:border-slate-900 focus:ring-1 focus:ring-slate-900 resize-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* RIGHT COLUMN: Commercial Services & Ticket Review (Span 5 on lg, 4 on xl, sticky) */}
+                  <div className="lg:col-span-5 xl:col-span-4 space-y-6 lg:sticky lg:top-20">
+                    {/* Required Commercial Services */}
+                    <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <Wrench className="w-5 h-5 text-red-600" />
+                          <h3 className="text-sm font-bold text-slate-900">Required Work Order Services</h3>
+                        </div>
+                        <span className="text-xs font-bold text-slate-600 font-mono">
+                          {serviceItems.length} {serviceItems.length === 1 ? 'item' : 'items'}
+                        </span>
+                      </div>
+
+                      <MultiServiceSelector
+                        items={serviceItems}
+                        onChange={setServiceItems}
+                        currencySymbol={currencySymbol}
+                        taxRate={taxRate}
+                        discountPercent={fleet?.discountPercent || 0}
+                        discountLabel={fleet?.discountPercent ? `Fleet Contract Discount (-${fleet.discountPercent}%)` : undefined}
+                        allowPriceEdit={false}
+                        showTaxToggle={false}
+                        showTireSelector={true}
+                        tireCount={bookingForm.tireCount}
+                        onTireCountChange={(cnt) => setBookingForm((prev) => ({ ...prev, tireCount: cnt }))}
+                        title=""
+                        hidePricing={true}
                       />
                     </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                        Receipt Photo (Local Preview)
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setLocalReceiptPreview(URL.createObjectURL(file));
-                          } else {
-                            setLocalReceiptPreview(null);
-                          }
-                        }}
-                        className="w-full text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300"
-                      />
+
+                    {/* Upfront Deposit & Proof Photo (Optional) */}
+                    <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                          <DollarSign size={15} className="text-emerald-600" />
+                          <span>Upfront Deposit & Proof (Optional)</span>
+                        </span>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600 mb-1">
+                            Upfront Deposit Paid ({currencySymbol})
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={bookingForm.upfrontAmountCents ? (bookingForm.upfrontAmountCents / 100).toFixed(2) : ''}
+                            onChange={(e) => setBookingForm({ ...bookingForm, upfrontAmountCents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
+                            className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 bg-white font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 min-h-[42px]"
+                            placeholder="0.00"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600 mb-1">
+                            Breakdown / Receipt Photo (Local Preview)
+                          </label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setLocalReceiptPreview(URL.createObjectURL(file));
+                              } else {
+                                setLocalReceiptPreview(null);
+                              }
+                            }}
+                            className="w-full text-xs text-slate-600 file:mr-2.5 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-800 hover:file:bg-slate-200 cursor-pointer"
+                          />
+                        </div>
+
+                        {localReceiptPreview && (
+                          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
+                            <img src={localReceiptPreview} alt="Receipt preview" className="w-14 h-14 object-cover rounded-lg border border-slate-200 shrink-0" />
+                            <span className="text-xs text-slate-500 font-medium leading-relaxed">
+                              Preview attached locally (Cloudflare storage pending — image will not be uploaded to server)
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Dispatch Review & Action Card */}
+                    <div className="p-5 sm:p-6 rounded-2xl border border-slate-900 bg-slate-950 text-white shadow-lg space-y-4">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-200">Dispatch Summary</h4>
+                        </div>
+                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                          bookingForm.urgency === 'URGENT' ? 'bg-red-600 text-white' : 'bg-slate-800 text-slate-300'
+                        }`}>
+                          {bookingForm.urgency}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5 text-xs text-slate-300">
+                        <div className="flex items-center justify-between py-1 border-b border-slate-800/80">
+                          <span className="text-slate-400">Timing:</span>
+                          <span className="font-mono font-semibold text-white">
+                            {bookingForm.urgency === 'URGENT' ? 'Immediate Priority (~30m)' : arrivalWindow.displayLabel || 'Standard Window'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-1 border-b border-slate-800/80">
+                          <span className="text-slate-400">Unit / Plate:</span>
+                          <span className="font-mono font-semibold text-white">
+                            {bookingForm.unitNumber || bookingForm.licensePlate || 'Not specified'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-1 border-b border-slate-800/80">
+                          <span className="text-slate-400">Tire Size:</span>
+                          <span className="font-mono font-semibold text-white">
+                            {bookingForm.tireSize || '11R22.5'} ({bookingForm.tireCount} {bookingForm.tireCount === 1 ? 'tire' : 'tires'})
+                          </span>
+                        </div>
+                        <div className="flex items-start justify-between py-1 border-b border-slate-800/80 gap-2">
+                          <span className="text-slate-400 shrink-0">Location:</span>
+                          <span className="font-medium text-white truncate text-right max-w-[200px]" title={bookingForm.address}>
+                            {bookingForm.address || 'Address pending'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-1">
+                          <span className="text-slate-400">Services:</span>
+                          <span className="font-semibold text-emerald-400">
+                            {serviceItems.length} selected
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Primary Dispatch CTA */}
+                      <button
+                        type="submit"
+                        disabled={bookServiceMutation.isPending}
+                        className={`w-full py-3.5 px-4 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer min-h-[48px] shadow-md ${
+                          bookingForm.urgency === 'URGENT'
+                            ? 'bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-red-600/30'
+                            : 'bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-900 shadow-white/10'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {bookServiceMutation.isPending ? (
+                          <>
+                            <Clock className="w-4 h-4 animate-spin" />
+                            <span>Dispatching Ticket...</span>
+                          </>
+                        ) : bookingForm.urgency === 'URGENT' ? (
+                          <>
+                            <Zap className="w-4 h-4" />
+                            <span>Dispatch Urgent Roadside Ticket</span>
+                          </>
+                        ) : (
+                          <>
+                            <Calendar className="w-4 h-4" />
+                            <span>Submit Fleet Service Request</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
-                  {localReceiptPreview && (
-                    <div className="p-2 rounded-xl bg-white border border-slate-200 flex items-center gap-3">
-                      <img src={localReceiptPreview} alt="Receipt preview" className="w-12 h-12 object-cover rounded-lg border border-slate-200" />
-                      <span className="text-[11px] text-slate-500 font-medium">
-                        Preview attached locally (Cloudflare storage pending — image is not stored on server)
-                      </span>
-                    </div>
-                  )}
                 </div>
-
-                {/* 9. SPECIAL INSTRUCTIONS / NOTES */}
-                <div>
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Wheel Position / Breakdown Instructions
-                  </label>
-                  <textarea
-                    value={bookingForm.notes}
-                    onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
-                    placeholder="e.g. Trailer right-rear outer tire blowout, driver waiting on shoulder"
-                    rows={2}
-                    className="textarea-base mt-1.5 py-2 text-xs text-slate-800 resize-none"
-                  />
-                </div>
-
-                {/* SUBMIT BUTTON */}
-                <button
-                  type="submit"
-                  disabled={bookServiceMutation.isPending}
-                  className="w-full btn-primary py-3 text-xs font-bold uppercase tracking-wider shadow-md shadow-red-600/20 cursor-pointer mt-2"
-                >
-                  {bookServiceMutation.isPending ? 'Dispatching Request...' : 'Submit Service Request'}
-                </button>
               </form>
             </div>
           )}
@@ -1404,7 +1617,7 @@ export default function FleetDashboard() {
                               j.urgency === 'URGENT'
                                 ? 'bg-red-50 text-red-700 border-red-200'
                                 : j.urgency === 'FUTURE'
-                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                ? 'bg-slate-100 text-slate-800 border-slate-300'
                                 : 'bg-slate-100 text-slate-700 border-slate-200'
                             }`}>
                               {j.urgency === 'URGENT' ? 'Emergency' : j.urgency === 'FUTURE' ? 'Scheduled' : 'Standard'}
@@ -1437,9 +1650,9 @@ export default function FleetDashboard() {
                               j.status === 'COMPLETED'
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                 : j.status === 'IN_PROGRESS' || j.status === 'ARRIVED'
-                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                ? 'bg-slate-900 text-white'
                                 : j.status === 'ASSIGNED' || j.status === 'EN_ROUTE'
-                                ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                ? 'bg-red-50 text-red-700 border border-red-200'
                                 : 'bg-amber-50 text-amber-700 border border-amber-200'
                             }`}>
                               {['UNVERIFIED_PUBLIC', 'PENDING'].includes(j.status) ? 'AWAITING DISPATCH' : j.status === 'IN_PROGRESS' ? 'Job Start' : j.status}
