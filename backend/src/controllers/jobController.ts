@@ -1574,13 +1574,17 @@ export const jobController = {
       const defaultUser = (await prisma.user.findFirst({ where: { role: 'ADMIN' } })) || (await prisma.user.findFirst());
       if (!defaultUser) return sendError(res, 'System user not configured', 500);
 
+      const vehicleYear = Number(data.vehicle?.year) || new Date().getFullYear();
+      const vehicleMake = data.vehicle?.make || 'Standard';
+      const vehicleModel = [data.vehicle?.model || 'Vehicle', data.vehicle?.trim].filter(Boolean).join(' ');
+
       const veh = await prisma.vehicle.create({
         data: {
           countryCode: country,
-          year: Number(data.vehicle?.year) || new Date().getFullYear(),
-          make: data.vehicle?.make || 'Standard',
-          model: data.vehicle?.model || 'Vehicle',
-          tireSize: data.vehicle?.tireSize || '225/65R17',
+          year: vehicleYear,
+          make: vehicleMake,
+          model: vehicleModel,
+          tireSize: data.vehicle?.tireSize || 'TBD',
           licensePlate: data.vehicle?.licensePlate || undefined,
         },
       });
@@ -1612,6 +1616,29 @@ export const jobController = {
         }
       }
 
+      const appointmentDate = data.appointmentDate 
+        ? new Date(data.appointmentDate) 
+        : data.scheduledFor 
+          ? new Date(data.scheduledFor) 
+          : undefined;
+
+      const arrivalWindowStart = data.arrivalWindowStart
+        ? new Date(data.arrivalWindowStart)
+        : appointmentDate;
+
+      const arrivalWindowEnd = data.arrivalWindowEnd
+        ? new Date(data.arrivalWindowEnd)
+        : arrivalWindowStart
+          ? new Date(arrivalWindowStart.getTime() + 60 * 60000)
+          : undefined;
+
+      const customerEmail = data.customer?.email || data.email || data.customerEmail;
+      const customerNotes = [
+        data.problemNotes || data.notes,
+        data.vehicle?.trim ? `Trim/Submodel: ${data.vehicle.trim}` : null,
+        customerEmail ? `Customer Email: ${customerEmail}` : null,
+      ].filter(Boolean).join('\n');
+
       const job = await prisma.job.create({
         data: {
           jobCode,
@@ -1620,11 +1647,11 @@ export const jobController = {
           serviceAddress,
           serviceLatitude,
           serviceLongitude,
-          recipientName: data.recipientName || data.customer?.name,
-          recipientPhone: data.recipientPhone || data.customer?.phone,
-          problemNotes: data.problemNotes || data.notes,
+          recipientName: data.recipientName || data.customer?.name || data.customerName,
+          recipientPhone: data.recipientPhone || data.customer?.phone || data.customerPhone,
+          problemNotes: customerNotes,
           urgency: normalizeUrgency(data.urgency),
-          source: data.source || 'WEBSITE',
+          source: 'WEBSITE',
           disposition: 'BOOKED',
           createdById: defaultUser.id,
           vehicleId: veh.id,
@@ -1633,12 +1660,15 @@ export const jobController = {
           taxAmountCents,
           totalCents,
           itPlatformFeeCents,
+          appointmentDate,
+          arrivalWindowStart,
+          arrivalWindowEnd,
           paymentMethod: validPaymentMethod(data.paymentMethod),
           paymentStatus: 'UNPAID',
           status: 'UNVERIFIED_PUBLIC',
           serviceItems: { create: serviceItemsCreate },
         },
-        include: { serviceItems: true },
+        include: { serviceItems: true, vehicle: true },
       });
 
       try {

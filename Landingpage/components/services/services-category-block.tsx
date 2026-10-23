@@ -25,6 +25,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { ServiceCategory, ServiceItem } from "./services-data";
+import BookingModal from "@/components/booking/booking-modal";
 
 interface ServicesCategoryBlockProps {
   category: ServiceCategory;
@@ -51,8 +52,15 @@ const ICON_MAP: Record<string, React.ElementType> = {
 export default function ServicesCategoryBlock({ category }: ServicesCategoryBlockProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [selectedServiceTitle, setSelectedServiceTitle] = useState("");
   const activeService: ServiceItem = category.services[activeIndex] || category.services[0];
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleOpenBooking = (title: string) => {
+    setSelectedServiceTitle(title);
+    setIsBookingOpen(true);
+  };
 
   // Auto-cycle through services every 5 seconds unless paused
   useEffect(() => {
@@ -181,11 +189,16 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
 
                 {/* Wireframe Arrow Box (sharp square with Hand Cursor) */}
                 <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenBooking(service.title);
+                  }}
                   className={`w-10 h-10 rounded-none flex items-center justify-center shrink-0 transition-all duration-300 border cursor-pointer ${
                     isActive
                       ? "bg-[#DC2626] text-white border-[#DC2626] shadow-md shadow-red-600/30 scale-105"
                       : "bg-transparent text-zinc-400 dark:text-zinc-500 border-zinc-200 dark:border-zinc-800 group-hover:border-zinc-400 dark:group-hover:border-zinc-600 group-hover:text-zinc-900 dark:group-hover:text-white group-hover:bg-zinc-100 dark:group-hover:bg-zinc-800 group-hover:scale-105"
                   }`}
+                  title="Book this service"
                 >
                   <ArrowUpRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </div>
@@ -278,16 +291,25 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
             </div>
           </div>
 
-          {/* Wireframe Bottom Button: GET A QUOTE (Sharp rounded-none, default red, changes to white on hover/click) */}
-          <Link
-            href={`/booking?service=${activeService.slug}`}
+          {/* Wireframe Bottom Button: BOOK NOW / GET A QUOTE */}
+          <button
+            type="button"
+            onClick={() => handleOpenBooking(activeService.title)}
             className="w-full py-4 sm:py-5 px-6 font-bold uppercase tracking-wider text-sm sm:text-base flex items-center justify-center gap-3 transition-all duration-300 z-10 bg-[#DC2626] text-white border-t border-red-700/50 hover:bg-white hover:text-black hover:border-white shadow-lg shadow-red-950/40 rounded-none cursor-pointer group/cta"
           >
-            <span>Get A Quote</span>
+            <span>Book Now – {activeService.title.split('(')[0].trim()}</span>
             <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover/cta:translate-x-1" />
-          </Link>
+          </button>
         </div>
       </div>
+
+      {/* Taylor Tire 24/7 Booking System Modal */}
+      <BookingModal
+        isOpen={isBookingOpen}
+        onClose={() => setIsBookingOpen(false)}
+        initialServiceTitle={selectedServiceTitle || activeService.title}
+        initialServiceCategory={category.id === "roadside-assistance" ? "ROADSIDE_ASSISTANCE" : "TIRE_SERVICE"}
+      />
     </div>
   );
 }

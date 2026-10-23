@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   MapPin,
   CheckCircle2,
@@ -42,6 +43,7 @@ export default function VerifyAddressModal({
   booking,
   onSuccess,
 }: VerifyAddressModalProps) {
+  const navigate = useNavigate();
   const { country: tenantCountry, currencySymbol } = useTenant();
 
   const countryCode = (booking?.countryCode || tenantCountry || 'CA') as 'CA' | 'US' | 'UK';
@@ -350,12 +352,13 @@ export default function VerifyAddressModal({
 
       const selectedDriver = drivers.find((d) => d.id === assignedDriverId);
       if (selectedDriver) {
-        toast.success(`Booking verified & directly dispatched to ${selectedDriver.fullName}!`);
+        toast.success(`Booking verified & dispatched to ${selectedDriver.fullName}! Transferred to Jobs.`);
       } else {
-        toast.success('Booking verified! Transferred to Dispatch queue as PENDING.');
+        toast.success('Booking verified! Transferred to Jobs dispatch queue.');
       }
       onSuccess?.();
       onClose();
+      navigate('/jobs');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to verify booking');
     } finally {
