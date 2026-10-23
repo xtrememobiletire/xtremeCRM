@@ -110,6 +110,18 @@ router.get(
 );
 
 /**
+ * @route   POST /api/invoices/:id/send-email
+ * @desc    Send invoice PDF via SMTP email to client
+ * @access  Private
+ */
+router.post(
+  '/:id/send-email',
+  authorize(INVOICE_WRITE_ROLES),
+  validateRequest({ params: idParamSchema }),
+  invoiceController.sendInvoiceEmail
+);
+
+/**
  * @route   GET /api/invoices/:id
  * @desc    Get single invoice by ID
  * @access  Private

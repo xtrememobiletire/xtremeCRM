@@ -11,6 +11,7 @@ import {
   Printer,
   CheckCircle2,
   Car,
+  Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useInvoices, useFleetBillingSummary, useGenerateFleetConsolidatedInvoice } from '../hooks/useInvoices';
@@ -40,6 +41,7 @@ export default function Invoices() {
   // Modals
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedInvoiceForPdf, setSelectedInvoiceForPdf] = useState<string | null>(null);
+  const [isSendMode, setIsSendMode] = useState<boolean>(false);
   const [paymentModalInvoice, setPaymentModalInvoice] = useState<InvoiceRecord | null>(null);
   const [lumpSumModalFleet, setLumpSumModalFleet] = useState<any | null>(null);
   const [isConsolidateModalOpen, setIsConsolidateModalOpen] = useState(false);
@@ -490,7 +492,7 @@ export default function Invoices() {
             </div>
           </div>
 
-          {/* Invoices Cards */}
+          {/* Invoices Table Form */}
           {isLoading ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-xs text-slate-400">
               Loading invoices...
@@ -504,112 +506,160 @@ export default function Invoices() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {displayInvoices.map((inv) => {
-                const clientName =
-                  inv.fleet?.companyName || inv.customer?.fullName || inv.notes || 'Commercial Client';
-                const balanceDue =
-                  inv.balanceDueCents > 0
-                    ? inv.balanceDueCents
-                    : inv.status === 'PAID'
-                    ? 0
-                    : inv.totalCents;
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-200/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-3 px-4">Invoice #</th>
+                      <th className="py-3 px-4">Client / Source</th>
+                      <th className="py-3 px-3">Status</th>
+                      <th className="py-3 px-4">Dates</th>
+                      <th className="py-3 px-3">Jobs</th>
+                      <th className="py-3 px-4 text-right">Balance Due</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {displayInvoices.map((inv) => {
+                      const clientName =
+                        inv.fleet?.companyName || inv.customer?.fullName || inv.notes || 'Commercial Client';
+                      const balanceDue =
+                        inv.balanceDueCents > 0
+                          ? inv.balanceDueCents
+                          : inv.status === 'PAID'
+                          ? 0
+                          : inv.totalCents;
 
-                return (
-                  <div
-                    key={inv.id}
-                    className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex flex-col justify-between hover:border-slate-300 transition space-y-3"
-                  >
-                    {/* Top Row: Invoice Number, Badge, Country */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-xs text-slate-900">
-                          {inv.invoiceNumber}
-                        </span>
-                        <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-mono text-[9px] font-bold">
-                          {inv.countryCode}
-                        </span>
-                      </div>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          inv.status === 'PAID'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : inv.status === 'PARTIAL'
-                            ? 'bg-purple-100 text-purple-800'
-                            : inv.status === 'OVERDUE'
-                            ? 'bg-rose-100 text-rose-800'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        {inv.status}
-                      </span>
-                    </div>
-
-                    {/* Client Name & Linked Jobs */}
-                    <div>
-                      <div className="text-xs font-bold text-slate-800 truncate">{clientName}</div>
-                      <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
-                        <span>Issued: {new Date(inv.issueDate).toLocaleDateString()}</span>
-                        <span>•</span>
-                        <span>Due: {new Date(inv.dueDate).toLocaleDateString()}</span>
-                        {inv.jobs && inv.jobs.length > 0 && (
-                          <>
-                            <span>•</span>
-                            <span>{inv.jobs.length} jobs</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Financials & Action Buttons */}
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Balance Due</span>
-                        <span
-                          className={`font-mono font-bold text-xs ${
-                            balanceDue > 0 ? 'text-rose-600' : 'text-slate-900'
-                          }`}
+                      return (
+                        <tr
+                          key={inv.id}
+                          className="hover:bg-slate-50/70 transition-colors group"
                         >
-                          {currencySymbol}{(balanceDue / 100).toFixed(2)}
-                        </span>
-                      </div>
+                          {/* 1. Invoice Number & Country */}
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono font-bold text-xs text-slate-900">
+                                {inv.invoiceNumber}
+                              </span>
+                              <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-mono text-[9px] font-bold">
+                                {inv.countryCode}
+                              </span>
+                            </div>
+                          </td>
 
-                      <div className="flex items-center gap-1.5">
-                        {balanceDue > 0 && inv.status !== 'VOID' && (
-                          <button
-                            type="button"
-                            onClick={() => setPaymentModalInvoice(inv)}
-                            className="px-2.5 py-1 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
-                          >
-                            <CreditCard className="w-3 h-3" />
-                            <span>Pay</span>
-                          </button>
-                        )}
+                          {/* 2. Client / Source */}
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-slate-800 truncate max-w-[220px]" title={clientName}>
+                              {clientName}
+                            </div>
+                          </td>
 
-                        <button
-                          type="button"
-                          onClick={() => setSelectedInvoiceForPdf(inv.id)}
-                          className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
-                        >
-                          <Printer className="w-3 h-3 text-slate-500" />
-                          <span>PDF</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                          {/* 3. Status Badge */}
+                          <td className="py-3.5 px-3 whitespace-nowrap">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-block ${
+                                inv.status === 'PAID'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : inv.status === 'PARTIAL'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : inv.status === 'OVERDUE'
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}
+                            >
+                              {inv.status}
+                            </span>
+                          </td>
+
+                          {/* 4. Dates */}
+                          <td className="py-3.5 px-4 whitespace-nowrap text-slate-500 text-[11px]">
+                            <div className="font-medium text-slate-700">Issued: {new Date(inv.issueDate).toLocaleDateString()}</div>
+                            <div className="text-[10px] text-slate-400">Due: {new Date(inv.dueDate).toLocaleDateString()}</div>
+                          </td>
+
+                          {/* 5. Jobs */}
+                          <td className="py-3.5 px-3 whitespace-nowrap text-slate-600 font-mono text-[11px]">
+                            {inv.jobs && inv.jobs.length > 0 ? `${inv.jobs.length} jobs` : '1 jobs'}
+                          </td>
+
+                          {/* 6. Balance Due */}
+                          <td className="py-3.5 px-4 whitespace-nowrap text-right">
+                            <span
+                              className={`font-mono font-bold text-xs ${
+                                balanceDue > 0 ? 'text-rose-600' : 'text-slate-900'
+                              }`}
+                            >
+                              {currencySymbol}{(balanceDue / 100).toFixed(2)}
+                            </span>
+                          </td>
+
+                          {/* 7. Actions: Send To, PDF, Pay */}
+                          <td className="py-3.5 px-4 whitespace-nowrap text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Send To Button */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedInvoiceForPdf(inv.id);
+                                  setIsSendMode(true);
+                                }}
+                                className="px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-semibold transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                                title="Send Invoice via Email"
+                              >
+                                <Send className="w-3 h-3" />
+                                <span>Send To</span>
+                              </button>
+
+                              {/* PDF Button */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedInvoiceForPdf(inv.id);
+                                  setIsSendMode(false);
+                                }}
+                                className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                                title="View & Print PDF"
+                              >
+                                <Printer className="w-3 h-3 text-slate-500" />
+                                <span>PDF</span>
+                              </button>
+
+                              {/* Pay Button */}
+                              {balanceDue > 0 && inv.status !== 'VOID' && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPaymentModalInvoice(inv)}
+                                  className="px-2.5 py-1 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                                  title="Record Payment"
+                                >
+                                  <CreditCard className="w-3 h-3" />
+                                  <span>Pay</span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* PDF Modal */}
+      {/* PDF & Send Modal */}
       {selectedInvoiceForPdf && (
         <InvoicePdfModal
           isOpen={Boolean(selectedInvoiceForPdf)}
-          onClose={() => setSelectedInvoiceForPdf(null)}
+          onClose={() => {
+            setSelectedInvoiceForPdf(null);
+            setIsSendMode(false);
+          }}
           invoiceId={selectedInvoiceForPdf}
+          initialSendMode={isSendMode}
           onStatusUpdated={() => refetch()}
         />
       )}

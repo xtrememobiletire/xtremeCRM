@@ -9,6 +9,8 @@ import {
   formatCurrency,
 } from '../utils/index.js';
 import { sseManager } from '../services/sseManager.js';
+import { mailService } from '../services/mailService.js';
+import { generateInvoicePdf } from '../utils/invoicePdfGenerator.js';
 
 /**
  * Advance the country's sequence for the current local year using the supplied
@@ -1135,6 +1137,112 @@ export const invoiceController = {
       return sendError(res, err.message);
     }
   },
+
+  async sendInvoiceEmail(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { recipientEmail, clientName, clientAddress, clientPhone } = req.body;
+
+      const invoice = await prisma.invoice.findUnique({
+        where: { id: String(id) },
+        include: {
+          items: true,
+          fleet: true,
+          customer: true,
+          jobs: true,
+        },
+      });
+
+      if (!invoice) return sendError(res, 'Invoice not found', 404);
+
+      const targetEmail =
+        recipientEmail?.trim() ||
+        invoice.fleet?.email?.trim() ||
+        invoice.customer?.email?.trim();
+
+      if (!targetEmail) {
+        return sendError(res, 'No recipient email found for this invoice. Please enter a valid client email.', 400);
+      }
+
+      const regionalHub = invoice.countryCode === 'US'
+        ? {
+            address: '11815 Medway Church Loop, Manassas, VA 20109',
+            phone: '+1 (703) 555-0144',
+            taxLabel: invoice.taxRatePercent !== null ? `Sales Tax (${invoice.taxRatePercent}%)` : 'State & Local Sales Tax (8%)',
+          }
+        : invoice.countryCode === 'UK'
+        ? {
+            address: 'Independent UK Hub, London',
+            phone: '+44 20 7946 0912',
+            taxLabel: invoice.taxRatePercent !== null ? `VAT (${invoice.taxRatePercent}%)` : 'VAT (20%)',
+          }
+        : {
+            address: '857 Winterton Way, Mississauga, ON L5V 1Z5',
+            phone: '+1 (416) 555-0192',
+            taxLabel: invoice.taxRatePercent !== null ? `HST (${invoice.taxRatePercent}%)` : 'HST Ontario (13%)',
+          };
+
+      const pdfData = {
+        company: {
+          name: 'XTREME MOBILE TIRE & ROADSIDE ASSISTANCE',
+          tagline: '24/7 Mobile Tire Service & Roadside Fleet Dispatch',
+          paymentEmail: 'Payments@xtrememobiletire.com',
+          hub: regionalHub,
+        },
+        invoiceNumber: invoice.invoiceNumber,
+        invoiceType: invoice.invoiceType,
+        issueDate: invoice.issueDate.toISOString().split('T')[0],
+        dueDate: invoice.dueDate.toISOString().split('T')[0],
+        currency: invoice.currency,
+        status: invoice.status,
+        countryCode: invoice.countryCode,
+        billTo: {
+          name: clientName || invoice.fleet?.name || invoice.customer?.fullName || 'Valued Client',
+          contactPerson: invoice.fleet?.contactPerson,
+          phone: clientPhone || invoice.fleet?.phone || invoice.customer?.phone,
+          email: targetEmail,
+          address: clientAddress || invoice.fleet?.address || invoice.customer?.address || invoice.jobs?.[0]?.serviceAddress || '',
+          fleetCode: invoice.fleet?.fleetCode,
+        },
+        items: invoice.items.map((it) => ({
+          details: it.itemDetails,
+          quantity: it.quantity,
+          unitPriceFormatted: formatCurrency(it.unitPriceCents, invoice.currency as any),
+          totalFormatted: formatCurrency(it.unitPriceCents * it.quantity, invoice.currency as any),
+        })),
+        summary: {
+          subtotal: formatCurrency(invoice.subtotalCents, invoice.currency as any),
+          discount: invoice.discountCents > 0 ? formatCurrency(invoice.discountCents, invoice.currency as any) : null,
+          depositCredited: invoice.depositCents > 0 ? formatCurrency(invoice.depositCents, invoice.currency as any) : null,
+          tax: formatCurrency(invoice.taxAmountCents, invoice.currency as any),
+          taxRateFormatted: invoice.isTaxExempt ? 'Tax Exempt (0%)' : `${invoice.taxRatePercent ?? (invoice.countryCode === 'CA' ? 13 : invoice.countryCode === 'UK' ? 20 : 8)}%`,
+          grandTotal: formatCurrency(invoice.totalCents, invoice.currency as any),
+          amountPaid: formatCurrency(invoice.amountPaidCents, invoice.currency as any),
+          balanceDue: formatCurrency(invoice.balanceDueCents, invoice.currency as any),
+          isPaid: invoice.status === 'PAID',
+        },
+      };
+
+      const pdfBuffer = await generateInvoicePdf(pdfData);
+
+      await mailService.sendInvoiceEmail({
+        to: targetEmail,
+        clientName: pdfData.billTo.name,
+        invoiceNumber: invoice.invoiceNumber,
+        issueDate: pdfData.issueDate,
+        dueDate: pdfData.dueDate,
+        currency: invoice.currency,
+        balanceDue: pdfData.summary.balanceDue,
+        pdfBuffer,
+      });
+
+      return sendSuccess(res, { recipientEmail: targetEmail }, `Invoice #${invoice.invoiceNumber} emailed successfully to ${targetEmail}`);
+    } catch (err: any) {
+      console.error('[sendInvoiceEmail Error]:', err);
+      return sendError(res, `Failed to send invoice email: ${err.message}`, 500);
+    }
+  },
 };
 
 export default invoiceController;
+

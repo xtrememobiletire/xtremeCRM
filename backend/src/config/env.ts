@@ -25,6 +25,16 @@ export const config = {
   },
   GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY || '',
   MAPBOX_ACCESS_TOKEN: process.env.MAPBOX_ACCESS_TOKEN || process.env.VITE_MAPBOX_ACCESS_TOKEN || '',
+  SMTP: {
+    HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
+    PORT: Number(process.env.SMTP_PORT) || 465,
+    SECURE: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465' || !process.env.SMTP_PORT,
+    USER: process.env.SMTP_USER || 'abdullahsiddique.dev.ai@gmail.com',
+    PASS: process.env.SMTP_PASS || 'xbnrrhgjylgdijhd',
+    FROM_NAME: process.env.SMTP_FROM_NAME || 'Xtreme Mobile Tire',
+    FROM_EMAIL: process.env.SMTP_FROM_EMAIL || 'abdullahsiddique.dev.ai@gmail.com',
+    REPLY_TO: process.env.SMTP_REPLY_TO || 'info@xtrememobiletire.com',
+  },
 } as const;
 
 export default config;

@@ -8,6 +8,8 @@ import {
   MapPin,
   Edit3,
   RotateCcw,
+  Send,
+  RefreshCw,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { useAuth } from '../../context/AuthContext';
@@ -17,6 +19,7 @@ interface InvoicePdfModalProps {
   isOpen: boolean;
   onClose: () => void;
   invoiceId: string;
+  initialSendMode?: boolean;
   onStatusUpdated?: () => void;
 }
 
@@ -55,8 +58,10 @@ export default function InvoicePdfModal({
   isOpen,
   onClose,
   invoiceId,
+  initialSendMode = false,
   onStatusUpdated,
 }: InvoicePdfModalProps) {
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   const { user } = useAuth();
   const isPortalClient = user?.role === 'FLEET_MANAGER' || user?.role === 'CUSTOMER_MEMBER';
 
@@ -91,6 +96,7 @@ export default function InvoicePdfModal({
           setClientAddress(res.billTo?.address || '');
           setClientPhone(res.billTo?.phone || '');
           setClientEmail(res.billTo?.email || '');
+          if (initialSendMode) setIsEditingAddress(true);
         })
         .catch(() => {
           toast.error('Failed to load invoice details');
@@ -149,6 +155,29 @@ export default function InvoicePdfModal({
       toast.error('Failed to update invoice status');
     } finally {
       setUpdating(false);
+    }
+  };
+
+
+  const handleSendEmail = async () => {
+    if (!clientEmail || !clientEmail.trim()) {
+      toast.error('Please enter a valid Client Email before sending');
+      setIsEditingAddress(true);
+      return;
+    }
+    try {
+      setIsSendingEmail(true);
+      await accountingService.sendInvoiceEmail(invoiceId, {
+        recipientEmail: clientEmail.trim(),
+        clientName,
+        clientAddress,
+        clientPhone,
+      });
+      toast.success(`Invoice #${data?.invoiceNumber || ''} emailed successfully to ${clientEmail.trim()}!`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to send invoice email');
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -256,6 +285,23 @@ export default function InvoicePdfModal({
               >
                 <CheckCircle2 size={13} />
                 <span>Mark Paid</span>
+              </button>
+            )}
+
+            {!isPortalClient && (
+              <button
+                type="button"
+                disabled={isSendingEmail}
+                onClick={handleSendEmail}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white transition shadow-sm cursor-pointer disabled:opacity-50"
+                title="Send invoice via email to client"
+              >
+                {isSendingEmail ? (
+                  <RefreshCw size={13} className="animate-spin" />
+                ) : (
+                  <Send size={13} />
+                )}
+                <span>{isSendingEmail ? 'Sending...' : 'Send to Client'}</span>
               </button>
             )}
 

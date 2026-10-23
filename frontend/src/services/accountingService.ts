@@ -135,6 +135,14 @@ export const accountingService = {
     return res.data.data;
   },
 
+  async sendInvoiceEmail(
+    id: string,
+    payload: { recipientEmail: string; clientName?: string; clientAddress?: string; clientPhone?: string }
+  ) {
+    const res = await api.post(`/invoices/${id}/send-email`, payload);
+    return res.data;
+  },
+
   async updateInvoiceStatus(id: string, status: string) {
     const res = await api.patch(`/invoices/${id}/status`, { status });
     return res.data.data;
