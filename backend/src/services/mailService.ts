@@ -70,25 +70,9 @@ class MailService {
 
     const transporter = this.getTransporter();
 
-    const subject = `Invoice #${invoiceNumber} from Xtreme Mobile Tire`;
+    const subject = `Your Invoice #${invoiceNumber} - Xtreme Mobile Tire`;
 
-    // Locate official logo for inline CID attachment (ensures 100% display without Gmail blocking)
-    const currentDir = getDirname();
-    const logoCandidates = [
-      path.resolve(currentDir, '../assets/logo.png'),
-      path.resolve(process.cwd(), 'src/assets/logo.png'),
-      path.resolve(process.cwd(), 'dist/assets/logo.png'),
-      path.resolve(process.cwd(), '../frontend/public/favicon.png'),
-      path.resolve(process.cwd(), 'frontend/public/favicon.png'),
-    ];
-    const resolvedLogo = logoCandidates.find((p) => {
-      try {
-        return fs.existsSync(p);
-      } catch {
-        return false;
-      }
-    });
-
+    // Only attach the official itemized invoice PDF
     const attachments: any[] = [
       {
         filename: `Invoice-${invoiceNumber}.pdf`,
@@ -96,14 +80,6 @@ class MailService {
         contentType: 'application/pdf',
       },
     ];
-
-    if (resolvedLogo) {
-      attachments.push({
-        filename: 'logo.png',
-        path: resolvedLogo,
-        cid: 'xtremelogo',
-      });
-    }
 
     // Plain text alternative (prevents spam filters from penalizing HTML-only emails)
     const text = [
@@ -122,14 +98,14 @@ class MailService {
       `Web: https://xtrememobiletire.com`,
     ].join('\n');
 
-    // Clean, elegant, minimalist HTML body
+    // Clean, elegant, minimalist HTML body with user's Cloudinary logo
     const html = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Invoice #${invoiceNumber} from Xtreme Mobile Tire</title>
+  <title>Invoice #${invoiceNumber} - Xtreme Mobile Tire</title>
   <style>
     body { margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
     table { border-collapse: collapse; }
@@ -153,11 +129,11 @@ class MailService {
     <tr>
       <td align="center">
         <div class="email-container">
-          <!-- Minimalist Header with Official Logo Only -->
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #0b1120; border-bottom: 3px solid #dc2626; padding: 20px 0;">
+          <!-- Minimalist Header with Official Cloudinary Logo -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #0b1120; border-bottom: 3px solid #dc2626; padding: 22px 0;">
             <tr>
               <td align="center" valign="middle">
-                <img src="${resolvedLogo ? 'cid:xtremelogo' : 'https://res.cloudinary.com/ebjikx52/image/upload/v1792426897/xtreme/frontend/favicon_png.png'}" alt="Xtreme Mobile Tire" width="54" height="54" style="display: block; width: 54px; height: 54px; margin: 0 auto; border: 0;" />
+                <img src="https://res.cloudinary.com/ebjikx52/image/upload/f_png,w_280/v1792426904/xtreme/frontend/logo_webp.webp" alt="Xtreme Mobile Tire" width="135" style="display: block; width: 135px; max-width: 135px; height: auto; margin: 0 auto; border: 0;" />
               </td>
             </tr>
           </table>
