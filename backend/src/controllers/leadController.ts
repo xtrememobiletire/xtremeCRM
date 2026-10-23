@@ -654,7 +654,9 @@ export const leadController = {
       if (assignedDispatcherId !== undefined) data.assignedDispatcherId = assignedDispatcherId;
       if (whatsappFollowUp !== undefined) data.whatsappFollowUp = whatsappFollowUp;
       if (whatsappNotes !== undefined) data.whatsappNotes = whatsappNotes;
-      if (vehicleTypes !== undefined) data.vehicleTypes = vehicleTypes;
+      if (vehicleTypes !== undefined) {
+        data.vehicleTypes = Array.isArray(vehicleTypes) ? vehicleTypes.join(', ') : vehicleTypes;
+      }
       if (commonTireSizes !== undefined) data.commonTireSizes = commonTireSizes;
 
       // Track field diff in hitHistory
@@ -1798,10 +1800,12 @@ export const leadController = {
       const id = String(req.params.id);
       const {
         includeSoftDisqualified = true,
+        includeUnworked = true,
         includeNoAnswerVoicemail = true,
         includeOverdueCallbacks = false,
         includeWrongNumbers = false,
         adminOverride = false,
+        forceRevive = false,
         maxPasses,
       } = req.body || {};
 
@@ -1815,8 +1819,9 @@ export const leadController = {
 
       // Check max passes limit (default 4) unless adminOverride is supplied by Admin/GM
       const effectiveMaxPasses = maxPasses ? Number(maxPasses) : batch.maxPasses;
+      const isOverride = adminOverride || forceRevive;
       if (batch.currentPass >= effectiveMaxPasses) {
-        if (!adminOverride || !isAdminOrGm) {
+        if (!isOverride || !isAdminOrGm) {
           return sendError(
             res,
             `Batch has already reached its maximum allowed passes (${batch.currentPass}/${effectiveMaxPasses}). An Administrator or General Manager must provide an override to revive further.`,
@@ -1835,12 +1840,15 @@ export const leadController = {
         whereConditions.push({
           batchId: id,
           status: 'DEAD',
-          disqualificationReason: { in: ['UNRESPONSIVE', 'VOICEMAIL', 'NO_ANSWER'] },
+          OR: [
+            { disqualificationReason: 'UNRESPONSIVE' },
+            { disposition: { in: ['NO_ANSWER', 'VOICEMAIL', 'RNC'] } },
+          ],
         });
       }
 
       // 2. Unworked or unreached leads from previous pass
-      if (includeNoAnswerVoicemail) {
+      if (includeNoAnswerVoicemail || includeUnworked) {
         whereConditions.push({
           batchId: id,
           status: { in: ['CALLED', 'NEW'] },

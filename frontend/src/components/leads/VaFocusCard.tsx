@@ -928,7 +928,7 @@ export default function VaFocusCard({
         )}
 
         {/* CHRONOLOGICAL HIT HISTORY FEED */}
-        {hitHistory.length > 0 ? (
+        {hitHistory.length > 0 && (
           <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
             <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80">
               <span className="font-bold text-slate-800 uppercase font-mono text-[10px] flex items-center gap-1.5">
@@ -978,16 +978,21 @@ export default function VaFocusCard({
               ))}
             </div>
           </div>
-        ) : lead.notes ? (
+        )}
+
+        {/* LEAD / FLEET SPREADSHEET NOTES */}
+        {lead.notes ? (
           <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200/70 text-xs">
             <div className="flex items-center justify-between mb-1">
-              <span className="font-bold text-amber-900 uppercase font-mono text-[10px]">Previous Call Notes</span>
+              <span className="font-bold text-amber-900 uppercase font-mono text-[10px]">
+                {hitHistory.length > 0 ? 'Original Lead / Equipment Notes' : 'Lead & Equipment Notes (Imported)'}
+              </span>
               <button
                 type="button"
-                onClick={() => copyToClipboard(lead.notes, 'Previous Notes')}
+                onClick={() => copyToClipboard(lead.notes, 'Lead Notes')}
                 className="text-amber-800 hover:text-amber-950 p-1 rounded"
               >
-                {copiedField === 'Previous Notes' ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                {copiedField === 'Lead Notes' ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
               </button>
             </div>
             <p className="text-amber-900 whitespace-pre-wrap">{lead.notes}</p>
