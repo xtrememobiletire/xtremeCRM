@@ -1,6 +1,15 @@
 import PDFDocument from 'pdfkit';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+function getDirname(): string {
+  try {
+    return path.dirname(fileURLToPath(import.meta.url));
+  } catch {
+    return process.cwd();
+  }
+}
 
 /**
  * Generate a professional, clean A4 invoice PDF buffer using PDFKit.
@@ -27,22 +36,33 @@ export async function generateInvoicePdf(pdfData: any): Promise<Buffer> {
     doc.rect(40, 40, 515, 60).fill('#0B1120');
 
     // Logo / Brand Icon
-    const logoCandidates = [
-      path.resolve(__dirname, '../assets/logo.png'),
-      path.resolve(process.cwd(), 'src/assets/logo.png'),
-      path.resolve(process.cwd(), '../frontend/public/favicon.png'),
-    ];
-    const resolvedLogoPath = logoCandidates.find((p) => fs.existsSync(p));
+    let logoDrawn = false;
+    try {
+      const currentDir = getDirname();
+      const logoCandidates = [
+        path.resolve(currentDir, '../assets/logo.png'),
+        path.resolve(process.cwd(), 'src/assets/logo.png'),
+        path.resolve(process.cwd(), 'dist/assets/logo.png'),
+        path.resolve(process.cwd(), '../frontend/public/favicon.png'),
+        path.resolve(process.cwd(), 'frontend/public/favicon.png'),
+      ];
+      const resolvedLogoPath = logoCandidates.find((p) => {
+        try {
+          return fs.existsSync(p);
+        } catch {
+          return false;
+        }
+      });
 
-    if (resolvedLogoPath) {
-      try {
+      if (resolvedLogoPath) {
         doc.image(resolvedLogoPath, 50, 48, { fit: [44, 44], align: 'center', valign: 'center' });
-      } catch {
-        // Fallback badge if image parsing encounters unexpected format
-        doc.rect(50, 50, 40, 40).fill(brandRed);
-        doc.fillColor('#FFFFFF').fontSize(16).font('Helvetica-Bold').text('XT', 59, 62);
+        logoDrawn = true;
       }
-    } else {
+    } catch {
+      logoDrawn = false;
+    }
+
+    if (!logoDrawn) {
       // Fallback XT Badge
       doc.rect(50, 50, 40, 40).fill(brandRed);
       doc.fillColor('#FFFFFF').fontSize(16).font('Helvetica-Bold').text('XT', 59, 62);
