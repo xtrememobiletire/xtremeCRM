@@ -245,9 +245,13 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
   // Initial setup: ensure arrivalWindowStart, arrivalWindowEnd, and displayLabel are always populated
   useEffect(() => {
     if (!value?.arrivalWindowStart) {
-      handleEtaSelect(value?.estimatedArrivalMinutes || selectedEta || 30);
+      if (mode === 'WINDOW') {
+        updateWindowTimes(windowDate, startHour, startMinute, startAmPm, endHour, endMinute, endAmPm);
+      } else {
+        handleEtaSelect(value?.estimatedArrivalMinutes || selectedEta || 30);
+      }
     }
-  }, [activeTz]);
+  }, [activeTz, mode]);
 
   return (
     <div className={`space-y-3 ${className}`}>
@@ -262,7 +266,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
             }}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
               mode === 'ETA'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-red-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
             }`}
           >
@@ -278,7 +282,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
             }}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
               mode === 'WINDOW'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-red-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
             }`}
           >
@@ -299,7 +303,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                 onClick={() => handleEtaSelect(preset.minutes)}
                 className={`py-2 px-2.5 rounded-lg border text-xs font-medium text-center transition flex flex-col items-center justify-center gap-0.5 ${
                   selectedEta === preset.minutes
-                    ? 'border-slate-900 bg-slate-900 text-white shadow-xs font-bold'
+                    ? 'border-red-600 bg-red-50 text-red-700 shadow-2xs font-bold'
                     : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
@@ -422,8 +426,8 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                       setStartAmPm('AM');
                       updateWindowTimes(windowDate, startHour, startMinute, 'AM', endHour, endMinute, endAmPm);
                     }}
-                    className={`px-2 py-1 text-xs font-bold transition ${
-                      startAmPm === 'AM' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                    className={`px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                      startAmPm === 'AM' ? 'bg-red-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'
                     }`}
                   >
                     AM
@@ -434,8 +438,8 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                       setStartAmPm('PM');
                       updateWindowTimes(windowDate, startHour, startMinute, 'PM', endHour, endMinute, endAmPm);
                     }}
-                    className={`px-2 py-1 text-xs font-bold transition ${
-                      startAmPm === 'PM' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                    className={`px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                      startAmPm === 'PM' ? 'bg-red-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'
                     }`}
                   >
                     PM
@@ -488,8 +492,8 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                       setEndAmPm('AM');
                       updateWindowTimes(windowDate, startHour, startMinute, startAmPm, endHour, endMinute, 'AM');
                     }}
-                    className={`px-2 py-1 text-xs font-bold transition ${
-                      endAmPm === 'AM' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                    className={`px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                      endAmPm === 'AM' ? 'bg-red-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'
                     }`}
                   >
                     AM
@@ -500,8 +504,8 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                       setEndAmPm('PM');
                       updateWindowTimes(windowDate, startHour, startMinute, startAmPm, endHour, endMinute, 'PM');
                     }}
-                    className={`px-2 py-1 text-xs font-bold transition ${
-                      endAmPm === 'PM' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                    className={`px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                      endAmPm === 'PM' ? 'bg-red-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'
                     }`}
                   >
                     PM
@@ -517,23 +521,23 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
 
       {/* Live Window Comparison Strip */}
       {(value?.arrivalWindowStart || value?.appointmentDate) && (
-        <div className="p-3 rounded-xl bg-slate-900 text-white text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
             <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Customer Local Window</span>
-              <span className="font-bold text-white font-mono text-xs sm:text-sm">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Customer Local Arrival Window</span>
+              <span className="font-bold text-slate-900 font-mono text-xs sm:text-sm">
                 {formatDate(value.arrivalWindowStart || value.appointmentDate, activeTz)}
                 {value.arrivalWindowEnd && ` – ${formatTimeInTz(value.arrivalWindowEnd, activeTz)}`}
               </span>
             </div>
           </div>
           {showPktWindow && (
-            <div className="flex items-center gap-2 pt-2 sm:pt-0 sm:border-l sm:border-slate-800 sm:pl-3">
+            <div className="flex items-center gap-2 pt-2 sm:pt-0 sm:border-l sm:border-slate-200 sm:pl-3">
               <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0"></span>
               <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PKT Shift Window (Karachi)</span>
-                <span className="font-bold text-slate-200 font-mono text-xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">PKT Shift Window (Karachi)</span>
+                <span className="font-semibold text-slate-700 font-mono text-xs">
                   {formatDate(value.arrivalWindowStart || value.appointmentDate, PKT_TIMEZONE)}
                   {value.arrivalWindowEnd && ` – ${formatTimeInTz(value.arrivalWindowEnd, PKT_TIMEZONE)}`}
                 </span>

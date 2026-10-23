@@ -97,7 +97,6 @@ export default function FleetDashboard() {
   const [localReceiptPreview, setLocalReceiptPreview] = useState<string | null>(null);
   const [arrivalWindow, setArrivalWindow] = useState<ArrivalWindowData>({
     mode: 'WINDOW',
-    estimatedArrivalMinutes: 30,
   });
 
   const [serviceItems, setServiceItems] = useState<SelectedServiceItem[]>([
@@ -1132,8 +1131,9 @@ export default function FleetDashboard() {
                             subtitle: 'Highway or dead stop (ASAP)',
                             tag: 'PRIORITY ETA',
                             icon: Zap,
-                            activeClass: 'border-red-600 bg-red-50/70 text-red-950 ring-2 ring-red-600/20 shadow-xs',
-                            badgeClass: 'bg-red-600 text-white',
+                            selectedBorder: 'border-red-600 bg-red-50/40 ring-2 ring-red-600/15',
+                            iconBg: 'bg-red-100 text-red-600',
+                            tagClass: 'bg-red-100 text-red-700 border-red-200',
                           },
                           {
                             id: 'STANDARD',
@@ -1141,8 +1141,9 @@ export default function FleetDashboard() {
                             subtitle: 'Depot, yard, or scheduled stop',
                             tag: 'TODAY WINDOW',
                             icon: Truck,
-                            activeClass: 'border-slate-900 bg-slate-900 text-white shadow-sm',
-                            badgeClass: 'bg-white text-slate-900',
+                            selectedBorder: 'border-red-600 bg-red-50/25 ring-2 ring-red-600/15',
+                            iconBg: 'bg-red-50 text-red-600',
+                            tagClass: 'bg-red-100 text-red-700 border-red-200',
                           },
                           {
                             id: 'FUTURE',
@@ -1150,8 +1151,9 @@ export default function FleetDashboard() {
                             subtitle: 'Pre-scheduled calendar date',
                             tag: 'RESERVED',
                             icon: Calendar,
-                            activeClass: 'border-slate-900 bg-slate-900 text-white shadow-sm',
-                            badgeClass: 'bg-white text-slate-900',
+                            selectedBorder: 'border-red-600 bg-red-50/25 ring-2 ring-red-600/15',
+                            iconBg: 'bg-red-50 text-red-600',
+                            tagClass: 'bg-red-100 text-red-700 border-red-200',
                           },
                         ].map((u) => {
                           const isSelected = bookingForm.urgency === u.id;
@@ -1163,32 +1165,33 @@ export default function FleetDashboard() {
                               onClick={() => {
                                 setBookingForm((prev) => ({ ...prev, urgency: u.id as any }));
                                 if (u.id === 'URGENT') {
-                                  setArrivalWindow((prev) => ({ ...prev, mode: 'ETA' }));
+                                  setArrivalWindow((prev) => ({ ...prev, mode: 'ETA', estimatedArrivalMinutes: 30 }));
                                 } else {
-                                  setArrivalWindow((prev) => ({ ...prev, mode: 'WINDOW' }));
+                                  setArrivalWindow((prev) => ({ ...prev, mode: 'WINDOW', estimatedArrivalMinutes: undefined }));
                                 }
                               }}
-                              className={`p-4 rounded-xl border text-left transition-all duration-150 cursor-pointer flex flex-col justify-between gap-3 ${
+                              className={`p-4 rounded-xl border-2 text-left transition-all duration-150 cursor-pointer flex flex-col justify-between gap-3 ${
                                 isSelected
-                                  ? u.activeClass
+                                  ? `${u.selectedBorder} shadow-sm`
                                   : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/80'
                               }`}
                             >
                               <div className="flex items-center justify-between w-full">
-                                <div className={`p-2 rounded-lg ${isSelected ? (u.id === 'URGENT' ? 'bg-red-100' : 'bg-slate-800') : 'bg-slate-100'}`}>
-                                  <IconComponent className={`w-4 h-4 ${isSelected ? (u.id === 'URGENT' ? 'text-red-600' : 'text-white') : 'text-slate-600'}`} />
+                                <div className={`p-2 rounded-lg ${isSelected ? u.iconBg : 'bg-slate-100 text-slate-600'}`}>
+                                  <IconComponent className="w-4 h-4" />
                                 </div>
-                                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
-                                  isSelected ? u.badgeClass : 'bg-slate-100 text-slate-600'
+                                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                                  isSelected ? u.tagClass : 'bg-slate-100 text-slate-600 border-slate-200'
                                 }`}>
                                   {u.tag}
                                 </span>
                               </div>
                               <div>
-                                <div className={`text-sm font-bold ${isSelected && u.id !== 'URGENT' ? 'text-white' : 'text-slate-900'}`}>
-                                  {u.label}
+                                <div className="text-sm font-bold text-slate-900 flex items-center justify-between">
+                                  <span>{u.label}</span>
+                                  {isSelected && <CheckCircle2 className="w-4 h-4 text-red-600 shrink-0" />}
                                 </div>
-                                <div className={`text-xs mt-0.5 ${isSelected && u.id !== 'URGENT' ? 'text-slate-300' : 'text-slate-500'}`}>
+                                <div className="text-xs mt-0.5 text-slate-500">
                                   {u.subtitle}
                                 </div>
                               </div>
@@ -1225,7 +1228,7 @@ export default function FleetDashboard() {
                                 <Clock className="w-4 h-4 text-slate-700" />
                                 <span>Promised Arrival Window</span>
                               </label>
-                              {arrivalWindow.displayLabel && (
+                              {arrivalWindow.displayLabel && !arrivalWindow.displayLabel.startsWith('ETA') && (
                                 <span className="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
                                   {arrivalWindow.displayLabel}
                                 </span>
@@ -1323,10 +1326,10 @@ export default function FleetDashboard() {
                                 key={chip}
                                 type="button"
                                 onClick={() => setBookingForm((prev) => ({ ...prev, tireSize: chip }))}
-                                className={`px-2 py-0.5 rounded text-[11px] font-mono transition cursor-pointer border ${
+                                className={`px-2.5 py-1 rounded-lg text-xs font-mono transition cursor-pointer border ${
                                   bookingForm.tireSize === chip
-                                    ? 'bg-slate-900 text-white border-slate-900 font-bold'
-                                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 hover:text-slate-900'
+                                    ? 'bg-red-50 text-red-700 border-red-500 font-bold shadow-2xs'
+                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
                                 }`}
                               >
                                 {chip}
@@ -1476,48 +1479,54 @@ export default function FleetDashboard() {
                     </div>
 
                     {/* Dispatch Review & Action Card */}
-                    <div className="p-5 sm:p-6 rounded-2xl border border-slate-900 bg-slate-950 text-white shadow-lg space-y-4">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-200">Dispatch Summary</h4>
+                          <CheckCircle2 className="w-5 h-5 text-red-600" />
+                          <h4 className="text-sm font-bold uppercase tracking-wider text-slate-900">Dispatch Summary</h4>
                         </div>
-                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
-                          bookingForm.urgency === 'URGENT' ? 'bg-red-600 text-white' : 'bg-slate-800 text-slate-300'
+                        <span className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                          bookingForm.urgency === 'URGENT' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-700 border-slate-200'
                         }`}>
                           {bookingForm.urgency}
                         </span>
                       </div>
 
-                      <div className="space-y-2.5 text-xs text-slate-300">
-                        <div className="flex items-center justify-between py-1 border-b border-slate-800/80">
-                          <span className="text-slate-400">Timing:</span>
-                          <span className="font-mono font-semibold text-white">
-                            {bookingForm.urgency === 'URGENT' ? 'Immediate Priority (~30m)' : arrivalWindow.displayLabel || 'Standard Window'}
+                      <div className="space-y-2.5 text-xs">
+                        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                          <span className="text-slate-500 font-medium">Service Priority:</span>
+                          <span className="font-semibold text-slate-900">
+                            {bookingForm.urgency === 'URGENT' ? 'Urgent Roadside (ASAP)' : bookingForm.urgency === 'FUTURE' ? 'Future Appointment' : 'Standard Fleet Service'}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between py-1 border-b border-slate-800/80">
-                          <span className="text-slate-400">Unit / Plate:</span>
-                          <span className="font-mono font-semibold text-white">
+                        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                          <span className="text-slate-500 font-medium">Timing Window:</span>
+                          <span className="font-mono font-semibold text-slate-900">
+                            {bookingForm.urgency === 'URGENT' ? 'Immediate Priority (~30m ETA)' : arrivalWindow.displayLabel || 'Scheduled Window'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                          <span className="text-slate-500 font-medium">Unit / Plate:</span>
+                          <span className="font-mono font-semibold text-slate-900">
                             {bookingForm.unitNumber || bookingForm.licensePlate || 'Not specified'}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between py-1 border-b border-slate-800/80">
-                          <span className="text-slate-400">Tire Size:</span>
-                          <span className="font-mono font-semibold text-white">
+                        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                          <span className="text-slate-500 font-medium">Tire Specification:</span>
+                          <span className="font-mono font-semibold text-slate-900">
                             {bookingForm.tireSize || '11R22.5'} ({bookingForm.tireCount} {bookingForm.tireCount === 1 ? 'tire' : 'tires'})
                           </span>
                         </div>
-                        <div className="flex items-start justify-between py-1 border-b border-slate-800/80 gap-2">
-                          <span className="text-slate-400 shrink-0">Location:</span>
-                          <span className="font-medium text-white truncate text-right max-w-[200px]" title={bookingForm.address}>
+                        <div className="flex items-start justify-between py-1.5 border-b border-slate-100 gap-2">
+                          <span className="text-slate-500 font-medium shrink-0">Service Location:</span>
+                          <span className="font-medium text-slate-900 truncate text-right max-w-[200px]" title={bookingForm.address}>
                             {bookingForm.address || 'Address pending'}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between py-1">
-                          <span className="text-slate-400">Services:</span>
-                          <span className="font-semibold text-emerald-400">
-                            {serviceItems.length} selected
+                        <div className="flex items-center justify-between py-1.5">
+                          <span className="text-slate-500 font-medium">Work Order:</span>
+                          <span className="font-bold text-slate-900">
+                            {serviceItems.length} {serviceItems.length === 1 ? 'service' : 'services'} selected
                           </span>
                         </div>
                       </div>
@@ -1526,11 +1535,7 @@ export default function FleetDashboard() {
                       <button
                         type="submit"
                         disabled={bookServiceMutation.isPending}
-                        className={`w-full py-3.5 px-4 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer min-h-[48px] shadow-md ${
-                          bookingForm.urgency === 'URGENT'
-                            ? 'bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-red-600/30'
-                            : 'bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-900 shadow-white/10'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        className="w-full py-3.5 px-4 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer min-h-[48px] shadow-md bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-red-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {bookServiceMutation.isPending ? (
                           <>
