@@ -135,7 +135,7 @@ class MailService {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #0b1120; border-bottom: 3px solid #dc2626; padding: 22px 0;">
             <tr>
               <td align="center" valign="middle">
-                <img src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp" alt="Xtreme Mobile Tire" width="150" style="display: block; width: 150px; max-width: 150px; height: auto; margin: 0 auto; border: 0;" />
+                <img src="https://res.cloudinary.com/ebjikx52/image/upload/f_png,q_auto/v1792426904/xtreme/frontend/logo_webp.png" alt="Xtreme Mobile Tire" width="150" style="display: block; width: 150px; max-width: 150px; height: auto; margin: 0 auto; border: 0;" />
               </td>
             </tr>
           </table>
