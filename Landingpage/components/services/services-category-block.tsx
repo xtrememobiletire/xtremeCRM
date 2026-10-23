@@ -210,6 +210,7 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
                   src={service.image}
                   alt={service.title}
                   fill
+                  unoptimized
                   className="object-cover transition-transform duration-1000 ease-out"
                   sizes="(max-width: 1024px) 100vw, 50vw"
                   priority={idx === 0}

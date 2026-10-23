@@ -22,6 +22,7 @@ export default function FleetDowntimeBanner() {
             src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426862/xtreme/landing/fleet-semi_jpg.jpg"
             alt="Commercial Fleet on Highway"
             fill
+            unoptimized
             className="object-cover object-center opacity-45 transition-transform duration-1000 ease-out group-hover:scale-105"
             sizes="(max-width: 1280px) 100vw, 1280px"
             priority

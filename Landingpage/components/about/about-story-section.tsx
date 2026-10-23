@@ -64,6 +64,7 @@ export default function AboutStorySection() {
                 src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426867/xtreme/landing/founders-story_jpg.jpg"
                 alt="Xtreme Mobile Tire Co-Founders"
                 fill
+                unoptimized
                 className="object-contain object-top filter grayscale contrast-110 brightness-100"
                 priority
               />

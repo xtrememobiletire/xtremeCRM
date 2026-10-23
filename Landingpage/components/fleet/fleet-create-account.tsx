@@ -158,7 +158,7 @@ export default function FleetCreateAccount() {
           <div className="lg:col-span-5 xl:col-span-6 relative min-h-[380px] sm:min-h-[440px] lg:min-h-full flex items-center justify-center p-6 sm:p-10 text-center overflow-hidden">
             {/* High-Resolution Performance Sports Car Photo */}
             <img
-              src="/fleet-sports-car-bg.jpg"
+              src="/fleet-black-sports-car-bg.jpg"
               alt="Performance Automotive Sports Car"
               className="absolute inset-0 w-full h-full object-cover object-center"
             />

@@ -195,6 +195,7 @@ export default function FleetOnboardingSteps() {
                     src={activeStep.imageSrc}
                     alt={activeStep.imageAlt}
                     fill
+                    unoptimized
                     className="object-cover object-center transition-transform duration-700 ease-out hover:scale-105"
                     sizes="(max-width: 1024px) 100vw, 50vw"
                     priority
