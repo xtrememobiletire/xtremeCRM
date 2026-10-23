@@ -15,7 +15,7 @@ interface ValueCardItem {
 const VALUES_ITEMS: ValueCardItem[] = [
   {
     id: "trust-honesty",
-    title: "Trust & Honesty",
+    title: "Trust and Honesty",
     description:
       "Fixed, upfront pricing with zero hidden emergency fees. We provide honest estimates before any wrench turns—you only pay for what your vehicle truly needs.",
     imageSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426894/xtreme/landing/wheel-detail_jpg.jpg",
@@ -24,7 +24,7 @@ const VALUES_ITEMS: ValueCardItem[] = [
   },
   {
     id: "quality-reliability",
-    title: "Quality & Reliability",
+    title: "Quality and Reliability",
     description:
       "Available 24/7 across the USA and Canada with safety-tested tires, computerized laser dynamic wheel balancers, and commercial-grade mobile bay gear.",
     imageSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426873/xtreme/landing/mobile-tire-service_jpg.jpg",
@@ -33,7 +33,7 @@ const VALUES_ITEMS: ValueCardItem[] = [
   },
   {
     id: "expertise-results",
-    title: "Expertise & Results",
+    title: "Expertise and Results",
     description:
       "Over 15+ years of certified mobile technician experience getting daily commuter cars, commercial fleets, and heavy equipment back on the road fast.",
     imageSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426886/xtreme/landing/tire-service-wheel_jpg.jpg",
@@ -128,7 +128,7 @@ export default function AboutValuesCards() {
                   </div>
 
                   {/* Title in Information View */}
-                  <h3 className="font-serif text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug mb-2.5">
+                  <h3 className="font-sans text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug mb-2.5">
                     {item.title}
                   </h3>
 
@@ -191,7 +191,7 @@ export default function AboutValuesCards() {
                       {item.icon}
                     </div>
 
-                    <h3 className="font-serif text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight group-hover:text-[var(--brand-primary)] transition-colors">
+                    <h3 className="font-sans text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight group-hover:text-[var(--brand-primary)] transition-colors">
                       {item.title}
                     </h3>
                     <div className="mt-2 flex items-center justify-between text-xs text-zinc-300">

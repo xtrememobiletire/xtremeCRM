@@ -132,7 +132,7 @@ export default function ServicesCards() {
               >
                 <div>
                   {/* Title in Information View */}
-                  <h3 className="font-serif text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug mb-2.5">
+                  <h3 className="font-sans text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug mb-2.5">
                     {item.title}
                   </h3>
 
@@ -196,7 +196,7 @@ export default function ServicesCards() {
                 >
                   {/* Bottom Overlay Title & Prompt */}
                   <div className="p-5 sm:p-6 pt-16 bg-gradient-to-t from-black/95 via-black/65 to-transparent text-left">
-                    <h3 className="font-serif text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight group-hover:text-[var(--brand-primary)] transition-colors">
+                    <h3 className="font-sans text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight group-hover:text-[var(--brand-primary)] transition-colors">
                       {item.title}
                     </h3>
                     <div className="mt-2 flex items-center justify-between text-xs text-zinc-300">
