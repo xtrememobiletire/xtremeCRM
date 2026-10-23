@@ -232,9 +232,11 @@ export default function InvoicePdfModal({
         {/* Top Control Bar (Hidden on print) */}
         <div className="flex flex-wrap items-center justify-between px-5 py-3.5 bg-slate-900 text-white border-b border-slate-800 shrink-0 gap-3 no-print">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center font-black text-xs text-white">
-              XT
-            </div>
+            <img
+              src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426897/xtreme/frontend/favicon_png.png"
+              alt="Xtreme"
+              className="w-8 h-8 rounded-lg object-contain bg-slate-800 p-0.5 border border-slate-700 shrink-0"
+            />
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-mono font-bold text-sm text-white">
@@ -470,10 +472,12 @@ export default function InvoicePdfModal({
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   {/* Company Brand */}
                   <div>
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-10 h-10 rounded-xl bg-red-600 text-white font-black text-base flex items-center justify-center shadow-xs">
-                        XT
-                      </div>
+                    <div className="flex items-center gap-3">
+                      <img
+                        src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426897/xtreme/frontend/favicon_png.png"
+                        alt="Xtreme Mobile Tire"
+                        className="w-11 h-11 object-contain shrink-0"
+                      />
                       <div>
                         <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-none">
                           XTREME <span className="text-red-600">MOBILE TIRE</span>
