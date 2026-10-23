@@ -33,7 +33,7 @@ export async function generateInvoicePdf(pdfData: any): Promise<Buffer> {
     const borderGray = '#E2E8F0';
 
     // 1. Top Header Banner
-    doc.rect(40, 40, 515, 60).fill('#0B1120');
+    doc.rect(40, 36, 515, 68).fill('#0B1120');
 
     // Logo / Brand Icon
     let logoDrawn = false;
@@ -55,7 +55,8 @@ export async function generateInvoicePdf(pdfData: any): Promise<Buffer> {
       });
 
       if (resolvedLogoPath) {
-        doc.image(resolvedLogoPath, 50, 48, { fit: [44, 44], align: 'center', valign: 'center' });
+        // Enlarge logo to fit 72x54 prominently within the top banner
+        doc.image(resolvedLogoPath, 50, 43, { fit: [72, 54], align: 'center', valign: 'center' });
         logoDrawn = true;
       }
     } catch {
@@ -64,17 +65,16 @@ export async function generateInvoicePdf(pdfData: any): Promise<Buffer> {
 
     if (!logoDrawn) {
       // Fallback XT Badge
-      doc.rect(50, 50, 40, 40).fill(brandRed);
-      doc.fillColor('#FFFFFF').fontSize(16).font('Helvetica-Bold').text('XT', 59, 62);
+      doc.rect(50, 43, 54, 54).fill(brandRed);
+      doc.fillColor('#FFFFFF').fontSize(20).font('Helvetica-Bold').text('XT', 64, 58);
     }
 
-    // Brand Name & Tagline
-    doc.fillColor('#FFFFFF').fontSize(13).font('Helvetica-Bold').text('XTREME MOBILE TIRE', 100, 52);
-    doc.fillColor(brandRed).fontSize(8).font('Helvetica-Bold').text('24/7 MOBILE TIRE SERVICE & ROADSIDE DISPATCH', 100, 68);
+    // Tagline & Regional Hub Info (Cleaned: removed redundant "XTREME MOBILE TIRE" text header)
+    doc.fillColor(brandRed).fontSize(8.5).font('Helvetica-Bold').text('24/7 MOBILE TIRE SERVICE & ROADSIDE DISPATCH', 135, 59);
     doc.fillColor('#94A3B8').fontSize(7.5).font('Helvetica').text(
       `${pdfData.company?.hub?.address || 'Mississauga, ON Canada'} • Phone: ${pdfData.company?.hub?.phone || '+1 (416) 555-0192'}`,
-      100,
-      81
+      135,
+      74
     );
 
     // 2. Invoice Meta & Status Block

@@ -5,14 +5,14 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { LOGIN_URL } from "@/lib/config";
 
-// Pool of 6 high-resolution commercial fleet pictures
+// Pool of 6 high-resolution commercial fleet and mobile service pictures
 const FLEET_IMAGES: string[] = [
-  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426862/xtreme/landing/fleet-semi_jpg.jpg",
-  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426881/xtreme/landing/service-mobile-van_jpg.jpg",
-  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426859/xtreme/landing/fleet-electric_jpg.jpg",
-  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426864/xtreme/landing/fleet-vans_jpg.jpg",
-  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426861/xtreme/landing/fleet-manager_jpg.jpg",
   "https://res.cloudinary.com/ebjikx52/image/upload/v1792426863/xtreme/landing/fleet-trucks_jpg.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426881/xtreme/landing/service-mobile-van_jpg.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426883/xtreme/landing/service-tire-change_jpg.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426864/xtreme/landing/fleet-vans_jpg.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426873/xtreme/landing/mobile-tire-service_jpg.jpg",
+  "https://res.cloudinary.com/ebjikx52/image/upload/v1792426886/xtreme/landing/tire-service-wheel_jpg.jpg",
 ];
 
 interface CardConfig {
@@ -121,11 +121,14 @@ export default function FleetHero() {
         
         {/* Main Headline */}
         <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold tracking-tight text-zinc-950 dark:text-white leading-tight select-none">
-          <span className="block font-medium tracking-tight text-zinc-800 dark:text-zinc-200">
-            Free Your Operations From Roadside Stress.
+          <span className="block">
+            Free Your Operations from Roadside Stress
           </span>
-          <span className="block font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mt-2 sm:mt-3">
-            Manage Your Entire Fleet From One Live Portal.
+          <span className="inline-block">
+            <span>Manage Your Entire Fleet – </span>
+            <span className="font-extrabold italic text-zinc-950 dark:text-white">
+              We do it all
+            </span>
           </span>
         </h1>
 

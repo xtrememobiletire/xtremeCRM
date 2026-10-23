@@ -486,36 +486,32 @@ export default function InvoicePdfModal({
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   {/* Company Brand */}
                   <div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                       <img
                         src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp"
                         alt="Xtreme Mobile Tire"
-                        className="h-12 w-auto object-contain shrink-0"
+                        className="h-16 sm:h-20 w-auto object-contain shrink-0"
                       />
                       <div>
-                        <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-none">
-                          XTREME <span className="text-red-600">MOBILE TIRE</span>
-                        </h1>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">
+                        <p className="text-xs font-bold text-red-600 uppercase tracking-wider">
                           24/7 Mobile Tire Service & Roadside Dispatch
                         </p>
+                        {/* Regional Hub Address Details */}
+                        <div className="text-[11px] text-slate-600 mt-1.5 space-y-0.5">
+                          <p className="flex items-center gap-1.5 font-medium">
+                            <MapPin size={12} className="text-red-600 shrink-0" />
+                            <span>{companyAddress}</span>
+                          </p>
+                          <p className="flex items-center gap-1.5">
+                            <Phone size={12} className="text-red-600 shrink-0" />
+                            <span>{companyPhone}</span>
+                          </p>
+                          <p className="flex items-center gap-1.5">
+                            <Mail size={12} className="text-red-600 shrink-0" />
+                            <span>{data?.company?.paymentEmail || activeHub.paymentEmail}</span>
+                          </p>
+                        </div>
                       </div>
-                    </div>
-
-                    {/* Regional Hub Address Details */}
-                    <div className="text-[11px] text-slate-600 mt-3 space-y-0.5">
-                      <p className="flex items-center gap-1.5 font-medium">
-                        <MapPin size={12} className="text-red-600 shrink-0" />
-                        <span>{companyAddress}</span>
-                      </p>
-                      <p className="flex items-center gap-1.5">
-                        <Phone size={12} className="text-red-600 shrink-0" />
-                        <span>{companyPhone}</span>
-                      </p>
-                      <p className="flex items-center gap-1.5">
-                        <Mail size={12} className="text-red-600 shrink-0" />
-                        <span>{data?.company?.paymentEmail || activeHub.paymentEmail}</span>
-                      </p>
                     </div>
                   </div>
 
