@@ -120,7 +120,10 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
               <button
                 key={service.id}
                 type="button"
-                onClick={() => handleSelectService(idx)}
+                onClick={() => {
+                  handleSelectService(idx);
+                  handleOpenBooking(service.title);
+                }}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-none text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 cursor-pointer ${
                   isActive
                     ? "bg-[#DC2626] text-white shadow-md shadow-red-600/30 border border-[#DC2626]"
@@ -147,7 +150,10 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
               <button
                 key={service.id}
                 type="button"
-                onClick={() => handleSelectService(idx)}
+                onClick={() => {
+                  handleSelectService(idx);
+                  handleOpenBooking(service.title);
+                }}
                 className={`w-full text-left p-6 transition-all duration-300 flex-1 flex items-center justify-between gap-4 group relative cursor-pointer ${
                   isActive
                     ? "bg-red-500/[0.08] dark:bg-red-500/[0.14]"
@@ -191,6 +197,7 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
+                    handleSelectService(idx);
                     handleOpenBooking(service.title);
                   }}
                   className={`w-10 h-10 rounded-none flex items-center justify-center shrink-0 transition-all duration-300 border cursor-pointer ${
@@ -210,7 +217,7 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
         {/* Right Column: Visual Preview + Floating Glass Stats Card + GET A QUOTE Button */}
         <div className="lg:col-span-6 flex flex-col justify-between bg-zinc-950 text-white relative overflow-hidden">
           {/* Visual Showcase Stage with clearly visible background image */}
-          <div className="relative flex-1 min-h-[460px] sm:min-h-[500px] lg:min-h-[520px] flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-hidden">
+          <div className="relative flex-1 min-h-[460px] sm:min-h-[500px] lg:min-h-[520px] flex items-end justify-start p-4 sm:p-6 lg:p-8 overflow-hidden">
             {/* Background Image: Vivid high opacity so car/fleet/wheels show clearly */}
             {category.services.map((service, idx) => (
               <div
@@ -241,8 +248,12 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
               }}
             />
 
-            {/* Sleek, Compact Floating Glass Stats Card (compact, zero top-header metadata) */}
-            <div className="relative z-10 w-[92%] sm:w-[330px] max-w-[350px] rounded-2xl bg-black/65 backdrop-blur-xl border border-white/20 p-4 sm:p-5 shadow-2xl shadow-black/90 transition-all duration-300">
+            {/* Sleek, Compact Floating Glass Stats Card (positioned at bottom-left) */}
+            <div
+              onClick={() => handleOpenBooking(activeService.title)}
+              className="relative z-10 w-[92%] sm:w-[330px] max-w-[350px] rounded-2xl bg-black/65 backdrop-blur-xl border border-white/20 p-4 sm:p-5 shadow-2xl shadow-black/90 transition-all duration-300 cursor-pointer hover:border-[var(--brand-primary)]/60 hover:scale-[1.01]"
+              title="Click to book this service"
+            >
               {/* Feature Title matching inspiration */}
               <div className="mb-2">
                 <h4 className="text-sm sm:text-base font-bold text-white tracking-tight">

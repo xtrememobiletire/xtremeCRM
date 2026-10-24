@@ -244,10 +244,10 @@ export default function Navbar({
                             }
                           }}
                           href={item.href}
-                          className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs xl:text-[13px] transition-colors duration-200 focus:outline-none ${
+                          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-sm xl:text-[15px] transition-colors duration-200 focus:outline-none ${
                             isActive || desktopDropdown === item.label
                               ? "text-white font-semibold"
-                              : "text-zinc-400 font-medium hover:text-white"
+                              : "text-zinc-300 font-medium hover:text-white"
                           }`}
                         >
                           <span>{item.label}</span>
@@ -306,7 +306,7 @@ export default function Navbar({
                 <div className="hidden lg:flex items-center gap-4">
                   <a
                     href="https://app.xtrememobiletire.com/login"
-                    className="text-xs xl:text-sm font-medium text-zinc-400 hover:text-white transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--brand-primary)]"
+                    className="text-sm xl:text-[15px] font-medium text-zinc-300 hover:text-white transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--brand-primary)]"
                   >
                     Sign in
                   </a>
