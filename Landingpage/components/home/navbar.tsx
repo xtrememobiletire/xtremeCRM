@@ -302,18 +302,11 @@ export default function Navbar({
                   })}
                 </div>
 
-                {/* DESKTOP ACTIONS: Sign In & Split-Pill Sign Up */}
-                <div className="hidden lg:flex items-center gap-4">
-                  <a
-                    href="https://app.xtrememobiletire.com/login"
-                    className="text-sm xl:text-[15px] font-medium text-zinc-300 hover:text-white transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--brand-primary)]"
-                  >
-                    Sign in
-                  </a>
-
+                {/* DESKTOP ACTIONS: Sign In */}
+                <div className="hidden lg:flex items-center">
                   <SplitPillButton
-                    label="Sign Up"
-                    href={signUpHref}
+                    label="Sign In"
+                    href="https://app.xtrememobiletire.com/login"
                     theme="white-crimson"
                     arrowDirection="up-right"
                     size="sm"
@@ -496,19 +489,11 @@ export default function Navbar({
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.25, delay: 0.2 }}
-                    className="pt-5 flex items-center justify-between border-t border-white/[0.08] mt-2"
+                    className="pt-5 flex items-center justify-end border-t border-white/[0.08] mt-2"
                   >
-                    <a
-                      href="https://app.xtrememobiletire.com/login"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="text-sm font-semibold text-zinc-300 hover:text-white transition-colors py-2"
-                    >
-                      Sign in
-                    </a>
-
                     <SplitPillButton
-                      label="Sign Up"
-                      href={signUpHref}
+                      label="Sign In"
+                      href="https://app.xtrememobiletire.com/login"
                       onClick={() => setMobileMenuOpen(false)}
                       theme="white-crimson"
                       arrowDirection="up-right"

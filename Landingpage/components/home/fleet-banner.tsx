@@ -82,10 +82,10 @@ export default function FleetBanner() {
             {/* Bottom Action Row: Button + Arrow */}
             <div className="pt-8 sm:pt-12 mt-auto">
               <Link
-                href="/fleet-solutions"
+                href="/fleet-solutions#create-fleet-account"
                 className="group/cta inline-flex items-center gap-3 px-6 sm:px-7 py-3 sm:py-3.5 rounded-none border-2 border-black dark:border-white text-zinc-900 dark:text-white bg-transparent hover:bg-[var(--brand-primary)] hover:border-[var(--brand-primary)] hover:text-white transition-all duration-300 font-bold text-xs sm:text-sm uppercase tracking-wider select-none shadow-sm"
               >
-                <span>Sign up your Fleet</span>
+                <span>Register Your Fleet</span>
                 <svg
                   className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2] transition-transform duration-300 group-hover/cta:translate-x-1 group-hover/cta:-translate-y-1"
                   viewBox="0 0 24 24"

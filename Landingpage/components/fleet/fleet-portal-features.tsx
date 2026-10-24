@@ -100,7 +100,7 @@ export default function FleetPortalFeatures() {
           {/* Quick CTA to register */}
           <div className="pt-2 flex items-center gap-4">
             <Link
-              href="/signup"
+              href="#create-fleet-account"
               className="inline-flex items-center gap-2 px-6 py-3 bg-[#DC2626] text-white hover:bg-black dark:hover:bg-white dark:hover:text-black font-semibold text-xs sm:text-sm uppercase tracking-wider transition-all duration-300 rounded-none shadow-md shadow-red-950/20 cursor-pointer group/btn"
             >
               <span>Setup Fleet Account</span>
