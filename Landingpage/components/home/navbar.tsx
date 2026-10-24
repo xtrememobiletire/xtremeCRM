@@ -94,17 +94,15 @@ export default function Navbar({
         )}
       </AnimatePresence>
 
-      <header className="sticky top-0 z-50 w-full flex justify-center pointer-events-none">
+      <header className="sticky top-0 z-50 w-full flex justify-center pointer-events-none pt-2 sm:pt-3.5 px-3 sm:px-6">
         {/* 
           Container Wrapper:
-          Consistent sizing and padding across ALL pages and screen sizes.
+          Floating box navbar with crisp border across all screen sizes.
         */}
-        <div className="w-full lg:max-w-5xl px-0 sm:px-4 lg:px-6 pointer-events-auto">
+        <div className="w-full lg:max-w-5xl pointer-events-auto">
           {/* 
-            NAVBAR ASSEMBLY (Moves as ONE unified piece):
-            Contains the Left Wing, the Right Wing, and the Curved Nav Body.
-            - Anchored at top-[0px] so it stays permanently consistent across pages.
-            - Locks GPU texture using isolation: isolate and transform: translateZ(0).
+            NAVBAR ASSEMBLY:
+            Moves as ONE unified piece.
           */}
           <motion.div
             initial={false}
@@ -116,68 +114,19 @@ export default function Navbar({
               duration: 0.3,
               ease: [0.16, 1, 0.3, 1],
             }}
-            className={`relative mx-auto -top-[2px] isolate [transform:translateZ(0)] [backface-visibility:hidden] ${
+            className={`relative mx-auto isolate [transform:translateZ(0)] [backface-visibility:hidden] ${
               hide ? "pointer-events-none" : ""
             }`}
           >
-            {/* Top 3px Continuous Bleed Strip (Covers any subpixel rounding gap) */}
-            <div className="absolute -top-[2px] left-0 right-0 h-[4px] bg-black dark:bg-[#0c0c0e] pointer-events-none z-10" />
-
-            {/* Left Inverted Wing (Fillet) with smooth curvature */}
-            <div
-              className="hidden lg:block absolute -top-[2px] -left-[30px] w-[32px] h-[32px] pointer-events-none z-10 dark:backdrop-blur-2xl"
-            >
-              <svg
-                className="w-full h-full text-black"
-                viewBox="0 -2 32 34"
-                preserveAspectRatio="none"
-                shapeRendering="geometricPrecision"
-              >
-                <path
-                  d="M0,-2 L32,-2 L32,30 L30,30 C30,12 18,0 0,0 Z"
-                  className="fill-black dark:fill-[#0c0c0e]"
-                />
-                <path
-                  d="M30,30 C30,12 18,0 0,0"
-                  fill="none"
-                  strokeWidth="1"
-                  className="hidden dark:block stroke-white/15"
-                />
-              </svg>
-            </div>
-
-            {/* Right Inverted Wing (Fillet) with smooth curvature */}
-            <div
-              className="hidden lg:block absolute -top-[2px] -right-[30px] w-[32px] h-[32px] pointer-events-none z-10 dark:backdrop-blur-2xl"
-            >
-              <svg
-                className="w-full h-full text-black"
-                viewBox="0 -2 32 34"
-                preserveAspectRatio="none"
-                shapeRendering="geometricPrecision"
-              >
-                <path
-                  d="M0,-2 L32,-2 L32,0 C14,0 2,12 2,30 L0,30 Z"
-                  className="fill-black dark:fill-[#0c0c0e]"
-                />
-                <path
-                  d="M2,30 C2,12 14,0 32,0"
-                  fill="none"
-                  strokeWidth="1"
-                  className="hidden dark:block stroke-white/15"
-                />
-              </svg>
-            </div>
-
             {/* 
               MAIN NAVBAR CONTAINER:
-              - Flush on top with rounded-t-none across all breakpoints.
-              - Uniform rounded-b-2xl sm:rounded-b-[26px] lg:rounded-b-[28px] across every page.
-              - Fixed padding (py-2.5 sm:py-3 px-4 sm:px-6 lg:px-7) so size and shape never jitter.
+              - Floating box with 360-degree subtle border.
+              - Rounded-2xl on all breakpoints.
+              - Backdrop blur with dark glass texture.
             */}
             <nav
               aria-label="Main Navigation"
-              className="relative bg-black dark:bg-[#0c0c0e]/95 dark:backdrop-blur-2xl text-white shadow-2xl shadow-black/40 dark:shadow-[0_15px_35px_rgba(0,0,0,0.8)] dark:border-b dark:border-x dark:border-white/15 rounded-t-none rounded-b-2xl sm:rounded-b-[26px] lg:rounded-b-[28px] py-2.5 sm:py-3 px-4 sm:px-6 lg:px-7"
+              className="relative bg-black/90 dark:bg-[#0c0c0e]/95 backdrop-blur-2xl text-white shadow-2xl shadow-black/70 border border-white/20 rounded-2xl py-2 sm:py-2.5 px-4 sm:px-6 lg:px-7"
             >
               <div className="flex items-center justify-between gap-3">
                 
@@ -344,7 +293,7 @@ export default function Navbar({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -14, scale: 0.98 }}
                   transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute top-0 left-0 right-0 z-50 lg:hidden bg-black dark:bg-[#0c0c0e] text-white rounded-t-none rounded-b-2xl sm:rounded-b-[28px] p-4 sm:p-6 shadow-2xl shadow-black/90 border-b border-x border-white/[0.06] dark:border-white/15"
+                  className="absolute top-0 left-0 right-0 z-50 lg:hidden bg-black/95 dark:bg-[#0c0c0e]/95 text-white rounded-2xl p-4 sm:p-6 shadow-2xl shadow-black/95 border border-white/20 backdrop-blur-2xl"
                 >
                   {/* Top Row: Logo on left, Close '✕' on right */}
                   <div className="flex items-center justify-between gap-3 pb-4 border-b border-white/[0.08]">

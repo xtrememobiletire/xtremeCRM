@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import HeroBadge from "./hero-badge";
 import SplitPillButton from "./split-pill-button";
 import HeroInteractiveHub from "./hero/hero-interactive-hub";
@@ -23,14 +24,36 @@ export default function HeroSection({
   ctaText = "Book Now",
   ctaHref = "/booking",
 }: HeroSectionProps) {
+  const desktopVideoRef = useRef<HTMLVideoElement>(null);
+  const tabletVideoRef = useRef<HTMLVideoElement>(null);
+  const mobileVideoRef = useRef<HTMLVideoElement>(null);
+
+  // Guarantee immediate playback as soon as user lands on the page
+  useEffect(() => {
+    const startPlayback = (video: HTMLVideoElement | null) => {
+      if (!video) return;
+      video.defaultMuted = true;
+      video.muted = true;
+      const promise = video.play();
+      if (promise !== undefined) {
+        promise.catch(() => {});
+      }
+    };
+
+    startPlayback(desktopVideoRef.current);
+    startPlayback(tabletVideoRef.current);
+    startPlayback(mobileVideoRef.current);
+  }, []);
+
   return (
     <div className="w-full flex flex-col items-center">
       
       {/* 
         HERO BANNER WITH RESPONSIVE BACKGROUND VIDEOS:
-        - Pulls up behind the curved floating navbar (-mt-24 sm:-mt-28 lg:-mt-32)
+        - Pulls up behind the floating navbar (-mt-24 sm:-mt-28 lg:-mt-32)
         - Seamlessly covers from the upper edge behind the navbar down past the action buttons
         - Desktop (16:9), Tablet (1:1), and Phone/Mobile (9:16)
+        - Pure dark overlay with zero white foggy background at the bottom
       */}
       <section className="relative w-full overflow-hidden flex flex-col items-center justify-center -mt-24 sm:-mt-28 lg:-mt-32 pt-28 sm:pt-36 lg:pt-44 pb-14 sm:pb-20 text-center">
         
@@ -38,52 +61,43 @@ export default function HeroSection({
         <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden bg-black">
           {/* 1. Desktop Video (16:9) - visible on lg (>=1024px) */}
           <video
+            ref={desktopVideoRef}
+            src="https://res.cloudinary.com/ebjikx52/video/upload/v1792843197/xtreme-hero-desktop-16x9.mp4"
             autoPlay
             muted
             loop
             playsInline
+            preload="auto"
             className="hidden lg:block absolute inset-0 w-full h-full object-cover object-center"
-          >
-            <source
-              src="https://res.cloudinary.com/ebjikx52/video/upload/v1792843197/xtreme-hero-desktop-16x9.mp4"
-              type="video/mp4"
-            />
-          </video>
+          />
 
           {/* 2. Tablet Video (1:1) - visible on sm to md (640px - 1023px) */}
           <video
+            ref={tabletVideoRef}
+            src="https://res.cloudinary.com/ebjikx52/video/upload/v1792843187/xtreme-hero-tablet-1x1.mp4"
             autoPlay
             muted
             loop
             playsInline
+            preload="auto"
             className="hidden sm:block lg:hidden absolute inset-0 w-full h-full object-cover object-center"
-          >
-            <source
-              src="https://res.cloudinary.com/ebjikx52/video/upload/v1792843187/xtreme-hero-tablet-1x1.mp4"
-              type="video/mp4"
-            />
-          </video>
+          />
 
           {/* 3. Mobile / Phone Video (9:16) - visible on mobile (<640px) */}
           <video
+            ref={mobileVideoRef}
+            src="https://res.cloudinary.com/ebjikx52/video/upload/v1792843184/xtreme-hero-mobile-9x16.mp4"
             autoPlay
             muted
             loop
             playsInline
+            preload="auto"
             className="block sm:hidden absolute inset-0 w-full h-full object-cover object-center"
-          >
-            <source
-              src="https://res.cloudinary.com/ebjikx52/video/upload/v1792843184/xtreme-hero-mobile-9x16.mp4"
-              type="video/mp4"
-            />
-          </video>
+          />
 
           {/* Subtle Dark Vignette & Contrast Overlays for 100% Text Readability */}
           <div className="absolute inset-0 bg-black/45" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/25 to-black/85" />
-          
-          {/* Bottom fade out to smoothly blend with container background */}
-          <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-b from-transparent to-[var(--neutral-light)] dark:to-black" />
         </div>
 
         {/* Foreground Content */}
