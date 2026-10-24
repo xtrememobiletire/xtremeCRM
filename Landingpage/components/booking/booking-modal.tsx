@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  Check,
   X,
   Wrench,
   Clock,
@@ -16,7 +18,87 @@ import {
   AlertCircle,
   Loader2,
   Zap,
+  RotateCw,
+  Disc3,
+  Droplets,
+  Sparkles,
 } from "lucide-react";
+
+
+export interface BookingCategoryOption {
+  id: string;
+  name: string;
+  code: string;
+  icon: React.ComponentType<{ className?: string }>;
+  services: string[];
+}
+
+export const BOOKING_SERVICE_CATEGORIES: BookingCategoryOption[] = [
+  {
+    id: "tire-services",
+    name: "Tire Services",
+    code: "TIRE_SERVICE",
+    icon: RotateCw,
+    services: [
+      "Seasonal Tire Change (ON/OFF RIM)",
+      "Flat Tire Repair",
+      "New Tires for Sale",
+      "Used Tires for Sale",
+      "Tire Storage",
+    ],
+  },
+  {
+    id: "wheel-rim-services",
+    name: "Wheel & Rim Services",
+    code: "WHEEL_RIM_SERVICE",
+    icon: Disc3,
+    services: [
+      "Rim Repair",
+      "Rim Protector Installation",
+    ],
+  },
+  {
+    id: "mobile-auto-maintenance",
+    name: "Mobile Auto Maintenance",
+    code: "AUTO_MAINTENANCE",
+    icon: Droplets,
+    services: [
+      "Oil Change",
+      "Brake Replacement",
+      "Battery Boost / Jump-Start",
+    ],
+  },
+  {
+    id: "roadside-assistance",
+    name: "Roadside Assistance",
+    code: "ROADSIDE_ASSISTANCE",
+    icon: Clock,
+    services: [
+      "Roadside Assistance (24/7)",
+      "Car Lockout / Locksmith",
+      "Gas and Diesel Delivery",
+    ],
+  },
+  {
+    id: "vehicle-care-protection",
+    name: "Vehicle Care & Protection",
+    code: "VEHICLE_CARE",
+    icon: Sparkles,
+    services: [
+      "Car Detailing",
+      "PPF (Paint Protection Film)",
+    ],
+  },
+];
+
+export function findCategoryForService(title: string): BookingCategoryOption {
+  for (const cat of BOOKING_SERVICE_CATEGORIES) {
+    if (cat.services.includes(title)) {
+      return cat;
+    }
+  }
+  return BOOKING_SERVICE_CATEGORIES[0];
+}
 
 export interface BookingModalProps {
   isOpen: boolean;
@@ -95,8 +177,42 @@ export default function BookingModal({
   // Step 1: Select a time, Step 2: Your Details, Step 3: Confirmation
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  // Service
-  const [serviceTitle] = useState<string>(initialServiceTitle);
+  // Service Selection & Dropdown State
+  const [serviceTitle, setServiceTitle] = useState<string>(initialServiceTitle);
+  const [serviceCategory, setServiceCategory] = useState<string>(initialServiceCategory);
+  const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState<boolean>(false);
+  const [activeCategoryTab, setActiveCategoryTab] = useState<string>(() => {
+    const found = BOOKING_SERVICE_CATEGORIES.find((cat) => cat.services.includes(initialServiceTitle));
+    return found ? found.id : "tire-services";
+  });
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Sync initialServiceTitle when modal opens or prop changes
+  useEffect(() => {
+    if (isOpen && initialServiceTitle) {
+      setServiceTitle(initialServiceTitle);
+      const found = BOOKING_SERVICE_CATEGORIES.find((cat) => cat.services.includes(initialServiceTitle));
+      if (found) {
+        setActiveCategoryTab(found.id);
+        setServiceCategory(found.code);
+      }
+    }
+  }, [isOpen, initialServiceTitle]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsServiceDropdownOpen(false);
+      }
+    };
+    if (isServiceDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isServiceDropdownOpen]);
 
   // Step 1: Calendar & Time State
   const [currentMonth, setCurrentMonth] = useState<Date>(
@@ -285,7 +401,7 @@ export default function BookingModal({
         serviceItems: [
           {
             serviceName: serviceTitle,
-            category: initialServiceCategory || "TIRE_SERVICE",
+            category: serviceCategory || initialServiceCategory || "TIRE_SERVICE",
             unitPriceCents: 5000,
             quantity: 1,
           },
@@ -428,10 +544,148 @@ export default function BookingModal({
                 ========================================================================= */}
             {step === 1 && (
               <div className="space-y-6">
-                {/* Selected Service Banner */}
-                <div className="flex items-center gap-2.5 text-zinc-900 dark:text-zinc-100 font-bold text-base sm:text-lg">
-                  <Wrench className="w-5 h-5 text-[#DC2626]" />
-                  <span>{serviceTitle}</span>
+                {/* Selected Service with Hierarchical Dropdown */}
+                <div className="relative z-30" ref={dropdownRef}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsServiceDropdownOpen((prev) => !prev)}
+                      className="group flex items-center gap-3 px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-800/80 hover:border-[#DC2626] dark:hover:border-[#DC2626] transition-all cursor-pointer shadow-xs hover:shadow-sm text-left max-w-full sm:max-w-md"
+                      title="Click to change service category"
+                    >
+                      <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/60 text-[#DC2626] shrink-0 group-hover:scale-105 transition-transform">
+                        {React.createElement(
+                          BOOKING_SERVICE_CATEGORIES.find((c) => c.services.includes(serviceTitle))?.icon || Wrench,
+                          { className: "w-4 h-4" }
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                          <span>
+                            {BOOKING_SERVICE_CATEGORIES.find((c) => c.services.includes(serviceTitle))?.name || "Service Category"}
+                          </span>
+                          <span className="text-zinc-300 dark:text-zinc-700">•</span>
+                          <span className="text-[#DC2626] group-hover:underline">Click to change</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 font-bold text-sm sm:text-base text-zinc-950 dark:text-white truncate">
+                          <span className="truncate">{serviceTitle}</span>
+                          <ChevronDown
+                            className={`w-4 h-4 text-zinc-400 group-hover:text-[#DC2626] transition-transform duration-200 shrink-0 ${
+                              isServiceDropdownOpen ? "rotate-180 text-[#DC2626]" : ""
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Hierarchical 2-Level Dropdown Menu */}
+                  <AnimatePresence>
+                    {isServiceDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                        transition={{ duration: 0.18, ease: "easeOut" }}
+                        className="absolute left-0 top-full mt-2 w-full sm:w-[580px] max-w-[95vw] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden z-50 flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-zinc-200 dark:divide-zinc-800"
+                      >
+                        {/* Level 1: Categories Column */}
+                        <div className="w-full sm:w-[240px] p-2 bg-zinc-50/70 dark:bg-zinc-900/60 space-y-1 shrink-0">
+                          <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                            Select Category
+                          </div>
+                          {BOOKING_SERVICE_CATEGORIES.map((cat) => {
+                            const IconComponent = cat.icon;
+                            const isActive = activeCategoryTab === cat.id;
+                            const hasSelectedService = cat.services.includes(serviceTitle);
+
+                            return (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => setActiveCategoryTab(cat.id)}
+                                onMouseEnter={() => setActiveCategoryTab(cat.id)}
+                                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer text-left ${
+                                  isActive
+                                    ? "bg-white dark:bg-zinc-800 text-[#DC2626] shadow-xs font-bold"
+                                    : "text-zinc-700 dark:text-zinc-300 hover:bg-white/80 dark:hover:bg-zinc-800/60"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div
+                                    className={`p-1.5 rounded-lg ${
+                                      isActive
+                                        ? "bg-red-50 dark:bg-red-950/60 text-[#DC2626]"
+                                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
+                                    }`}
+                                  >
+                                    <IconComponent className="w-3.5 h-3.5 shrink-0" />
+                                  </div>
+                                  <span className="truncate">{cat.name}</span>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0 ml-1">
+                                  {hasSelectedService && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#DC2626]" />
+                                  )}
+                                  <ChevronRight
+                                    className={`w-3.5 h-3.5 ${
+                                      isActive
+                                        ? "text-[#DC2626] translate-x-0.5"
+                                        : "text-zinc-400"
+                                    } transition-transform`}
+                                  />
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Level 2: Sub-Services Column */}
+                        <div className="flex-1 p-3 bg-white dark:bg-zinc-900 space-y-1.5">
+                          <div className="px-2 pb-1.5 border-b border-zinc-100 dark:border-zinc-800 text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center justify-between">
+                            <span>
+                              {BOOKING_SERVICE_CATEGORIES.find((c) => c.id === activeCategoryTab)?.name} Services
+                            </span>
+                            <span className="text-zinc-400 text-[10px] lowercase font-normal">
+                              click to select
+                            </span>
+                          </div>
+
+                          <div className="space-y-1 pt-1 max-h-[260px] overflow-y-auto">
+                            {BOOKING_SERVICE_CATEGORIES.find(
+                              (c) => c.id === activeCategoryTab
+                            )?.services.map((svc) => {
+                              const isSelected = serviceTitle === svc;
+                              return (
+                                <button
+                                  key={svc}
+                                  type="button"
+                                  onClick={() => {
+                                    setServiceTitle(svc);
+                                    const cat = BOOKING_SERVICE_CATEGORIES.find(
+                                      (c) => c.id === activeCategoryTab
+                                    );
+                                    if (cat) setServiceCategory(cat.code);
+                                    setIsServiceDropdownOpen(false);
+                                  }}
+                                  className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-semibold transition cursor-pointer text-left ${
+                                    isSelected
+                                      ? "bg-red-50/90 dark:bg-red-950/50 text-[#DC2626] border border-red-200 dark:border-red-900/50 font-bold shadow-2xs"
+                                      : "text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 border border-transparent"
+                                  }`}
+                                >
+                                  <span className="pr-2">{svc}</span>
+                                  {isSelected && (
+                                    <Check className="w-4 h-4 text-[#DC2626] shrink-0" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -649,13 +903,19 @@ export default function BookingModal({
                 ========================================================================= */}
             {step === 2 && (
               <form onSubmit={handleConfirmBooking} className="space-y-6">
-                <div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">
-                    Your Details
-                  </h3>
-                  <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                    Enter your vehicle and contact information to complete the booking.
-                  </p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">
+                      Your Details
+                    </h3>
+                    <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                      Enter your vehicle and contact information to complete the booking.
+                    </p>
+                  </div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-xs font-bold text-[#DC2626] self-start sm:self-auto">
+                    <Wrench className="w-3.5 h-3.5" />
+                    <span>{serviceTitle}</span>
+                  </div>
                 </div>
 
                 {submitError && (
