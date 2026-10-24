@@ -32,6 +32,15 @@ export default function LoginForm() {
 
   return (
     <div className="bg-black text-white py-6 px-6 sm:px-8 shadow-2xl rounded-none border border-zinc-800 space-y-4">
+      {/* Brand Logo Included Inside Black Card */}
+      <div className="flex justify-center pt-1 pb-1">
+        <img 
+          src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426903/xtreme/frontend/logo-signin_png.png" 
+          alt="Xtreme Mobile Tire" 
+          className="h-14 sm:h-16 w-auto object-contain drop-shadow-md" 
+        />
+      </div>
+
       {/* Heading */}
       <div className="text-center pb-3 border-b border-zinc-800">
         <h2 className="text-xl font-bold text-white tracking-tight">Account Login</h2>
