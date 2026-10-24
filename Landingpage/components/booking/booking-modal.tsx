@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
@@ -105,11 +106,29 @@ export default function BookingModal({
     () => new Date(2026, 9, 27)
   );
   const [todayStartMs, setTodayStartMs] = useState<number | null>(null);
-  const [selectedTime, setSelectedTime] = useState<string>("Immediate (ASAP)");
+  const [selectedTime, setSelectedTime] = useState<string>("01:30 PM");
   const [selectedTimezone, setSelectedTimezone] = useState<string>("America/Toronto");
   const [timeCategory, setTimeCategory] = useState<"morning" | "afternoon" | "evening" | "overnight">("afternoon");
   const [customTime, setCustomTime] = useState<string>("");
   const [isCustomTime, setIsCustomTime] = useState<boolean>(false);
+  const [mounted, setMounted] = useState<boolean>(false);
+
+  // Mount tracking for portal
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Lock body scroll and blur background cleanly when modal is active
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
 
   // Step 2: Vehicle & Customer Details State
   const [formData, setFormData] = useState({
@@ -303,7 +322,7 @@ export default function BookingModal({
   const handleReset = () => {
     setStep(1);
     setSelectedDate(new Date());
-    setSelectedTime("Immediate (ASAP)");
+    setSelectedTime("01:30 PM");
     setFormData({
       firstName: "",
       lastName: "",
@@ -320,18 +339,18 @@ export default function BookingModal({
     setSubmitError(null);
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
-        {/* Backdrop */}
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
+        {/* Full-Screen Backdrop: Sits in front of the navbar (z-[9999]) and blurs the navbar and page behind it */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 bg-black/75 backdrop-blur-md transition-opacity"
         />
 
         {/* Modal Window Container */}
@@ -527,35 +546,6 @@ export default function BookingModal({
                     <h4 className="font-bold text-sm sm:text-base text-zinc-900 dark:text-white pb-2 border-b border-zinc-200 dark:border-zinc-800">
                       {formattedSelectedDate}
                     </h4>
-
-                    {/* Prominent Emergency ASAP Dispatch Option */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedTime("Immediate (ASAP)");
-                        setIsCustomTime(false);
-                      }}
-                      className={`w-full p-3.5 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
-                        selectedTime === "Immediate (ASAP)" && !isCustomTime
-                          ? "bg-[#DC2626] text-white border-[#DC2626] shadow-md shadow-red-600/30 font-bold"
-                          : "bg-zinc-50 dark:bg-zinc-800/60 border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 hover:border-zinc-400"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Zap className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" />
-                        <div>
-                          <div className="text-xs sm:text-sm font-bold">
-                            Immediate / 24/7 ASAP Dispatch
-                          </div>
-                          <div className="text-[11px] opacity-80">
-                            Technician deployed within 20–45 mins
-                          </div>
-                        </div>
-                      </div>
-                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-black/20 text-white">
-                        Fastest
-                      </span>
-                    </button>
 
                     {/* Time Slot Tabs (Morning, Afternoon, Evening, Overnight) */}
                     <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-xs font-semibold">
@@ -1001,6 +991,7 @@ export default function BookingModal({
           </div>
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
