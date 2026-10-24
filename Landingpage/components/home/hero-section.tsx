@@ -57,8 +57,14 @@ export default function HeroSection({
       */}
       <section className="relative w-full overflow-hidden flex flex-col items-center justify-center -mt-24 sm:-mt-28 lg:-mt-32 pt-28 sm:pt-36 lg:pt-44 pb-14 sm:pb-20 text-center">
         
-        {/* Background Video Layer */}
-        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden bg-black">
+        {/* Background Video Layer with Smooth Bottom Fade to eliminate sharp straight line */}
+        <div
+          className="pointer-events-none absolute inset-0 -z-10 overflow-hidden bg-black"
+          style={{
+            maskImage: "linear-gradient(to bottom, black 65%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 65%, transparent 100%)",
+          }}
+        >
           {/* 1. Desktop Video (16:9) - visible on lg (>=1024px) */}
           <video
             ref={desktopVideoRef}
@@ -99,6 +105,20 @@ export default function HeroSection({
           <div className="absolute inset-0 bg-black/45" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/25 to-black/85" />
         </div>
+
+        {/* 
+          SOFT BLUR DIFFUSER OVERLAY:
+          Optically blurs the video as it reaches the bottom boundary,
+          eliminating any sharp straight-line cutoff between the black hero and white canvas.
+        */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 left-0 right-0 h-32 sm:h-44 backdrop-blur-md"
+          style={{
+            maskImage: "linear-gradient(to bottom, transparent 0%, black 40%, black 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 40%, black 100%)",
+          }}
+        />
 
         {/* Foreground Content */}
         <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center">
