@@ -16,6 +16,8 @@ import {
   Truck,
   Lock,
   CheckCircle2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 interface FormData {
@@ -57,6 +59,8 @@ export default function FleetCreateAccount() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [direction, setDirection] = useState<number>(1);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
 
   const handleChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -460,16 +464,24 @@ export default function FleetCreateAccount() {
                               <div className="relative">
                                 <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                 <input
-                                  type="password"
+                                  type={showPassword ? "text" : "password"}
                                   value={formData.password}
                                   onChange={(e) => handleChange("password", e.target.value)}
                                   placeholder="At least 6 characters"
-                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
+                                  className={`w-full pl-10 pr-11 py-3 bg-white/[0.04] border ${
                                     errors.password
                                       ? "border-red-500 ring-1 ring-red-500"
                                       : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"
                                   } rounded-xl text-sm sm:text-base text-white placeholder:text-zinc-600 focus:outline-none focus:bg-white/[0.07] transition-all font-sans`}
                                 />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowPassword(!showPassword)}
+                                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 focus:outline-none cursor-pointer p-1"
+                                  aria-label={showPassword ? "Hide password" : "Show password"}
+                                >
+                                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
                               </div>
                               {errors.password && (
                                 <p className="mt-1 text-xs text-red-400 font-sans font-medium">
@@ -486,16 +498,24 @@ export default function FleetCreateAccount() {
                               <div className="relative">
                                 <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                 <input
-                                  type="password"
+                                  type={showConfirmPassword ? "text" : "password"}
                                   value={formData.confirmPassword}
                                   onChange={(e) => handleChange("confirmPassword", e.target.value)}
                                   placeholder="Repeat password"
-                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
+                                  className={`w-full pl-10 pr-11 py-3 bg-white/[0.04] border ${
                                     errors.confirmPassword
                                       ? "border-red-500 ring-1 ring-red-500"
                                       : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"
                                   } rounded-xl text-sm sm:text-base text-white placeholder:text-zinc-600 focus:outline-none focus:bg-white/[0.07] transition-all font-sans`}
                                 />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 focus:outline-none cursor-pointer p-1"
+                                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                                >
+                                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
                               </div>
                               {errors.confirmPassword && (
                                 <p className="mt-1 text-xs text-red-400 font-sans font-medium">
