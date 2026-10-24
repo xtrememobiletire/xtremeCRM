@@ -27,41 +27,86 @@ export default function HeroSection({
     <div className="w-full flex flex-col items-center">
       
       {/* 
-        HERO BANNER:
-        Ambient crimson glow is strictly contained within this top hero banner only.
-        The 6 cards below sit outside on the clean canvas.
+        HERO BANNER WITH RESPONSIVE BACKGROUND VIDEOS:
+        - Pulls up behind the curved floating navbar (-mt-24 sm:-mt-28 lg:-mt-32)
+        - Seamlessly covers from the upper edge behind the navbar down past the action buttons
+        - Desktop (16:9), Tablet (1:1), and Phone/Mobile (9:16)
       */}
-      <section className="relative w-full overflow-hidden flex flex-col items-center justify-center pt-8 sm:pt-12 pb-14 sm:pb-18 text-center">
-        {/* Soft Ambient Texture & Top Glow inside Hero Banner */}
-        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-          {/* Subtle warm Crimson glow fading from the top */}
-          <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[550px] bg-gradient-to-b from-[var(--brand-light)]/70 via-transparent to-transparent blur-3xl rounded-full" />
-          {/* Fine horizontal scanline/dot matrix pattern */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000008_1px,transparent_1px),linear-gradient(to_bottom,#00000008_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_70%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-          {/* Bottom fade out */}
+      <section className="relative w-full overflow-hidden flex flex-col items-center justify-center -mt-24 sm:-mt-28 lg:-mt-32 pt-28 sm:pt-36 lg:pt-44 pb-14 sm:pb-20 text-center">
+        
+        {/* Background Video Layer */}
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden bg-black">
+          {/* 1. Desktop Video (16:9) - visible on lg (>=1024px) */}
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="hidden lg:block absolute inset-0 w-full h-full object-cover object-center"
+          >
+            <source
+              src="https://res.cloudinary.com/ebjikx52/video/upload/v1792843197/xtreme-hero-desktop-16x9.mp4"
+              type="video/mp4"
+            />
+          </video>
+
+          {/* 2. Tablet Video (1:1) - visible on sm to md (640px - 1023px) */}
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="hidden sm:block lg:hidden absolute inset-0 w-full h-full object-cover object-center"
+          >
+            <source
+              src="https://res.cloudinary.com/ebjikx52/video/upload/v1792843187/xtreme-hero-tablet-1x1.mp4"
+              type="video/mp4"
+            />
+          </video>
+
+          {/* 3. Mobile / Phone Video (9:16) - visible on mobile (<640px) */}
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="block sm:hidden absolute inset-0 w-full h-full object-cover object-center"
+          >
+            <source
+              src="https://res.cloudinary.com/ebjikx52/video/upload/v1792843184/xtreme-hero-mobile-9x16.mp4"
+              type="video/mp4"
+            />
+          </video>
+
+          {/* Subtle Dark Vignette & Contrast Overlays for 100% Text Readability */}
+          <div className="absolute inset-0 bg-black/45" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/25 to-black/85" />
+          
+          {/* Bottom fade out to smoothly blend with container background */}
           <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-b from-transparent to-[var(--neutral-light)] dark:to-black" />
         </div>
 
+        {/* Foreground Content */}
         <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center">
           {/* "24/7 FLEET TIRE SUPPORT" Pill Badge */}
           <HeroBadge text={badgeText} href={badgeHref} />
 
           {/* Main Title: 3 words + Anytime. Anywhere. */}
-          <h1 className="mt-5 text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-[var(--neutral-dark)] mb-5 leading-[1.08] max-w-4xl">
+          <h1 className="mt-5 text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white mb-5 leading-[1.08] max-w-4xl drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]">
             {titleLine1} <br />
-            <span className="font-serif italic font-normal text-[var(--brand-primary)]">
+            <span className="font-serif italic font-normal text-[#DC2626] drop-shadow-[0_2px_16px_rgba(220,38,38,0.5)]">
               {titleItalic}
             </span>
           </h1>
 
           {/* Subheading */}
-          <p className="max-w-xl sm:max-w-2xl mx-auto text-base sm:text-lg text-zinc-600 dark:text-zinc-400 mb-8 leading-relaxed font-normal">
+          <p className="max-w-xl sm:max-w-2xl mx-auto text-base sm:text-lg text-zinc-100 mb-8 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
             {description}
           </p>
 
           {/* Center Action Buttons */}
           <div className="flex flex-col items-center justify-center gap-2.5">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <SplitPillButton
                 label={ctaText}
                 href={ctaHref}
@@ -77,7 +122,7 @@ export default function HeroSection({
                 size="lg"
               />
             </div>
-            <span className="text-xs font-semibold tracking-wider uppercase text-zinc-500 dark:text-zinc-400 mt-2">
+            <span className="text-xs font-semibold tracking-wider uppercase text-zinc-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] mt-2">
               Your Safety — Our Mission
             </span>
           </div>
