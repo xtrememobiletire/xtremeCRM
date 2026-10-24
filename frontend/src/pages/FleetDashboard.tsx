@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -38,6 +38,7 @@ export default function FleetDashboard() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [pendingSearch, setPendingSearch] = useState('');
   const [paidSearch, setPaidSearch] = useState('');
+  const leftFormScrollRef = useRef<HTMLDivElement>(null);
 
   // Modals for adding vehicle, driver, and assigning vehicle
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
@@ -483,7 +484,7 @@ export default function FleetDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex antialiased">
+    <div className="h-[100dvh] max-h-[100dvh] overflow-hidden bg-slate-50 text-slate-900 font-sans flex antialiased">
       {/* Mobile Backdrop Overlay */}
       {isMobileNavOpen && (
         <div 
@@ -495,7 +496,7 @@ export default function FleetDashboard() {
 
       {/* LEFT SIDEBAR - Identical to XtremeCRM Sidebar */}
       <aside 
-        className={`fixed inset-y-0 left-0 md:sticky top-0 h-[100dvh] max-h-[100dvh] bg-white border-r border-slate-200 flex flex-col z-50 transition-all duration-200 shrink-0 select-none shadow-2xl md:shadow-none ${
+        className={`fixed inset-y-0 left-0 md:static h-full max-h-full bg-white border-r border-slate-200 flex flex-col z-50 transition-all duration-200 shrink-0 select-none shadow-2xl md:shadow-none ${
           isMobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         } w-64`}
       >
@@ -586,9 +587,9 @@ export default function FleetDashboard() {
       </aside>
 
       {/* RIGHT MAIN VIEW */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col h-[100dvh] max-h-[100dvh] overflow-hidden min-w-0">
         {/* TOP NAVBAR - Matching XtremeCRM Topbar */}
-        <header className="h-16 bg-white border-b border-slate-200/90 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
+        <header className="h-16 bg-white border-b border-slate-200/90 px-4 sm:px-6 flex items-center justify-between shrink-0 z-30 shadow-2xs">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -644,7 +645,7 @@ export default function FleetDashboard() {
         </header>
 
         {/* MAIN BODY AREA */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+        <main className={`flex-1 p-4 sm:p-6 lg:p-8 ${activeTab === 'request' ? 'overflow-y-auto lg:overflow-hidden flex flex-col min-h-0' : 'overflow-y-auto'}`}>
           {fleet?.status === 'PENDING' && (
             <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 flex items-start gap-3 shadow-xs">
               <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -1080,33 +1081,26 @@ export default function FleetDashboard() {
 
           {/* 4. REQUEST NEW SERVICE TAB - FULL-WIDTH RESPONSIVE 2-COLUMN LAYOUT */}
           {activeTab === 'request' && (
-            <div className="w-full max-w-7xl mx-auto space-y-6">
-              {/* Header Banner */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-200">
-                <div>
-                  <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-                    <span>Request Roadside & Fleet Service</span>
-                    <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-red-100 text-red-700 border border-red-200">
-                      Direct Dispatch
-                    </span>
-                  </h1>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                    Book priority emergency roadside assistance or schedule routine yard fleet maintenance directly with dispatch
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700">
-                    <Building2 className="w-4 h-4 text-slate-500" />
-                    <span>{fleet?.companyName || 'Corporate Fleet'}</span>
-                    <span className="font-mono text-red-600 font-bold ml-1">({fleet?.accountCode || 'XMT-5132'})</span>
-                  </div>
-                </div>
-              </div>
-
-              <form onSubmit={handleBookService}>
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                  {/* LEFT COLUMN: Unified Single Form (Span 7 on lg, 8 on xl) */}
-                  <div className="lg:col-span-7 xl:col-span-8">
+            <div className="w-full max-w-7xl mx-auto flex-1 min-h-0 flex flex-col">
+              <form onSubmit={handleBookService} className="flex-1 min-h-0 flex flex-col">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start flex-1 min-h-0">
+                  {/* LEFT COLUMN: Header Banner + Unified Form (Scrollable on desktop) */}
+                  <div 
+                    ref={leftFormScrollRef}
+                    className="lg:col-span-7 xl:col-span-8 lg:h-full lg:overflow-y-auto lg:pr-3 space-y-6 pb-12"
+                  >
+                    {/* Header Banner */}
+                    <div className="pb-2 border-b border-slate-200">
+                      <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+                        <span>Request Roadside & Fleet Service</span>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-red-100 text-red-700 border border-red-200">
+                          Direct Dispatch
+                        </span>
+                      </h1>
+                      <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                        Book priority emergency roadside assistance or schedule routine yard fleet maintenance directly with dispatch
+                      </p>
+                    </div>
                     <div className="p-6 sm:p-7 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-7">
                       {/* 1. Service Priority & Timing Window */}
                       <div className="space-y-4">
@@ -1433,8 +1427,23 @@ export default function FleetDashboard() {
                     </div>
                   </div>
 
-                  {/* RIGHT COLUMN: Dispatch Summary (Span 5 on lg, 4 on xl, sticky on desktop, stacks below on mobile) */}
-                  <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-4 lg:self-start space-y-4">
+                  {/* RIGHT COLUMN: Fixed Dispatch Summary on desktop */}
+                  <div 
+                    onWheel={(e) => {
+                      if (leftFormScrollRef.current) {
+                        leftFormScrollRef.current.scrollTop += e.deltaY;
+                      }
+                    }}
+                    className="lg:col-span-5 xl:col-span-4 space-y-4 lg:sticky lg:top-0 lg:max-h-full lg:overflow-y-auto"
+                  >
+                    {/* Fleet Company Pill */}
+                    <div className="flex items-center justify-end">
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700">
+                        <Building2 className="w-4 h-4 text-slate-500" />
+                        <span>{fleet?.companyName || 'Corporate Fleet'}</span>
+                        <span className="font-mono text-red-600 font-bold ml-1">({fleet?.accountCode || 'XMT-5132'})</span>
+                      </div>
+                    </div>
                     <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
                       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                         <div className="flex items-center gap-2">
