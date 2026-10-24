@@ -31,7 +31,11 @@ export const config = {
     SECURE: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465' || !process.env.SMTP_PORT,
     USER: process.env.SMTP_USER || 'abdullahsiddique.dev.ai@gmail.com',
     PASS: process.env.SMTP_PASS || 'xbnrrhgjylgdijhd',
-    FROM_NAME: process.env.SMTP_FROM_NAME || 'Xtreme Mobile Tire',
+    FROM_NAME:
+      process.env.SMTP_FROM_NAME &&
+      !/mail\s*delivery|subsystem|daemon|dokploy|mailer/i.test(process.env.SMTP_FROM_NAME)
+        ? process.env.SMTP_FROM_NAME
+        : 'Xtreme Mobile Tire - Billing & Invoices',
     FROM_EMAIL: process.env.SMTP_FROM_EMAIL || 'abdullahsiddique.dev.ai@gmail.com',
     REPLY_TO: process.env.SMTP_REPLY_TO || 'info@xtrememobiletire.com',
   },

@@ -57,6 +57,7 @@ class MailService {
     currency?: string;
     balanceDue?: string;
     subject?: string;
+    senderName?: string;
     pdfBuffer: Buffer;
   }): Promise<{ messageId: string }> {
     const {
@@ -149,9 +150,25 @@ class MailService {
     // Align reply-to with sender for Gmail accounts to prevent anti-spoofing flags
     const replyTo = isGmailSender ? senderEmail : ((config.SMTP as any).REPLY_TO || senderEmail);
 
+    const rawFromName = (params.senderName || config.SMTP.FROM_NAME || '').trim();
+    const isGenericSystemName =
+      !rawFromName ||
+      /mail\s*delivery|subsystem|daemon|dokploy|mailer/i.test(rawFromName);
+
+    const senderDisplayName = isGenericSystemName
+      ? 'Xtreme Mobile Tire - Billing & Invoices'
+      : rawFromName;
+
     const info = await transporter.sendMail({
-      from: `"${config.SMTP.FROM_NAME}" <${senderEmail}>`,
-      replyTo,
+      from: {
+        name: senderDisplayName,
+        address: senderEmail,
+      },
+      sender: senderEmail,
+      replyTo: {
+        name: 'Xtreme Mobile Tire Billing Support',
+        address: replyTo,
+      },
       to,
       subject,
       text,
@@ -159,7 +176,6 @@ class MailService {
       attachments,
       headers: {
         'X-Entity-Ref-ID': `invoice-${invoiceNumber}`,
-        'X-Auto-Response-Suppress': 'OOF, AutoReply',
       },
     });
 
