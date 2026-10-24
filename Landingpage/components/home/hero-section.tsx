@@ -55,14 +55,14 @@ export default function HeroSection({
         - Desktop (16:9), Tablet (1:1), and Phone/Mobile (9:16)
         - Pure dark overlay with zero white foggy background at the bottom
       */}
-      <section className="relative w-full overflow-hidden flex flex-col items-center justify-center -mt-24 sm:-mt-28 lg:-mt-32 pt-28 sm:pt-36 lg:pt-44 pb-14 sm:pb-20 text-center">
+      <section className="relative w-full overflow-hidden flex flex-col items-center justify-center -mt-24 sm:-mt-28 lg:-mt-32 pt-28 sm:pt-36 lg:pt-44 pb-16 sm:pb-24 text-center">
         
-        {/* Background Video Layer with Smooth Bottom Fade to eliminate sharp straight line */}
+        {/* Background Video Layer with Smooth Bottom Fade (strictly below the button line) */}
         <div
           className="pointer-events-none absolute inset-0 -z-10 overflow-hidden bg-black"
           style={{
-            maskImage: "linear-gradient(to bottom, black 65%, transparent 100%)",
-            WebkitMaskImage: "linear-gradient(to bottom, black 65%, transparent 100%)",
+            maskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 50px), transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 50px), transparent 100%)",
           }}
         >
           {/* 1. Desktop Video (16:9) - visible on lg (>=1024px) */}
@@ -107,16 +107,16 @@ export default function HeroSection({
         </div>
 
         {/* 
-          SOFT BLUR DIFFUSER OVERLAY:
-          Optically blurs the video as it reaches the bottom boundary,
-          eliminating any sharp straight-line cutoff between the black hero and white canvas.
+          SOFT BLUR DIFFUSER OVERLAY (STRICTLY BELOW BUTTON LINE):
+          Only softens the very bottom edge where the black section meets the canvas,
+          leaving the car, buttons, and text 100% crisp and dark.
         */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute bottom-0 left-0 right-0 h-32 sm:h-44 backdrop-blur-md"
+          className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 sm:h-16 backdrop-blur-sm sm:backdrop-blur-md"
           style={{
-            maskImage: "linear-gradient(to bottom, transparent 0%, black 40%, black 100%)",
-            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 40%, black 100%)",
+            maskImage: "linear-gradient(to bottom, transparent 0%, black 50%, black 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 50%, black 100%)",
           }}
         />
 
