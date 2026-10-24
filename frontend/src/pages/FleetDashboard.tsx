@@ -1105,380 +1105,336 @@ export default function FleetDashboard() {
 
               <form onSubmit={handleBookService}>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                  {/* LEFT COLUMN: Core Service Parameters (Span 7 on lg, 8 on xl) */}
-                  <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-                    {/* SECTION 1: Service Urgency & Arrival Window */}
-                    <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-5">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  {/* LEFT COLUMN: Unified Single Form (Span 7 on lg, 8 on xl) */}
+                  <div className="lg:col-span-7 xl:col-span-8">
+                    <div className="p-6 sm:p-7 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-7">
+                      {/* 1. Service Priority & Timing Window */}
+                      <div className="space-y-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center font-bold text-sm">
-                            1
-                          </div>
-                          <div>
-                            <h3 className="text-sm sm:text-base font-bold text-slate-900">Service Priority & Timing</h3>
-                            <p className="text-xs text-slate-500">Choose between immediate roadside dispatch or scheduled service</p>
-                          </div>
-                        </div>
-                        <span className="text-xs font-semibold text-slate-500">Required *</span>
-                      </div>
-
-                      {/* 3 Urgency Cards */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {[
-                          {
-                            id: 'URGENT',
-                            label: 'Urgent Breakdown',
-                            subtitle: 'Highway or dead stop (ASAP)',
-                            tag: 'PRIORITY ETA',
-                            icon: Zap,
-                            selectedBorder: 'border-red-600 bg-red-50/40 ring-2 ring-red-600/15',
-                            iconBg: 'bg-red-100 text-red-600',
-                            tagClass: 'bg-red-100 text-red-700 border-red-200',
-                          },
-                          {
-                            id: 'STANDARD',
-                            label: 'Standard Service',
-                            subtitle: 'Depot, yard, or scheduled stop',
-                            tag: 'TODAY WINDOW',
-                            icon: Truck,
-                            selectedBorder: 'border-red-600 bg-red-50/25 ring-2 ring-red-600/15',
-                            iconBg: 'bg-red-50 text-red-600',
-                            tagClass: 'bg-red-100 text-red-700 border-red-200',
-                          },
-                          {
-                            id: 'FUTURE',
-                            label: 'Future Appointment',
-                            subtitle: 'Pre-scheduled calendar date',
-                            tag: 'RESERVED',
-                            icon: Calendar,
-                            selectedBorder: 'border-red-600 bg-red-50/25 ring-2 ring-red-600/15',
-                            iconBg: 'bg-red-50 text-red-600',
-                            tagClass: 'bg-red-100 text-red-700 border-red-200',
-                          },
-                        ].map((u) => {
-                          const isSelected = bookingForm.urgency === u.id;
-                          const IconComponent = u.icon;
-                          return (
-                            <button
-                              key={u.id}
-                              type="button"
-                              onClick={() => {
-                                setBookingForm((prev) => ({ ...prev, urgency: u.id as any }));
-                                if (u.id === 'URGENT') {
-                                  setArrivalWindow((prev) => ({ ...prev, mode: 'ETA', estimatedArrivalMinutes: 30 }));
-                                } else {
-                                  setArrivalWindow((prev) => ({ ...prev, mode: 'WINDOW', estimatedArrivalMinutes: undefined }));
-                                }
-                              }}
-                              className={`p-4 rounded-xl border-2 text-left transition-all duration-150 cursor-pointer flex flex-col justify-between gap-3 ${
-                                isSelected
-                                  ? `${u.selectedBorder} shadow-sm`
-                                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/80'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between w-full">
-                                <div className={`p-2 rounded-lg ${isSelected ? u.iconBg : 'bg-slate-100 text-slate-600'}`}>
-                                  <IconComponent className="w-4 h-4" />
-                                </div>
-                                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
-                                  isSelected ? u.tagClass : 'bg-slate-100 text-slate-600 border-slate-200'
-                                }`}>
-                                  {u.tag}
-                                </span>
-                              </div>
-                              <div>
-                                <div className="text-sm font-bold text-slate-900 flex items-center justify-between">
-                                  <span>{u.label}</span>
-                                  {isSelected && <CheckCircle2 className="w-4 h-4 text-red-600 shrink-0" />}
-                                </div>
-                                <div className="text-xs mt-0.5 text-slate-500">
-                                  {u.subtitle}
-                                </div>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Timing Panel: Driven cleanly by urgency */}
-                      <div>
-                        {bookingForm.urgency === 'URGENT' ? (
-                          <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-950 flex items-start justify-between gap-3 shadow-2xs">
-                            <div className="flex items-start gap-3">
-                              <div className="p-2 rounded-lg bg-red-600 text-white shrink-0 mt-0.5 shadow-xs">
-                                <Zap className="w-5 h-5 animate-pulse" />
-                              </div>
-                              <div>
-                                <div className="text-sm font-bold text-red-950 flex items-center gap-2">
-                                  <span>Priority Roadside Dispatch Triggered</span>
-                                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white text-red-700 border border-red-300">
-                                    ~30-45 MIN ETA
-                                  </span>
-                                </div>
-                                <p className="text-xs text-red-800 mt-1 leading-relaxed">
-                                  Your ticket will be routed directly to the corporate emergency dispatch board with high priority. A certified roadside technician will be assigned immediately.
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-3 pt-2">
-                            <div className="flex items-center justify-between">
-                              <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                                <Clock className="w-4 h-4 text-slate-700" />
-                                <span>Promised Arrival Window</span>
-                              </label>
-                              {arrivalWindow.displayLabel && !arrivalWindow.displayLabel.startsWith('ETA') && (
-                                <span className="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
-                                  {arrivalWindow.displayLabel}
-                                </span>
-                              )}
-                            </div>
-                            <ArrivalWindowSelector
-                              value={arrivalWindow}
-                              timezone={fleet?.timezone || 'America/Toronto'}
-                              countryCode={fleetCountry}
-                              onChange={setArrivalWindow}
-                              showPktWindow={false}
-                              hideModeToggle={true}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* SECTION 2: Vehicle & Assigned Driver */}
-                    <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-5">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-900 flex items-center justify-center font-bold text-sm">
-                            2
-                          </div>
-                          <div>
-                            <h3 className="text-sm sm:text-base font-bold text-slate-900">Commercial Vehicle & Assigned Driver</h3>
-                            <p className="text-xs text-slate-500">Select registered fleet units or enter breakdown vehicle details</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-xs font-semibold text-slate-700 block mb-1.5">
-                            Assigned Driver / Contact
-                          </label>
-                          <DriverCombobox
-                            drivers={driverOptions}
-                            selectedDriverName={bookingForm.recipientName}
-                            selectedDriverPhone={bookingForm.driverPhone}
-                            onSelect={handleDriverSelect}
-                            onClear={() => setBookingForm((prev) => ({ ...prev, driverId: '', recipientName: '', driverPhone: '' }))}
-                          />
+                          <Zap className="w-5 h-5 text-red-600" />
+                          <h3 className="text-base font-bold text-slate-900">Service Priority & Timing</h3>
                         </div>
 
-                        <div>
-                          <label className="text-xs font-semibold text-slate-700 block mb-1.5">
-                            Fleet Vehicle / Unit #
-                          </label>
-                          <VehicleCombobox
-                            vehicles={vehicleOptions}
-                            selectedUnitNumber={bookingForm.unitNumber}
-                            selectedLicensePlate={bookingForm.licensePlate}
-                            selectedVehicleDetails={bookingForm.vehicleDetails}
-                            onSelect={handleVehicleSelect}
-                            onClear={() => setBookingForm((prev) => ({ ...prev, vehicleId: '', unitNumber: '', licensePlate: '', vehicleDetails: '' }))}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                        <div>
-                          <label className="text-xs font-semibold text-slate-700 block mb-1.5">
-                            Driver / Contact Direct Phone
-                          </label>
-                          <div className="relative">
-                            <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                            <input
-                              type="text"
-                              value={bookingForm.driverPhone}
-                              onChange={(e) => setBookingForm({ ...bookingForm, driverPhone: e.target.value })}
-                              placeholder={fleet?.contactPhone || '1-866-686-9660'}
-                              className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 min-h-[44px]"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-semibold text-slate-700 block mb-1.5">
-                            Tire Specification (Size / Ply)
-                          </label>
-                          <input
-                            type="text"
-                            value={bookingForm.tireSize}
-                            onChange={(e) => setBookingForm({ ...bookingForm, tireSize: e.target.value })}
-                            placeholder="e.g. 11R22.5 or 295/75R22.5"
-                            className="w-full px-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 min-h-[44px]"
-                          />
-                          {/* Quick commercial tire size chips */}
-                          <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                            <span className="text-[11px] text-slate-400 font-medium mr-0.5">Common:</span>
-                            {['11R22.5', '295/75R22.5', '275/70R22.5', '255/70R22.5', '225/70R19.5'].map((chip) => (
+                        {/* 3 Urgency Cards without badges */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          {[
+                            {
+                              id: 'URGENT',
+                              label: 'Urgent Breakdown',
+                              subtitle: 'Highway or dead stop (ASAP)',
+                              icon: Zap,
+                              selectedBorder: 'border-red-600 bg-red-50/40 ring-2 ring-red-600/15',
+                              iconBg: 'bg-red-100 text-red-600',
+                            },
+                            {
+                              id: 'STANDARD',
+                              label: 'Standard Service',
+                              subtitle: 'Depot, yard, or scheduled stop',
+                              icon: Truck,
+                              selectedBorder: 'border-red-600 bg-red-50/25 ring-2 ring-red-600/15',
+                              iconBg: 'bg-red-50 text-red-600',
+                            },
+                            {
+                              id: 'FUTURE',
+                              label: 'Future Appointment',
+                              subtitle: 'Pre-scheduled calendar date',
+                              icon: Calendar,
+                              selectedBorder: 'border-red-600 bg-red-50/25 ring-2 ring-red-600/15',
+                              iconBg: 'bg-red-50 text-red-600',
+                            },
+                          ].map((u) => {
+                            const isSelected = bookingForm.urgency === u.id;
+                            const IconComponent = u.icon;
+                            return (
                               <button
-                                key={chip}
+                                key={u.id}
                                 type="button"
-                                onClick={() => setBookingForm((prev) => ({ ...prev, tireSize: chip }))}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-mono transition cursor-pointer border ${
-                                  bookingForm.tireSize === chip
-                                    ? 'bg-red-50 text-red-700 border-red-500 font-bold shadow-2xs'
-                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                                onClick={() => {
+                                  setBookingForm((prev) => ({ ...prev, urgency: u.id as any }));
+                                  if (u.id === 'URGENT') {
+                                    setArrivalWindow((prev) => ({ ...prev, mode: 'ETA', estimatedArrivalMinutes: 30 }));
+                                  } else {
+                                    setArrivalWindow((prev) => ({ ...prev, mode: 'WINDOW', estimatedArrivalMinutes: undefined }));
+                                  }
+                                }}
+                                className={`p-4 rounded-xl border-2 text-left transition-all duration-150 cursor-pointer flex flex-col justify-between gap-3 ${
+                                  isSelected
+                                    ? `${u.selectedBorder} shadow-sm`
+                                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/80'
                                 }`}
                               >
-                                {chip}
+                                <div className="flex items-center justify-between w-full">
+                                  <div className={`p-2 rounded-lg ${isSelected ? u.iconBg : 'bg-slate-100 text-slate-600'}`}>
+                                    <IconComponent className="w-4 h-4" />
+                                  </div>
+                                  {isSelected && <CheckCircle2 className="w-4 h-4 text-red-600 shrink-0" />}
+                                </div>
+                                <div>
+                                  <div className="text-sm font-bold text-slate-900">
+                                    {u.label}
+                                  </div>
+                                  <div className="text-xs mt-0.5 text-slate-500">
+                                    {u.subtitle}
+                                  </div>
+                                </div>
                               </button>
-                            ))}
-                          </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Timing Panel */}
+                        <div>
+                          {bookingForm.urgency === 'URGENT' ? (
+                            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-950 flex items-start justify-between gap-3 shadow-2xs">
+                              <div className="flex items-start gap-3">
+                                <div className="p-2 rounded-lg bg-red-600 text-white shrink-0 mt-0.5 shadow-xs">
+                                  <Zap className="w-5 h-5 animate-pulse" />
+                                </div>
+                                <div>
+                                  <div className="text-sm font-bold text-red-950 flex items-center gap-2">
+                                    <span>Priority Roadside Dispatch Triggered</span>
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white text-red-700 border border-red-300">
+                                      ~30-45 MIN ETA
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-red-800 mt-1 leading-relaxed">
+                                    Your ticket will be routed directly to the corporate emergency dispatch board with high priority. A certified roadside technician will be assigned immediately.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="pt-1">
+                              <ArrivalWindowSelector
+                                value={arrivalWindow}
+                                timezone={fleet?.timezone || 'America/Toronto'}
+                                countryCode={fleetCountry}
+                                onChange={setArrivalWindow}
+                                showPktWindow={false}
+                                hideModeToggle={true}
+                                hidePresets={true}
+                                hideSummaryStrip={true}
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
 
-                    {/* SECTION 3: Breakdown Location & Notes */}
-                    <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-5">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      {/* 2. Required Work Order Services & Tire Count */}
+                      <div className="border-t border-slate-100 pt-6 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Wrench className="w-5 h-5 text-red-600" />
+                            <h3 className="text-base font-bold text-slate-900">Required Work Order Services</h3>
+                          </div>
+                          <span className="text-xs font-bold text-slate-600 font-mono">
+                            {serviceItems.length} {serviceItems.length === 1 ? 'item' : 'items'}
+                          </span>
+                        </div>
+
+                        <MultiServiceSelector
+                          items={serviceItems}
+                          onChange={setServiceItems}
+                          currencySymbol={currencySymbol}
+                          taxRate={taxRate}
+                          discountPercent={fleet?.discountPercent || 0}
+                          discountLabel={fleet?.discountPercent ? `Fleet Contract Discount (-${fleet.discountPercent}%)` : undefined}
+                          allowPriceEdit={false}
+                          showTaxToggle={false}
+                          showTireSelector={true}
+                          tireCount={bookingForm.tireCount}
+                          onTireCountChange={(cnt) => setBookingForm((prev) => ({ ...prev, tireCount: cnt }))}
+                          title=""
+                          hidePricing={true}
+                        />
+                      </div>
+
+                      {/* 3. Commercial Vehicle & Assigned Driver */}
+                      <div className="border-t border-slate-100 pt-6 space-y-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-900 flex items-center justify-center font-bold text-sm">
-                            3
-                          </div>
+                          <Truck className="w-5 h-5 text-red-600" />
+                          <h3 className="text-base font-bold text-slate-900">Commercial Vehicle & Assigned Driver</h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
-                            <h3 className="text-sm sm:text-base font-bold text-slate-900">Breakdown Location & Instructions</h3>
-                            <p className="text-xs text-slate-500">Provide exact coordinates, highway exit, or customer yard address</p>
+                            <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                              Assigned Driver / Contact
+                            </label>
+                            <DriverCombobox
+                              drivers={driverOptions}
+                              selectedDriverName={bookingForm.recipientName}
+                              selectedDriverPhone={bookingForm.driverPhone}
+                              onSelect={handleDriverSelect}
+                              onClear={() => setBookingForm((prev) => ({ ...prev, driverId: '', recipientName: '', driverPhone: '' }))}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                              Fleet Vehicle / Unit #
+                            </label>
+                            <VehicleCombobox
+                              vehicles={vehicleOptions}
+                              selectedUnitNumber={bookingForm.unitNumber}
+                              selectedLicensePlate={bookingForm.licensePlate}
+                              selectedVehicleDetails={bookingForm.vehicleDetails}
+                              onSelect={handleVehicleSelect}
+                              onClear={() => setBookingForm((prev) => ({ ...prev, vehicleId: '', unitNumber: '', licensePlate: '', vehicleDetails: '' }))}
+                            />
                           </div>
                         </div>
-                        <span className="text-xs font-semibold text-slate-500">Required *</span>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                          <div>
+                            <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                              Driver / Contact Direct Phone
+                            </label>
+                            <div className="relative">
+                              <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              <input
+                                type="text"
+                                value={bookingForm.driverPhone}
+                                onChange={(e) => setBookingForm({ ...bookingForm, driverPhone: e.target.value })}
+                                placeholder={fleet?.contactPhone || '1-866-686-9660'}
+                                className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 min-h-[44px]"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                              Tire Specification (Size / Ply)
+                            </label>
+                            <input
+                              type="text"
+                              value={bookingForm.tireSize}
+                              onChange={(e) => setBookingForm({ ...bookingForm, tireSize: e.target.value })}
+                              placeholder="e.g. 11R22.5 or 295/75R22.5"
+                              className="w-full px-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 min-h-[44px]"
+                            />
+                            {/* Quick commercial tire size chips */}
+                            <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                              <span className="text-[11px] text-slate-400 font-medium mr-0.5">Common:</span>
+                              {['11R22.5', '295/75R22.5', '275/70R22.5', '255/70R22.5', '225/70R19.5'].map((chip) => (
+                                <button
+                                  key={chip}
+                                  type="button"
+                                  onClick={() => setBookingForm((prev) => ({ ...prev, tireSize: chip }))}
+                                  className={`px-2.5 py-1 rounded-lg text-xs font-mono transition cursor-pointer border ${
+                                    bookingForm.tireSize === chip
+                                      ? 'bg-red-50 text-red-700 border-red-500 font-bold shadow-2xs'
+                                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                                  }`}
+                                >
+                                  {chip}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
-                      <div>
-                        <label className="text-xs font-semibold text-slate-700 block mb-1.5">
-                          Breakdown / Service Location *
-                        </label>
-                        <AddressAutocompleteInput
-                          value={bookingForm.address}
-                          countryCode={fleetCountry}
-                          onChange={(val) => setBookingForm((prev) => ({ ...prev, address: val }))}
-                          onSelectLocation={(loc) => {
-                            setBookingForm((prev) => ({
-                              ...prev,
-                              address: loc.address,
-                              serviceLatitude: loc.latitude,
-                              serviceLongitude: loc.longitude,
-                              serviceTimezone: loc.timezone,
-                            }));
-                          }}
-                          placeholder="Enter street address, highway mile marker, cross street, or yard address"
-                          required
-                        />
+                      {/* 4. Breakdown Location & Instructions */}
+                      <div className="border-t border-slate-100 pt-6 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-5 h-5 text-red-600" />
+                          <h3 className="text-base font-bold text-slate-900">Breakdown Location & Instructions</h3>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                            Breakdown / Service Location *
+                          </label>
+                          <AddressAutocompleteInput
+                            value={bookingForm.address}
+                            countryCode={fleetCountry}
+                            onChange={(val) => setBookingForm((prev) => ({ ...prev, address: val }))}
+                            onSelectLocation={(loc) => {
+                              setBookingForm((prev) => ({
+                                ...prev,
+                                address: loc.address,
+                                serviceLatitude: loc.latitude,
+                                serviceLongitude: loc.longitude,
+                                serviceTimezone: loc.timezone,
+                              }));
+                            }}
+                            placeholder="Enter street address, highway mile marker, cross street, or yard address"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                            Wheel Position & Breakdown Instructions
+                          </label>
+                          <textarea
+                            value={bookingForm.notes}
+                            onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
+                            placeholder="e.g. Trailer right-rear outer tire blowout, driver waiting safely on right shoulder with hazard lights on..."
+                            rows={3}
+                            className="w-full p-3 text-sm text-slate-900 placeholder:text-slate-400 rounded-xl border border-slate-200 bg-white focus:border-slate-900 focus:ring-1 focus:ring-slate-900 resize-none"
+                          />
+                        </div>
                       </div>
 
-                      <div>
-                        <label className="text-xs font-semibold text-slate-700 block mb-1.5">
-                          Wheel Position & Breakdown Instructions
-                        </label>
-                        <textarea
-                          value={bookingForm.notes}
-                          onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
-                          placeholder="e.g. Trailer right-rear outer tire blowout, driver waiting safely on right shoulder with hazard lights on..."
-                          rows={3}
-                          className="w-full p-3 text-sm text-slate-900 placeholder:text-slate-400 rounded-xl border border-slate-200 bg-white focus:border-slate-900 focus:ring-1 focus:ring-slate-900 resize-none"
-                        />
+                      {/* 5. Upfront Deposit & Proof Photo (Optional) */}
+                      <div className="border-t border-slate-100 pt-6 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="w-5 h-5 text-emerald-600" />
+                          <h3 className="text-base font-bold text-slate-900">Upfront Deposit & Proof (Optional)</h3>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-600 mb-1">
+                              Upfront Deposit Paid ({currencySymbol})
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={bookingForm.upfrontAmountCents ? (bookingForm.upfrontAmountCents / 100).toFixed(2) : ''}
+                              onChange={(e) => setBookingForm({ ...bookingForm, upfrontAmountCents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
+                              className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 bg-white font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 min-h-[42px]"
+                              placeholder="0.00"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-medium text-slate-600 mb-1">
+                              Breakdown / Receipt Photo (Local Preview)
+                            </label>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setLocalReceiptPreview(URL.createObjectURL(file));
+                                } else {
+                                  setLocalReceiptPreview(null);
+                                }
+                              }}
+                              className="w-full text-xs text-slate-600 file:mr-2.5 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-800 hover:file:bg-slate-200 cursor-pointer"
+                            />
+                          </div>
+
+                          {localReceiptPreview && (
+                            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
+                              <img src={localReceiptPreview} alt="Receipt preview" className="w-14 h-14 object-cover rounded-lg border border-slate-200 shrink-0" />
+                              <span className="text-xs text-slate-500 font-medium leading-relaxed">
+                                Preview attached locally (Cloudflare storage pending — image will not be uploaded to server)
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* RIGHT COLUMN: Commercial Services & Ticket Review (Span 5 on lg, 4 on xl, sticky) */}
-                  <div className="lg:col-span-5 xl:col-span-4 space-y-6 lg:sticky lg:top-20">
-                    {/* Required Commercial Services */}
-                    <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                        <div className="flex items-center gap-2">
-                          <Wrench className="w-5 h-5 text-red-600" />
-                          <h3 className="text-sm font-bold text-slate-900">Required Work Order Services</h3>
-                        </div>
-                        <span className="text-xs font-bold text-slate-600 font-mono">
-                          {serviceItems.length} {serviceItems.length === 1 ? 'item' : 'items'}
-                        </span>
-                      </div>
-
-                      <MultiServiceSelector
-                        items={serviceItems}
-                        onChange={setServiceItems}
-                        currencySymbol={currencySymbol}
-                        taxRate={taxRate}
-                        discountPercent={fleet?.discountPercent || 0}
-                        discountLabel={fleet?.discountPercent ? `Fleet Contract Discount (-${fleet.discountPercent}%)` : undefined}
-                        allowPriceEdit={false}
-                        showTaxToggle={false}
-                        showTireSelector={true}
-                        tireCount={bookingForm.tireCount}
-                        onTireCountChange={(cnt) => setBookingForm((prev) => ({ ...prev, tireCount: cnt }))}
-                        title=""
-                        hidePricing={true}
-                      />
-                    </div>
-
-                    {/* Upfront Deposit & Proof Photo (Optional) */}
-                    <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
-                          <DollarSign size={15} className="text-emerald-600" />
-                          <span>Upfront Deposit & Proof (Optional)</span>
-                        </span>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-xs font-medium text-slate-600 mb-1">
-                            Upfront Deposit Paid ({currencySymbol})
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={bookingForm.upfrontAmountCents ? (bookingForm.upfrontAmountCents / 100).toFixed(2) : ''}
-                            onChange={(e) => setBookingForm({ ...bookingForm, upfrontAmountCents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
-                            className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 bg-white font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 min-h-[42px]"
-                            placeholder="0.00"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-slate-600 mb-1">
-                            Breakdown / Receipt Photo (Local Preview)
-                          </label>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                setLocalReceiptPreview(URL.createObjectURL(file));
-                              } else {
-                                setLocalReceiptPreview(null);
-                              }
-                            }}
-                            className="w-full text-xs text-slate-600 file:mr-2.5 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-800 hover:file:bg-slate-200 cursor-pointer"
-                          />
-                        </div>
-
-                        {localReceiptPreview && (
-                          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
-                            <img src={localReceiptPreview} alt="Receipt preview" className="w-14 h-14 object-cover rounded-lg border border-slate-200 shrink-0" />
-                            <span className="text-xs text-slate-500 font-medium leading-relaxed">
-                              Preview attached locally (Cloudflare storage pending — image will not be uploaded to server)
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Dispatch Review & Action Card */}
+                  {/* RIGHT COLUMN: Dispatch Summary (Span 5 on lg, 4 on xl, sticky on desktop, stacks below on mobile) */}
+                  <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-4 lg:self-start space-y-4">
                     <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
                       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                         <div className="flex items-center gap-2">
@@ -1499,36 +1455,78 @@ export default function FleetDashboard() {
                             {bookingForm.urgency === 'URGENT' ? 'Urgent Roadside (ASAP)' : bookingForm.urgency === 'FUTURE' ? 'Future Appointment' : 'Standard Fleet Service'}
                           </span>
                         </div>
+
                         <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                           <span className="text-slate-500 font-medium">Timing Window:</span>
                           <span className="font-mono font-semibold text-slate-900">
                             {bookingForm.urgency === 'URGENT' ? 'Immediate Priority (~30m ETA)' : arrivalWindow.displayLabel || 'Scheduled Window'}
                           </span>
                         </div>
+
                         <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
-                          <span className="text-slate-500 font-medium">Unit / Plate:</span>
-                          <span className="font-mono font-semibold text-slate-900">
-                            {bookingForm.unitNumber || bookingForm.licensePlate || 'Not specified'}
+                          <span className="text-slate-500 font-medium">Assigned Driver:</span>
+                          <span className="font-medium text-slate-900 text-right">
+                            {bookingForm.recipientName || 'Not assigned'}
                           </span>
                         </div>
+
+                        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                          <span className="text-slate-500 font-medium">Driver Direct Phone:</span>
+                          <span className="font-mono font-semibold text-slate-900">
+                            {bookingForm.driverPhone || fleet?.contactPhone || 'Not specified'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                          <span className="text-slate-500 font-medium">Commercial Vehicle:</span>
+                          <span className="font-mono font-semibold text-slate-900">
+                            {bookingForm.unitNumber ? `Unit #${bookingForm.unitNumber}` : ''}
+                            {bookingForm.licensePlate ? ` [${bookingForm.licensePlate}]` : ''}
+                            {!bookingForm.unitNumber && !bookingForm.licensePlate && 'Not specified'}
+                          </span>
+                        </div>
+
                         <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                           <span className="text-slate-500 font-medium">Tire Specification:</span>
                           <span className="font-mono font-semibold text-slate-900">
                             {bookingForm.tireSize || '11R22.5'} ({bookingForm.tireCount} {bookingForm.tireCount === 1 ? 'tire' : 'tires'})
                           </span>
                         </div>
+
                         <div className="flex items-start justify-between py-1.5 border-b border-slate-100 gap-2">
                           <span className="text-slate-500 font-medium shrink-0">Service Location:</span>
                           <span className="font-medium text-slate-900 truncate text-right max-w-[200px]" title={bookingForm.address}>
                             {bookingForm.address || 'Address pending'}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between py-1.5">
-                          <span className="text-slate-500 font-medium">Work Order:</span>
-                          <span className="font-bold text-slate-900">
-                            {serviceItems.length} {serviceItems.length === 1 ? 'service' : 'services'} selected
-                          </span>
+
+                        <div className="py-1.5 border-b border-slate-100">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-slate-500 font-medium">Work Order Services:</span>
+                            <span className="font-bold text-slate-900">
+                              {serviceItems.length} {serviceItems.length === 1 ? 'service' : 'services'}
+                            </span>
+                          </div>
+                          {serviceItems.length > 0 && (
+                            <div className="space-y-1 mt-1.5 pl-1">
+                              {serviceItems.map((item, idx) => (
+                                <div key={idx} className="flex items-center justify-between text-[11px] text-slate-600">
+                                  <span className="truncate pr-2">• {item.serviceName}</span>
+                                  <span className="font-mono font-semibold shrink-0">x{item.quantity}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
+
+                        {bookingForm.upfrontAmountCents > 0 && (
+                          <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                            <span className="text-slate-500 font-medium">Upfront Deposit:</span>
+                            <span className="font-mono font-bold text-emerald-700">
+                              {currencySymbol}{(bookingForm.upfrontAmountCents / 100).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Primary Dispatch CTA */}

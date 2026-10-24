@@ -28,6 +28,8 @@ interface ArrivalWindowSelectorProps {
   countryCode?: string;
   showPktWindow?: boolean;
   hideModeToggle?: boolean;
+  hidePresets?: boolean;
+  hideSummaryStrip?: boolean;
 }
 
 const ETA_PRESETS = [
@@ -48,6 +50,8 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
   countryCode,
   showPktWindow = false,
   hideModeToggle = false,
+  hidePresets = false,
+  hideSummaryStrip = false,
 }) => {
   const activeTz = timezone || getDefaultTimezoneForCountry(countryCode);
   const todayStr = getTodayInTz(activeTz);
@@ -322,6 +326,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
       {mode === 'WINDOW' && (
         <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 space-y-3">
           {/* Preset Buttons */}
+          {!hidePresets && (
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[11px] font-medium text-slate-500 mr-1">Presets:</span>
             <button
@@ -360,6 +365,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
               <Moon className="w-3.5 h-3.5 text-slate-600" /> Evening (5pm-9pm)
             </button>
           </div>
+          )}
 
           {/* Date Picker */}
           <div className="flex items-center gap-2">
@@ -520,7 +526,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
       )}
 
       {/* Live Window Comparison Strip */}
-      {(value?.arrivalWindowStart || value?.appointmentDate) && (
+      {!hideSummaryStrip && (value?.arrivalWindowStart || value?.appointmentDate) && (
         <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-2.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
