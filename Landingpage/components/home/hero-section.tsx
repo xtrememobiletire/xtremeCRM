@@ -59,15 +59,24 @@ export default function HeroSection({
             {description}
           </p>
 
-          {/* Center Action Button "Book Now" */}
+          {/* Center Action Buttons */}
           <div className="flex flex-col items-center justify-center gap-2.5">
-            <SplitPillButton
-              label={ctaText}
-              href={ctaHref}
-              theme="black-crimson"
-              arrowDirection="down-right"
-              size="lg"
-            />
+            <div className="flex items-center gap-3">
+              <SplitPillButton
+                label={ctaText}
+                href={ctaHref}
+                theme="black-crimson"
+                arrowDirection="down-right"
+                size="lg"
+              />
+              <SplitPillButton
+                label="Register Your Fleet"
+                href="/fleet-solutions"
+                theme="white-crimson"
+                arrowDirection="up-right"
+                size="lg"
+              />
+            </div>
             <span className="text-xs font-semibold tracking-wider uppercase text-zinc-500 dark:text-zinc-400 mt-2">
               Your Safety — Our Mission
             </span>

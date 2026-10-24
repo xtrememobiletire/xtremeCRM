@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useTenant } from '../../../context/TenantContext';
 import { COUNTRY_REGIONS, type CountryCode, type RegionConfig } from '../../../constants/regions';
@@ -33,10 +33,6 @@ export default function LoginForm() {
     <div className="bg-white py-5 px-5 sm:px-7 shadow-xl rounded-none border border-slate-200/80 space-y-3.5">
       {/* Heading */}
       <div className="text-center pb-2.5 border-b border-slate-100">
-        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-none bg-red-50 text-red-700 text-[10px] font-bold mb-1.5">
-          <ShieldCheck className="w-3 h-3" />
-          <span>Fleet and Dispatch Portal</span>
-        </div>
         <h2 className="text-lg font-bold text-slate-900 tracking-tight">Account Login</h2>
         <p className="text-[11px] text-slate-500 mt-0.5">Sign in to manage vehicles, drivers, service requests and invoices</p>
       </div>
@@ -106,21 +102,6 @@ export default function LoginForm() {
         </button>
       </form>
 
-      {/* Return to Landing Page Link */}
-      <div className="pt-2 border-t border-slate-100 flex justify-center">
-        <a
-          href={
-            import.meta.env.VITE_LANDING_PAGE_URL ||
-            (import.meta.env.PROD || (typeof window !== 'undefined' && !window.location.hostname.includes('localhost'))
-              ? 'https://xtrememobiletire.com'
-              : 'http://localhost:4000')
-          }
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 hover:text-slate-800 transition cursor-pointer py-0.5"
-        >
-          <ArrowLeft className="w-3 h-3" />
-          <span>Return to Landing Page</span>
-        </a>
-      </div>
     </div>
   );
 }
