@@ -1,31 +1,52 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 
 interface LaptopMockupProps {
   videoSrc?: string;
-  posterSrc?: string;
   className?: string;
 }
 
 export default function LaptopMockup({
-  videoSrc = "https://res.cloudinary.com/ebjikx52/video/upload/v1792934439/car_for_laptop.mp4",
-  posterSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792426893/xtreme/landing/wheel-car_jpg.png",
+  videoSrc = "https://res.cloudinary.com/ebjikx52/video/upload/q_auto,w_720/v1792934439/car_for_laptop.mp4",
   className = "",
 }: LaptopMockupProps) {
-  const [videoError, setVideoError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Guarantee immediate auto-playback on all devices & browsers (iOS, Android, Chrome, Safari)
+  // Guarantee continuous auto-playback without freezing or breaking
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    video.defaultMuted = true;
+
+    // Direct DOM property enforcement required by Chromium/Safari autoplay policies
     video.muted = true;
-    const promise = video.play();
-    if (promise !== undefined) {
-      promise.catch(() => {});
-    }
+    video.defaultMuted = true;
+    video.playsInline = true;
+    video.setAttribute("muted", "");
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+
+    const playVideo = () => {
+      video.muted = true;
+      const promise = video.play();
+      if (promise !== undefined) {
+        promise.catch(() => {
+          // Fallback retry on user touch / click / scroll if device has strict initial autoplay lock
+          const resume = () => {
+            video.muted = true;
+            video.play().catch(() => {});
+            window.removeEventListener("touchstart", resume);
+            window.removeEventListener("click", resume);
+            window.removeEventListener("scroll", resume);
+          };
+          window.addEventListener("touchstart", resume, { once: true, passive: true });
+          window.addEventListener("click", resume, { once: true, passive: true });
+          window.addEventListener("scroll", resume, { once: true, passive: true });
+        });
+      }
+    };
+
+    playVideo();
   }, [videoSrc]);
 
   return (
@@ -46,30 +67,33 @@ export default function LaptopMockup({
         {/* Screen Bezel Frame (16:10 Ratio, Sharp Corners) */}
         <div className="relative w-full aspect-[16/10] overflow-hidden rounded-none bg-black border border-white/10 shadow-inner flex items-center justify-center">
           
-          {/* Active Looping Video Display: Always running and crystal clear */}
-          {!videoError ? (
-            <video
-              ref={videoRef}
-              src={videoSrc}
-              poster={posterSrc}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
-              onError={() => setVideoError(true)}
-              className="w-full h-full object-cover object-center"
-            />
-          ) : (
-            /* Fallback Image */
-            <img
-              src={posterSrc}
-              alt="Fleet Telemetry"
-              className="w-full h-full object-cover object-center"
-            />
-          )}
+          {/* Active Looping Video Display: ONLY video, no poster or picture */}
+          <video
+            ref={videoRef}
+            src={videoSrc}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            onEnded={(e) => {
+              const el = e.currentTarget;
+              el.currentTime = 0;
+              el.play().catch(() => {});
+            }}
+            onPause={(e) => {
+              const el = e.currentTarget;
+              if (!el.seeking) {
+                el.play().catch(() => {});
+              }
+            }}
+            className="w-full h-full object-cover object-center"
+          >
+            <source src={videoSrc} type="video/mp4" />
+            <source src="https://res.cloudinary.com/ebjikx52/video/upload/v1792934439/car_for_laptop.mp4" type="video/mp4" />
+          </video>
 
-          {/* Subtle Crisp Screen Rim for Realism without dimming the video */}
+          {/* Subtle Crisp Screen Rim for Realism */}
           <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />
 
         </div>

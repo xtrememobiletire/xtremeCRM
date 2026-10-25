@@ -104,7 +104,7 @@ export default function CircuitConnectors() {
           <path
             d={item.d}
             stroke="currentColor"
-            className="text-slate-300/50 dark:text-zinc-800/70"
+            className="text-zinc-800"
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
