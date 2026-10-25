@@ -4,78 +4,84 @@ import { motion } from "framer-motion";
 
 export default function CircuitConnectors() {
   /* 
-    Precision Orthogonal Circuit Lines connecting all boxes (viewBox: 0 0 1000 580):
-    1. Left Column Vertical: Top-Left Card -> Bottom-Left Card (Direct border-to-border contact)
-    2. Right Column Vertical: Top-Right Card -> Bottom-Right Card (Direct border-to-border contact)
-    3. Center Left Line: Under Safety Protocol -> Laptop Screen Top
-    4. Center Middle Line: Under Master Techs -> Laptop Screen Top
-    5. Center Right Line: Under 100% Insured -> Laptop Screen Top
-    6. Top-Left Conduit: Top-Left Card -> Laptop Screen Top-Left
-    7. Top-Right Conduit: Top-Right Card -> Laptop Screen Top-Right
-    8. Bottom-Left Horizontal: Emergency Roadside -> Laptop Left Port
-    9. Bottom-Right Horizontal: Fleet Portal Access -> Laptop Right Port
+    Precision Orthogonal Dotted Circuit Lines (viewBox: 0 0 1000 580):
+    1. TWO RED CONDUITS:
+       - Top-Left Card -> Laptop Top-Left Screen
+       - Top-Right Card -> Laptop Top-Right Screen
+       Vivid Crimson Red, dotted, animating and streaming directly into the center screen.
 
-    - Zero circular bulbs or terminal dots at the edges.
-    - Pure white lines (no gray lines).
-    - Clean edge-to-edge line connections directly touching the white box borders.
-    - Smooth drawing transition on page load/refresh (pathLength: 0 -> 1).
+    2. DARK WHITE CONDUITS:
+       - Left Column Vertical: Top-Left Card -> Bottom-Left Card
+       - Right Column Vertical: Top-Right Card -> Bottom-Right Card
+       - Center Left: Safety Protocol -> Laptop Top Screen
+       - Center Middle: Master Techs -> Laptop Top Screen
+       - Center Right: 100% Insured -> Laptop Top Screen
+       - Bottom-Left: Emergency Roadside -> Laptop Left Port
+       - Bottom-Right: Fleet Portal Access -> Laptop Right Port
+       Muted Off-White / Dark White, dotted, animating and streaming into the center screen.
   */
-  const paths = [
-    // 1. LEFT COLUMN VERTICAL: 24/7 Rapid Dispatch -> Emergency Roadside
+
+  // 1. Two Main Red Conduit Lines (Connecting Top Cards to Laptop Screen)
+  const redPaths = [
+    {
+      id: "top-left-to-pc",
+      d: "M 205 144 L 205 230 Q 205 240 215 240 L 350 240 Q 360 240 360 250 L 360 280",
+      delay: 0.15,
+    },
+    {
+      id: "top-right-to-pc",
+      d: "M 795 144 L 795 230 Q 795 240 785 240 L 650 240 Q 640 240 640 250 L 640 280",
+      delay: 0.2,
+    },
+  ];
+
+  // 2. Supporting Dark White Conduit Lines (Dotted)
+  const darkWhitePaths = [
+    // Left Column Vertical: 24/7 Rapid Dispatch -> Emergency Roadside
     {
       id: "left-col-vertical",
       d: "M 131 144 L 131 436",
       delay: 0.1,
     },
-    // 2. RIGHT COLUMN VERTICAL: On-Site Mounting -> Fleet Portal Access
+    // Right Column Vertical: On-Site Mounting -> Fleet Portal Access
     {
       id: "right-col-vertical",
       d: "M 869 144 L 869 436",
-      delay: 0.15,
+      delay: 0.12,
     },
-    // 3. CENTER LEFT: Safety Protocol -> Laptop Top Screen
+    // Center Left: Safety Protocol -> Laptop Top Screen
     {
       id: "center-left",
       d: "M 375 144 L 375 280",
-      delay: 0.2,
+      delay: 0.22,
     },
-    // 4. CENTER MIDDLE: Master Techs -> Laptop Top Screen
+    // Center Middle: Master Techs -> Laptop Top Screen
     {
       id: "center-middle",
       d: "M 500 144 L 500 280",
-      delay: 0.22,
+      delay: 0.24,
     },
-    // 5. CENTER RIGHT: 100% Insured -> Laptop Top Screen
+    // Center Right: 100% Insured -> Laptop Top Screen
     {
       id: "center-right",
       d: "M 625 144 L 625 280",
-      delay: 0.24,
-    },
-    // 6. TOP-LEFT CARD: 24/7 Rapid Dispatch -> Laptop Top-Left Screen
-    {
-      id: "top-left-to-pc",
-      d: "M 205 144 L 205 230 Q 205 240 215 240 L 350 240 Q 360 240 360 250 L 360 280",
       delay: 0.26,
     },
-    // 7. TOP-RIGHT CARD: On-Site Mounting -> Laptop Top-Right Screen
-    {
-      id: "top-right-to-pc",
-      d: "M 795 144 L 795 230 Q 795 240 785 240 L 650 240 Q 640 240 640 250 L 640 280",
-      delay: 0.28,
-    },
-    // 8. BOTTOM-LEFT CARD: Emergency Roadside -> Laptop Left Port
+    // Bottom-Left: Emergency Roadside -> Laptop Left Port
     {
       id: "bottom-left-to-pc",
       d: "M 239 480 L 335 480",
-      delay: 0.32,
+      delay: 0.28,
     },
-    // 9. BOTTOM-RIGHT CARD: Fleet Portal Access -> Laptop Right Port
+    // Bottom-Right: Fleet Portal Access -> Laptop Right Port
     {
       id: "bottom-right-to-pc",
       d: "M 761 480 L 665 480",
-      delay: 0.35,
+      delay: 0.3,
     },
   ];
+
+  const allPaths = [...redPaths, ...darkWhitePaths];
 
   return (
     <svg
@@ -85,56 +91,122 @@ export default function CircuitConnectors() {
       fill="none"
     >
       <defs>
-        {/* Pure Brilliant White Line Glow */}
-        <linearGradient id="circuit-line-glow" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
-          <stop offset="50%" stopColor="#f8fafc" stopOpacity="0.95" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="1" />
+        {/* Vivid Automotive Crimson Red Gradient */}
+        <linearGradient id="red-dotted-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ff3856" stopOpacity="1" />
+          <stop offset="50%" stopColor="#ef4444" stopOpacity="1" />
+          <stop offset="100%" stopColor="#dc2626" stopOpacity="0.95" />
         </linearGradient>
 
-        {/* Telemetry Soft Glow Filter */}
-        <filter id="circuit-blur" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="1" result="blur" />
+        {/* Soft Red Telemetry Glow Filter */}
+        <filter id="red-glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="1.2" result="blur" />
           <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
-      </defs>
 
-      {paths.map((item) => (
-        <g key={item.id}>
-          {/* Base Neutral Guide Track: Clean semi-transparent white (zero gray) */}
-          <path
-            d={item.d}
-            stroke="#ffffff"
-            strokeOpacity="0.3"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-          />
+        {/* Soft White Telemetry Glow Filter */}
+        <filter id="white-glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="0.8" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
 
-          {/* Active Animated Telemetry Line: Pure solid white drawing smoothly across boxes */}
-          <motion.path
-            d={item.d}
-            stroke="url(#circuit-line-glow)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-            filter="url(#circuit-blur)"
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 1 }}
-            transition={{
-              pathLength: {
+        {/* 
+          One-Shot Draw-In Reveal Masks:
+          Animates from card source and smoothly joins into the center laptop screen on load/refresh.
+        */}
+        {allPaths.map((item) => (
+          <mask id={`mask-${item.id}`} key={`mask-${item.id}`}>
+            <motion.path
+              d={item.d}
+              stroke="white"
+              strokeWidth="10"
+              strokeLinecap="round"
+              fill="none"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{
                 duration: 1.1,
                 delay: item.delay,
                 ease: [0.16, 1, 0.3, 1],
-              },
-              opacity: {
-                duration: 0.3,
-                delay: item.delay,
-              },
-            }}
+              }}
+            />
+          </mask>
+        ))}
+      </defs>
+
+      {/* ================================================================= */}
+      {/* 1. DARK WHITE DOTTED CONDUITS                                     */}
+      {/* ================================================================= */}
+      {darkWhitePaths.map((item) => (
+        <g key={item.id}>
+          {/* Static Faint Base Dotted Track */}
+          <path
+            d={item.d}
+            stroke="rgba(255, 255, 255, 0.16)"
+            strokeWidth="1.5"
+            strokeDasharray="5 6"
+            strokeLinecap="round"
+            fill="none"
           />
+
+          {/* Active Dark White Dotted Stream (Draws forward & flows into Center Screen) */}
+          <g mask={`url(#mask-${item.id})`}>
+            <motion.path
+              d={item.d}
+              stroke="rgba(255, 255, 255, 0.65)"
+              strokeWidth="2.2"
+              strokeDasharray="5 6"
+              strokeLinecap="round"
+              fill="none"
+              filter="url(#white-glow)"
+              animate={{
+                strokeDashoffset: [0, -22],
+              }}
+              transition={{
+                duration: 1.8,
+                repeat: Infinity,
+                ease: "linear",
+              }}
+            />
+          </g>
+        </g>
+      ))}
+
+      {/* ================================================================= */}
+      {/* 2. TWO RED DOTTED CONDUITS (Top-Left & Top-Right into Laptop)      */}
+      {/* ================================================================= */}
+      {redPaths.map((item) => (
+        <g key={item.id}>
+          {/* Static Faint Red Base Dotted Track */}
+          <path
+            d={item.d}
+            stroke="rgba(239, 68, 68, 0.22)"
+            strokeWidth="1.75"
+            strokeDasharray="5 6"
+            strokeLinecap="round"
+            fill="none"
+          />
+
+          {/* Active Vivid Red Dotted Stream (Draws forward & flows into Center Screen) */}
+          <g mask={`url(#mask-${item.id})`}>
+            <motion.path
+              d={item.d}
+              stroke="url(#red-dotted-glow)"
+              strokeWidth="2.75"
+              strokeDasharray="5 6"
+              strokeLinecap="round"
+              fill="none"
+              filter="url(#red-glow)"
+              animate={{
+                strokeDashoffset: [0, -22],
+              }}
+              transition={{
+                duration: 1.6,
+                repeat: Infinity,
+                ease: "linear",
+              }}
+            />
+          </g>
         </g>
       ))}
     </svg>
