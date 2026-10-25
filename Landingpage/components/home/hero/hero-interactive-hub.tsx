@@ -168,8 +168,8 @@ export default function HeroInteractiveHub() {
             />
           </div>
 
-          {/* 5. CENTRAL SHARP RECTANGULAR PC / LAPTOP (Zero Rounded Corners) */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[310px] sm:w-[330px] z-20">
+          {/* 5. CENTRAL SHARP RECTANGULAR PC / LAPTOP (Centered Vertically) */}
+          <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 w-[310px] sm:w-[330px] z-20">
             <LaptopMockup />
           </div>
 

@@ -36,43 +36,43 @@ export default function CircuitConnectors() {
     // 3. CENTER LEFT: Safety Protocol -> Laptop Top Screen
     {
       id: "center-left",
-      d: "M 375 144 L 375 344",
+      d: "M 375 144 L 375 280",
       delay: 0.2,
     },
     // 4. CENTER MIDDLE: Master Techs -> Laptop Top Screen
     {
       id: "center-middle",
-      d: "M 500 144 L 500 344",
+      d: "M 500 144 L 500 280",
       delay: 0.22,
     },
     // 5. CENTER RIGHT: 100% Insured -> Laptop Top Screen
     {
       id: "center-right",
-      d: "M 625 144 L 625 344",
+      d: "M 625 144 L 625 280",
       delay: 0.24,
     },
     // 6. TOP-LEFT CARD: 24/7 Rapid Dispatch -> Laptop Top-Left Screen
     {
       id: "top-left-to-pc",
-      d: "M 205 144 L 205 260 Q 205 270 215 270 L 350 270 Q 360 270 360 280 L 360 344",
+      d: "M 205 144 L 205 230 Q 205 240 215 240 L 350 240 Q 360 240 360 250 L 360 280",
       delay: 0.26,
     },
     // 7. TOP-RIGHT CARD: On-Site Mounting -> Laptop Top-Right Screen
     {
       id: "top-right-to-pc",
-      d: "M 795 144 L 795 260 Q 795 270 785 270 L 650 270 Q 640 270 640 280 L 640 344",
+      d: "M 795 144 L 795 230 Q 795 240 785 240 L 650 240 Q 640 240 640 250 L 640 280",
       delay: 0.28,
     },
     // 8. BOTTOM-LEFT CARD: Emergency Roadside -> Laptop Left Port
     {
       id: "bottom-left-to-pc",
-      d: "M 239 496 L 340 496",
+      d: "M 239 480 L 335 480",
       delay: 0.32,
     },
     // 9. BOTTOM-RIGHT CARD: Fleet Portal Access -> Laptop Right Port
     {
       id: "bottom-right-to-pc",
-      d: "M 761 496 L 660 496",
+      d: "M 761 480 L 665 480",
       delay: 0.35,
     },
   ];
