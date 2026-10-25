@@ -8,17 +8,16 @@ interface LaptopMockupProps {
 }
 
 export default function LaptopMockup({
-  videoSrc = "https://res.cloudinary.com/ebjikx52/video/upload/q_auto,w_720/v1792934439/car_for_laptop.mp4",
+  videoSrc = "https://res.cloudinary.com/ebjikx52/video/upload/v1792934439/car_for_laptop.mp4",
   className = "",
 }: LaptopMockupProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Guarantee continuous auto-playback without freezing or breaking
+  // Guarantee clean auto-playback across all platforms (iOS, Android, Chrome, Safari, Edge)
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Direct DOM property enforcement required by Chromium/Safari autoplay policies
     video.muted = true;
     video.defaultMuted = true;
     video.playsInline = true;
@@ -26,27 +25,18 @@ export default function LaptopMockup({
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
 
-    const playVideo = () => {
-      video.muted = true;
-      const promise = video.play();
-      if (promise !== undefined) {
-        promise.catch(() => {
-          // Fallback retry on user touch / click / scroll if device has strict initial autoplay lock
-          const resume = () => {
-            video.muted = true;
-            video.play().catch(() => {});
-            window.removeEventListener("touchstart", resume);
-            window.removeEventListener("click", resume);
-            window.removeEventListener("scroll", resume);
-          };
-          window.addEventListener("touchstart", resume, { once: true, passive: true });
-          window.addEventListener("click", resume, { once: true, passive: true });
-          window.addEventListener("scroll", resume, { once: true, passive: true });
-        });
-      }
-    };
-
-    playVideo();
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        const resume = () => {
+          video.muted = true;
+          video.play().catch(() => {});
+        };
+        window.addEventListener("click", resume, { once: true, passive: true });
+        window.addEventListener("touchstart", resume, { once: true, passive: true });
+        window.addEventListener("scroll", resume, { once: true, passive: true });
+      });
+    }
   }, [videoSrc]);
 
   return (
@@ -67,7 +57,7 @@ export default function LaptopMockup({
         {/* Screen Bezel Frame (16:10 Ratio, Sharp Corners) */}
         <div className="relative w-full aspect-[16/10] overflow-hidden rounded-none bg-black border border-white/10 shadow-inner flex items-center justify-center">
           
-          {/* Active Looping Video Display: ONLY video, no poster or picture */}
+          {/* Active Looping Video Display: Rock-solid, native loop, zero conflicts */}
           <video
             ref={videoRef}
             src={videoSrc}
@@ -76,22 +66,8 @@ export default function LaptopMockup({
             loop
             playsInline
             preload="auto"
-            onEnded={(e) => {
-              const el = e.currentTarget;
-              el.currentTime = 0;
-              el.play().catch(() => {});
-            }}
-            onPause={(e) => {
-              const el = e.currentTarget;
-              if (!el.seeking) {
-                el.play().catch(() => {});
-              }
-            }}
             className="w-full h-full object-cover object-center"
-          >
-            <source src={videoSrc} type="video/mp4" />
-            <source src="https://res.cloudinary.com/ebjikx52/video/upload/v1792934439/car_for_laptop.mp4" type="video/mp4" />
-          </video>
+          />
 
           {/* Subtle Crisp Screen Rim for Realism */}
           <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />
