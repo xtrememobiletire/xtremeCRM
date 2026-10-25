@@ -82,12 +82,12 @@ export default function HeroDynamicPhoneBar() {
   return (
     <a
       href={`tel:${phoneData.telNumber}`}
-      className="inline-flex items-center gap-2 px-4 py-1.5 mt-2 rounded-full border border-white/20 bg-black/60 hover:bg-black/80 hover:border-[#DC2626] backdrop-blur-md text-white transition-all shadow-md active:scale-95 group cursor-pointer"
+      className="inline-flex items-center gap-2 px-3 py-1.5 mt-2 rounded-none border-0 text-white hover:text-[#DC2626] transition-colors active:scale-95 group cursor-pointer"
       title={`Call ${phoneData.displayNumber}`}
     >
       <Phone className="w-3.5 h-3.5 text-[#DC2626] animate-pulse shrink-0" />
       <span className="text-sm select-none shrink-0">{phoneData.flag}</span>
-      <span className="text-xs sm:text-sm font-semibold tracking-wide text-zinc-100 group-hover:text-white transition-colors">
+      <span className="text-sm sm:text-base font-semibold tracking-wide text-zinc-100 group-hover:text-white transition-colors">
         {phoneData.displayNumber}
       </span>
     </a>

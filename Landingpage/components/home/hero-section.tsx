@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import SplitPillButton from "./split-pill-button";
+import SpecularButton from "./specular-button";
 import HeroInteractiveHub from "./hero/hero-interactive-hub";
 import HeroDynamicPhoneBar from "./hero-dynamic-phone-bar";
 
@@ -55,7 +55,7 @@ export default function HeroSection({
         - Desktop (16:9), Tablet (1:1), and Phone/Mobile (9:16)
         - Pure dark overlay with zero white foggy background at the bottom
       */}
-      <section className="relative w-full overflow-hidden flex flex-col items-center justify-center -mt-24 sm:-mt-28 lg:-mt-32 pt-28 sm:pt-36 lg:pt-44 pb-16 sm:pb-24 text-center">
+      <section className="relative w-full overflow-hidden flex flex-col items-center justify-center -mt-24 sm:-mt-28 lg:-mt-32 pt-36 sm:pt-48 lg:pt-56 pb-20 sm:pb-28 text-center">
         
         {/* Background Video Layer with Smooth Bottom Fade (strictly below the button line) */}
         <div
@@ -121,7 +121,7 @@ export default function HeroSection({
         />
 
         {/* Foreground Content */}
-        <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center">
+        <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center mt-6 sm:mt-10 lg:mt-14">
           {/* Main Title: 3 words + Anytime. Anywhere. */}
           <h1 className="mt-2 text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white mb-5 leading-[1.08] max-w-4xl drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]">
             {titleLine1} <br />
@@ -137,23 +137,19 @@ export default function HeroSection({
 
           {/* Center Action Buttons */}
           <div className="flex flex-col items-center justify-center gap-2.5">
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <SplitPillButton
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              <SpecularButton
                 label={ctaText}
                 href={ctaHref}
-                theme="black-crimson"
-                arrowDirection="down-right"
-                size="lg"
+                variant="crimson"
               />
-              <SplitPillButton
+              <SpecularButton
                 label="Register Your Fleet"
                 href="/fleet-solutions"
-                theme="white-crimson"
-                arrowDirection="up-right"
-                size="lg"
+                variant="white"
               />
             </div>
-            <span className="text-xs font-semibold tracking-wider uppercase text-zinc-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] mt-2">
+            <span className="text-xs font-semibold tracking-wider uppercase text-zinc-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] mt-3">
               Your Safety — Our Mission
             </span>
             <HeroDynamicPhoneBar />
