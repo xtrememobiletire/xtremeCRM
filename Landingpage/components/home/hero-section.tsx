@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import HeroBadge from "./hero-badge";
 import SplitPillButton from "./split-pill-button";
 import HeroInteractiveHub from "./hero/hero-interactive-hub";
+import HeroDynamicPhoneBar from "./hero-dynamic-phone-bar";
 
 interface HeroSectionProps {
   badgeText?: string;
@@ -122,11 +122,8 @@ export default function HeroSection({
 
         {/* Foreground Content */}
         <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center">
-          {/* "24/7 FLEET TIRE SUPPORT" Pill Badge */}
-          <HeroBadge text={badgeText} href={badgeHref} />
-
           {/* Main Title: 3 words + Anytime. Anywhere. */}
-          <h1 className="mt-5 text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white mb-5 leading-[1.08] max-w-4xl drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]">
+          <h1 className="mt-2 text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white mb-5 leading-[1.08] max-w-4xl drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]">
             {titleLine1} <br />
             <span className="font-serif italic font-normal text-[#DC2626] drop-shadow-[0_2px_16px_rgba(220,38,38,0.5)]">
               {titleItalic}
@@ -159,6 +156,7 @@ export default function HeroSection({
             <span className="text-xs font-semibold tracking-wider uppercase text-zinc-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] mt-2">
               Your Safety — Our Mission
             </span>
+            <HeroDynamicPhoneBar />
           </div>
         </div>
       </section>
