@@ -16,7 +16,8 @@ export default function CircuitConnectors() {
     9. Bottom-Right Horizontal: Fleet Portal Access -> Laptop Right Port
 
     - Zero circular bulbs or terminal dots at the edges.
-    - Clean edge-to-edge line connections directly touching the box borders.
+    - Pure white lines (no gray lines).
+    - Clean edge-to-edge line connections directly touching the white box borders.
     - Smooth drawing transition on page load/refresh (pathLength: 0 -> 1).
   */
   const paths = [
@@ -84,38 +85,38 @@ export default function CircuitConnectors() {
       fill="none"
     >
       <defs>
-        {/* High-Contrast Telemetry Gradient (Vibrant on both pure black and light backgrounds) */}
+        {/* Pure Brilliant White Line Glow */}
         <linearGradient id="circuit-line-glow" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#ff334b" stopOpacity="1" />
-          <stop offset="50%" stopColor="#ef4444" stopOpacity="0.95" />
-          <stop offset="100%" stopColor="#dc2626" stopOpacity="0.9" />
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+          <stop offset="50%" stopColor="#f8fafc" stopOpacity="0.95" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="1" />
         </linearGradient>
 
-        {/* Telemetry Glow Filter */}
+        {/* Telemetry Soft Glow Filter */}
         <filter id="circuit-blur" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="1.5" result="blur" />
+          <feGaussianBlur stdDeviation="1" result="blur" />
           <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
       </defs>
 
       {paths.map((item) => (
         <g key={item.id}>
-          {/* Base Neutral Guide Track */}
+          {/* Base Neutral Guide Track: Clean semi-transparent white (zero gray) */}
           <path
             d={item.d}
-            stroke="currentColor"
-            className="text-zinc-800"
+            stroke="#ffffff"
+            strokeOpacity="0.3"
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
             fill="none"
           />
 
-          {/* Active Animated Telemetry Line: Smoothly draws on refresh to connect all boxes */}
+          {/* Active Animated Telemetry Line: Pure solid white drawing smoothly across boxes */}
           <motion.path
             d={item.d}
             stroke="url(#circuit-line-glow)"
-            strokeWidth="2"
+            strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
             fill="none"
