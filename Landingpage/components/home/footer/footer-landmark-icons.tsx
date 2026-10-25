@@ -5,8 +5,8 @@ interface IconProps {
 }
 
 /**
- * High-precision Black & White Line-Art Landmark Icons
- * Styled in the exact architectural line-art aesthetic of the London Eye and Minar-e-Pakistan.
+ * High-precision Black & White Line-Art Landmark & Flag Icons
+ * Styled in architectural line-art aesthetic.
  */
 
 export function StatueOfLibertyIcon({ className = "w-12 h-12" }: IconProps) {
@@ -59,6 +59,11 @@ export function StatueOfLibertyIcon({ className = "w-12 h-12" }: IconProps) {
   );
 }
 
+/**
+ * Official Canadian Flag 11-Point Maple Leaf Icon
+ * Rendered in clean line-art with architectural leaf veins.
+ * Inherits currentColor (gray text-zinc-400 normally, darkens/brightens on hover).
+ */
 export function CanadaLandmarkIcon({ className = "w-12 h-12" }: IconProps) {
   return (
     <svg
@@ -70,38 +75,41 @@ export function CanadaLandmarkIcon({ className = "w-12 h-12" }: IconProps) {
       strokeLinejoin="round"
       className={className}
     >
-      {/* CN Tower Spire & Antenna */}
-      <path d="M32 4v10" strokeWidth="1.5" />
-      <circle cx="32" cy="7" r="1.5" fill="currentColor" fillOpacity="0.3" />
-
-      {/* SkyPod / Observation Deck */}
-      <path d="M29 14h6l2 4h-10l2-4z" fill="currentColor" fillOpacity="0.15" />
-      <path d="M27 18h10l-1.5 3h-7L27 18z" />
-
-      {/* Main Mast Shaft */}
-      <path d="M30 21v14" />
-      <path d="M34 21v14" />
-      <path d="M32 21v14" strokeDasharray="1.5 1.5" />
-
-      {/* Architectural Maple Leaf Emblem integrated in Tower Base */}
+      {/* 11-Point Canadian Flag Maple Leaf Silhouette */}
       <path
-        d="M32 36l2 3 4-2-1 4 5 1-3 3 2 4-5-1-1 3-3-2-3 2-1-3-5 1 2-4-3-3 5-1-1-4 4 2 2-3z"
+        d="M32 6 L33.8 17.5 L39.5 14.8 L37.2 22.8 L49.5 20.8 L45.5 28.5 L53.8 32.2 L44.2 37.8 L45.8 42.5 L35.5 41.2 L33.5 46.2 L33.5 58 L30.5 58 L30.5 46.2 L28.5 41.2 L18.2 42.5 L19.8 37.8 L10.2 32.2 L18.5 28.5 L14.5 20.8 L26.8 22.8 L24.5 14.8 L30.2 17.5 Z"
         fill="currentColor"
-        fillOpacity="0.12"
+        fillOpacity="0.15"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
 
-      {/* Tower Legs & Foundation */}
-      <path d="M28 35l-7 23" strokeWidth="1.5" />
-      <path d="M36 35l7 23" strokeWidth="1.5" />
-      <path d="M32 40v18" strokeWidth="1.2" />
+      {/* Central leaf vein extending from stem into upper lobe */}
+      <path d="M32 46.2V14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
 
-      {/* Horizontal Structural Struts */}
-      <path d="M26 44h12" />
-      <path d="M24 51h16" />
+      {/* Major diagonal veins branching to left and right main lobes */}
+      <path d="M32 37L45 25" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M32 37L19 25" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
 
-      {/* Base Line */}
-      <path d="M17 58h30" strokeWidth="2" />
-      <path d="M20 61h24" strokeWidth="1.5" />
+      {/* Secondary veins branching into upper side lobe points */}
+      <path d="M32 28L38 18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M32 28L26 18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+
+      {/* Lateral veins branching into middle points */}
+      <path d="M38 31L48 33" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M26 31L16 33" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+
+      {/* Lower veins branching into base lobe points */}
+      <path d="M32 41L41 41" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M32 41L23 41" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+
+      {/* Stem base line */}
+      <path d="M27 58h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
+
+// Alias export so either name can be imported seamlessly
+export const CanadaMapleLeafIcon = CanadaLandmarkIcon;
