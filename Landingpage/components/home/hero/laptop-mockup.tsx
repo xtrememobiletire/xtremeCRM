@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 interface LaptopMockupProps {
   videoSrc?: string;
@@ -9,11 +9,24 @@ interface LaptopMockupProps {
 }
 
 export default function LaptopMockup({
-  videoSrc = "https://assets.mixkit.co/videos/preview/mixkit-car-wheel-turning-in-slow-motion-41865-large.mp4",
+  videoSrc = "https://res.cloudinary.com/ebjikx52/video/upload/v1792934439/car_for_laptop.mp4",
   posterSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792426893/xtreme/landing/wheel-car_jpg.png",
   className = "",
 }: LaptopMockupProps) {
   const [videoError, setVideoError] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Guarantee immediate auto-playback on all devices & browsers (iOS, Android, Chrome, Safari)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.defaultMuted = true;
+    video.muted = true;
+    const promise = video.play();
+    if (promise !== undefined) {
+      promise.catch(() => {});
+    }
+  }, [videoSrc]);
 
   return (
     <div className={`relative mx-auto w-full max-w-[310px] sm:max-w-[330px] select-none ${className}`}>
@@ -33,15 +46,17 @@ export default function LaptopMockup({
         {/* Screen Bezel Frame (16:10 Ratio, Sharp Corners) */}
         <div className="relative w-full aspect-[16/10] overflow-hidden rounded-none bg-black border border-white/10 shadow-inner flex items-center justify-center">
           
-          {/* Active Looping Video Display */}
+          {/* Active Looping Video Display: Always running and crystal clear */}
           {!videoError ? (
             <video
+              ref={videoRef}
               src={videoSrc}
               poster={posterSrc}
               autoPlay
               muted
               loop
               playsInline
+              preload="auto"
               onError={() => setVideoError(true)}
               className="w-full h-full object-cover object-center"
             />
@@ -54,11 +69,8 @@ export default function LaptopMockup({
             />
           )}
 
-          {/* Screen Glass Reflection Gradient */}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.03] to-white/[0.06]" />
-
-          {/* Cinematic Vignette */}
-          <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10 shadow-[inset_0_0_30px_rgba(0,0,0,0.6)]" />
+          {/* Subtle Crisp Screen Rim for Realism without dimming the video */}
+          <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />
 
         </div>
 
