@@ -5,15 +5,14 @@ import { Phone, Mail } from "lucide-react";
 
 export default function DispatchContactBar() {
   return (
-    <section className="w-full max-w-5xl mx-auto px-4 sm:px-6 my-6 sm:my-8">
+    <section className="w-full max-w-5xl mx-auto px-4 sm:px-6 my-3 sm:my-4">
       {/* 
         24/7 FLEET DISPATCH CONTACT BAR
-        - Sharp brutalist box (rounded-none)
-        - High-contrast background in both light and dark modes
+        - Open-ended on left and right sides (border-y border-x-0)
+        - Narrow height with compact vertical padding
         - Clickable tel: and mailto: links with hover micro-transitions
-        - Fully responsive wrapping on mobile screens
       */}
-      <div className="w-full rounded-none border border-black/15 dark:border-white/15 bg-zinc-100/90 dark:bg-zinc-900/80 backdrop-blur-md p-3.5 sm:p-4 lg:p-5 flex flex-wrap items-center justify-center gap-x-4 sm:gap-x-6 gap-y-2.5 text-center text-xs sm:text-sm md:text-base font-medium text-zinc-800 dark:text-zinc-200 shadow-sm hover:border-[var(--brand-primary)]/40 transition-colors">
+      <div className="w-full rounded-none border-y border-x-0 border-black/15 dark:border-white/15 bg-zinc-100/90 dark:bg-zinc-900/80 backdrop-blur-md py-2 sm:py-2.5 px-3 sm:px-6 flex flex-wrap lg:flex-nowrap items-center justify-center gap-x-3 sm:gap-x-5 gap-y-1 text-center text-xs sm:text-[13px] md:text-sm font-medium text-zinc-800 dark:text-zinc-200 shadow-sm transition-colors">
         
         {/* Headline Label with pulsing Phone icon */}
         <div className="flex items-center gap-2 font-bold text-zinc-950 dark:text-white shrink-0">
