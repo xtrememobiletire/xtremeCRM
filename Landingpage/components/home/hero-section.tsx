@@ -57,8 +57,8 @@ export default function HeroSection({
       */}
       <section className="relative w-full overflow-hidden flex flex-col items-center justify-center min-h-[100dvh] bg-black -mt-24 sm:-mt-28 lg:-mt-32 text-center">
         
-        {/* Background Video Layer: Full solid black coverage across the entire initial screen */}
-        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden bg-black">
+        {/* Background Video Layer: z-0 so it is rendered above the section background */}
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           {/* 1. Desktop Video (16:9) - visible on lg (>=1024px) */}
           <video
             ref={desktopVideoRef}
@@ -95,13 +95,13 @@ export default function HeroSection({
             className="block sm:hidden absolute inset-0 w-full h-full object-cover object-center"
           />
 
-          {/* Subtle Dark Vignette & Contrast Overlays for 100% Text Readability */}
-          <div className="absolute inset-0 bg-black/45" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/25 to-black" />
+          {/* Subtle Dark Vignette & Contrast Overlays for 100% Text Readability while keeping video vibrant */}
+          <div className="absolute inset-0 bg-black/25" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60" />
         </div>
 
         {/* Foreground Content: Vertically centered in the middle of the screen (on phone and desktop) */}
-        <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center justify-center my-auto pt-28 sm:pt-36 lg:pt-40 pb-12 sm:pb-16">
+        <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center justify-center my-auto pt-28 sm:pt-36 lg:pt-40 pb-16 sm:pb-24">
           {/* Main Title: 3 words + Anytime. Anywhere. */}
           <h1 className="mt-0 text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white mb-4 leading-[1.08] max-w-4xl drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]">
             {titleLine1} <br />
@@ -135,6 +135,12 @@ export default function HeroSection({
             <HeroDynamicPhoneBar />
           </div>
         </div>
+
+        {/* Soft Blurred Gradient Border Diffuser between Hero and Interactive Hub */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 left-0 right-0 h-20 sm:h-28 z-20 backdrop-blur-md bg-gradient-to-b from-transparent via-black/40 to-[var(--neutral-light)]"
+        />
       </section>
 
       {/* 
