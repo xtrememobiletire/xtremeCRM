@@ -10,7 +10,7 @@ export default function CircuitConnectors() {
        - Top-Right Card -> Laptop Top-Right Screen
        Vivid Crimson Red, dotted, animating and streaming directly into the center screen.
 
-    2. DARK WHITE CONDUITS:
+    2. CRISP DARK-WHITE CONDUITS (High Visibility on Gray Canvas):
        - Left Column Vertical: Top-Left Card -> Bottom-Left Card
        - Right Column Vertical: Top-Right Card -> Bottom-Right Card
        - Center Left: Safety Protocol -> Laptop Top Screen
@@ -18,7 +18,7 @@ export default function CircuitConnectors() {
        - Center Right: 100% Insured -> Laptop Top Screen
        - Bottom-Left: Emergency Roadside -> Laptop Left Port
        - Bottom-Right: Fleet Portal Access -> Laptop Right Port
-       Muted Off-White / Dark White, dotted, animating and streaming into the center screen.
+       Crisp White / Dark White, clearly visible and dotted, flowing into the center screen.
   */
 
   // 1. Two Main Red Conduit Lines (Connecting Top Cards to Laptop Screen)
@@ -35,7 +35,7 @@ export default function CircuitConnectors() {
     },
   ];
 
-  // 2. Supporting Dark White Conduit Lines (Dotted)
+  // 2. Supporting Dark White Conduit Lines (Dotted, High Visibility)
   const darkWhitePaths = [
     // Left Column Vertical: 24/7 Rapid Dispatch -> Emergency Roadside
     {
@@ -104,10 +104,13 @@ export default function CircuitConnectors() {
           <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
 
-        {/* Soft White Telemetry Glow Filter */}
+        {/* Crisp White Telemetry Filter */}
         <filter id="white-glow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="0.8" result="blur" />
-          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          <feGaussianBlur stdDeviation="0.6" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
         </filter>
 
         {/* 
@@ -135,26 +138,26 @@ export default function CircuitConnectors() {
       </defs>
 
       {/* ================================================================= */}
-      {/* 1. DARK WHITE DOTTED CONDUITS                                     */}
+      {/* 1. CRISP DARK-WHITE DOTTED CONDUITS                               */}
       {/* ================================================================= */}
       {darkWhitePaths.map((item) => (
         <g key={item.id}>
-          {/* Static Faint Base Dotted Track */}
+          {/* Static Clearly Visible Base Dotted Track */}
           <path
             d={item.d}
-            stroke="rgba(255, 255, 255, 0.16)"
-            strokeWidth="1.5"
+            stroke="rgba(255, 255, 255, 0.35)"
+            strokeWidth="1.75"
             strokeDasharray="5 6"
             strokeLinecap="round"
             fill="none"
           />
 
-          {/* Active Dark White Dotted Stream (Draws forward & flows into Center Screen) */}
+          {/* Active Crisp White Dotted Stream (Flowing into Center Screen) */}
           <g mask={`url(#mask-${item.id})`}>
             <motion.path
               d={item.d}
-              stroke="rgba(255, 255, 255, 0.65)"
-              strokeWidth="2.2"
+              stroke="rgba(255, 255, 255, 0.88)"
+              strokeWidth="2.5"
               strokeDasharray="5 6"
               strokeLinecap="round"
               fill="none"
@@ -177,17 +180,17 @@ export default function CircuitConnectors() {
       {/* ================================================================= */}
       {redPaths.map((item) => (
         <g key={item.id}>
-          {/* Static Faint Red Base Dotted Track */}
+          {/* Static Visible Red Base Dotted Track */}
           <path
             d={item.d}
-            stroke="rgba(239, 68, 68, 0.22)"
+            stroke="rgba(239, 68, 68, 0.32)"
             strokeWidth="1.75"
             strokeDasharray="5 6"
             strokeLinecap="round"
             fill="none"
           />
 
-          {/* Active Vivid Red Dotted Stream (Draws forward & flows into Center Screen) */}
+          {/* Active Vivid Red Dotted Stream (Flowing into Center Screen) */}
           <g mask={`url(#mask-${item.id})`}>
             <motion.path
               d={item.d}
