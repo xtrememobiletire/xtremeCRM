@@ -55,16 +55,10 @@ export default function HeroSection({
         - Desktop (16:9), Tablet (1:1), and Phone/Mobile (9:16)
         - Pure dark overlay with zero white foggy background at the bottom
       */}
-      <section className="relative w-full overflow-hidden flex flex-col items-center justify-center -mt-24 sm:-mt-28 lg:-mt-32 pt-28 sm:pt-36 lg:pt-44 pb-14 sm:pb-20 text-center">
+      <section className="relative w-full overflow-hidden flex flex-col items-center justify-center min-h-[100dvh] bg-black -mt-24 sm:-mt-28 lg:-mt-32 text-center">
         
-        {/* Background Video Layer with Smooth Bottom Fade (strictly below the button line) */}
-        <div
-          className="pointer-events-none absolute inset-0 -z-10 overflow-hidden bg-black"
-          style={{
-            maskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 50px), transparent 100%)",
-            WebkitMaskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 50px), transparent 100%)",
-          }}
-        >
+        {/* Background Video Layer: Full solid black coverage across the entire initial screen */}
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden bg-black">
           {/* 1. Desktop Video (16:9) - visible on lg (>=1024px) */}
           <video
             ref={desktopVideoRef}
@@ -103,25 +97,11 @@ export default function HeroSection({
 
           {/* Subtle Dark Vignette & Contrast Overlays for 100% Text Readability */}
           <div className="absolute inset-0 bg-black/45" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/25 to-black/85" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/25 to-black" />
         </div>
 
-        {/* 
-          SOFT BLUR DIFFUSER OVERLAY (STRICTLY BELOW BUTTON LINE):
-          Only softens the very bottom edge where the black section meets the canvas,
-          leaving the car, buttons, and text 100% crisp and dark.
-        */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 sm:h-16 backdrop-blur-sm sm:backdrop-blur-md"
-          style={{
-            maskImage: "linear-gradient(to bottom, transparent 0%, black 50%, black 100%)",
-            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 50%, black 100%)",
-          }}
-        />
-
-        {/* Foreground Content */}
-        <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center mt-1 sm:mt-2 lg:mt-3">
+        {/* Foreground Content: Vertically centered in the middle of the screen (on phone and desktop) */}
+        <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center justify-center my-auto pt-28 sm:pt-36 lg:pt-40 pb-12 sm:pb-16">
           {/* Main Title: 3 words + Anytime. Anywhere. */}
           <h1 className="mt-0 text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white mb-4 leading-[1.08] max-w-4xl drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]">
             {titleLine1} <br />
