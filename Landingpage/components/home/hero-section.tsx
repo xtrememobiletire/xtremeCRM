@@ -25,7 +25,6 @@ export default function HeroSection({
   ctaHref = "/booking",
 }: HeroSectionProps) {
   const desktopVideoRef = useRef<HTMLVideoElement>(null);
-  const tabletVideoRef = useRef<HTMLVideoElement>(null);
   const mobileVideoRef = useRef<HTMLVideoElement>(null);
 
   // Guarantee immediate playback as soon as user lands on the page
@@ -34,14 +33,25 @@ export default function HeroSection({
       if (!video) return;
       video.defaultMuted = true;
       video.muted = true;
+      video.playsInline = true;
+      video.setAttribute("muted", "");
+      video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "");
       const promise = video.play();
       if (promise !== undefined) {
-        promise.catch(() => {});
+        promise.catch(() => {
+          const resume = () => {
+            video.muted = true;
+            video.play().catch(() => {});
+          };
+          window.addEventListener("click", resume, { once: true, passive: true });
+          window.addEventListener("touchstart", resume, { once: true, passive: true });
+          window.addEventListener("scroll", resume, { once: true, passive: true });
+        });
       }
     };
 
     startPlayback(desktopVideoRef.current);
-    startPlayback(tabletVideoRef.current);
     startPlayback(mobileVideoRef.current);
   }, []);
 
@@ -59,34 +69,22 @@ export default function HeroSection({
         
         {/* Background Video Layer: z-0 so it is rendered above the section background */}
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-          {/* 1. Desktop Video (16:9) - visible on lg (>=1024px) */}
+          {/* 1. Desktop & Tablet Video (16:9) - visible on screens >=640px */}
           <video
             ref={desktopVideoRef}
-            src="https://res.cloudinary.com/ebjikx52/video/upload/v1792843197/xtreme-hero-desktop-16x9.mp4"
+            src="https://res.cloudinary.com/wgstyulb/video/upload/v1792988129/Headlights_illuminating_black_lu__1080p_20261026090435.mp4"
             autoPlay
             muted
             loop
             playsInline
             preload="auto"
-            className="hidden lg:block absolute inset-0 w-full h-full object-cover object-center"
+            className="hidden sm:block absolute inset-0 w-full h-full object-cover object-center"
           />
 
-          {/* 2. Tablet Video (1:1) - visible on sm to md (640px - 1023px) */}
-          <video
-            ref={tabletVideoRef}
-            src="https://res.cloudinary.com/ebjikx52/video/upload/v1792843187/xtreme-hero-tablet-1x1.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            className="hidden sm:block lg:hidden absolute inset-0 w-full h-full object-cover object-center"
-          />
-
-          {/* 3. Mobile / Phone Video (9:16) - visible on mobile (<640px) */}
+          {/* 2. Mobile / Phone Screen Video (9:16) - visible on phone screens (<640px) */}
           <video
             ref={mobileVideoRef}
-            src="https://res.cloudinary.com/ebjikx52/video/upload/v1792843184/xtreme-hero-mobile-9x16.mp4"
+            src="https://res.cloudinary.com/wgstyulb/video/upload/v1792988128/Luxury_car_headlights_turning_on_1080p_20261026090417.mp4"
             autoPlay
             muted
             loop
