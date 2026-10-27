@@ -3,29 +3,11 @@ import { Truck, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { useTenant } from '../../context/TenantContext';
-
-interface Fleet {
-  id: string;
-  fleetCode?: string;
-  name?: string;
-  companyName: string;
-  contactName?: string;
-  contactPerson?: string;
-  fleetManager?: string;
-  phone?: string;
-  email?: string;
-  poaEmail?: string;
-  password?: string;
-  paymentTerms: string;
-  creditLimitCents?: number;
-  outstandingBalanceCents?: number;
-  vehicles?: any[];
-  jobs?: any[];
-}
+import type { FleetItem } from '../../services/fleetService';
 
 interface FleetTableProps {
-  fleets: Fleet[];
-  onSelectFleet?: (fleet: Fleet) => void;
+  fleets: FleetItem[];
+  onSelectFleet?: (fleet: FleetItem) => void;
 }
 
 export default function FleetTable({ fleets, onSelectFleet }: FleetTableProps) {
@@ -34,7 +16,7 @@ export default function FleetTable({ fleets, onSelectFleet }: FleetTableProps) {
 
   if (!fleets || fleets.length === 0) return null;
 
-  const handleCopyInvite = (f: Fleet, e: React.MouseEvent) => {
+  const handleCopyInvite = (f: FleetItem, e: React.MouseEvent) => {
     e.stopPropagation();
     const inviteText = `🏢 Xtreme Mobile Tire — Fleet Manager Portal
 🔗 Portal: ${window.location.origin}/login
