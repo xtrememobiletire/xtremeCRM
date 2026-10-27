@@ -1,7 +1,7 @@
 "use client";
 
 import HeroBadge from "@/components/home/hero-badge";
-import SplitPillButton from "@/components/home/split-pill-button";
+import SpecularButton from "@/components/home/specular-button";
 
 interface AboutHeroProps {
   badgeText?: string;
@@ -68,26 +68,18 @@ export default function AboutHero({
           {description}
         </p>
 
-        {/* Center CTA Button "Book Now" (Adaptive contrast in Light & Dark modes) */}
-        <div className="flex flex-col items-center justify-center gap-2.5">
-          {/* Light Theme: Black button with crimson arrow */}
-          <div className="dark:hidden">
-            <SplitPillButton
+        {/* Center Action Buttons matching Home Hero (Specular Buttons) */}
+        <div className="flex flex-col items-center justify-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <SpecularButton
               label={ctaText}
               href={ctaHref}
-              theme="black-crimson"
-              arrowDirection="down-right"
-              size="lg"
+              variant="crimson"
             />
-          </div>
-          {/* Dark Theme: White button with crimson arrow */}
-          <div className="hidden dark:block">
-            <SplitPillButton
-              label={ctaText}
-              href={ctaHref}
-              theme="white-crimson"
-              arrowDirection="down-right"
-              size="lg"
+            <SpecularButton
+              label="Register Your Fleet"
+              href="/fleet-solutions"
+              variant="white"
             />
           </div>
 

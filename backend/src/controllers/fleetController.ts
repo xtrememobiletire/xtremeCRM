@@ -424,6 +424,171 @@ export const fleetController = {
     }
   },
 
+  /**
+   * Public Landing Page Self-Service Fleet Registration
+   * Creates an unapproved fleet account (status: 'PENDING', contractSignedAt: null)
+   * Provisions or links a FLEET_MANAGER User account and broadcasts fleet:created via SSE.
+   */
+  async registerPublicFleet(req: Request, res: Response) {
+    try {
+      const {
+        name,
+        companyName,
+        contactPerson,
+        contactName,
+        phone,
+        email,
+        password,
+        address,
+        website,
+        countryCode,
+        fleetManager,
+        altPhone,
+        numberOfUnits,
+        poaEmail,
+        ceoOwnerName,
+        billingContactName,
+        governingProvince,
+      } = req.body;
+
+      const resolvedName = (name || companyName || '').trim();
+      if (!resolvedName) {
+        return sendError(res, 'Company legal name is required', 400);
+      }
+
+      const resolvedContact = (contactPerson || contactName || fleetManager || 'Fleet Manager').trim();
+      if (!resolvedContact) {
+        return sendError(res, 'Primary contact person is required', 400);
+      }
+
+      const effectiveCountry = (countryCode || 'CA') as 'CA' | 'US' | 'UK';
+
+      const cleanPhone = (phone || '').trim();
+      if (!cleanPhone) {
+        return sendError(res, 'Phone number is required', 400);
+      }
+      const phoneValidation = validateAndNormalizePhone(cleanPhone, effectiveCountry);
+      if (!phoneValidation.isValid) {
+        return sendError(res, phoneValidation.error || 'Invalid phone number format for regional silo', 400);
+      }
+      const normalizedPhone = phoneValidation.normalized;
+
+      const cleanEmail = (email || '').trim().toLowerCase();
+      if (!cleanEmail) {
+        return sendError(res, 'Valid portal email is required', 400);
+      }
+
+      const cleanPassword = (password || '').trim();
+      if (!cleanPassword || cleanPassword.length < 6) {
+        return sendError(res, 'Password must be at least 6 characters', 400);
+      }
+
+      // Geocode depot / operating address if provided
+      let latitude: number | null = null;
+      let longitude: number | null = null;
+      if (address && address.trim()) {
+        try {
+          const geo = await geocodingService.geocodeAddress(address.trim(), effectiveCountry);
+          if (geo.latitude && geo.longitude) {
+            latitude = geo.latitude;
+            longitude = geo.longitude;
+          }
+        } catch (e: any) {
+          console.warn('Geocoding failed for public fleet registration:', e?.message);
+        }
+      }
+
+      const code = await generateUniqueFleetCode();
+
+      // Provision or link FLEET_MANAGER user account
+      const passwordHash = await bcrypt.hash(cleanPassword, 10);
+      let managerUserIdToLink: string | null = null;
+
+      const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
+      if (existingUser) {
+        if (existingUser.role !== 'FLEET_MANAGER') {
+          return sendError(res, `An account with this email already exists under role: ${existingUser.role}`, 409);
+        }
+        await prisma.user.update({
+          where: { id: existingUser.id },
+          data: { passwordHash },
+        });
+        managerUserIdToLink = existingUser.id;
+      } else {
+        const newUser = await prisma.user.create({
+          data: {
+            email: cleanEmail,
+            passwordHash,
+            fullName: resolvedContact || resolvedName,
+            phone: normalizedPhone,
+            role: 'FLEET_MANAGER',
+            countryCode: effectiveCountry,
+          },
+        });
+        managerUserIdToLink = newUser.id;
+      }
+
+      const fleet = await prisma.fleet.create({
+        data: {
+          fleetCode: code,
+          name: resolvedName,
+          contactPerson: resolvedContact,
+          phone: normalizedPhone,
+          altPhone: altPhone?.trim() || null,
+          email: cleanEmail,
+          poaEmail: poaEmail?.trim() || null,
+          fleetManager: fleetManager?.trim() || null,
+          address: address?.trim() || null,
+          latitude,
+          longitude,
+          countryCode: effectiveCountry,
+          status: 'PENDING',
+          numberOfUnits: numberOfUnits ? Number(numberOfUnits) : null,
+          website: website?.trim() || null,
+          ceoOwnerName: ceoOwnerName?.trim() || null,
+          billingContactName: billingContactName?.trim() || null,
+          governingProvince: governingProvince?.trim() || null,
+          contractSignedAt: null,
+          paymentTerms: 'NET_30',
+          managerUserId: managerUserIdToLink,
+        },
+      });
+
+      sseManager.broadcast(`sse:dispatch:${fleet.countryCode}`, 'fleet:created', fleet);
+
+      return sendSuccess(res, fleet, 'Fleet registration submitted successfully. Pending approval.', 201);
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Approve a pending fleet registration and convert it into an active commercial fleet.
+   */
+  async approveFleet(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const existingFleet = await prisma.fleet.findUnique({ where: { id } });
+      if (!existingFleet) {
+        return sendError(res, 'Fleet not found', 404);
+      }
+
+      const updated = await prisma.fleet.update({
+        where: { id },
+        data: {
+          status: 'APPROVED',
+          contractSignedAt: existingFleet.contractSignedAt || new Date(),
+        },
+      });
+
+      sseManager.broadcast(`sse:dispatch:${updated.countryCode}`, 'fleet:updated', updated);
+
+      return sendSuccess(res, updated, 'Fleet account approved successfully');
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
   async updateFleet(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
@@ -458,6 +623,9 @@ export const fleetController = {
       const data: any = {};
       if (fleetCode !== undefined) data.fleetCode = fleetCode;
       if (name || companyName) data.name = (name || companyName).trim();
+      if (contactPerson !== undefined || contactName !== undefined) {
+        data.contactPerson = (contactPerson || contactName)?.trim() || null;
+      }
       if (phone !== undefined) {
         const cleanPhone = phone ? String(phone).trim() : '';
         if (cleanPhone) {

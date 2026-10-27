@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Truck, Car, Users, Save, Copy, Check } from 'lucide-react';
+import { Truck, Car, Users, Save, Copy, Check, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '../ui/Modal';
 import FleetInfoSection, { type FleetFormData } from './FleetInfoSection';
@@ -7,6 +7,7 @@ import FleetVehiclesSection, { type FleetVehicleItem } from './FleetVehiclesSect
 import FleetDriversSection, { type FleetDriverItem } from './FleetDriversSection';
 import { fleetService } from '../../services/fleetService';
 import { vehicleService } from '../../services/vehicleService';
+import { useApproveFleet, useDeleteFleet } from '../../hooks/useFleets';
 import { toast } from 'sonner';
 
 interface FleetDetailModalProps {
@@ -20,6 +21,9 @@ type TabType = 'details' | 'vehicles' | 'drivers';
 export default function FleetDetailModal({ fleet, isOpen, onClose }: FleetDetailModalProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('details');
+
+  const approveMutation = useApproveFleet();
+  const deleteMutation = useDeleteFleet();
 
   // Fetch full fleet details with populated vehicles and drivers
   const { data: fullFleet, refetch } = useQuery({
@@ -197,7 +201,39 @@ export default function FleetDetailModal({ fleet, isOpen, onClose }: FleetDetail
     });
   };
 
+  const handleApprove = () => {
+    if (!activeFleet?.id) return;
+    approveMutation.mutate(activeFleet.id, {
+      onSuccess: () => {
+        toast.success(`Fleet ${activeFleet.fleetCode || ''} approved successfully!`);
+        queryClient.invalidateQueries({ queryKey: ['fleets'] });
+        onClose();
+      },
+      onError: (err: any) => {
+        toast.error(err?.response?.data?.message || 'Failed to approve fleet');
+      },
+    });
+  };
+
+  const handleDelete = () => {
+    if (!activeFleet?.id) return;
+    if (window.confirm(`Are you sure you want to delete or reject registration for "${formData.companyName}"?`)) {
+      deleteMutation.mutate(activeFleet.id, {
+        onSuccess: () => {
+          toast.success('Pending fleet registration deleted');
+          queryClient.invalidateQueries({ queryKey: ['fleets'] });
+          onClose();
+        },
+        onError: (err: any) => {
+          toast.error(err?.response?.data?.message || 'Failed to delete registration');
+        },
+      });
+    }
+  };
+
   if (!fleet) return null;
+
+  const isPending = activeFleet?.status === 'PENDING';
 
   return (
     <Modal
@@ -207,6 +243,30 @@ export default function FleetDetailModal({ fleet, isOpen, onClose }: FleetDetail
       maxWidth="max-w-3xl"
     >
       <div className="space-y-4">
+        {/* Pending Review Amber Alert Banner */}
+        {isPending && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-amber-900 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+              <div>
+                <span className="font-bold">Pending Review &amp; Approval: </span>
+                <span className="text-amber-800">
+                  This commercial fleet application is pending review. Approve to activate Net-30 commercial billing.
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={approveMutation.isPending}
+              onClick={handleApprove}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition cursor-pointer disabled:opacity-50"
+            >
+              <Check size={13} />
+              <span>{approveMutation.isPending ? 'Approving...' : 'Approve Now'}</span>
+            </button>
+          </div>
+        )}
+
         {/* Navigation Tabs */}
         <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
           <button
@@ -322,6 +382,30 @@ export default function FleetDetailModal({ fleet, isOpen, onClose }: FleetDetail
           </div>
 
           <div className="flex items-center gap-2">
+            {isPending && (
+              <>
+                <button
+                  type="button"
+                  disabled={deleteMutation.isPending}
+                  onClick={handleDelete}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold cursor-pointer transition disabled:opacity-50"
+                >
+                  <Trash2 size={13} />
+                  <span>{deleteMutation.isPending ? 'Deleting...' : 'Delete Registration'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={approveMutation.isPending}
+                  onClick={handleApprove}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer shadow-xs transition disabled:opacity-50"
+                >
+                  <Check size={13} />
+                  <span>{approveMutation.isPending ? 'Approving...' : 'Approve Fleet'}</span>
+                </button>
+              </>
+            )}
+
             <button
               type="button"
               onClick={onClose}

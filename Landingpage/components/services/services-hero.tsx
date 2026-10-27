@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import SpecularButton from "@/components/home/specular-button";
 
 // Pool of 6 high-resolution mobile tire and automotive service pictures
 const SERVICE_IMAGES: string[] = [
@@ -113,7 +114,7 @@ export default function ServicesHero() {
       {/* ========================================================================
           HERO HEADER & CALL TO ACTION
           - Headline: "From Servicing to Full / Repairs – We do it all"
-          - Button: "Book Now"
+          - Buttons matching Home Hero (Specular Buttons)
           ======================================================================== */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6 sm:space-y-7">
         
@@ -130,14 +131,23 @@ export default function ServicesHero() {
           </span>
         </h1>
 
-        {/* Book Now Button */}
-        <div className="pt-1">
-          <Link
-            href="/booking"
-            className="inline-flex items-center justify-center px-8 sm:px-10 py-3 sm:py-3.5 rounded-none border border-zinc-900/80 dark:border-white/80 bg-transparent text-zinc-950 dark:text-white hover:bg-zinc-950 hover:text-white dark:hover:bg-white dark:hover:text-black font-medium text-sm sm:text-base tracking-tight transition-all duration-300 shadow-sm active:scale-98"
-          >
-            Book Now
-          </Link>
+        {/* Action Buttons matching Home Hero (Specular Buttons) */}
+        <div className="pt-2 flex flex-col items-center justify-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <SpecularButton
+              label="Book Now"
+              href="/booking"
+              variant="crimson"
+            />
+            <SpecularButton
+              label="Register Your Fleet"
+              href="/fleet-solutions"
+              variant="white"
+            />
+          </div>
+          <span className="text-xs font-semibold tracking-wider uppercase text-zinc-500 dark:text-zinc-400 mt-2">
+            Your Safety — Our Mission
+          </span>
         </div>
 
       </div>

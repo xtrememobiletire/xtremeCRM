@@ -8,10 +8,22 @@ import {
   updateFleetSchema,
   fleetQuerySchema,
   addFleetDriverSchema,
+  registerFleetSchema,
   idParamSchema,
 } from '../schemas/index.js';
 
 const router = Router();
+
+/**
+ * @route   POST /api/fleets/register
+ * @desc    Public landing page self-service fleet account registration (unapproved / PENDING)
+ * @access  Public
+ */
+router.post(
+  '/register',
+  validateRequest({ body: registerFleetSchema }),
+  fleetController.registerPublicFleet
+);
 
 router.use(authenticate);
 
@@ -65,6 +77,18 @@ router.post(
   authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']),
   validateRequest({ body: createFleetSchema }),
   fleetController.createFleet
+);
+
+/**
+ * @route   PATCH /api/fleets/:id/approve
+ * @desc    Approve pending fleet registration into active approved fleet
+ * @access  Private
+ */
+router.patch(
+  '/:id/approve',
+  authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']),
+  validateRequest({ params: idParamSchema }),
+  fleetController.approveFleet
 );
 
 /**

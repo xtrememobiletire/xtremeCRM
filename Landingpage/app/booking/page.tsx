@@ -3,6 +3,7 @@
 import React, { Suspense, useState } from "react";
 import PageShell from "@/components/layout/page-shell";
 import BookingModal from "@/components/booking/booking-modal";
+import SpecularButton from "@/components/home/specular-button";
 import { Wrench, ShieldCheck, Clock } from "lucide-react";
 
 function BookingContent() {
@@ -24,13 +25,14 @@ function BookingContent() {
           Schedule scheduled tire installation at your location or request immediate 24/7 roadside emergency dispatch.
         </p>
 
-        <button
-          type="button"
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center justify-center px-8 sm:px-10 py-3.5 sm:py-4 rounded-none bg-[#DC2626] hover:bg-black dark:hover:bg-white dark:hover:text-black text-white font-bold text-sm sm:text-base tracking-wide transition-all duration-300 shadow-md cursor-pointer"
-        >
-          Open 24/7 Booking Calendar
-        </button>
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <SpecularButton
+            label="Open 24/7 Booking Calendar"
+            onClick={() => setIsModalOpen(true)}
+            variant="crimson"
+            className="w-64 sm:w-72"
+          />
+        </div>
 
         {/* Feature Badges */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-14 w-full max-w-3xl text-left">

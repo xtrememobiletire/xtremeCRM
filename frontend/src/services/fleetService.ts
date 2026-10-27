@@ -20,8 +20,18 @@ export interface FleetItem {
   contactName?: string;
   contactPerson?: string;
   phone?: string;
+  altPhone?: string | null;
   email?: string;
   password?: string;
+  poaEmail?: string | null;
+  fleetManager?: string | null;
+  ceoOwnerName?: string | null;
+  billingContactName?: string | null;
+  governingProvince?: string | null;
+  website?: string | null;
+  countryCode?: 'CA' | 'US' | 'UK' | string;
+  status?: 'PENDING' | 'APPROVED' | 'SUSPENDED';
+  contractSignedAt?: string | null;
   paymentTerms: string;
   creditLimitCents?: number;
   outstandingBalanceCents?: number;
@@ -34,6 +44,7 @@ export interface FleetItem {
   latitude?: number | null;
   longitude?: number | null;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface FleetsResponse {
@@ -41,7 +52,13 @@ export interface FleetsResponse {
 }
 
 export const fleetService = {
-  async getFleets(params?: { countryCode?: string }): Promise<FleetsResponse> {
+  async getFleets(params?: {
+    countryCode?: string;
+    status?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<FleetsResponse> {
     const res = await api.get('/fleets', { params });
     const raw = res.data;
     const items = Array.isArray(raw.data) ? raw.data : (Array.isArray(raw) ? raw : []);
@@ -50,6 +67,7 @@ export const fleetService = {
       fleetCode: f.fleetCode || (f.id ? `XMT-${f.id.slice(0, 4).toUpperCase()}` : 'N/A'),
       companyName: f.companyName || f.name || 'Fleet Corp',
       paymentTerms: f.paymentTerms || 'NET_30',
+      status: f.status || 'APPROVED',
     }));
     return { data: normalized };
   },
@@ -62,11 +80,17 @@ export const fleetService = {
       fleetCode: f.fleetCode || (f.id ? `XMT-${f.id.slice(0, 4).toUpperCase()}` : 'N/A'),
       companyName: f.companyName || f.name || 'Fleet Corp',
       paymentTerms: f.paymentTerms || 'NET_30',
+      status: f.status || 'APPROVED',
     };
   },
 
   async createFleet(payload: any): Promise<FleetItem> {
     const res = await api.post('/fleets', payload);
+    return res.data.data;
+  },
+
+  async approveFleet(id: string): Promise<FleetItem> {
+    const res = await api.patch(`/fleets/${id}/approve`);
     return res.data.data;
   },
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { LOGIN_URL } from "@/lib/config";
+import SpecularButton from "@/components/home/specular-button";
 
 // Pool of 6 high-resolution commercial fleet and mobile service pictures
 const FLEET_IMAGES: string[] = [
@@ -70,14 +71,14 @@ function FleetPhotoCard({ config, currentImage }: { config: CardConfig; currentI
     >
       {/* 
         CLEAN PICTURE ONLY (NO CAROUSEL CONTROLS, NO TEXT, NO LABELS)
-        Smooth crossfade transition across 6 commercial fleet images
+        Smooth crossfade transition across 6 professional fleet images
       */}
       <div className="absolute inset-0 w-full h-full bg-zinc-950">
         <AnimatePresence mode="popLayout">
           <motion.img
             key={`${config.id}-${currentImage}`}
             src={currentImage}
-            alt="Commercial Fleet Vehicle"
+            alt="Commercial Fleet Vehicles"
             initial={{ opacity: 0, scale: 1.05 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
@@ -113,9 +114,9 @@ export default function FleetHero() {
       
       {/* ========================================================================
           FLEET HERO HEADER & CALL TO ACTION (Matching Wireframe)
-          - Line 1 (Serif): "Free Your Operations From Roadside Stress."
-          - Line 2 (Bold Sans): "Manage Your Entire Fleet From One Live Portal."
-          - Buttons: "Register Fleet" and "SignIn to Fleet"
+          - Line 1: "Free Your Operations from Roadside Stress"
+          - Line 2: "Manage Your Entire Fleet – We do it all"
+          - Buttons matching Home Hero (Specular Buttons)
           ======================================================================== */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6 sm:space-y-7">
         
@@ -132,38 +133,39 @@ export default function FleetHero() {
           </span>
         </h1>
 
-        {/* Action Buttons matching Wireframe */}
-        <div className="pt-2 flex flex-wrap items-center justify-center gap-4 sm:gap-5">
-          <button
-            type="button"
-            onClick={() => {
-              const target = document.getElementById("create-fleet-account");
-              if (target) {
-                target.scrollIntoView({ behavior: "smooth", block: "start" });
-              }
-            }}
-            className="inline-flex items-center justify-center px-8 sm:px-10 py-3 sm:py-3.5 rounded-none border border-zinc-950 dark:border-white bg-zinc-950 text-white dark:bg-white dark:text-black hover:bg-[#DC2626] dark:hover:bg-[#DC2626] dark:hover:text-white dark:hover:border-[#DC2626] hover:border-[#DC2626] font-medium text-sm sm:text-base tracking-tight transition-all duration-300 shadow-sm active:scale-98 cursor-pointer"
-          >
-            Register Fleet
-          </button>
-          <a
-            href={LOGIN_URL}
-            className="inline-flex items-center justify-center px-8 sm:px-10 py-3 sm:py-3.5 rounded-none border border-zinc-900/80 dark:border-white/80 bg-transparent text-zinc-950 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium text-sm sm:text-base tracking-tight transition-all duration-300 shadow-sm active:scale-98 cursor-pointer"
-          >
-            SignIn to Fleet
-          </a>
+        {/* Action Buttons matching Home Hero (Specular Buttons) */}
+        <div className="pt-2 flex flex-col items-center justify-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <SpecularButton
+              label="Register Fleet"
+              onClick={() => {
+                const target = document.getElementById("create-fleet-account");
+                if (target) {
+                  target.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+              }}
+              variant="crimson"
+            />
+            <SpecularButton
+              label="Sign In to Fleet"
+              href={LOGIN_URL}
+              variant="white"
+            />
+          </div>
+          <span className="text-xs font-semibold tracking-wider uppercase text-zinc-500 dark:text-zinc-400 mt-2">
+            Your Safety — Our Mission
+          </span>
         </div>
 
       </div>
 
 
       {/* ========================================================================
-          THREE FANNED CARDS (CLEAN COMMERCIAL FLEET PICTURES ONLY)
-          - Reduced height for clean proportion (matches services hero)
+          THREE FANNED CARDS (CLEAN PICTURES ONLY)
+          - Reduced height for clean proportion
           - Initial landing shows top ~half height of the cards
           - Scrolling reveals the full height of the cards
-          - Rotates through 6 authentic commercial fleet pictures
-          - Zero "Card 1, 2, 3" labels (pure clean photography)
+          - Rotates through 6 authentic fleet pictures cleanly
           ======================================================================== */}
       <div className="relative w-full flex items-start justify-center mt-10 sm:mt-14 pb-24 sm:pb-36 lg:pb-44 px-2 sm:px-4 overflow-visible">
         <div className="relative flex items-start justify-center w-full max-w-[1440px] select-none">
