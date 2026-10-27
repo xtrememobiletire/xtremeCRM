@@ -37,19 +37,13 @@ export default function PageShell({ children, onLogoClick, hideNav: externalHide
       const formRect = formEl.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
 
-      // Check if user is actively focused inside the form
+      // Check if user is actively focused inside the form on mobile screens
       const isInputFocused = formEl.contains(document.activeElement);
+      const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
-      // ONLY hide navbar when the user is ACTUALLY viewing the form:
-      // 1. Top of form has reached the active viewport area (within 280px of container top)
-      // 2. AND bottom of form is still visible in the viewport (has NOT scrolled off into the footer)
-      // 3. AND top of form is within container bounds (has NOT scrolled below screen)
-      const isFormActive =
-        formRect.top <= containerRect.top + 280 &&
-        formRect.bottom >= containerRect.top + 100 &&
-        formRect.top < containerRect.bottom - 100;
-
-      if (isInputFocused || isFormActive) {
+      // On desktop & laptop viewports, the navbar stays permanently visible.
+      // On mobile screens (<768px), hide only when virtual keyboard is active during input focus.
+      if (isMobile && isInputFocused) {
         setInternalHideNav(true);
       } else {
         setInternalHideNav(false);

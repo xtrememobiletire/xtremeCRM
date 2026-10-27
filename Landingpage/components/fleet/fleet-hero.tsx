@@ -31,7 +31,7 @@ const CARDS_CONFIG: CardConfig[] = [
     id: "card-left",
     initialIndex: 0,
     rotation: "-rotate-3 sm:-rotate-5 md:-rotate-[6deg]",
-    marginClass: "-mr-6 sm:-mr-10 md:-mr-14 lg:-mr-16",
+    marginClass: "-mr-4 sm:-mr-8 lg:-mr-12",
     originClass: "origin-bottom-right",
     zIndex: "z-10",
     isMiddle: false,
@@ -40,8 +40,8 @@ const CARDS_CONFIG: CardConfig[] = [
     id: "card-middle",
     initialIndex: 1,
     rotation: "rotate-0",
-    marginClass: "z-20",
-    originClass: "origin-center",
+    marginClass: "mx-0",
+    originClass: "origin-bottom",
     zIndex: "z-20",
     isMiddle: true,
   },
@@ -49,7 +49,7 @@ const CARDS_CONFIG: CardConfig[] = [
     id: "card-right",
     initialIndex: 2,
     rotation: "rotate-3 sm:rotate-5 md:rotate-[6deg]",
-    marginClass: "-ml-6 sm:-ml-10 md:-ml-14 lg:-ml-16",
+    marginClass: "-ml-4 sm:-ml-8 lg:-ml-12",
     originClass: "origin-bottom-left",
     zIndex: "z-10",
     isMiddle: false,
@@ -62,8 +62,8 @@ function FleetPhotoCard({ config, currentImage }: { config: CardConfig; currentI
       className={`relative ${config.zIndex} ${config.marginClass} ${config.rotation} ${config.originClass}
         ${
           config.isMiddle
-            ? "w-[290px] sm:w-[350px] md:w-[400px] lg:w-[450px] h-[450px] sm:h-[510px] md:h-[550px] lg:h-[590px]"
-            : "w-[270px] sm:w-[330px] md:w-[370px] lg:w-[410px] h-[430px] sm:h-[490px] md:h-[530px] lg:h-[560px]"
+            ? "w-[42vw] sm:w-[36vw] lg:w-[32vw] max-w-[430px] aspect-[3/4]"
+            : "w-[38vw] sm:w-[33vw] lg:w-[29vw] max-w-[390px] aspect-[3/4]"
         }
         rounded-none bg-zinc-950 border border-black/20 dark:border-white/15 
         transition-all duration-500 ease-out 
@@ -162,7 +162,7 @@ export default function FleetHero() {
 
       {/* ========================================================================
           THREE FANNED CARDS (CLEAN PICTURES ONLY)
-          - Reduced height for clean proportion
+          - Responsive aspect-[3/4] & fluid widths
           - Initial landing shows top ~half height of the cards
           - Scrolling reveals the full height of the cards
           - Rotates through 6 authentic fleet pictures cleanly

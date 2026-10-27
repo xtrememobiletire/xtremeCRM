@@ -645,7 +645,7 @@ export default function FleetDashboard() {
         </header>
 
         {/* MAIN BODY AREA */}
-        <main className={`flex-1 p-4 sm:p-6 lg:p-8 ${activeTab === 'request' ? 'overflow-y-auto lg:overflow-hidden flex flex-col min-h-0' : 'overflow-y-auto'}`}>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
           {fleet?.status === 'PENDING' && (
             <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 flex items-start gap-3 shadow-xs">
               <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -1087,7 +1087,7 @@ export default function FleetDashboard() {
                   {/* LEFT COLUMN: Header Banner + Unified Form (Scrollable on desktop) */}
                   <div 
                     ref={leftFormScrollRef}
-                    className="lg:col-span-7 xl:col-span-8 lg:h-full lg:overflow-y-auto lg:pr-3 space-y-6 pb-12"
+                    className="lg:col-span-7 xl:col-span-8 space-y-6 pb-12"
                   >
                     {/* Header Banner */}
                     <div className="pb-2 border-b border-slate-200">
@@ -1434,7 +1434,7 @@ export default function FleetDashboard() {
                         leftFormScrollRef.current.scrollTop += e.deltaY;
                       }
                     }}
-                    className="lg:col-span-5 xl:col-span-4 space-y-4 lg:sticky lg:top-0 lg:max-h-full lg:overflow-y-auto"
+                    className="lg:col-span-5 xl:col-span-4 space-y-4 xl:sticky xl:top-6"
                   >
                     {/* Fleet Company Pill */}
                     <div className="flex items-center justify-end">

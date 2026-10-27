@@ -185,18 +185,37 @@
   }
   html,
   body {
-    @apply font-sans;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
+    @apply font-sans bg-background text-foreground;
   }
-  body {
-    @apply bg-background text-foreground;
+
+  /* Thin elegant custom scrollbar for desktop scroll containers & modals */
+  @media (min-width: 768px) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.35);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(156, 163, 175, 0.6);
+    }
   }
-  /* Hide scrollbars for Chrome, Safari and Opera */
-  ::-webkit-scrollbar {
-    display: none;
-    width: 0px;
-    height: 0px;
+
+  @media (max-width: 767px) {
+    ::-webkit-scrollbar {
+      display: none;
+      width: 0px;
+      height: 0px;
+    }
   }
 }
 

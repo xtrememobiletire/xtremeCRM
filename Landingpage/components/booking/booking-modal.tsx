@@ -459,7 +459,7 @@ export default function BookingModal({
 
   return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto">
         {/* Full-Screen Backdrop: Sits in front of the navbar (z-[9999]) and blurs the navbar and page behind it */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -475,10 +475,10 @@ export default function BookingModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 12 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="relative w-full max-w-4xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-none shadow-2xl overflow-hidden z-10 flex flex-col max-h-[92vh]"
+          className="relative w-full max-w-4xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-none shadow-2xl overflow-hidden z-10 flex flex-col max-h-[94dvh]"
         >
           {/* Top Bar matching Taylor Tire: Brand Logo, Back/Step Title, Progress Dots, Close */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
             <div className="flex items-center gap-4">
               <span className="font-black italic tracking-tighter text-lg sm:text-xl text-zinc-950 dark:text-white">
                 XTREME <span className="text-[#DC2626]">MOBILE TIRE</span>
@@ -538,7 +538,7 @@ export default function BookingModal({
           </div>
 
           {/* Modal Scrollable Body */}
-          <div className="flex-1 overflow-y-auto p-5 sm:p-8">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 sm:p-7">
             {/* =========================================================================
                 STEP 1: SELECT A TIME & DATE (TAYLOR TIRE CALENDAR LAYOUT)
                 ========================================================================= */}

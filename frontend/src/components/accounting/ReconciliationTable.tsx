@@ -66,7 +66,7 @@ export default function ReconciliationTable({
             <th className="table-th text-right">Direct Costs (COGS)</th>
             <th className="table-th text-right">Net Profit</th>
             <th className="table-th text-right">Gross Margin %</th>
-            <th className="table-th text-center">Action</th>
+            <th className="table-th text-center sticky right-0 bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">Action</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -199,7 +199,7 @@ export default function ReconciliationTable({
                   </span>
                 </td>
 
-                <td className="table-td text-center">
+                <td className="table-td text-center sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">
                   <button
                     type="button"
                     onClick={(e) => {

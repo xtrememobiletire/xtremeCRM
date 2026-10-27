@@ -334,7 +334,7 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
       <form 
         ref={formRef} 
         onSubmit={handleSubmit} 
-        className="space-y-5 max-h-[80vh] overflow-y-auto px-1 pr-2"
+        className="space-y-5 px-1 pr-2"
       >
         {/* Step 1: Regional Silo Country Selector */}
         <CountrySiloSelector
@@ -547,13 +547,13 @@ export default function CreateRoadsideJobModal({ isOpen, onClose, prefillPhone =
 
         {/* Step 8: Tire Specification */}
         <div>
-          <div className="flex items-center justify-between mb-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
             <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
               <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">8</span>
               <Wrench className="w-3.5 h-3.5 text-slate-400" />
               <span>Tire Size / Specification</span>
             </label>
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               {COMMON_TIRE_SIZES.map((sz) => (
                 <button
                   key={sz}

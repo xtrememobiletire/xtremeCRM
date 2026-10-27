@@ -56,8 +56,8 @@ export default function Dashboard() {
 
       <DashboardKpiGrid isLoading={isLoading} jobs={jobs} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2 space-y-4">
           <Card
             title="Recent Jobs"
             icon={Wrench}

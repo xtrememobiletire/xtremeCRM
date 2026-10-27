@@ -345,7 +345,7 @@ export default function Bookings() {
                   <th className="table-th w-[220px]">Customer & Contact</th>
                   <th className="table-th w-[200px]">Vehicle & Tire</th>
                   <th className="table-th">Service Location</th>
-                  <th className="table-th text-right w-[190px]">Triage Action</th>
+                  <th className="table-th text-right w-[190px] sticky right-0 bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">Triage Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -508,7 +508,7 @@ export default function Bookings() {
                       </td>
 
                       {/* 6. Triage Action */}
-                      <td className="table-td align-top text-right">
+                      <td className="table-td align-top text-right sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"

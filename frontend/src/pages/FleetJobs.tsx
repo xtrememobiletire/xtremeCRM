@@ -359,7 +359,7 @@ export default function FleetJobs() {
                   <th className="py-3 px-4">Service Location</th>
                   <th className="py-3 px-4">Technician</th>
                   <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-3 px-4 text-right sticky right-0 bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -473,7 +473,7 @@ export default function FleetJobs() {
                       <td className="py-3.5 px-4">
                         <StatusBadge status={job.status} />
                       </td>
-                      <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
+                      <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">
                         {!job.driverId && (job.status === 'PENDING' || job.status === 'UNVERIFIED_PUBLIC') && (
                           <button
                             type="button"

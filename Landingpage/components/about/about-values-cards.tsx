@@ -82,11 +82,12 @@ export default function AboutValuesCards() {
       {/* 
         ========================================================================
         3-CARD FULL-BLEED VALUES GRID:
+        - Responsive: 1 col mobile, 2 col tablet/medium laptop, 3 col desktop
         - Default state: Picture covers 100% of card length
         - Hover/Click state: Picture slides down to bottom, Information appears on top
         ========================================================================
       */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 items-stretch">
         {VALUES_ITEMS.map((item) => {
           const isActive = hoveredCard === item.id || clickedCard === item.id;
 
@@ -114,7 +115,7 @@ export default function AboutValuesCards() {
               <div
                 className={`w-full overflow-hidden transition-all duration-500 ease-in-out shrink-0 bg-zinc-950 flex flex-col justify-between ${
                   isActive
-                    ? "h-[240px] sm:h-[250px] opacity-100 p-6 border-b border-white/15"
+                    ? "min-h-[220px] h-auto opacity-100 p-4 sm:p-5 border-b border-white/15"
                     : "h-0 opacity-0 p-0 border-b-0 pointer-events-none"
                 }`}
               >
@@ -139,7 +140,7 @@ export default function AboutValuesCards() {
                 </div>
 
                 {/* Bottom Row of Information View */}
-                <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+                <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
                   <span className="text-[11px] text-zinc-400 font-mono">
                     {item.hoverBarText}
                   </span>

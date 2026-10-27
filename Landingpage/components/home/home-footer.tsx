@@ -30,12 +30,12 @@ export default function HomeFooter({
         {/* ======================================================== */}
         {/* 3-COLUMN WIREFRAME BOXED CONTAINER                       */}
         {/* ======================================================== */}
-        <div className="border border-white/10 rounded-2xl bg-[#0c0c0e]/95 backdrop-blur-md shadow-2xl grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-white/10 overflow-hidden">
+        <div className="border border-white/10 rounded-2xl bg-[#0c0c0e]/95 backdrop-blur-md shadow-2xl grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-white/10 overflow-hidden">
           
           {/* ======================================================== */}
           {/* COLUMN 1 (LEFT): Logo, Simple Quote & 4 Social Links     */}
           {/* ======================================================== */}
-          <div className="md:col-span-5 p-7 sm:p-9 lg:p-10 flex flex-col justify-between space-y-8">
+          <div className="lg:col-span-5 p-7 sm:p-9 lg:p-10 flex flex-col justify-between space-y-8">
             <div className="space-y-5">
               {/* Logo in sleek dark bordered box - links to home page */}
               <Link
@@ -124,7 +124,7 @@ export default function HomeFooter({
           {/* ======================================================== */}
           {/* COLUMN 2 (MIDDLE): Quick Links (4 selected links)        */}
           {/* ======================================================== */}
-          <div className="md:col-span-3 p-7 sm:p-9 lg:p-10 flex flex-col justify-start">
+          <div className="lg:col-span-3 p-7 sm:p-9 lg:p-10 flex flex-col justify-start">
             <div className="mb-6">
               <h3 className="font-sans text-base sm:text-lg font-bold tracking-tight text-white uppercase">
                 Quick Links
@@ -176,7 +176,7 @@ export default function HomeFooter({
           {/* COLUMN 3 (RIGHT): LOCATION & CONTACT                     */}
           {/* (Embedded country cards with address & B&W icon only)    */}
           {/* ======================================================== */}
-          <div className="md:col-span-4 p-6 sm:p-8 lg:p-9 flex flex-col justify-start">
+          <div className="lg:col-span-4 p-6 sm:p-8 lg:p-9 flex flex-col justify-start">
             <div className="mb-5">
               <h3 className="font-sans text-base sm:text-lg font-bold uppercase tracking-wider text-white">
                 LOCATION &amp; CONTACT
@@ -195,12 +195,12 @@ export default function HomeFooter({
                   <p className="text-xs text-zinc-300 group-hover:text-black leading-snug font-sans transition-colors">
                     11815 Medway Church Loop, Manassas, VA 20109
                   </p>
-                  <div className="pt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-zinc-400 group-hover:text-black font-sans transition-colors">
+                  <div className="pt-1 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-x-2 gap-y-1 text-[11px] text-zinc-400 group-hover:text-black font-sans transition-colors">
                     <a href="tel:8043265442" className="hover:underline text-zinc-300 group-hover:text-black transition-colors">
                       (804) 326-5442
                     </a>
-                    <span>•</span>
-                    <a href="mailto:Info@Xtrememobiletire.com" className="hover:underline text-zinc-300 group-hover:text-black transition-colors truncate">
+                    <span className="hidden sm:inline">•</span>
+                    <a href="mailto:Info@Xtrememobiletire.com" className="hover:underline text-zinc-300 group-hover:text-black transition-colors break-all sm:break-normal">
                       Info@Xtrememobiletire.com
                     </a>
                   </div>
@@ -221,12 +221,12 @@ export default function HomeFooter({
                   <p className="text-xs text-zinc-300 group-hover:text-black leading-snug font-sans transition-colors">
                     857 Winterton Way, Mississauga, ON L5V 1Z5, Canada
                   </p>
-                  <div className="pt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-zinc-400 group-hover:text-black font-sans transition-colors">
+                  <div className="pt-1 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-x-2 gap-y-1 text-[11px] text-zinc-400 group-hover:text-black font-sans transition-colors">
                     <a href="tel:4373755674" className="hover:underline text-zinc-300 group-hover:text-black transition-colors">
                       (437) 375-5674
                     </a>
-                    <span>•</span>
-                    <a href="mailto:Info@Xtrememobiletire.com" className="hover:underline text-zinc-300 group-hover:text-black transition-colors truncate">
+                    <span className="hidden sm:inline">•</span>
+                    <a href="mailto:Info@Xtrememobiletire.com" className="hover:underline text-zinc-300 group-hover:text-black transition-colors break-all sm:break-normal">
                       Info@Xtrememobiletire.com
                     </a>
                   </div>

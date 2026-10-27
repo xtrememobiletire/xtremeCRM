@@ -904,7 +904,7 @@ export default function Leads() {
                       <th className="py-3 px-4">Contact Person</th>
                       <th className="py-3 px-4">Phone & Emails</th>
                       <th className="py-3 px-4">Priority & Ingested</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
+                      <th className="py-3 px-4 text-right sticky right-0 bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">Actions</th>
                     </>
                   ) : activeTab === 'assigned' ? (
                     <>
@@ -913,7 +913,7 @@ export default function Leads() {
                       <th className="py-3 px-4">Phone & Emails</th>
                       <th className="py-3 px-4">Assigned VA / Caller</th>
                       <th className="py-3 px-4">Outreach Outcome</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
+                      <th className="py-3 px-4 text-right sticky right-0 bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">Actions</th>
                     </>
                   ) : activeTab === 'callbacks' ? (
                     <>
@@ -923,7 +923,7 @@ export default function Leads() {
                       <th className="py-3 px-4">Scheduled Callback (Dual Time)</th>
                       <th className="py-3 px-4">Scheduled By</th>
                       <th className="py-3 px-4">Assigned Agent</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
+                      <th className="py-3 px-4 text-right sticky right-0 bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">Actions</th>
                     </>
                   ) : activeTab === 'dispatcher' ? (
                     <>
@@ -932,7 +932,7 @@ export default function Leads() {
                       <th className="py-3 px-4">Trial Work Order</th>
                       <th className="py-3 px-4">Dispatcher Feasibility Notes</th>
                       <th className="py-3 px-4">Assigned Staff</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
+                      <th className="py-3 px-4 text-right sticky right-0 bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">Actions</th>
                     </>
                   ) : activeTab === 'approval' ? (
                     <>
@@ -941,7 +941,7 @@ export default function Leads() {
                       <th className="py-3 px-4">Trial Verification Proof</th>
                       <th className="py-3 px-4">Tires & Unit Details</th>
                       <th className="py-3 px-4">Onboarding Status</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
+                      <th className="py-3 px-4 text-right sticky right-0 bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">Actions</th>
                     </>
                   ) : activeTab === 'converted' ? (
                     <>
@@ -950,7 +950,7 @@ export default function Leads() {
                       <th className="py-3 px-4">Contact & Leadership</th>
                       <th className="py-3 px-4">Phone & Emails</th>
                       <th className="py-3 px-4">Conversion Date</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
+                      <th className="py-3 px-4 text-right sticky right-0 bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">Actions</th>
                     </>
                   ) : activeTab === 'disqualified' ? (
                     <>
@@ -958,7 +958,7 @@ export default function Leads() {
                       <th className="py-3 px-4">Contact & Phone</th>
                       <th className="py-3 px-4">Disqualification Reason</th>
                       <th className="py-3 px-4">Audit Notes & Date</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
+                      <th className="py-3 px-4 text-right sticky right-0 bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">Actions</th>
                     </>
                   ) : (
                     <>
@@ -968,7 +968,7 @@ export default function Leads() {
                       <th className="py-3 px-4">Assignment Status</th>
                       <th className="py-3 px-4">Pipeline Stage & Outcome</th>
                       <th className="py-3 px-4">Campaign Batch & Ingested</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
+                      <th className="py-3 px-4 text-right sticky right-0 bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">Actions</th>
                     </>
                   )}
                 </tr>
@@ -1125,7 +1125,7 @@ export default function Leads() {
                         </td>
 
                         {/* 7. Actions */}
-                        <td className="py-3.5 px-4 text-right">
+                        <td className="py-3.5 px-4 text-right sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
@@ -1263,7 +1263,7 @@ export default function Leads() {
                           <div className="text-[10px] text-emerald-700 font-semibold mt-1">Ready for VA</div>
                         </td>
 
-                        <td className="py-3.5 px-4 text-right">
+                        <td className="py-3.5 px-4 text-right sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
@@ -1358,7 +1358,7 @@ export default function Leads() {
                           </div>
                         </td>
 
-                        <td className="py-3.5 px-4 text-right">
+                        <td className="py-3.5 px-4 text-right sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
@@ -1521,7 +1521,7 @@ export default function Leads() {
                           )}
                         </td>
 
-                        <td className="py-3.5 px-4 text-right">
+                        <td className="py-3.5 px-4 text-right sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
@@ -1683,7 +1683,7 @@ export default function Leads() {
                           </div>
                         </td>
 
-                        <td className="py-3.5 px-4 text-right">
+                        <td className="py-3.5 px-4 text-right sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">
                           <div className="flex items-center justify-end gap-1.5 flex-wrap">
                             <button
                               type="button"
@@ -1821,7 +1821,7 @@ export default function Leads() {
                           </span>
                         </td>
 
-                        <td className="py-3.5 px-4 text-right">
+                        <td className="py-3.5 px-4 text-right sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">
                           <div className="flex items-center justify-end gap-1.5">
                             {canPerformPipelineAction(user?.role, 'CONVERT_FLEET') && (
                               <button
@@ -1914,7 +1914,7 @@ export default function Leads() {
                           </div>
                         </td>
 
-                        <td className="py-3.5 px-4 text-right">
+                        <td className="py-3.5 px-4 text-right sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">
                           <button
                             type="button"
                             onClick={() => reactivateMutation.mutate(lead.id)}
@@ -1976,7 +1976,7 @@ export default function Leads() {
                           <div className="text-[10px] text-slate-400">Won Agreement</div>
                         </td>
 
-                        <td className="py-3.5 px-4 text-right">
+                        <td className="py-3.5 px-4 text-right sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">
                           <a
                             href={`/fleets?search=${encodeURIComponent(lead.resultingFleet?.fleetCode || lead.companyName)}`}
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[10px] transition"
@@ -2094,7 +2094,7 @@ export default function Leads() {
                       </td>
 
                       {/* Column 6: Actions */}
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3.5 px-4 text-right sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"

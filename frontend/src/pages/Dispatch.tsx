@@ -198,12 +198,13 @@ export default function Dispatch() {
               jobs={filteredJobs}
               selectedJobId={selectedJob?.id}
               onSelectJob={(j) => setSelectedJob(j)}
-              height="620px"
+              height="calc(100dvh - 230px)"
+              className="h-[calc(100dvh-230px)] min-h-[440px] max-h-[680px]"
             />
           </div>
 
           {/* Job Dispatch Feed & Search (lg: 4 cols) */}
-          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-2xs flex flex-col h-[620px] overflow-hidden">
+          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-2xs flex flex-col h-[calc(100dvh-230px)] min-h-[440px] max-h-[680px] overflow-hidden">
             {/* Search and Filters Header */}
             <div className="p-3.5 border-b border-slate-100 space-y-2.5">
               <div className="relative">

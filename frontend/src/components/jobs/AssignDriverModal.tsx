@@ -331,7 +331,7 @@ export default function AssignDriverModal({ isOpen, onClose, job }: AssignDriver
       )}
 
       {/* 2-Column Balanced Dispatch Layout: Map Canvas + Drivers Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[560px]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-auto lg:h-[min(560px,calc(85dvh-110px))] min-h-[420px]">
         {/* Left: Mapbox Canvas (lg: 6 cols - 50%) */}
         <div className="lg:col-span-6 relative h-64 lg:h-full rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner">
           <div ref={containerRef} className="w-full h-full" />

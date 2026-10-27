@@ -250,13 +250,10 @@ export default function AboutContactLocations() {
 
               {/* 
                 DYNAMIC ACTIVE COUNTRY ADDRESS & CONTACT DETAILS:
-                - Fixed height container so card height never changes
-                - Exactly 2 lines for address (line1 and line2)
-                - Exactly 1 line for phone number
-                - Exactly 1 line for email with underline
-                - Zero layout shift: UK, US, and Canada occupy the identical height
+                - Responsive min-height container so address and email wrap naturally without truncation
+                - Clean layout without clipping long street names
               */}
-              <div className="relative h-[150px] sm:h-[160px] w-full flex items-start overflow-hidden">
+              <div className="relative min-h-[150px] sm:min-h-[160px] h-auto w-full flex items-start">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={current.id}
@@ -266,14 +263,14 @@ export default function AboutContactLocations() {
                     transition={{ duration: 0.2, ease: "easeOut" }}
                     className="space-y-2.5 sm:space-y-3 w-full"
                   >
-                    {/* Address in only two lines (Clean, simple, modern sans-serif) */}
+                    {/* Address in clean readable typography */}
                     <div className="text-base sm:text-lg md:text-xl text-zinc-700 dark:text-zinc-300 font-normal leading-snug tracking-tight font-sans">
-                      <p className="truncate">{current.line1}</p>
-                      <p className="truncate">{current.line2}</p>
+                      <p>{current.line1}</p>
+                      <p>{current.line2}</p>
                     </div>
 
                     {/* Phone Number in one line */}
-                    <p className="text-base sm:text-lg md:text-xl text-zinc-900 dark:text-white font-medium tracking-tight truncate font-sans">
+                    <p className="text-base sm:text-lg md:text-xl text-zinc-900 dark:text-white font-medium tracking-tight font-sans">
                       <a
                         href={`tel:${current.phoneRaw}`}
                         className="hover:text-[var(--brand-primary)] dark:hover:text-[var(--brand-primary)] transition-colors inline-flex items-center gap-2"
@@ -284,7 +281,7 @@ export default function AboutContactLocations() {
                     </p>
 
                     {/* Email with continuous underline */}
-                    <p className="text-base sm:text-lg md:text-xl text-zinc-900 dark:text-white font-medium tracking-tight pt-0.5 truncate font-sans">
+                    <p className="text-base sm:text-lg md:text-xl text-zinc-900 dark:text-white font-medium tracking-tight pt-0.5 font-sans break-all sm:break-normal">
                       <a
                         href={`mailto:${current.email}`}
                         className="underline underline-offset-4 decoration-zinc-400 dark:decoration-zinc-600 hover:decoration-[var(--brand-primary)] hover:text-[var(--brand-primary)] dark:hover:text-[var(--brand-primary)] transition-all inline-flex items-center gap-2"

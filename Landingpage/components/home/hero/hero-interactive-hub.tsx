@@ -30,14 +30,14 @@ function HubCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className={`group relative h-[120px] rounded-lg border border-slate-200/90 bg-white p-3 shadow-[0_12px_28px_-5px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,1)] hover:border-[var(--brand-primary)]/50 hover:shadow-xl transition-all duration-300 flex flex-col justify-between ${className}`}
+      className={`group relative h-[120px] rounded-lg border border-slate-200/90 bg-white p-2.5 sm:p-3 shadow-[0_12px_28px_-5px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,1)] hover:border-[var(--brand-primary)]/50 hover:shadow-xl transition-all duration-300 flex flex-col justify-between ${className}`}
     >
       {/* Title & Subtitle */}
       <div className="text-center px-0.5">
         <h4 className="text-xs sm:text-[13px] font-bold text-slate-900 leading-tight tracking-tight">
           {title}
         </h4>
-        <p className="text-[11px] text-slate-500 mt-0.5 font-normal leading-tight">
+        <p className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 font-normal leading-tight">
           {subtitle}
         </p>
       </div>
@@ -71,9 +71,9 @@ export default function HeroInteractiveHub() {
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#ffffff12_1px,transparent_1px),linear-gradient(to_bottom,#ffffff12_1px,transparent_1px)] bg-[size:2rem_2rem]" />
 
         {/* ============================================================== */}
-        {/* DESKTOP 2-TIER HUB ARCHITECTURE                                */}
+        {/* DESKTOP 2-TIER HUB ARCHITECTURE (Percentage coordinates)       */}
         {/* ============================================================== */}
-        <div className="relative h-[580px] hidden lg:block">
+        <div className="relative h-[580px] hidden xl:block">
           {/* Animated Pure White Connecting Circuit Lines Overlay */}
           <CircuitConnectors />
 
@@ -82,7 +82,7 @@ export default function HeroInteractiveHub() {
           {/* ------------------------------------------------------------ */}
 
           {/* 1. TOP-LEFT CARD: 24/7 Rapid Dispatch (Pure White Card) */}
-          <div className="absolute top-6 left-6 w-[215px] z-20">
+          <div className="absolute top-6 left-[2.4%] w-[21.5%] max-w-[215px] z-20">
             <HubCard
               title="24/7 Rapid Dispatch"
               subtitle="Active Fleet Units"
@@ -95,7 +95,7 @@ export default function HeroInteractiveHub() {
           </div>
 
           {/* 2. TOP-CENTER CARD: Commercial Fleet Safety (Pure White Card With 3-Slot Inset Tray) */}
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 w-[380px] sm:w-[400px] z-20">
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 w-[38%] max-w-[400px] z-20">
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -138,7 +138,7 @@ export default function HeroInteractiveHub() {
           </div>
 
           {/* 3. TOP-RIGHT CARD: On-Site Tire Mounting (Pure White Card) */}
-          <div className="absolute top-6 right-6 w-[215px] z-20">
+          <div className="absolute top-6 right-[2.4%] w-[21.5%] max-w-[215px] z-20">
             <HubCard
               title="On-Site Mounting"
               subtitle="Heavy Duty & Van"
@@ -156,7 +156,7 @@ export default function HeroInteractiveHub() {
           {/* ------------------------------------------------------------ */}
 
           {/* 4. BOTTOM-LEFT CARD: Emergency Roadside (Pure White Card) */}
-          <div className="absolute bottom-6 left-6 w-[215px] z-20">
+          <div className="absolute bottom-6 left-[2.4%] w-[21.5%] max-w-[215px] z-20">
             <HubCard
               title="Emergency Roadside"
               subtitle="32 min avg response"
@@ -169,12 +169,12 @@ export default function HeroInteractiveHub() {
           </div>
 
           {/* 5. CENTRAL SHARP RECTANGULAR PC / LAPTOP (Centered Vertically) */}
-          <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 w-[310px] sm:w-[330px] z-20">
+          <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 w-[31%] max-w-[330px] z-20">
             <LaptopMockup />
           </div>
 
           {/* 6. BOTTOM-RIGHT CARD: Fleet Portal Access (Pure White Card) */}
-          <div className="absolute bottom-6 right-6 w-[215px] z-20">
+          <div className="absolute bottom-6 right-[2.4%] w-[21.5%] max-w-[215px] z-20">
             <HubCard
               title="Fleet Portal Access"
               subtitle="Instant B2B Login"
@@ -189,9 +189,9 @@ export default function HeroInteractiveHub() {
         </div>
 
         {/* ============================================================== */}
-        {/* TABLET & MOBILE RESPONSIVE LAYOUT                              */}
+        {/* TABLET & MOBILE RESPONSIVE LAYOUT (Screens < 1280px)            */}
         {/* ============================================================== */}
-        <div className="lg:hidden flex flex-col items-center gap-5">
+        <div className="xl:hidden flex flex-col items-center gap-5">
           {/* Central Sharp PC Laptop */}
           <div className="w-full max-w-[320px]">
             <LaptopMockup />

@@ -99,7 +99,7 @@ export default function Navbar({
           Container Wrapper:
           Consistent sizing and padding across ALL pages and screen sizes.
         */}
-        <div className="w-full lg:max-w-5xl px-0 sm:px-4 lg:px-6 pointer-events-auto">
+        <div className="w-full max-w-[calc(100%-4rem)] lg:max-w-4xl xl:max-w-5xl px-0 sm:px-4 lg:px-6 pointer-events-auto">
           {/* 
             NAVBAR ASSEMBLY (Moves as ONE unified piece):
             Contains the Left Wing, the Right Wing, and the Curved Nav Body.

@@ -62,10 +62,10 @@ export default function JobFilters({
           completedLabel="Completed"
         />
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-wrap items-center gap-2 w-full sm:w-auto">
           {/* Job Type / Category Dropdown */}
           {onJobCategoryChange && (
-            <div className="min-w-[150px]">
+            <div className="w-full sm:w-auto min-w-0 sm:min-w-[140px]">
               <select
                 value={jobCategory}
                 onChange={(e) => onJobCategoryChange(e.target.value)}
@@ -79,7 +79,7 @@ export default function JobFilters({
           )}
 
           {/* Status Dropdown */}
-          <div className="flex items-center gap-1.5 min-w-[170px]">
+          <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0 sm:min-w-[160px]">
             <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0 hidden sm:block" />
             <select
               value={isCompletedTab ? 'COMPLETED' : status}
@@ -107,7 +107,7 @@ export default function JobFilters({
           </div>
 
           {/* Urgency Dropdown */}
-          <div className="min-w-[130px]">
+          <div className="w-full sm:w-auto min-w-0 sm:min-w-[130px]">
             <select
               value={urgency}
               onChange={(e) => onUrgencyChange(e.target.value)}

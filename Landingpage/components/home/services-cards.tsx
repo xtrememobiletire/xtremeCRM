@@ -97,8 +97,8 @@ export default function ServicesCards() {
         </h2>
       </div>
 
-      {/* 3-Card Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+      {/* 3-Card Grid: 1 col on mobile, 2 cols on tablet/medium laptops, 3 cols on large desktop */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 items-stretch">
         {SERVICE_ITEMS.map((item) => {
           const isActive = hoveredCard === item.id || clickedCard === item.id;
 
@@ -126,7 +126,7 @@ export default function ServicesCards() {
               <div
                 className={`w-full overflow-hidden transition-all duration-500 ease-in-out shrink-0 bg-zinc-950 flex flex-col justify-between ${
                   isActive
-                    ? "h-[240px] sm:h-[250px] opacity-100 p-6 border-b border-white/15"
+                    ? "min-h-[220px] h-auto opacity-100 p-4 sm:p-5 border-b border-white/15"
                     : "h-0 opacity-0 p-0 border-b-0 pointer-events-none"
                 }`}
               >
@@ -143,7 +143,7 @@ export default function ServicesCards() {
                 </div>
 
                 {/* Bottom Row: Direct Action CTA */}
-                <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+                <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
                   <span className="text-[11px] text-zinc-400 font-mono">
                     {item.status}
                   </span>

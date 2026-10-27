@@ -85,7 +85,7 @@ export default function CircuitConnectors() {
 
   return (
     <svg
-      className="hidden lg:block absolute inset-0 w-full h-full pointer-events-none z-10"
+      className="hidden xl:block absolute inset-0 w-full h-full pointer-events-none z-10"
       viewBox="0 0 1000 580"
       preserveAspectRatio="none"
       fill="none"

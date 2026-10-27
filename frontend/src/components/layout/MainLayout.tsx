@@ -29,7 +29,13 @@ export default function MainLayout() {
   const { isAgentActive, setAgentMode, country, agentMode } = useTenant();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
-    return typeof window !== 'undefined' ? localStorage.getItem('xtreme_sidebar_collapsed') === 'true' : false;
+    if (typeof window === 'undefined') return false;
+    const stored = localStorage.getItem('xtreme_sidebar_collapsed');
+    if (stored !== null) {
+      return stored === 'true';
+    }
+    // Auto-collapse on small laptops and viewports (< 1280px) to maximize table & map workspace
+    return window.innerWidth < 1280;
   });
   const lastEmittedPresenceRef = useRef<{
     socketId?: string;

@@ -98,10 +98,10 @@ export default function HeroSection({
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60" />
         </div>
 
-        {/* Foreground Content: Vertically centered in the middle of the screen (on phone and desktop) */}
-        <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center justify-center my-auto pt-28 sm:pt-36 lg:pt-40 pb-16 sm:pb-24">
+        {/* Foreground Content: Vertically centered, z-20 above diffuser */}
+        <div className="relative z-20 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center justify-center my-auto pt-24 sm:pt-28 lg:pt-32 pb-16 sm:pb-20">
           {/* Main Title: 3 words + Anytime. Anywhere. */}
-          <h1 className="mt-0 text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white mb-4 leading-[1.08] max-w-4xl drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]">
+          <h1 className="mt-0 text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tight text-white mb-3 sm:mb-4 leading-[1.08] max-w-4xl drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]">
             {titleLine1} <br />
             <span className="font-serif italic font-normal text-[#DC2626] drop-shadow-[0_2px_16px_rgba(220,38,38,0.5)]">
               {titleItalic}
@@ -109,7 +109,7 @@ export default function HeroSection({
           </h1>
 
           {/* Subheading */}
-          <p className="max-w-xl sm:max-w-2xl mx-auto text-base sm:text-lg text-zinc-100 mb-6 sm:mb-7 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
+          <p className="max-w-xl sm:max-w-2xl mx-auto text-base sm:text-lg text-zinc-100 mb-5 sm:mb-6 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
             {description}
           </p>
 
@@ -137,7 +137,7 @@ export default function HeroSection({
         {/* Soft Blurred Gradient Border Diffuser between Hero and Interactive Hub */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute bottom-0 left-0 right-0 h-20 sm:h-28 z-20 backdrop-blur-md bg-gradient-to-b from-transparent via-black/40 to-[var(--neutral-light)]"
+          className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 sm:h-16 z-10 backdrop-blur-md bg-gradient-to-b from-transparent via-black/40 to-[var(--neutral-light)]"
         />
       </section>
 

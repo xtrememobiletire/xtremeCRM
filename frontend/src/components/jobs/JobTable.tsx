@@ -47,7 +47,7 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver, onInvoiceCli
             <th className="table-th">Status</th>
             <th className="table-th">Urgency</th>
             <th className="table-th text-right">Total</th>
-            <th className="table-th text-center">Action</th>
+            <th className="table-th text-center sticky right-0 bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">Action</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -316,7 +316,7 @@ export default function JobTable({ jobs, onViewJob, onAssignDriver, onInvoiceCli
                   formatCurrency(centsToDollars(job.totalAmount), currencySymbol)
                 )}
               </td>
-              <td className="table-td text-center whitespace-nowrap">
+              <td className="table-td text-center whitespace-nowrap sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)] z-10">
                 <div className="flex items-center justify-center gap-1">
                   <button
                     type="button"
