@@ -235,15 +235,15 @@ export default function FleetCreateAccount() {
     <section
       id="create-fleet-account"
       data-hide-navbar="true"
-      className="w-full pt-8 sm:pt-12 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
+      className="w-full pt-6 xs:pt-8 sm:pt-12 pb-10 sm:pb-16 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
     >
       {/* Outer Luxury Automotive Container */}
       <div className="relative border border-zinc-800/80 bg-zinc-950 rounded-2xl overflow-hidden shadow-2xl">
-        <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[580px] lg:min-h-[640px]">
+        <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[500px] xs:min-h-[580px] lg:min-h-[640px]">
           {/* ========================================================================
               LEFT COLUMN: High-Resolution Sports Car Background with Centered Title
               ======================================================================== */}
-          <div className="lg:col-span-5 xl:col-span-6 relative min-h-[380px] sm:min-h-[440px] lg:min-h-full flex items-center justify-center p-6 sm:p-10 text-center overflow-hidden">
+          <div className="lg:col-span-5 xl:col-span-6 relative min-h-[260px] xs:min-h-[340px] sm:min-h-[440px] lg:min-h-full flex items-center justify-center p-4 xs:p-6 sm:p-10 text-center overflow-hidden">
             {/* High-Resolution Performance Sports Car Photo */}
             <img
               src="https://res.cloudinary.com/ebjikx52/image/upload/v1792773487/xtreme/landing/fleet-black-sports-car_jpg.jpg"
@@ -256,7 +256,7 @@ export default function FleetCreateAccount() {
 
             {/* Centered Heading in the exact middle of the picture */}
             <div className="relative z-10 w-full max-w-lg mx-auto text-center px-4 flex flex-col items-center justify-center">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-[46px] font-extrabold uppercase tracking-tight text-white font-sans drop-shadow-[0_4px_32px_rgba(0,0,0,0.95)] leading-[1.12]">
+              <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-[46px] font-extrabold uppercase tracking-tight text-white font-sans drop-shadow-[0_4px_32px_rgba(0,0,0,0.95)] leading-[1.12]">
                 Create Your
                 <br />
                 Fleet Account
@@ -267,17 +267,17 @@ export default function FleetCreateAccount() {
           {/* ========================================================================
               RIGHT COLUMN: High-End Obsidian Dark Glass Interactive Onboarding Form
               ======================================================================== */}
-          <div className="lg:col-span-7 xl:col-span-6 p-6 sm:p-10 lg:p-12 flex items-center justify-center bg-black/95 backdrop-blur-2xl border-t lg:border-t-0 lg:border-l border-white/10">
+          <div className="lg:col-span-7 xl:col-span-6 p-4 xs:p-6 sm:p-10 lg:p-12 flex items-center justify-center bg-black/95 backdrop-blur-2xl border-t lg:border-t-0 lg:border-l border-white/10">
             <div className="w-full max-w-xl">
               {!isSubmitted ? (
                 <div>
                   {/* ==================================================================
                       STEP PROGRESS INDICATOR (Sleek Connected Step Rings)
                       ================================================================== */}
-                  <div className="relative mb-8 sm:mb-10">
+                  <div className="relative mb-6 sm:mb-10">
                     <div className="flex items-center justify-between relative">
                       {/* Background Connector Bar */}
-                      <div className="absolute top-5 left-5 right-5 h-[2px] bg-zinc-800 z-0">
+                      <div className="absolute top-4 xs:top-5 left-4 xs:left-5 right-4 xs:right-5 h-[2px] bg-zinc-800 z-0">
                         {/* Glowing Active Fill */}
                         <div
                           className="h-full bg-gradient-to-r from-red-600 via-rose-600 to-red-500 transition-all duration-300 shadow-[0_0_12px_rgba(220,38,38,0.6)]"
@@ -302,7 +302,7 @@ export default function FleetCreateAccount() {
                               type="button"
                               onClick={() => handleStepClick(step.id)}
                               disabled={isUpcoming}
-                              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center font-mono text-xs sm:text-sm transition-all duration-300 ${
+                              className={`w-8 h-8 xs:w-10 xs:h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center font-mono text-[11px] xs:text-xs sm:text-sm transition-all duration-300 ${
                                 isCompleted
                                   ? "bg-zinc-800 text-white border border-zinc-700 shadow-md cursor-pointer hover:border-red-500 hover:text-red-400"
                                   : isCurrent
@@ -312,7 +312,7 @@ export default function FleetCreateAccount() {
                               title={step.label}
                             >
                               {isCompleted ? (
-                                <Check className="w-4 h-4 stroke-[2.5]" />
+                                <Check className="w-3.5 h-3.5 xs:w-4 xs:h-4 stroke-[2.5]" />
                               ) : (
                                 <span>{step.id}</span>
                               )}
@@ -320,7 +320,7 @@ export default function FleetCreateAccount() {
 
                             {/* Step Title Label */}
                             <span
-                              className={`mt-2 text-[10px] sm:text-xs font-mono uppercase tracking-wider transition-colors ${
+                              className={`mt-1.5 xs:mt-2 text-[9px] xs:text-[10px] sm:text-xs font-mono uppercase tracking-wider transition-colors ${
                                 isCurrent
                                   ? "text-red-500 font-bold"
                                   : isCompleted
@@ -336,7 +336,7 @@ export default function FleetCreateAccount() {
                     </div>
 
                     {/* Step Context Sub-bar */}
-                    <div className="mt-5 pt-3.5 border-t border-white/10 flex items-center justify-between text-xs font-mono">
+                    <div className="mt-4 sm:mt-5 pt-3 sm:pt-3.5 border-t border-white/10 flex flex-wrap items-center justify-between text-xs font-mono gap-1.5">
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]" />
                         <span className="font-bold uppercase tracking-wider text-white">
@@ -759,13 +759,13 @@ export default function FleetCreateAccount() {
                     {/* ==================================================================
                         ACTION BUTTONS
                         ================================================================== */}
-                    <div className="flex items-center justify-between pt-6 mt-6 border-t border-white/10">
+                    <div className="flex flex-col-reverse xs:flex-row items-center justify-between gap-3 xs:gap-0 pt-6 mt-6 border-t border-white/10">
                       {currentStep > 1 ? (
                         <button
                           type="button"
                           onClick={handleBack}
                           disabled={isSubmitting}
-                          className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-white/15 bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/30 text-zinc-300 hover:text-white text-xs sm:text-sm font-medium transition-all cursor-pointer disabled:opacity-50"
+                          className="w-full xs:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-white/15 bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/30 text-zinc-300 hover:text-white text-xs sm:text-sm font-medium transition-all cursor-pointer disabled:opacity-50"
                         >
                           <ArrowLeft className="w-4 h-4" />
                           <span>Back</span>
@@ -777,7 +777,7 @@ export default function FleetCreateAccount() {
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="inline-flex items-center justify-center gap-2.5 px-8 sm:px-10 py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-red-600/30 hover:shadow-red-600/50 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full xs:w-auto min-h-[44px] inline-flex items-center justify-center gap-2.5 px-6 sm:px-10 py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-red-600/30 hover:shadow-red-600/50 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isSubmitting ? (
                           <>

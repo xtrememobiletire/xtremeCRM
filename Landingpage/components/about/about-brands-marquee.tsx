@@ -87,16 +87,16 @@ function MarqueeRow({
   }, [direction, duration]);
 
   return (
-    <div className="relative w-full overflow-hidden py-2 sm:py-2.5">
+    <div className="relative w-full overflow-hidden py-1.5 xs:py-2 sm:py-2.5">
       <div
         ref={rowRef}
-        className="flex gap-4 sm:gap-6 w-max"
+        className="flex gap-3 xs:gap-4 sm:gap-6 w-max"
         style={{ willChange: "transform" }}
       >
         {duplicated.map((brand, idx) => (
           <div
             key={`${brand.id}-${idx}`}
-            className="w-44 sm:w-52 lg:w-56 h-20 sm:h-22 lg:h-24 bg-[#0a0a0d] border border-white/10 hover:border-[var(--brand-primary)]/70 transition-colors duration-300 flex items-center justify-center px-6 py-3 select-none shrink-0 group rounded-none shadow-md"
+            className="w-36 xs:w-44 sm:w-52 lg:w-56 h-16 xs:h-20 sm:h-22 lg:h-24 bg-[#0a0a0d] border border-white/10 hover:border-[var(--brand-primary)]/70 transition-colors duration-300 flex items-center justify-center px-3 xs:px-6 py-2 xs:py-3 select-none shrink-0 group rounded-none shadow-md"
           >
             <div className="relative w-full h-full flex items-center justify-center">
               <Image
@@ -104,7 +104,7 @@ function MarqueeRow({
                 alt={brand.name}
                 width={200}
                 height={100}
-                className="max-h-12 sm:max-h-14 lg:max-h-16 w-auto max-w-[130px] sm:max-w-[155px] object-contain transition-transform duration-300 group-hover:scale-108 filter drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]"
+                className="max-h-10 xs:max-h-12 sm:max-h-14 lg:max-h-16 w-auto max-w-[100px] xs:max-w-[130px] sm:max-w-[155px] object-contain transition-transform duration-300 group-hover:scale-108 filter drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]"
                 unoptimized
               />
             </div>
@@ -118,7 +118,7 @@ function MarqueeRow({
 
 export default function AboutBrandsMarquee() {
   return (
-    <section className="relative z-10 w-full bg-transparent text-zinc-950 dark:text-white py-12 sm:py-16 lg:py-20 border-t border-black/5 dark:border-white/5 overflow-hidden">
+    <section className="relative z-10 w-full bg-transparent text-zinc-950 dark:text-white py-10 sm:py-16 lg:py-20 border-t border-black/5 dark:border-white/5 overflow-hidden">
       {/* 
         ========================================================================
         HEADER SECTION (Matching Wireframe media_1792312468433_88856298.png)
@@ -126,26 +126,26 @@ export default function AboutBrandsMarquee() {
         - Right: Two-tone mission text "At XtremeMobileTire, Expert mobile..."
         ========================================================================
       */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 mb-8 sm:mb-12">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-black/10 dark:border-white/10">
+      <div className="max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6 mb-6 sm:mb-12">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 pb-5 sm:pb-6 border-b border-black/10 dark:border-white/10">
           
           {/* Left: Tag + Headline */}
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 bg-[var(--brand-primary)]/85 inline-block shrink-0 rounded-none shadow-sm" />
-              <span className="text-xs font-mono font-bold tracking-widest uppercase text-zinc-600 dark:text-zinc-400">
+              <span className="text-[11px] xs:text-xs font-mono font-bold tracking-widest uppercase text-zinc-600 dark:text-zinc-400">
                 Our Network
               </span>
             </div>
 
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[38px] font-bold tracking-tight uppercase text-zinc-950 dark:text-white font-sans select-none">
+            <h2 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl lg:text-[38px] font-bold tracking-tight uppercase text-zinc-950 dark:text-white font-sans select-none">
               Brands We Work With
             </h2>
           </div>
 
           {/* Right: Two-Tone Mission Text */}
           <div className="md:max-w-md lg:max-w-lg">
-            <p className="text-sm sm:text-base md:text-lg leading-snug tracking-tight font-medium">
+            <p className="text-xs xs:text-sm sm:text-base md:text-lg leading-snug tracking-tight font-medium">
               <span className="text-zinc-950 dark:text-white font-extrabold">
                 At XtremeMobileTire,{" "}
               </span>

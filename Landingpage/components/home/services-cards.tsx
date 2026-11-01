@@ -118,7 +118,7 @@ export default function ServicesCards() {
                   setClickedCard((prev) => (prev === item.id ? null : item.id));
                 }
               }}
-              className="group relative rounded-none border border-black/15 dark:border-white/15 bg-zinc-950 text-white overflow-hidden shadow-lg hover:shadow-2xl hover:border-[var(--brand-primary)]/70 transition-all duration-500 h-[480px] sm:h-[500px] flex flex-col justify-between cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
+              className="group relative rounded-none border border-black/15 dark:border-white/15 bg-zinc-950 text-white overflow-hidden shadow-lg hover:shadow-2xl hover:border-[var(--brand-primary)]/70 transition-all duration-500 min-h-[440px] sm:h-[500px] flex flex-col justify-between cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
             >
               {/* ======================================================== */}
               {/* TOP SECTION: Information Panel (Revealed on Hover/Click) */}
@@ -126,7 +126,7 @@ export default function ServicesCards() {
               <div
                 className={`w-full overflow-hidden transition-all duration-500 ease-in-out shrink-0 bg-zinc-950 flex flex-col justify-between ${
                   isActive
-                    ? "min-h-[220px] h-auto opacity-100 p-4 sm:p-5 border-b border-white/15"
+                    ? "min-h-[200px] xs:min-h-[220px] h-auto opacity-100 p-3.5 xs:p-4 sm:p-5 border-b border-white/15"
                     : "h-0 opacity-0 p-0 border-b-0 pointer-events-none"
                 }`}
               >

@@ -30,7 +30,7 @@ function HubCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className={`group relative h-[120px] rounded-lg border border-slate-200/90 bg-white p-2.5 sm:p-3 shadow-[0_12px_28px_-5px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,1)] hover:border-[var(--brand-primary)]/50 hover:shadow-xl transition-all duration-300 flex flex-col justify-between ${className}`}
+      className={`group relative min-h-[105px] sm:h-[120px] rounded-lg border border-slate-200/90 bg-white p-2 xs:p-2.5 sm:p-3 shadow-[0_12px_28px_-5px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,1)] hover:border-[var(--brand-primary)]/50 hover:shadow-xl transition-all duration-300 flex flex-col justify-between ${className}`}
     >
       {/* Title & Subtitle */}
       <div className="text-center px-0.5">
@@ -54,14 +54,14 @@ function HubCard({
 
 export default function HeroInteractiveHub() {
   return (
-    <div className="relative w-full max-w-5xl mx-auto px-4 sm:px-6 mt-8 sm:mt-12 mb-10 sm:mb-14">
+    <div className="relative w-full max-w-5xl mx-auto px-2.5 xs:px-4 sm:px-6 mt-6 sm:mt-12 mb-8 sm:mb-14">
       {/* 
         MAIN SURROUNDING TECH CANVAS BOARD:
         - Sleek solid gray chassis (bg-[#2b303c] / not black!)
         - Subtle rounded-2xl chassis
         - Micro-grid tech texture with clean white grid lines
       */}
-      <div className="relative rounded-2xl border border-zinc-600/50 bg-[#2b303c] backdrop-blur-md p-6 sm:p-8 lg:p-10 overflow-hidden shadow-2xl">
+      <div className="relative rounded-2xl border border-zinc-600/50 bg-[#2b303c] backdrop-blur-md p-3.5 xs:p-5 sm:p-8 lg:p-10 overflow-hidden shadow-2xl">
         
         {/* Subtle Ambient Radial Glow */}
         <div className="pointer-events-none absolute -right-24 -top-24 w-80 h-80 bg-white/5 blur-3xl rounded-full" />
@@ -191,39 +191,39 @@ export default function HeroInteractiveHub() {
         {/* ============================================================== */}
         {/* TABLET & MOBILE RESPONSIVE LAYOUT (Screens < 1280px)            */}
         {/* ============================================================== */}
-        <div className="xl:hidden flex flex-col items-center gap-5">
+        <div className="xl:hidden flex flex-col items-center gap-4 sm:gap-5">
           {/* Central Sharp PC Laptop */}
-          <div className="w-full max-w-[320px]">
+          <div className="w-full max-w-[280px] xs:max-w-[320px]">
             <LaptopMockup />
           </div>
 
           {/* Top-Center Card (Pure White) */}
           <div className="w-full">
-            <div className="rounded-lg border border-slate-200/90 bg-white p-3.5 shadow-md">
+            <div className="rounded-lg border border-slate-200/90 bg-white p-3 xs:p-4 shadow-md">
               <div className="text-center px-1">
                 <h4 className="text-xs sm:text-[13px] font-bold text-slate-900 leading-tight tracking-tight">
                   Commercial Fleet Safety
                 </h4>
-                <p className="text-[11px] text-slate-500 mt-1 font-normal leading-tight">
+                <p className="text-[10px] xs:text-[11px] text-slate-500 mt-1 font-normal leading-tight">
                   Commercial safety standards & compliance
                 </p>
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 w-full">
-                <div className="bg-slate-100/90 rounded-md border border-slate-200 py-1.5 px-2 flex flex-col items-center justify-center text-center shadow-inner">
-                  <span className="text-[9px] font-medium text-slate-700">Safety Protocol</span>
+              <div className="mt-2.5 xs:mt-3 grid grid-cols-3 gap-1.5 xs:gap-2 w-full">
+                <div className="bg-slate-100/90 rounded-md border border-slate-200 py-1.5 px-1 xs:px-2 flex flex-col items-center justify-center text-center shadow-inner">
+                  <span className="text-[8px] xs:text-[9px] font-medium text-slate-700 truncate">Safety Protocol</span>
                 </div>
-                <div className="bg-slate-100/90 rounded-md border border-slate-200 py-1.5 px-2 flex flex-col items-center justify-center text-center shadow-inner">
-                  <span className="text-[9px] font-medium text-slate-700">Master Techs</span>
+                <div className="bg-slate-100/90 rounded-md border border-slate-200 py-1.5 px-1 xs:px-2 flex flex-col items-center justify-center text-center shadow-inner">
+                  <span className="text-[8px] xs:text-[9px] font-medium text-slate-700 truncate">Master Techs</span>
                 </div>
-                <div className="bg-slate-100/90 rounded-md border border-slate-200 py-1.5 px-2 flex flex-col items-center justify-center text-center shadow-inner">
-                  <span className="text-[9px] font-medium text-slate-700">100% Insured</span>
+                <div className="bg-slate-100/90 rounded-md border border-slate-200 py-1.5 px-1 xs:px-2 flex flex-col items-center justify-center text-center shadow-inner">
+                  <span className="text-[8px] xs:text-[9px] font-medium text-slate-700 truncate">100% Insured</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* 4 Cards in 2-Column Responsive Grid (Pure White) */}
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 xs:gap-3.5">
             <HubCard
               title="24/7 Rapid Dispatch"
               subtitle="Active Fleet Units"

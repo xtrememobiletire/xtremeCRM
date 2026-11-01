@@ -62,7 +62,7 @@ export default function HomeView() {
         */}
         <div
           ref={scrollContainerRef}
-          className="relative z-20 flex-1 w-full h-full overflow-y-auto no-scrollbar scroll-smooth pt-24 sm:pt-28 lg:pt-32 flex flex-col"
+          className="relative z-20 flex-1 w-full h-full overflow-y-auto no-scrollbar scroll-smooth pt-20 xs:pt-24 sm:pt-28 lg:pt-32 flex flex-col"
         >
           <div id="home" className="w-full flex flex-col flex-1">
             {/* Section 1: Hero Section (Headline, CTA & 6-card Fleet Gallery Showcase) */}
@@ -98,7 +98,6 @@ export default function HomeView() {
         <ThemeToggle />
 
       </div>
-
     </div>
   );
 }

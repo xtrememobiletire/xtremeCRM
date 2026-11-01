@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Mail, MapPin, ArrowUpRight } from "lucide-react";
+import { Phone, Mail, ArrowUpRight } from "lucide-react";
 
 interface LocationItem {
   id: string;
@@ -95,21 +95,21 @@ export default function AboutContactLocations() {
   const strokeDashoffset = CIRCUMFERENCE * (1 - progress / 100);
 
   return (
-    <section className="relative z-10 w-full bg-transparent text-zinc-950 dark:text-white py-12 sm:py-16 lg:py-20 border-t border-black/5 dark:border-white/5">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="relative z-10 w-full bg-transparent text-zinc-950 dark:text-white py-10 sm:py-16 lg:py-20 border-t border-black/5 dark:border-white/5">
+      <div className="max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6 lg:px-8">
         {/* 
           MAIN CARD CONTAINER:
           - Crisp, pure white in Light Mode (bg-white border-black/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)]).
           - Deep, rich luxury obsidian in Dark Mode (dark:bg-[#111317] dark:border-white/10 dark:shadow-2xl).
           - Clean, elegant, and modern with blueprint corner crosshairs (+) and no muddy grid tint.
         */}
-        <div className="relative w-full rounded-none bg-white dark:bg-[#111317] border border-black/10 dark:border-white/10 p-6 sm:p-10 md:p-12 lg:p-14 min-h-[380px] sm:min-h-[400px] md:min-h-[420px] transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-2xl overflow-hidden group">
+        <div className="relative w-full rounded-none bg-white dark:bg-[#111317] border border-black/10 dark:border-white/10 p-4 xs:p-6 sm:p-10 md:p-12 lg:p-14 min-h-[340px] xs:min-h-[380px] sm:min-h-[400px] md:min-h-[420px] transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-2xl overflow-hidden group">
           
           {/* Blueprint Crosshair Marks at corners */}
-          <span className="absolute top-2.5 left-2.5 font-mono text-xs text-zinc-400/60 dark:text-zinc-600/60 select-none pointer-events-none">+</span>
-          <span className="absolute top-2.5 right-2.5 font-mono text-xs text-zinc-400/60 dark:text-zinc-600/60 select-none pointer-events-none">+</span>
-          <span className="absolute bottom-2.5 left-2.5 font-mono text-xs text-zinc-400/60 dark:text-zinc-600/60 select-none pointer-events-none">+</span>
-          <span className="absolute bottom-2.5 right-2.5 font-mono text-xs text-zinc-400/60 dark:text-zinc-600/60 select-none pointer-events-none">+</span>
+          <span className="absolute top-2 left-2 font-mono text-xs text-zinc-400/60 dark:text-zinc-600/60 select-none pointer-events-none">+</span>
+          <span className="absolute top-2 right-2 font-mono text-xs text-zinc-400/60 dark:text-zinc-600/60 select-none pointer-events-none">+</span>
+          <span className="absolute bottom-2 left-2 font-mono text-xs text-zinc-400/60 dark:text-zinc-600/60 select-none pointer-events-none">+</span>
+          <span className="absolute bottom-2 right-2 font-mono text-xs text-zinc-400/60 dark:text-zinc-600/60 select-none pointer-events-none">+</span>
 
           {/* 
             TWO-COLUMN SPLIT:
@@ -117,36 +117,36 @@ export default function AboutContactLocations() {
             - Vertical Divider: Separates left & right columns on md/lg screens.
             - Right: 3 Circular status tabs with national flags + dynamic location details.
           */}
-          <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10 lg:gap-12 items-center">
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 md:gap-10 lg:gap-12 items-center">
             
             {/* ======================================================== */}
             {/* LEFT COLUMN: Get In Touch (Matching Wireframe)            */}
             {/* ======================================================== */}
-            <div className="md:col-span-5 md:pr-4 lg:pr-6 flex flex-col justify-center space-y-4 sm:space-y-6">
+            <div className="md:col-span-5 md:pr-4 lg:pr-6 flex flex-col justify-center space-y-3.5 sm:space-y-6">
               
               {/* Category Eyebrow */}
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-[var(--brand-primary)] inline-block shrink-0 rounded-none shadow-sm" />
-                <span className="text-xs font-mono font-bold tracking-widest uppercase text-zinc-600 dark:text-zinc-400">
+                <span className="text-[11px] xs:text-xs font-mono font-bold tracking-widest uppercase text-zinc-600 dark:text-zinc-400">
                   Direct Contact and Support
                 </span>
               </div>
 
               {/* Main Headline */}
-              <h2 className="text-4xl sm:text-5xl lg:text-[54px] font-bold tracking-tight text-zinc-950 dark:text-white leading-[1.08]">
+              <h2 className="text-2xl xs:text-3xl sm:text-5xl lg:text-[54px] font-bold tracking-tight text-zinc-950 dark:text-white leading-[1.08]">
                 Get In Touch
               </h2>
 
               {/* Subtitle */}
-              <p className="text-base sm:text-lg md:text-xl text-zinc-700 dark:text-zinc-300 font-sans tracking-tight font-medium">
+              <p className="text-xs xs:text-sm sm:text-lg md:text-xl text-zinc-700 dark:text-zinc-300 font-sans tracking-tight font-medium">
                 Book Now or Request a Quote
               </p>
 
               {/* Action Link button */}
-              <div className="pt-2">
+              <div className="pt-1 sm:pt-2">
                 <Link
                   href="/booking"
-                  className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-950 dark:text-white hover:text-[var(--brand-primary)] dark:hover:text-[var(--brand-primary)] transition-colors group/cta"
+                  className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-950 dark:text-white hover:text-[var(--brand-primary)] dark:hover:text-[var(--brand-primary)] transition-colors group/cta min-h-[44px]"
                 >
                   <span>Schedule Immediate Service</span>
                   <ArrowUpRight className="w-4 h-4 text-[var(--brand-primary)] group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5 transition-transform" />
@@ -158,7 +158,7 @@ export default function AboutContactLocations() {
             {/* ======================================================== */}
             {/* RIGHT COLUMN: Circular Status Tabs with Flags + Details   */}
             {/* ======================================================== */}
-            <div className="md:col-span-7 md:border-l border-zinc-300 dark:border-zinc-700/80 md:pl-8 lg:pl-12 flex flex-col justify-center space-y-8 sm:space-y-10">
+            <div className="md:col-span-7 md:border-l border-zinc-300 dark:border-zinc-700/80 md:pl-8 lg:pl-12 flex flex-col justify-center space-y-6 sm:space-y-10">
               
               {/* 
                 CIRCULAR TABS ROW:
@@ -168,7 +168,7 @@ export default function AboutContactLocations() {
                 - On status line complete, auto-advances to next country
                 - Clickable to immediately switch country
               */}
-              <div className="flex items-center justify-start gap-5 sm:gap-7 lg:gap-8 select-none">
+              <div className="flex items-center justify-start gap-3.5 xs:gap-5 sm:gap-7 lg:gap-8 select-none">
                 {LOCATIONS.map((loc, idx) => {
                   const isActive = idx === activeIndex;
 
@@ -177,11 +177,11 @@ export default function AboutContactLocations() {
                       key={loc.id}
                       type="button"
                       onClick={() => handleSelectLocation(idx)}
-                      className="group/circle flex flex-col items-center gap-2.5 focus:outline-none transition-transform duration-200"
+                      className="group/circle flex flex-col items-center gap-2 xs:gap-2.5 focus:outline-none transition-transform duration-200 min-h-[44px]"
                       title={`${loc.name} - Click to switch`}
                     >
                       {/* Circle Container with SVG Status Ring */}
-                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
+                      <div className="relative w-14 h-14 xs:w-16 xs:h-16 sm:w-20 sm:h-20 flex items-center justify-center">
                         
                         {/* SVG Progress Ring */}
                         <svg
@@ -216,7 +216,7 @@ export default function AboutContactLocations() {
 
                         {/* Circular Flag Inner Avatar */}
                         <div
-                          className={`relative w-12 h-12 sm:w-15 sm:h-15 rounded-full overflow-hidden border transition-all duration-300 shadow-md ${
+                          className={`relative w-10 h-10 xs:w-12 xs:h-12 sm:w-15 sm:h-15 rounded-full overflow-hidden border transition-all duration-300 shadow-md ${
                             isActive
                               ? "border-white dark:border-zinc-900 scale-100 ring-2 ring-[var(--brand-primary)]/20"
                               : "border-black/15 dark:border-white/15 opacity-70 group-hover/circle:opacity-100 group-hover/circle:scale-105"
@@ -235,7 +235,7 @@ export default function AboutContactLocations() {
 
                       {/* Country Code Label matching wireframe (UK, US, CAD) */}
                       <span
-                        className={`text-xs sm:text-sm font-bold tracking-wider uppercase font-mono transition-colors ${
+                        className={`text-[11px] xs:text-xs sm:text-sm font-bold tracking-wider uppercase font-mono transition-colors ${
                           isActive
                             ? "text-zinc-950 dark:text-white"
                             : "text-zinc-600 dark:text-zinc-400 group-hover/circle:text-zinc-900 dark:group-hover/circle:text-white"
@@ -253,7 +253,7 @@ export default function AboutContactLocations() {
                 - Responsive min-height container so address and email wrap naturally without truncation
                 - Clean layout without clipping long street names
               */}
-              <div className="relative min-h-[150px] sm:min-h-[160px] h-auto w-full flex items-start">
+              <div className="relative min-h-[120px] xs:min-h-[140px] sm:min-h-[160px] h-auto w-full flex items-start">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={current.id}
@@ -261,32 +261,32 @@ export default function AboutContactLocations() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
                     transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="space-y-2.5 sm:space-y-3 w-full"
+                    className="space-y-2 sm:space-y-3 w-full"
                   >
                     {/* Address in clean readable typography */}
-                    <div className="text-base sm:text-lg md:text-xl text-zinc-700 dark:text-zinc-300 font-normal leading-snug tracking-tight font-sans">
+                    <div className="text-xs xs:text-sm sm:text-lg md:text-xl text-zinc-700 dark:text-zinc-300 font-normal leading-snug tracking-tight font-sans">
                       <p>{current.line1}</p>
                       <p>{current.line2}</p>
                     </div>
 
                     {/* Phone Number in one line */}
-                    <p className="text-base sm:text-lg md:text-xl text-zinc-900 dark:text-white font-medium tracking-tight font-sans">
+                    <p className="text-xs xs:text-sm sm:text-lg md:text-xl text-zinc-900 dark:text-white font-medium tracking-tight font-sans">
                       <a
                         href={`tel:${current.phoneRaw}`}
-                        className="hover:text-[var(--brand-primary)] dark:hover:text-[var(--brand-primary)] transition-colors inline-flex items-center gap-2"
+                        className="hover:text-[var(--brand-primary)] dark:hover:text-[var(--brand-primary)] transition-colors inline-flex items-center gap-2 min-h-[36px]"
                       >
-                        <Phone className="w-4 h-4 text-[var(--brand-primary)] shrink-0 inline md:hidden" />
+                        <Phone className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-[var(--brand-primary)] shrink-0 inline md:hidden" />
                         <span>{current.phone}</span>
                       </a>
                     </p>
 
                     {/* Email with continuous underline */}
-                    <p className="text-base sm:text-lg md:text-xl text-zinc-900 dark:text-white font-medium tracking-tight pt-0.5 font-sans break-all sm:break-normal">
+                    <p className="text-xs xs:text-sm sm:text-lg md:text-xl text-zinc-900 dark:text-white font-medium tracking-tight pt-0.5 font-sans break-all sm:break-normal">
                       <a
                         href={`mailto:${current.email}`}
-                        className="underline underline-offset-4 decoration-zinc-400 dark:decoration-zinc-600 hover:decoration-[var(--brand-primary)] hover:text-[var(--brand-primary)] dark:hover:text-[var(--brand-primary)] transition-all inline-flex items-center gap-2"
+                        className="underline underline-offset-4 decoration-zinc-400 dark:decoration-zinc-600 hover:decoration-[var(--brand-primary)] hover:text-[var(--brand-primary)] dark:hover:text-[var(--brand-primary)] transition-all inline-flex items-center gap-2 min-h-[36px]"
                       >
-                        <Mail className="w-4 h-4 text-[var(--brand-primary)] shrink-0 inline md:hidden" />
+                        <Mail className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-[var(--brand-primary)] shrink-0 inline md:hidden" />
                         <span>{current.email}</span>
                       </a>
                     </p>

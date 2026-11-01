@@ -85,27 +85,27 @@ export default function FleetOnboardingSteps() {
   };
 
   return (
-    <section className="w-full py-16 sm:py-24 lg:py-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-zinc-300 dark:border-zinc-800">
+    <section className="w-full py-10 xs:py-14 sm:py-24 lg:py-28 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-zinc-300 dark:border-zinc-800">
       {/* Top Header Section matching wireframe */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-12 sm:pb-16 border-b border-zinc-300 dark:border-zinc-800 mb-12 sm:mb-16">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 pb-8 sm:pb-16 border-b border-zinc-300 dark:border-zinc-800 mb-8 sm:mb-16">
         <div>
-          <div className="flex items-center gap-2.5 mb-3">
-            <span className="w-3 h-3 bg-black dark:bg-[#DC2626] inline-block shrink-0 rounded-none shadow-sm" />
-            <span className="text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
+          <div className="flex items-center gap-2.5 mb-2 sm:mb-3">
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black dark:bg-[#DC2626] inline-block shrink-0 rounded-none shadow-sm" />
+            <span className="text-[11px] xs:text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
               Fleet Solutions
             </span>
           </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-950 dark:text-white">
+          <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-950 dark:text-white">
             Get Your Fleet Protected
           </h2>
         </div>
-        <p className="text-sm sm:text-base md:text-lg text-zinc-600 dark:text-zinc-400 max-w-md font-normal leading-relaxed">
+        <p className="text-xs xs:text-sm sm:text-base md:text-lg text-zinc-600 dark:text-zinc-400 max-w-md font-normal leading-relaxed">
           At XtremeMobileTire, keep your commercial fleet moving 24/7 with live dispatch and zero downtime.
         </p>
       </div>
 
       {/* Main Split Layout: Left Accordion Steps + Right Picture Box */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-start">
         {/* Left Column: Interactive Step Accordion */}
         <div className="lg:col-span-6 flex flex-col divide-y divide-zinc-300 dark:divide-zinc-800 border-t border-b border-zinc-300 dark:border-zinc-800">
           {ONBOARDING_STEPS.map((step) => {
@@ -128,27 +128,27 @@ export default function FleetOnboardingSteps() {
                 <button
                   type="button"
                   onClick={() => setActiveStepId(step.id)}
-                  className="w-full p-6 sm:p-7 text-left flex items-center justify-between gap-4 cursor-pointer focus:outline-none"
+                  className="w-full p-4 xs:p-6 sm:p-7 text-left flex items-center justify-between gap-3 sm:gap-4 cursor-pointer focus:outline-none min-h-[48px]"
                 >
-                  <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
                     <span className="font-mono text-xs sm:text-sm text-zinc-400 dark:text-zinc-500 font-bold shrink-0">
                       {step.stepNumber}
                     </span>
-                    <h3 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight text-zinc-950 dark:text-white truncate">
+                    <h3 className="text-sm xs:text-base sm:text-lg lg:text-xl font-bold tracking-tight text-zinc-950 dark:text-white truncate">
                       {step.title}
                     </h3>
                   </div>
 
                   {/* Circular Action Indicator */}
                   <div
-                    className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 border transition-all duration-300 cursor-pointer ${
+                    className={`w-8 h-8 xs:w-9 xs:h-9 rounded-full flex items-center justify-center shrink-0 border transition-all duration-300 cursor-pointer ${
                       isActive
                         ? "bg-[#DC2626] text-white border-[#DC2626] shadow-md shadow-red-600/30 scale-105"
                         : "bg-white dark:bg-zinc-900 text-zinc-400 dark:text-zinc-500 border-zinc-300 dark:border-zinc-700 hover:border-zinc-500 hover:text-zinc-900 dark:hover:text-white"
                     }`}
                   >
                     <ArrowRight
-                      className={`w-4 h-4 transition-transform duration-300 ${
+                      className={`w-3.5 h-3.5 xs:w-4 xs:h-4 transition-transform duration-300 ${
                         isActive ? "rotate-90" : "rotate-0"
                       }`}
                     />
@@ -166,15 +166,15 @@ export default function FleetOnboardingSteps() {
                       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                       className="overflow-hidden"
                     >
-                      <div className="px-6 pb-7 sm:px-7 sm:pb-8 pt-0 pl-14 sm:pl-16 space-y-4">
-                        <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
+                      <div className="px-4 xs:px-6 pb-6 sm:px-7 sm:pb-8 pt-0 pl-8 xs:pl-12 sm:pl-16 space-y-3 sm:space-y-4">
+                        <p className="text-xs xs:text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
                           {step.description}
                         </p>
-                        <div className="pt-2">
+                        <div className="pt-1 sm:pt-2">
                           <button
                             type="button"
                             onClick={() => handleCtaClick(step.id)}
-                            className="inline-flex items-center gap-2 px-6 py-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black hover:bg-[#DC2626] dark:hover:bg-[#DC2626] dark:hover:text-white font-semibold text-xs uppercase tracking-wider transition-all duration-300 rounded-none shadow-sm cursor-pointer group/cta"
+                            className="w-full xs:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black hover:bg-[#DC2626] dark:hover:bg-[#DC2626] dark:hover:text-white font-semibold text-xs uppercase tracking-wider transition-all duration-300 rounded-none shadow-sm cursor-pointer group/cta"
                           >
                             <span>{step.ctaText}</span>
                             <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5" />
@@ -202,7 +202,7 @@ export default function FleetOnboardingSteps() {
                 className="w-full flex flex-col"
               >
                 {/* Top Compartment: Picture Box with Telemetry */}
-                <div className="relative w-full h-64 sm:h-72 lg:h-80 overflow-hidden bg-zinc-950 shrink-0">
+                <div className="relative w-full h-48 xs:h-60 sm:h-72 lg:h-80 overflow-hidden bg-zinc-950 shrink-0">
                   <Image
                     src={activeStep.imageSrc}
                     alt={activeStep.imageAlt}
@@ -217,8 +217,8 @@ export default function FleetOnboardingSteps() {
                 </div>
 
                 {/* Bottom Compartment: Bordered Text Box matching Wireframe (Simple modern font) */}
-                <div className="p-6 sm:p-8 lg:p-9 border-t border-zinc-300 dark:border-zinc-800 bg-zinc-50/90 dark:bg-white/[0.03] flex items-center justify-center text-center">
-                  <p className="font-sans text-sm sm:text-base lg:text-lg text-zinc-600 dark:text-zinc-300 leading-relaxed font-normal max-w-lg">
+                <div className="p-4 xs:p-6 sm:p-8 lg:p-9 border-t border-zinc-300 dark:border-zinc-800 bg-zinc-50/90 dark:bg-white/[0.03] flex items-center justify-center text-center">
+                  <p className="font-sans text-xs xs:text-sm sm:text-base lg:text-lg text-zinc-600 dark:text-zinc-300 leading-relaxed font-normal max-w-lg">
                     {activeStep.summaryText}
                   </p>
                 </div>

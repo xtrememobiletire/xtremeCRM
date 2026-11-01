@@ -16,24 +16,24 @@ export default function AccountAccordionItem({
   onToggle,
 }: AccountAccordionItemProps) {
   return (
-    <div className="border-t border-black/15 dark:border-white/15 py-5 sm:py-6 first:border-t-0">
+    <div className="border-t border-black/15 dark:border-white/15 py-4 sm:py-6 first:border-t-0">
       {/* Clickable Header Row */}
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={isOpen}
-        className="w-full flex items-center justify-between text-left group focus:outline-none cursor-pointer py-1"
+        className="w-full min-h-[48px] flex items-center justify-between text-left group focus:outline-none cursor-pointer py-1"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
           <motion.span
             animate={{
               backgroundColor: isOpen ? "var(--brand-primary)" : "rgb(113 113 122)",
             }}
             transition={{ duration: 0.3 }}
-            className="w-2 h-2 rounded-none"
+            className="w-2 h-2 rounded-none shrink-0"
           />
           <h3
-            className={`text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight transition-colors duration-300 ${
+            className={`text-lg xs:text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight transition-colors duration-300 ${
               isOpen
                 ? "text-[var(--neutral-dark)]"
                 : "text-zinc-600 dark:text-zinc-400 group-hover:text-[var(--neutral-dark)]"
@@ -52,7 +52,7 @@ export default function AccountAccordionItem({
             color: isOpen ? "#ffffff" : "currentColor",
           }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          className="w-8 h-8 sm:w-9 sm:h-9 rounded-none border flex items-center justify-center shrink-0 cursor-pointer"
+          className="w-8 h-8 sm:w-9 sm:h-9 min-w-[32px] min-h-[32px] rounded-none border flex items-center justify-center shrink-0 cursor-pointer ml-2"
         >
           <svg
             className="w-4 h-4 stroke-[2.2]"
@@ -84,7 +84,7 @@ export default function AccountAccordionItem({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
-              className="pt-5 sm:pt-6 pl-4 sm:pl-5"
+              className="pt-4 sm:pt-6 pl-2.5 xs:pl-4 sm:pl-5"
             >
               
               {/* Optional Subtitle / Membership Benefits Description */}
@@ -100,7 +100,7 @@ export default function AccountAccordionItem({
               )}
 
               {/* Bullet Features with Left Accent Line matching Wireframe */}
-              <div className="border-l-2 border-black/15 dark:border-white/15 pl-4 sm:pl-5 my-4 space-y-3">
+              <div className="border-l-2 border-black/15 dark:border-white/15 pl-3.5 sm:pl-5 my-4 space-y-2.5 sm:space-y-3">
                 {option.features.map((feature, idx) => (
                   <div
                     key={idx}
@@ -113,10 +113,10 @@ export default function AccountAccordionItem({
               </div>
 
               {/* Action Button: Sharp rounded-none */}
-              <div className="pt-4">
+              <div className="pt-3 sm:pt-4">
                 <Link
                   href={option.ctaHref}
-                  className="inline-flex items-center justify-center px-6 py-2.5 rounded-none text-xs sm:text-sm font-bold tracking-wider uppercase bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 hover:bg-[var(--brand-primary)] dark:hover:bg-[var(--brand-primary)] dark:hover:text-white transition-colors duration-200 shadow-sm"
+                  className="w-full xs:w-auto inline-flex items-center justify-center min-h-[44px] px-6 py-2.5 rounded-none text-xs sm:text-sm font-bold tracking-wider uppercase bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 hover:bg-[var(--brand-primary)] dark:hover:bg-[var(--brand-primary)] dark:hover:text-white transition-colors duration-200 shadow-sm"
                 >
                   {option.ctaLabel}
                 </Link>

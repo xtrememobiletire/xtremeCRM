@@ -135,7 +135,7 @@ export default function PageShell({ children, onLogoClick, hideNav: externalHide
         {/* SCROLLABLE CONTENT AREA */}
         <div
           ref={scrollContainerRef}
-          className="relative z-20 flex-1 w-full h-full overflow-y-auto no-scrollbar scroll-smooth pt-24 sm:pt-28 lg:pt-32 flex flex-col"
+          className="relative z-20 flex-1 w-full h-full overflow-y-auto no-scrollbar scroll-smooth pt-20 xs:pt-24 sm:pt-28 lg:pt-32 flex flex-col"
         >
           <div className="w-full flex flex-col flex-1">
             {children}

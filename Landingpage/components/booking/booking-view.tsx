@@ -11,49 +11,49 @@ function BookingContent() {
 
   return (
     <PageShell>
-      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-16 sm:py-24 flex-1 flex flex-col justify-center items-center text-center">
-        <div className="flex items-center gap-2.5 mb-3.5">
-          <span className="w-3 h-3 bg-[#DC2626] inline-block shrink-0 rounded-none shadow-sm" />
-          <span className="text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
+      <div className="w-full max-w-5xl mx-auto px-3.5 xs:px-4 sm:px-6 py-10 xs:py-14 sm:py-24 flex-1 flex flex-col justify-center items-center text-center">
+        <div className="flex items-center gap-2.5 mb-2.5 sm:mb-3.5">
+          <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#DC2626] inline-block shrink-0 rounded-none shadow-sm" />
+          <span className="text-[11px] xs:text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
             Online Booking &amp; 24/7 Dispatch
           </span>
         </div>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-950 dark:text-white mb-4">
+        <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-950 dark:text-white mb-3 sm:mb-4">
           Book Your Mobile Tire Service
         </h1>
-        <p className="text-base sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed font-normal mb-8">
+        <p className="text-xs xs:text-sm sm:text-base md:text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed font-normal mb-6 sm:mb-8 px-2 sm:px-0">
           Schedule scheduled tire installation at your location or request immediate 24/7 roadside emergency dispatch.
         </p>
 
-        <div className="flex flex-wrap items-center justify-center gap-4">
+        <div className="flex flex-wrap items-center justify-center gap-4 w-full xs:w-auto">
           <SpecularButton
             label="Open 24/7 Booking Calendar"
             onClick={() => setIsModalOpen(true)}
             variant="crimson"
-            className="w-64 sm:w-72"
+            className="w-full xs:w-auto min-w-[240px] max-w-xs"
           />
         </div>
 
         {/* Feature Badges */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-14 w-full max-w-3xl text-left">
-          <div className="p-5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 rounded-none">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mt-10 sm:mt-14 w-full max-w-3xl text-left">
+          <div className="p-4 xs:p-5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 rounded-none">
             <Clock className="w-5 h-5 text-[#DC2626] mb-2" />
-            <h4 className="font-bold text-sm text-zinc-900 dark:text-white">24/7 Availability</h4>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+            <h4 className="font-bold text-xs xs:text-sm text-zinc-900 dark:text-white">24/7 Availability</h4>
+            <p className="text-[11px] xs:text-xs text-zinc-500 dark:text-zinc-400 mt-1">
               Book anytime day or night. Emergency mobile units dispatched immediately.
             </p>
           </div>
-          <div className="p-5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 rounded-none">
+          <div className="p-4 xs:p-5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 rounded-none">
             <Wrench className="w-5 h-5 text-[#DC2626] mb-2" />
-            <h4 className="font-bold text-sm text-zinc-900 dark:text-white">On-Site Service</h4>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+            <h4 className="font-bold text-xs xs:text-sm text-zinc-900 dark:text-white">On-Site Service</h4>
+            <p className="text-[11px] xs:text-xs text-zinc-500 dark:text-zinc-400 mt-1">
               We arrive at your driveway, office parking, or highway shoulder fully equipped.
             </p>
           </div>
-          <div className="p-5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 rounded-none">
+          <div className="p-4 xs:p-5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 rounded-none">
             <ShieldCheck className="w-5 h-5 text-[#DC2626] mb-2" />
-            <h4 className="font-bold text-sm text-zinc-900 dark:text-white">Live Tracking</h4>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+            <h4 className="font-bold text-xs xs:text-sm text-zinc-900 dark:text-white">Live Tracking</h4>
+            <p className="text-[11px] xs:text-xs text-zinc-500 dark:text-zinc-400 mt-1">
               Your request lands directly in dispatch triage with live technician coordination.
             </p>
           </div>

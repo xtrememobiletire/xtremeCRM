@@ -142,7 +142,7 @@ export default function AboutMissionSection() {
   return (
     <section
       ref={sectionRef}
-      className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 lg:pt-16 pb-20 sm:pb-28 lg:pb-36"
+      className="relative z-10 w-full max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6 pt-8 xs:pt-10 sm:pt-14 lg:pt-16 pb-16 sm:pb-28 lg:pb-36"
     >
       {/* 
         ========================================================================
@@ -151,26 +151,26 @@ export default function AboutMissionSection() {
         - Right Column (Scrolling): "■ About Us" Header + 4 Borderless Items
         ========================================================================
       */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-start relative">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 lg:gap-14 items-start relative">
         
         {/* 
           MOBILE-ONLY SECTION HEADER:
           - On phone screens: "■ About Us" + "Our Mission" + Mission statement at the very top
           - Followed directly by the Speedometer beneath it
         */}
-        <div className="lg:hidden space-y-3 mb-6 sm:mb-8 text-left">
+        <div className="lg:hidden space-y-2.5 sm:space-y-3 mb-5 sm:mb-8 text-left">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 bg-black dark:bg-[var(--brand-primary)]/85 inline-block shrink-0 rounded-none shadow-sm" />
-            <span className="text-xs sm:text-sm font-mono font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200">
+            <span className="text-[11px] xs:text-xs sm:text-sm font-mono font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200">
               About Us
             </span>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight uppercase text-zinc-950 dark:text-white font-sans select-none">
+          <h2 className="text-2xl xs:text-3xl sm:text-4xl font-bold tracking-tight uppercase text-zinc-950 dark:text-white font-sans select-none">
             Our Mission
           </h2>
 
-          <p className="text-lg sm:text-xl leading-snug font-sans tracking-tight pt-1">
+          <p className="text-sm xs:text-base sm:text-xl leading-snug font-sans tracking-tight pt-1">
             <span className="text-zinc-500 dark:text-zinc-400 font-medium">
               At Xtreme Mobile Tire, our goal is simple:{" "}
             </span>
@@ -208,7 +208,7 @@ export default function AboutMissionSection() {
           RIGHT COLUMN: ONLY THIS SIDE MOVES / SCROLLS
           - Contains "■ About Us" Tag, Mission Text, and the 4 Borderless Items
         */}
-        <div className="lg:col-span-7 flex flex-col space-y-8">
+        <div className="lg:col-span-7 flex flex-col space-y-6 sm:space-y-8">
           
           {/* Desktop Header Intro with Tag & Two-Tone Mission Text */}
           <div className="hidden lg:block space-y-3">
@@ -234,7 +234,7 @@ export default function AboutMissionSection() {
             - Clean borderless typography & icons (NO boxes, NO borders, NO corner plus signs)
             - Active item illuminates in brand crimson in sync with the speedometer!
           */}
-          <div className="space-y-8 pt-2">
+          <div className="space-y-6 sm:space-y-8 pt-2">
             {MISSION_POINTS.map((point, index) => {
               const isActive = activeCardIndex === index;
 
@@ -242,9 +242,9 @@ export default function AboutMissionSection() {
                 <div
                   key={point.id}
                   ref={cardRefs[index]}
-                  className="group relative py-3 sm:py-4 transition-all duration-300"
+                  className="group relative py-2.5 sm:py-4 transition-all duration-300"
                 >
-                  <div className="flex items-start gap-4">
+                  <div className="flex items-start gap-3.5 sm:gap-4">
                     {/* Clean Borderless Icon */}
                     <div
                       className={`shrink-0 mt-1 transition-all duration-300 ${
@@ -258,9 +258,9 @@ export default function AboutMissionSection() {
 
                     {/* Text Content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline justify-between mb-2">
+                      <div className="flex items-baseline justify-between mb-1.5 sm:mb-2">
                         <h3
-                          className={`text-xl sm:text-2xl font-extrabold tracking-tight transition-colors duration-300 ${
+                          className={`text-lg xs:text-xl sm:text-2xl font-extrabold tracking-tight transition-colors duration-300 ${
                             isActive
                               ? "text-[var(--brand-primary)]"
                               : "text-zinc-900 dark:text-white"
@@ -269,7 +269,7 @@ export default function AboutMissionSection() {
                           {point.title}
                         </h3>
                         <span
-                          className={`font-mono text-xs font-bold transition-colors duration-300 ${
+                          className={`font-mono text-xs font-bold transition-colors duration-300 ml-2 ${
                             isActive
                               ? "text-[var(--brand-primary)]"
                               : "text-zinc-400 dark:text-zinc-600"
@@ -279,7 +279,7 @@ export default function AboutMissionSection() {
                         </span>
                       </div>
 
-                      <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-300 leading-relaxed font-normal">
+                      <p className="text-xs xs:text-sm sm:text-base text-zinc-600 dark:text-zinc-300 leading-relaxed font-normal">
                         {point.description}
                       </p>
                     </div>

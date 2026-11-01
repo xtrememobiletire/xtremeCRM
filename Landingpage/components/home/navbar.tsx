@@ -99,7 +99,7 @@ export default function Navbar({
           Container Wrapper:
           Consistent sizing and padding across ALL pages and screen sizes.
         */}
-        <div className="w-full max-w-[calc(100%-4rem)] lg:max-w-4xl xl:max-w-5xl px-0 sm:px-4 lg:px-6 pointer-events-auto">
+        <div className="w-full max-w-[calc(100%-1.25rem)] xs:max-w-[calc(100%-2rem)] sm:max-w-[calc(100%-3rem)] lg:max-w-4xl xl:max-w-5xl px-0 sm:px-4 lg:px-6 pointer-events-auto">
           {/* 
             NAVBAR ASSEMBLY (Moves as ONE unified piece):
             Contains the Left Wing, the Right Wing, and the Curved Nav Body.
@@ -178,7 +178,7 @@ export default function Navbar({
             */}
             <nav
               aria-label="Main Navigation"
-              className="relative bg-black dark:bg-[#0c0c0e]/95 dark:backdrop-blur-2xl text-white shadow-2xl shadow-black/40 dark:shadow-[0_15px_35px_rgba(0,0,0,0.8)] border-b border-x border-white/20 rounded-t-none rounded-b-2xl sm:rounded-b-[26px] lg:rounded-b-[28px] py-2.5 sm:py-3 px-4 sm:px-6 lg:px-7"
+              className="relative bg-black dark:bg-[#0c0c0e]/95 dark:backdrop-blur-2xl text-white shadow-2xl shadow-black/40 dark:shadow-[0_15px_35px_rgba(0,0,0,0.8)] border-b border-x border-white/20 rounded-t-none rounded-b-2xl sm:rounded-b-[26px] lg:rounded-b-[28px] py-2 sm:py-2.5 lg:py-3 px-3 sm:px-6 lg:px-7"
             >
               <div className="flex items-center justify-between gap-3">
                 
@@ -195,20 +195,20 @@ export default function Navbar({
                       setMobileMenuOpen(false);
                     }
                   }}
-                  className="group flex items-center gap-2.5 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] py-1 pr-2 cursor-pointer"
+                  className="group flex items-center gap-2 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] py-1 pr-1 sm:pr-2 cursor-pointer"
                 >
                   {logoSrc ? (
                     <img
                       src={logoSrc}
                       alt={brandName}
-                      className="h-10 sm:h-12 lg:h-14 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
+                      className="h-8 xs:h-9 sm:h-12 lg:h-14 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
                     />
                   ) : (
                     <>
                       <span className="relative flex items-center justify-center w-5 h-5 rounded-full bg-white text-zinc-950 transition-transform duration-300 group-hover:scale-110 shadow-sm">
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-primary)]" />
                       </span>
-                      <span className="font-bold text-white text-[15px] sm:text-base tracking-tight group-hover:text-zinc-200 transition-colors">
+                      <span className="font-bold text-white text-sm sm:text-base tracking-tight group-hover:text-zinc-200 transition-colors">
                         {brandName}
                       </span>
                     </>
@@ -320,7 +320,7 @@ export default function Navbar({
                     type="button"
                     onClick={() => setMobileMenuOpen(true)}
                     aria-label="Open navigation menu"
-                    className="p-2 rounded-none text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] cursor-pointer"
+                    className="min-w-[44px] min-h-[44px] p-2 rounded-none text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] cursor-pointer flex items-center justify-center"
                   >
                     <div className="w-6 flex flex-col gap-1.5 items-end py-1">
                       <span className="block h-[2px] w-6 bg-white rounded-full" />
@@ -345,7 +345,7 @@ export default function Navbar({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -14, scale: 0.98 }}
                   transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute top-0 left-0 right-0 z-50 lg:hidden bg-black dark:bg-[#0c0c0e] text-white rounded-t-none rounded-b-2xl sm:rounded-b-[28px] p-4 sm:p-6 shadow-2xl shadow-black/90 border-b border-x border-white/20"
+                  className="absolute top-0 left-0 right-0 z-50 lg:hidden bg-black dark:bg-[#0c0c0e] text-white rounded-t-none rounded-b-2xl sm:rounded-b-[28px] p-4 sm:p-6 shadow-2xl shadow-black/90 border-b border-x border-white/20 max-h-[85vh] overflow-y-auto"
                 >
                   {/* Top Row: Logo on left, Close '✕' on right */}
                   <div className="flex items-center justify-between gap-3 pb-4 border-b border-white/[0.08]">
@@ -360,13 +360,13 @@ export default function Navbar({
                           }
                         }
                       }}
-                      className="flex items-center gap-2.5 cursor-pointer"
+                      className="flex items-center gap-2 cursor-pointer"
                     >
                       {logoSrc ? (
                         <img
                           src={logoSrc}
                           alt={brandName}
-                          className="h-10 sm:h-12 w-auto object-contain"
+                          className="h-8 xs:h-10 sm:h-12 w-auto object-contain"
                         />
                       ) : (
                         <span className="font-bold text-white text-[15px] tracking-tight">
@@ -379,7 +379,7 @@ export default function Navbar({
                       type="button"
                       onClick={() => setMobileMenuOpen(false)}
                       aria-label="Close navigation menu"
-                      className="p-2 rounded-none text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] cursor-pointer"
+                      className="min-w-[44px] min-h-[44px] p-2 rounded-none text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] cursor-pointer flex items-center justify-center"
                     >
                       <svg
                         className="w-6 h-6 stroke-[2.2]"

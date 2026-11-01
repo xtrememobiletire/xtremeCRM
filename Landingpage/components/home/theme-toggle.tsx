@@ -34,12 +34,12 @@ export default function ThemeToggle() {
   };
 
   return (
-    <div className="absolute bottom-5 right-5 sm:bottom-6 sm:right-6 z-40">
+    <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 z-40">
       <button
         type="button"
         onClick={toggleTheme}
         aria-label="Toggle display theme"
-        className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/80 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700/80 shadow-md backdrop-blur-md flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:text-[var(--brand-primary)] hover:border-[var(--brand-primary)] transition-all cursor-pointer"
+        className="w-10 h-10 sm:w-11 sm:h-11 min-w-[40px] min-h-[40px] rounded-full bg-white/80 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700/80 shadow-md backdrop-blur-md flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:text-[var(--brand-primary)] hover:border-[var(--brand-primary)] transition-all cursor-pointer"
       >
         {isDark ? (
           /* Sun icon (when dark, click to switch to light) */

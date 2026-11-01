@@ -30,7 +30,7 @@ const CARDS_CONFIG: CardConfig[] = [
     id: "card-left",
     initialIndex: 0,
     rotation: "-rotate-3 sm:-rotate-5 md:-rotate-[6deg]",
-    marginClass: "-mr-4 sm:-mr-8 lg:-mr-12",
+    marginClass: "-mr-3 xs:-mr-4 sm:-mr-8 lg:-mr-12",
     originClass: "origin-bottom-right",
     zIndex: "z-10",
     isMiddle: false,
@@ -48,7 +48,7 @@ const CARDS_CONFIG: CardConfig[] = [
     id: "card-right",
     initialIndex: 2,
     rotation: "rotate-3 sm:rotate-5 md:rotate-[6deg]",
-    marginClass: "-ml-4 sm:-ml-8 lg:-ml-12",
+    marginClass: "-ml-3 xs:-ml-4 sm:-ml-8 lg:-ml-12",
     originClass: "origin-bottom-left",
     zIndex: "z-10",
     isMiddle: false,
@@ -88,10 +88,10 @@ function FleetPhotoCard({ config, currentImage }: { config: CardConfig; currentI
       </div>
 
       {/* Subtle Blueprint Crosshair Marks (+) at the 4 corners */}
-      <span className="absolute top-3 left-3 font-mono text-xs text-white/50 select-none pointer-events-none z-20">+</span>
-      <span className="absolute top-3 right-3 font-mono text-xs text-white/50 select-none pointer-events-none z-20">+</span>
-      <span className="absolute bottom-3 left-3 font-mono text-xs text-white/50 select-none pointer-events-none z-20">+</span>
-      <span className="absolute bottom-3 right-3 font-mono text-xs text-white/50 select-none pointer-events-none z-20">+</span>
+      <span className="absolute top-2.5 xs:top-3 left-2.5 xs:left-3 font-mono text-[10px] xs:text-xs text-white/50 select-none pointer-events-none z-20">+</span>
+      <span className="absolute top-2.5 xs:top-3 right-2.5 xs:right-3 font-mono text-[10px] xs:text-xs text-white/50 select-none pointer-events-none z-20">+</span>
+      <span className="absolute bottom-2.5 xs:bottom-3 left-2.5 xs:left-3 font-mono text-[10px] xs:text-xs text-white/50 select-none pointer-events-none z-20">+</span>
+      <span className="absolute bottom-2.5 xs:bottom-3 right-2.5 xs:right-3 font-mono text-[10px] xs:text-xs text-white/50 select-none pointer-events-none z-20">+</span>
     </div>
   );
 }
@@ -116,10 +116,10 @@ export default function ServicesHero() {
           - Headline: "From Servicing to Full / Repairs – We do it all"
           - Buttons matching Home Hero (Specular Buttons)
           ======================================================================== */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6 sm:space-y-7">
+      <div className="max-w-4xl mx-auto px-3.5 xs:px-4 sm:px-6 text-center space-y-5 sm:space-y-7">
         
         {/* Main Headline */}
-        <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold tracking-tight text-zinc-950 dark:text-white leading-tight select-none">
+        <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-zinc-950 dark:text-white leading-tight select-none">
           <span className="block">
             From Servicing to Full
           </span>
@@ -132,20 +132,22 @@ export default function ServicesHero() {
         </h1>
 
         {/* Action Buttons matching Home Hero (Specular Buttons) */}
-        <div className="pt-2 flex flex-col items-center justify-center gap-2">
-          <div className="flex flex-wrap items-center justify-center gap-4">
+        <div className="pt-2 flex flex-col items-center justify-center gap-2 w-full xs:w-auto">
+          <div className="flex flex-col xs:flex-row items-center justify-center gap-3 xs:gap-4 w-full xs:w-auto">
             <SpecularButton
               label="Book Now"
               href="/booking"
               variant="crimson"
+              className="w-full xs:w-auto"
             />
             <SpecularButton
               label="Register Your Fleet"
               href="/fleet-solutions"
               variant="white"
+              className="w-full xs:w-auto"
             />
           </div>
-          <span className="text-xs font-semibold tracking-wider uppercase text-zinc-500 dark:text-zinc-400 mt-2">
+          <span className="text-[11px] xs:text-xs font-semibold tracking-wider uppercase text-zinc-500 dark:text-zinc-400 mt-2">
             Your Safety — Our Mission
           </span>
         </div>
@@ -160,7 +162,7 @@ export default function ServicesHero() {
           - Scrolling reveals the full height of the cards
           - Rotates through 6 authentic service pictures cleanly
           ======================================================================== */}
-      <div className="relative w-full flex items-start justify-center mt-10 sm:mt-14 pb-24 sm:pb-36 lg:pb-44 px-2 sm:px-4 overflow-visible">
+      <div className="relative w-full flex items-start justify-center mt-8 sm:mt-14 pb-20 sm:pb-36 lg:pb-44 px-2 sm:px-4 overflow-visible">
         <div className="relative flex items-start justify-center w-full max-w-[1440px] select-none">
           {CARDS_CONFIG.map((config) => {
             const currentImg = SERVICE_IMAGES[(config.initialIndex + photoStep) % SERVICE_IMAGES.length];

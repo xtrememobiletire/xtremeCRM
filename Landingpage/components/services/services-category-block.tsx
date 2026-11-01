@@ -93,25 +93,25 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
       onMouseLeave={() => setIsPaused(false)}
     >
       {/* 1. Category Header (Wireframe style with sharp square corners and 'and') */}
-      <div className="p-6 sm:p-8 lg:p-10 border-b border-zinc-300 dark:border-zinc-800 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="p-4 xs:p-6 sm:p-8 lg:p-10 border-b border-zinc-300 dark:border-zinc-800 flex flex-col md:flex-row md:items-end justify-between gap-3 sm:gap-4">
         <div>
-          <div className="flex items-center gap-3 mb-2.5">
+          <div className="flex items-center gap-2.5 mb-2 sm:mb-2.5">
             <span className="w-2.5 h-2.5 bg-[#DC2626] rounded-none inline-block shadow-sm" />
-            <span className="text-xs font-mono font-bold tracking-widest uppercase text-zinc-500 dark:text-zinc-400">
+            <span className="text-[11px] xs:text-xs font-mono font-bold tracking-widest uppercase text-zinc-500 dark:text-zinc-400">
               Section {category.index} • Comprehensive Coverage
             </span>
           </div>
-          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">
+          <h2 className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">
             {category.title}
           </h2>
         </div>
-        <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 max-w-xl font-normal leading-relaxed">
+        <p className="text-xs xs:text-sm sm:text-base text-zinc-600 dark:text-zinc-400 max-w-xl font-normal leading-relaxed">
           {category.description}
         </p>
       </div>
 
       {/* 2. Mobile Compact Pill Selector (Sharp rectangular tabs with cursor pointer) */}
-      <div className="block lg:hidden px-4 sm:px-6 pt-5 pb-2 overflow-x-auto no-scrollbar border-b border-zinc-300 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40">
+      <div className="block lg:hidden px-3.5 xs:px-4 sm:px-6 pt-4 pb-2 overflow-x-auto no-scrollbar border-b border-zinc-300 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40">
         <div className="flex items-center gap-2 pb-2 min-w-max">
           {category.services.map((service, idx) => {
             const IconCmp = ICON_MAP[service.iconName] || Sparkles;
@@ -124,7 +124,7 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
                   handleSelectService(idx);
                   handleOpenBooking(service.title);
                 }}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-none text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 cursor-pointer ${
+                className={`flex items-center gap-2 px-3 xs:px-3.5 py-1.5 xs:py-2 rounded-none text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 cursor-pointer min-h-[38px] ${
                   isActive
                     ? "bg-[#DC2626] text-white shadow-md shadow-red-600/30 border border-[#DC2626]"
                     : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-800 hover:border-zinc-500"
@@ -139,7 +139,7 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
       </div>
 
       {/* 3. Main Split Content (Left List on Desktop, Right Preview + CTA) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[580px]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[440px] xs:min-h-[480px] sm:min-h-[580px]">
         {/* Left Column: Interactive Service List spanning full height with Hand Cursor */}
         <div className="hidden lg:flex lg:col-span-6 flex-col h-full divide-y divide-zinc-200/80 dark:divide-zinc-800/80 border-r border-zinc-300 dark:border-zinc-800">
           {category.services.map((service, idx) => {
@@ -217,7 +217,7 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
         {/* Right Column: Visual Preview + Floating Glass Stats Card + GET A QUOTE Button */}
         <div className="lg:col-span-6 flex flex-col justify-between bg-zinc-950 text-white relative overflow-hidden">
           {/* Visual Showcase Stage with clearly visible background image */}
-          <div className="relative flex-1 min-h-[460px] sm:min-h-[500px] lg:min-h-[520px] flex items-end justify-start p-4 sm:p-6 lg:p-8 overflow-hidden">
+          <div className="relative flex-1 min-h-[380px] xs:min-h-[420px] sm:min-h-[500px] lg:min-h-[520px] flex items-end justify-start p-3.5 xs:p-5 sm:p-6 lg:p-8 overflow-hidden">
             {/* Background Image: Vivid high opacity so car/fleet/wheels show clearly */}
             {category.services.map((service, idx) => (
               <div
@@ -251,35 +251,35 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
             {/* Sleek, Compact Floating Glass Stats Card (positioned at bottom-left) */}
             <div
               onClick={() => handleOpenBooking(activeService.title)}
-              className="relative z-10 w-[92%] sm:w-[330px] max-w-[350px] rounded-2xl bg-black/65 backdrop-blur-xl border border-white/20 p-4 sm:p-5 shadow-2xl shadow-black/90 transition-all duration-300 cursor-pointer hover:border-[var(--brand-primary)]/60 hover:scale-[1.01]"
+              className="relative z-10 w-full sm:w-[330px] max-w-full sm:max-w-[350px] rounded-2xl bg-black/65 backdrop-blur-xl border border-white/20 p-3.5 xs:p-4 sm:p-5 shadow-2xl shadow-black/90 transition-all duration-300 cursor-pointer hover:border-[var(--brand-primary)]/60 hover:scale-[1.01]"
               title="Click to book this service"
             >
               {/* Feature Title matching inspiration */}
               <div className="mb-2">
-                <h4 className="text-sm sm:text-base font-bold text-white tracking-tight">
+                <h4 className="text-xs xs:text-sm sm:text-base font-bold text-white tracking-tight">
                   {activeService.stats.badge}
                 </h4>
               </div>
 
               {/* Glowing animated progress / readiness bar */}
-              <div className="w-full h-2 rounded-full bg-zinc-900/90 border border-white/10 overflow-hidden mb-3.5 p-[1px] relative shadow-inner">
+              <div className="w-full h-2 rounded-full bg-zinc-900/90 border border-white/10 overflow-hidden mb-3 p-[1px] relative shadow-inner">
                 <div className="h-full w-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-300 rounded-full animate-pulse shadow-[0_0_18px_rgba(239,68,68,0.7)]" />
               </div>
 
               {/* Compact Quick Specs Badges */}
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <div className="bg-white/[0.06] border border-white/10 rounded-xl px-2.5 py-1.5 flex items-center gap-2">
+              <div className="grid grid-cols-2 gap-2 mb-2.5 sm:mb-3">
+                <div className="bg-white/[0.06] border border-white/10 rounded-xl px-2 xs:px-2.5 py-1.5 flex items-center gap-1.5 xs:gap-2">
                   <Timer className="w-3.5 h-3.5 text-red-400 shrink-0" />
                   <div className="min-w-0">
-                    <div className="text-[9px] text-zinc-400 uppercase font-mono tracking-wider">Est. Time</div>
-                    <div className="text-[11px] font-semibold text-white truncate">{activeService.stats.duration}</div>
+                    <div className="text-[8px] xs:text-[9px] text-zinc-400 uppercase font-mono tracking-wider">Est. Time</div>
+                    <div className="text-[10px] xs:text-[11px] font-semibold text-white truncate">{activeService.stats.duration}</div>
                   </div>
                 </div>
-                <div className="bg-white/[0.06] border border-white/10 rounded-xl px-2.5 py-1.5 flex items-center gap-2">
+                <div className="bg-white/[0.06] border border-white/10 rounded-xl px-2 xs:px-2.5 py-1.5 flex items-center gap-1.5 xs:gap-2">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <div className="min-w-0">
-                    <div className="text-[9px] text-zinc-400 uppercase font-mono tracking-wider">Protection</div>
-                    <div className="text-[11px] font-semibold text-white truncate">{activeService.stats.warranty}</div>
+                    <div className="text-[8px] xs:text-[9px] text-zinc-400 uppercase font-mono tracking-wider">Protection</div>
+                    <div className="text-[10px] xs:text-[11px] font-semibold text-white truncate">{activeService.stats.warranty}</div>
                   </div>
                 </div>
               </div>
@@ -289,9 +289,9 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
                 {activeService.stats.checkmarks.map((point, pIdx) => (
                   <div
                     key={pIdx}
-                    className="flex items-center justify-between text-xs text-zinc-200 gap-2 bg-white/[0.03] px-2.5 py-1.5 rounded-lg border border-white/5"
+                    className="flex items-center justify-between text-[11px] xs:text-xs text-zinc-200 gap-2 bg-white/[0.03] px-2 xs:px-2.5 py-1 xs:py-1.5 rounded-lg border border-white/5"
                   >
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-1.5 xs:gap-2 min-w-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
                       <span className="truncate font-medium">{point}</span>
                     </div>
@@ -306,7 +306,7 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
           <button
             type="button"
             onClick={() => handleOpenBooking(activeService.title)}
-            className="w-full py-4 sm:py-5 px-6 font-bold uppercase tracking-wider text-sm sm:text-base flex items-center justify-center gap-3 transition-all duration-300 z-10 bg-[#DC2626] text-white border-t border-red-700/50 hover:bg-white hover:text-black hover:border-white shadow-lg shadow-red-950/40 rounded-none cursor-pointer group/cta"
+            className="w-full min-h-[48px] py-3.5 xs:py-4 sm:py-5 px-4 xs:px-6 font-bold uppercase tracking-wider text-xs xs:text-sm sm:text-base flex items-center justify-center gap-2.5 xs:gap-3 transition-all duration-300 z-10 bg-[#DC2626] text-white border-t border-red-700/50 hover:bg-white hover:text-black hover:border-white shadow-lg shadow-red-950/40 rounded-none cursor-pointer group/cta"
           >
             <span>Book Now – {activeService.title.split('(')[0].trim()}</span>
             <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover/cta:translate-x-1" />

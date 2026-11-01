@@ -97,7 +97,9 @@ export default function SpecularButton({
       ref={buttonRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className={`relative inline-flex items-center justify-center w-48 sm:w-52 h-12 sm:h-13 rounded-none overflow-hidden select-none transition-transform duration-200 active:scale-95 cursor-pointer ${
+      className={`relative inline-flex items-center justify-center ${
+        className.includes("w-") ? "" : "w-48 sm:w-52"
+      } min-h-[44px] h-12 sm:h-13 rounded-none overflow-hidden select-none transition-transform duration-200 active:scale-95 cursor-pointer ${
         isCrimson
           ? "shadow-[0_0_20px_-3px_rgba(220,38,38,0.45)]"
           : "shadow-[0_0_20px_-3px_rgba(255,255,255,0.3)]"
@@ -132,15 +134,17 @@ export default function SpecularButton({
       />
 
       {/* Button Text: Consistent typography, bold and sharp */}
-      <span className="relative z-10 font-bold text-sm sm:text-base tracking-wide text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]">
+      <span className="relative z-10 font-bold text-xs xs:text-sm sm:text-base tracking-wide text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)] px-3 text-center">
         {label}
       </span>
     </div>
   );
 
+  const wrapperClass = `${className.includes("w-full") ? "w-full xs:w-auto" : ""} inline-block group focus:outline-none`;
+
   if (href) {
     return (
-      <Link href={href} className="inline-block group focus:outline-none">
+      <Link href={href} className={wrapperClass}>
         {content}
       </Link>
     );
@@ -150,7 +154,7 @@ export default function SpecularButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-block group focus:outline-none"
+      className={wrapperClass}
     >
       {content}
     </button>

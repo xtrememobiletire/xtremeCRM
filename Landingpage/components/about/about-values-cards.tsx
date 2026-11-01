@@ -47,29 +47,29 @@ export default function AboutValuesCards() {
   const [clickedCard, setClickedCard] = useState<string | null>(null);
 
   return (
-    <section className="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16 lg:py-20">
+    <section className="relative z-10 w-full max-w-5xl mx-auto px-3.5 xs:px-4 sm:px-6 py-10 sm:py-16 lg:py-20">
       
       {/* 
         ========================================================================
         SECTION HEADER
         ========================================================================
       */}
-      <div className="text-left mb-10 sm:mb-14">
+      <div className="text-left mb-8 sm:mb-14">
         {/* Top Tag */}
-        <div className="flex items-center gap-2 mb-2.5">
+        <div className="flex items-center gap-2 mb-2 sm:mb-2.5">
           <span className="w-2.5 h-2.5 bg-black dark:bg-[var(--brand-primary)] inline-block shrink-0 rounded-none shadow-sm" />
-          <span className="text-xs sm:text-sm font-mono font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200">
+          <span className="text-[11px] xs:text-xs sm:text-sm font-mono font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200">
             About Us
           </span>
         </div>
 
         {/* Section Headline */}
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-4">
+        <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-3 sm:mb-4">
           Our Values
         </h2>
 
         {/* High-Contrast Two-Tone Mission Text */}
-        <p className="text-lg sm:text-xl md:text-2xl leading-relaxed max-w-3xl">
+        <p className="text-sm xs:text-base sm:text-xl md:text-2xl leading-relaxed max-w-3xl">
           <span className="text-zinc-500 dark:text-zinc-400 font-semibold font-sans">
             At XtremeMobileTire, our mission is simple:{" "}
           </span>
@@ -87,7 +87,7 @@ export default function AboutValuesCards() {
         - Hover/Click state: Picture slides down to bottom, Information appears on top
         ========================================================================
       */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8 items-stretch">
         {VALUES_ITEMS.map((item) => {
           const isActive = hoveredCard === item.id || clickedCard === item.id;
 
@@ -107,7 +107,7 @@ export default function AboutValuesCards() {
                   setClickedCard((prev) => (prev === item.id ? null : item.id));
                 }
               }}
-              className="group relative rounded-none border border-black/15 dark:border-white/15 bg-zinc-950 text-white overflow-hidden shadow-lg hover:shadow-2xl hover:border-[var(--brand-primary)]/70 transition-all duration-500 h-[480px] sm:h-[500px] flex flex-col justify-between cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
+              className="group relative rounded-none border border-black/15 dark:border-white/15 bg-zinc-950 text-white overflow-hidden shadow-lg hover:shadow-2xl hover:border-[var(--brand-primary)]/70 transition-all duration-500 min-h-[440px] sm:h-[500px] flex flex-col justify-between cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
             >
               {/* ======================================================== */}
               {/* TOP SECTION: Information Panel (Revealed on Hover/Click) */}
@@ -115,7 +115,7 @@ export default function AboutValuesCards() {
               <div
                 className={`w-full overflow-hidden transition-all duration-500 ease-in-out shrink-0 bg-zinc-950 flex flex-col justify-between ${
                   isActive
-                    ? "min-h-[220px] h-auto opacity-100 p-4 sm:p-5 border-b border-white/15"
+                    ? "min-h-[200px] xs:min-h-[220px] h-auto opacity-100 p-3.5 xs:p-4 sm:p-5 border-b border-white/15"
                     : "h-0 opacity-0 p-0 border-b-0 pointer-events-none"
                 }`}
               >
@@ -129,7 +129,7 @@ export default function AboutValuesCards() {
                   </div>
 
                   {/* Title in Information View */}
-                  <h3 className="font-sans text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug mb-2.5">
+                  <h3 className="font-sans text-lg xs:text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug mb-2">
                     {item.title}
                   </h3>
 
@@ -141,7 +141,7 @@ export default function AboutValuesCards() {
 
                 {/* Bottom Row of Information View */}
                 <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-[11px] text-zinc-400 font-mono">
+                  <span className="text-[10px] xs:text-[11px] text-zinc-400 font-mono">
                     {item.hoverBarText}
                   </span>
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-[var(--brand-primary)]">
@@ -159,7 +159,7 @@ export default function AboutValuesCards() {
               <div
                 className={`relative w-full overflow-hidden transition-all duration-500 ease-in-out ${
                   isActive
-                    ? "h-[240px] sm:h-[250px]"
+                    ? "h-[220px] xs:h-[240px] sm:h-[250px]"
                     : "h-full flex-1"
                 }`}
               >
@@ -186,20 +186,20 @@ export default function AboutValuesCards() {
                     isActive ? "opacity-0 pointer-events-none" : "opacity-100"
                   }`}
                 >
-                  <div className="p-5 sm:p-6 pt-16 bg-gradient-to-t from-black/95 via-black/65 to-transparent text-left">
+                  <div className="p-4 xs:p-5 sm:p-6 pt-14 xs:pt-16 bg-gradient-to-t from-black/95 via-black/65 to-transparent text-left">
                     {/* Icon Accent */}
-                    <div className="w-9 h-9 rounded-none bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-[var(--brand-primary)] mb-3 shadow-md">
+                    <div className="w-8 h-8 xs:w-9 xs:h-9 rounded-none bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-[var(--brand-primary)] mb-2.5 sm:mb-3 shadow-md">
                       {item.icon}
                     </div>
 
-                    <h3 className="font-sans text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight group-hover:text-[var(--brand-primary)] transition-colors">
+                    <h3 className="font-sans text-xl xs:text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight group-hover:text-[var(--brand-primary)] transition-colors">
                       {item.title}
                     </h3>
                     <div className="mt-2 flex items-center justify-between text-xs text-zinc-300">
-                      <span className="font-mono text-[11px] text-zinc-300 truncate max-w-[200px]">
+                      <span className="font-mono text-[10px] xs:text-[11px] text-zinc-300 truncate max-w-[180px] xs:max-w-[200px]">
                         {item.hoverBarText}
                       </span>
-                      <span className="inline-flex items-center gap-1 text-[11px] text-white/80 group-hover:text-white group-hover:translate-y-0.5 transition-all">
+                      <span className="inline-flex items-center gap-1 text-[10px] xs:text-[11px] text-white/80 group-hover:text-white group-hover:translate-y-0.5 transition-all">
                         <span>Details</span>
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -212,7 +212,7 @@ export default function AboutValuesCards() {
                 {/* Active Mode Subtle Lower Label */}
                 {isActive && (
                   <div className="absolute bottom-2 right-3 z-10 pointer-events-none">
-                    <span className="text-[10px] font-mono text-white/60 bg-black/60 px-2 py-0.5 rounded-none backdrop-blur-sm border border-white/10">
+                    <span className="text-[9px] xs:text-[10px] font-mono text-white/60 bg-black/60 px-2 py-0.5 rounded-none backdrop-blur-sm border border-white/10">
                       Click to collapse ↑
                     </span>
                   </div>

@@ -23,7 +23,7 @@ export default function AboutHero({
   ctaHref = "/booking",
 }: AboutHeroProps) {
   return (
-    <div className="relative w-full overflow-hidden flex flex-col items-center justify-center pt-8 sm:pt-14 lg:pt-18 pb-16 sm:pb-24 text-center bg-transparent dark:bg-black transition-colors select-none">
+    <div className="relative w-full overflow-hidden flex flex-col items-center justify-center pt-6 xs:pt-8 sm:pt-14 lg:pt-18 pb-12 sm:pb-24 text-center bg-transparent dark:bg-black transition-colors select-none">
       
       {/* 
         ========================================================================
@@ -48,13 +48,13 @@ export default function AboutHero({
       </div>
 
       {/* Main Content Container */}
-      <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center">
+      <div className="relative z-10 w-full max-w-4xl mx-auto px-3.5 xs:px-4 sm:px-6 flex flex-col items-center">
         
         {/* Top Announcement / Page Badge */}
         <HeroBadge text={badgeText} href={badgeHref} />
 
         {/* Stacked Two-Font Headline Matching Wireframe & Design Inspiration */}
-        <h1 className="mt-4 text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-6 leading-[1.08] max-w-4xl">
+        <h1 className="mt-4 text-2xl xs:text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-4 sm:mb-6 leading-[1.12] sm:leading-[1.08] max-w-4xl">
           <span className="font-sans block sm:inline">
             {titleLine1}{" "}
           </span>
@@ -64,26 +64,28 @@ export default function AboutHero({
         </h1>
 
         {/* User-Specified Description Text */}
-        <p className="max-w-xl sm:max-w-2xl mx-auto text-base sm:text-lg text-zinc-600 dark:text-zinc-300 mb-8 leading-relaxed font-normal">
+        <p className="max-w-xl sm:max-w-2xl mx-auto text-xs xs:text-sm sm:text-base md:text-lg text-zinc-600 dark:text-zinc-300 mb-6 sm:mb-8 leading-relaxed font-normal px-2 sm:px-0">
           {description}
         </p>
 
         {/* Center Action Buttons matching Home Hero (Specular Buttons) */}
-        <div className="flex flex-col items-center justify-center gap-2">
-          <div className="flex flex-wrap items-center justify-center gap-4">
+        <div className="flex flex-col items-center justify-center gap-2 w-full xs:w-auto">
+          <div className="flex flex-col xs:flex-row items-center justify-center gap-3 xs:gap-4 w-full xs:w-auto">
             <SpecularButton
               label={ctaText}
               href={ctaHref}
               variant="crimson"
+              className="w-full xs:w-auto"
             />
             <SpecularButton
               label="Register Your Fleet"
               href="/fleet-solutions"
               variant="white"
+              className="w-full xs:w-auto"
             />
           </div>
 
-          <span className="text-xs font-semibold tracking-wider uppercase text-zinc-500 dark:text-zinc-400 mt-2">
+          <span className="text-[11px] xs:text-xs font-semibold tracking-wider uppercase text-zinc-500 dark:text-zinc-400 mt-2">
             Your Safety — Our Mission
           </span>
         </div>

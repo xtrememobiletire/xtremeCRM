@@ -39,7 +39,7 @@ export default function FleetBanner() {
         Sharp brutalist lines (rounded-none), zero rounded corners.
         Simple, professional, elegant, and realistic color scheme.
       */}
-      <div className="relative rounded-none bg-white/70 dark:bg-zinc-950/90 backdrop-blur-md border border-black/15 dark:border-white/10 p-6 sm:p-10 lg:p-12 overflow-hidden shadow-2xl">
+      <div className="relative rounded-none bg-white/70 dark:bg-zinc-950/90 backdrop-blur-md border border-black/15 dark:border-white/10 p-4 xs:p-6 sm:p-10 lg:p-12 overflow-hidden shadow-2xl">
         
         {/* Subtle Ambient Crimson Glow */}
         <div className="pointer-events-none absolute -right-24 -top-24 w-96 h-96 bg-[var(--brand-primary)]/15 blur-3xl rounded-none" />
@@ -61,7 +61,7 @@ export default function FleetBanner() {
                 - Clean, legible simple sans-serif typography
                 - Sharp corners (rounded-none)
               */}
-              <div className="relative rounded-none border border-black/20 dark:border-white/20 bg-zinc-50/80 dark:bg-white/[0.04] p-7 sm:p-9 lg:p-10 shadow-sm hover:border-[var(--brand-primary)]/50 transition-colors group/box">
+              <div className="relative rounded-none border border-black/20 dark:border-white/20 bg-zinc-50/80 dark:bg-white/[0.04] p-5 xs:p-7 sm:p-9 lg:p-10 shadow-sm hover:border-[var(--brand-primary)]/50 transition-colors group/box">
                 {/* Subtle Crimson Accent Bar on left edge */}
                 <div className="absolute top-0 left-0 bottom-0 w-1 bg-transparent group-hover/box:bg-[var(--brand-primary)] transition-colors rounded-none" />
 
@@ -83,7 +83,7 @@ export default function FleetBanner() {
             <div className="pt-8 sm:pt-12 mt-auto">
               <Link
                 href="/fleet-solutions#create-fleet-account"
-                className="group/cta inline-flex items-center gap-3 px-6 sm:px-7 py-3 sm:py-3.5 rounded-none border-2 border-black dark:border-white text-zinc-900 dark:text-white bg-transparent hover:bg-[var(--brand-primary)] hover:border-[var(--brand-primary)] hover:text-white transition-all duration-300 font-bold text-xs sm:text-sm uppercase tracking-wider select-none shadow-sm"
+                className="group/cta w-full xs:w-auto inline-flex items-center justify-center gap-3 px-6 sm:px-7 py-3 sm:py-3.5 rounded-none border-2 border-black dark:border-white text-zinc-900 dark:text-white bg-transparent hover:bg-[var(--brand-primary)] hover:border-[var(--brand-primary)] hover:text-white transition-all duration-300 font-bold text-xs sm:text-sm uppercase tracking-wider select-none shadow-sm min-h-[44px]"
               >
                 <span>Register Your Fleet</span>
                 <svg
@@ -109,7 +109,7 @@ export default function FleetBanner() {
             <div className="group/image relative w-full h-full rounded-none overflow-hidden border border-black/15 dark:border-white/15 bg-white shadow-2xl flex flex-col">
               
               {/* Top Compartment: Commercial Fleet Photography (Clean, no badges) */}
-              <div className="relative w-full h-64 sm:h-72 lg:h-80 overflow-hidden bg-zinc-950 shrink-0">
+              <div className="relative w-full h-52 xs:h-64 sm:h-72 lg:h-80 overflow-hidden bg-zinc-950 shrink-0">
                 <img
                   src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426861/xtreme/landing/fleet-manager_jpg.jpg"
                   alt="Commercial Fleet Logistics and Tire Maintenance"
@@ -118,7 +118,7 @@ export default function FleetBanner() {
               </div>
 
               {/* Bottom Compartment: Full Width White Box Below Picture with Dark Font */}
-              <div className="flex-1 p-6 sm:p-8 lg:p-9 border-t border-black/15 bg-white text-zinc-950 flex flex-col justify-center text-left">
+              <div className="flex-1 p-4 xs:p-6 sm:p-8 lg:p-9 border-t border-black/15 bg-white text-zinc-950 flex flex-col justify-center text-left">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-2 h-2 rounded-none bg-[var(--brand-primary)] shrink-0" />
                   <span className="text-xs font-bold uppercase tracking-wider text-[var(--brand-primary)] font-mono">

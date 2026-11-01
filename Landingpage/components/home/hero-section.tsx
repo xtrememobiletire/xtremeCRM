@@ -99,9 +99,9 @@ export default function HeroSection({
         </div>
 
         {/* Foreground Content: Vertically centered, z-20 above diffuser */}
-        <div className="relative z-20 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center justify-center my-auto pt-24 sm:pt-28 lg:pt-32 pb-16 sm:pb-20">
+        <div className="relative z-20 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center justify-center my-auto pt-20 xs:pt-24 sm:pt-28 lg:pt-32 pb-14 sm:pb-20">
           {/* Main Title: 3 words + Anytime. Anywhere. */}
-          <h1 className="mt-0 text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tight text-white mb-3 sm:mb-4 leading-[1.08] max-w-4xl drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]">
+          <h1 className="mt-0 text-[28px] xs:text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tight text-white mb-3 sm:mb-4 leading-[1.12] sm:leading-[1.08] max-w-4xl drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]">
             {titleLine1} <br />
             <span className="font-serif italic font-normal text-[#DC2626] drop-shadow-[0_2px_16px_rgba(220,38,38,0.5)]">
               {titleItalic}
@@ -109,13 +109,13 @@ export default function HeroSection({
           </h1>
 
           {/* Subheading */}
-          <p className="max-w-xl sm:max-w-2xl mx-auto text-base sm:text-lg text-zinc-100 mb-5 sm:mb-6 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
+          <p className="max-w-xl sm:max-w-2xl mx-auto text-sm xs:text-base sm:text-lg text-zinc-100 mb-5 sm:mb-6 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] px-2 sm:px-0">
             {description}
           </p>
 
           {/* Center Action Buttons */}
-          <div className="flex flex-col items-center justify-center gap-2">
-            <div className="flex flex-wrap items-center justify-center gap-4">
+          <div className="flex flex-col items-center justify-center gap-2 w-full xs:w-auto">
+            <div className="flex flex-col xs:flex-row items-center justify-center gap-3 sm:gap-4 w-full xs:w-auto">
               <SpecularButton
                 label={ctaText}
                 href={ctaHref}

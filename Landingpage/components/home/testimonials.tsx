@@ -92,7 +92,7 @@ export default function Testimonials() {
   const strokeDashoffset = CIRCUMFERENCE * (1 - progress / 100);
 
   return (
-    <section className="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+    <section className="relative z-10 w-full max-w-5xl mx-auto px-3.5 xs:px-4 sm:px-6 py-8 sm:py-14">
       {/* 
         Main Testimonial Card:
         - Header kept INSIDE the box as requested
@@ -101,21 +101,21 @@ export default function Testimonials() {
         - Sharp corners (rounded-none)
         - Continuous circular status progress on active client avatar
       */}
-      <div className="relative w-full rounded-none bg-white/70 dark:bg-zinc-950/90 backdrop-blur-md border border-black/15 dark:border-white/10 p-6 sm:p-8 lg:p-9 overflow-hidden shadow-2xl">
+      <div className="relative w-full rounded-none bg-white/70 dark:bg-zinc-950/90 backdrop-blur-md border border-black/15 dark:border-white/10 p-4 xs:p-6 sm:p-8 lg:p-9 overflow-hidden shadow-2xl">
         
         {/* Subtle Ambient Crimson Glow */}
         <div className="pointer-events-none absolute -right-24 -top-24 w-96 h-96 bg-[var(--brand-primary)]/10 blur-3xl rounded-none" />
         <div className="pointer-events-none absolute -left-20 -bottom-20 w-80 h-80 bg-[var(--brand-primary)]/10 blur-3xl rounded-none" />
 
         {/* Section Header INSIDE the card */}
-        <div className="text-left mb-6 sm:mb-8">
-          <div className="flex items-center gap-2.5 mb-2.5">
-            <span className="w-3 h-3 bg-black dark:bg-[var(--brand-primary)] inline-block shrink-0 shadow-sm rounded-none" />
-            <span className="text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
+        <div className="text-left mb-5 sm:mb-8">
+          <div className="flex items-center gap-2.5 mb-2 sm:mb-2.5">
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black dark:bg-[var(--brand-primary)] inline-block shrink-0 shadow-sm rounded-none" />
+            <span className="text-[11px] xs:text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
               Trusted by the world Leading companies
             </span>
           </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl tracking-tight text-[var(--neutral-dark)]">
+          <h2 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl tracking-tight text-[var(--neutral-dark)]">
             <span className="font-sans font-extrabold text-[var(--neutral-dark)]">
               What our clients{" "}
             </span>
@@ -126,12 +126,12 @@ export default function Testimonials() {
         </div>
 
         {/* Interactive Layout: Avatars on left, full-width active quote on right */}
-        <div className="flex flex-col md:flex-row items-center gap-6 sm:gap-8 lg:gap-10 w-full">
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-5 sm:gap-8 lg:gap-10 w-full">
           
           {/* ======================================================== */}
           {/* LEFT: Client Avatar Row with Circular Status Progress    */}
           {/* ======================================================== */}
-          <div className="shrink-0 flex items-center justify-start gap-2.5 sm:gap-3.5 select-none">
+          <div className="shrink-0 flex items-center justify-start gap-2 xs:gap-2.5 sm:gap-3.5 select-none overflow-x-auto max-w-full pb-1 md:pb-0">
             {TESTIMONIALS.map((item, idx) => {
               const isActive = idx === activeIndex;
 
@@ -139,12 +139,12 @@ export default function Testimonials() {
                 <div
                   key={item.id}
                   onClick={() => handleSelectClient(idx)}
-                  className="relative flex items-center justify-center cursor-pointer transition-transform duration-200 group/avatar"
+                  className="relative flex items-center justify-center cursor-pointer transition-transform duration-200 group/avatar shrink-0 min-w-[40px] min-h-[40px]"
                   title={`${item.name} - ${item.company}`}
                 >
                   {isActive ? (
                     /* Active Avatar with SVG Circular Progress Ring */
-                    <div className="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center">
+                    <div className="relative w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 flex items-center justify-center">
                       {/* SVG Progress Ring */}
                       <svg
                         className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none"
@@ -175,7 +175,7 @@ export default function Testimonials() {
                       </svg>
 
                       {/* Active Portrait Photo */}
-                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full overflow-hidden shadow-md border-2 border-white dark:border-black/50">
+                      <div className="w-9 h-9 xs:w-11 xs:h-11 sm:w-12 sm:h-12 rounded-full overflow-hidden shadow-md border-2 border-white dark:border-black/50">
                         <img
                           src={item.avatarSrc}
                           alt={item.avatarAlt}
@@ -185,7 +185,7 @@ export default function Testimonials() {
                     </div>
                   ) : (
                     /* Inactive Avatar */
-                    <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full overflow-hidden border border-black/15 dark:border-white/15 opacity-60 hover:opacity-100 transition-all duration-300 grayscale hover:grayscale-0 hover:scale-105">
+                    <div className="w-8 h-8 xs:w-9 xs:h-9 sm:w-11 sm:h-11 rounded-full overflow-hidden border border-black/15 dark:border-white/15 opacity-60 hover:opacity-100 transition-all duration-300 grayscale hover:grayscale-0 hover:scale-105">
                       <img
                         src={item.avatarSrc}
                         alt={item.avatarAlt}
@@ -209,15 +209,15 @@ export default function Testimonials() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.25, ease: "easeOut" }}
-                className="w-full space-y-2.5"
+                className="w-full space-y-2 sm:space-y-2.5"
               >
                 {/* Quote Text */}
-                <p className="w-full text-sm sm:text-base lg:text-lg text-zinc-700 dark:text-zinc-200 leading-relaxed font-normal">
+                <p className="w-full text-xs xs:text-sm sm:text-base lg:text-lg text-zinc-700 dark:text-zinc-200 leading-relaxed font-normal">
                   &ldquo;{current.quote}&rdquo;
                 </p>
 
                 {/* Author Credentials */}
-                <div className="pt-1 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+                <div className="pt-1 text-[11px] xs:text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
                   <span className="font-bold text-[var(--neutral-dark)]">
                     {current.name}
                   </span>

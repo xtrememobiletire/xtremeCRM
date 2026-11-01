@@ -6,21 +6,21 @@ import ServicesCategoryBlock from "./services-category-block";
 
 export default function ServicesShowcase() {
   return (
-    <section className="w-full py-16 sm:py-24 lg:py-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <section className="w-full py-10 xs:py-14 sm:py-24 lg:py-28 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       {/* Top Eyebrow & Header Section (directly matching wireframe) */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-12 sm:pb-16 border-b border-zinc-300 dark:border-zinc-800 mb-12 sm:mb-16">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 pb-8 sm:pb-16 border-b border-zinc-300 dark:border-zinc-800 mb-8 sm:mb-16">
         <div>
-          <div className="flex items-center gap-2.5 mb-3">
-            <span className="w-3 h-3 bg-black dark:bg-[#DC2626] inline-block shrink-0 rounded-none shadow-sm" />
-            <span className="text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
+          <div className="flex items-center gap-2.5 mb-2 sm:mb-3">
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black dark:bg-[#DC2626] inline-block shrink-0 rounded-none shadow-sm" />
+            <span className="text-[11px] xs:text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
               Services Portfolio
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-zinc-950 dark:text-white">
+          <h1 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-zinc-950 dark:text-white">
             What We Offer
           </h1>
         </div>
-        <p className="text-sm sm:text-base md:text-lg text-zinc-600 dark:text-zinc-400 max-w-md font-normal leading-relaxed">
+        <p className="text-xs xs:text-sm sm:text-base md:text-lg text-zinc-600 dark:text-zinc-400 max-w-md font-normal leading-relaxed">
           At XtremeMobileTire, our mission is simple: to do what&apos;s best for our customers and their vehicles.
         </p>
       </div>
