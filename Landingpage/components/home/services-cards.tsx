@@ -174,7 +174,9 @@ export default function ServicesCards() {
                 {/* Full-Bleed Photograph covering entire container length */}
                 <img
                   src={item.image}
-                  alt={item.title}
+                  alt={`${item.title} - Xtreme Mobile Tire Services`}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
                 />
 

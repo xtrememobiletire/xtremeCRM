@@ -16,11 +16,11 @@ interface HeroSectionProps {
 }
 
 export default function HeroSection({
-  badgeText = "24/7 FLEET TIRE SUPPORT",
+  badgeText = "24/7 MOBILE TIRE & FLEET SUPPORT",
   badgeHref = "/booking",
-  titleLine1 = "Reliable Mobile Tires.",
+  titleLine1 = "24/7 Mobile Tire Service.",
   titleItalic = "Anytime. Anywhere.",
-  description = "The modern platform for commercial fleets and vehicle owners who need fast, professional on-site tire services wherever they operate — day or night.",
+  description = "On-demand mobile tire repair, replacement, and commercial fleet management delivered directly to your driveway, workplace, or roadside location.",
   ctaText = "Book Now",
   ctaHref = "/booking",
 }: HeroSectionProps) {

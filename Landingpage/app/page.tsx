@@ -1,104 +1,39 @@
-"use client";
+import type { Metadata } from "next";
+import HomeView from "@/components/home/home-view";
 
-import { useRef } from "react";
-import Header from "@/components/home/header";
-import HeroSection from "@/components/home/hero-section";
-import DispatchContactBar from "@/components/home/dispatch-contact-bar";
-import FleetMembersBar from "@/components/home/fleet-members-bar";
-import ServicesCards from "@/components/home/services-cards";
-import MobileTireShowcase from "@/components/home/mobile-tire-showcase";
-import AccountTypeComparison from "@/components/home/account-type-comparison";
-import FleetBanner from "@/components/home/fleet-banner";
-import Testimonials from "@/components/home/testimonials";
-import HomeFooter from "@/components/home/home-footer";
-import ThemeToggle from "@/components/home/theme-toggle";
+export const metadata: Metadata = {
+  title: "24/7 Mobile Tire Service & Repair | Xtreme Mobile Tire",
+  description:
+    "Flat tire? We come to you 24/7. Fast on-demand mobile tire repair, replacement, and roadside assistance for cars & fleets. Call or book online now!",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "24/7 Mobile Tire Service & Repair | Xtreme Mobile Tire",
+    description:
+      "Flat tire? We come to you 24/7. Fast on-demand mobile tire repair, replacement, and roadside assistance for cars & fleets.",
+    url: "/",
+    type: "website",
+    images: [
+      {
+        url: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426881/xtreme/landing/service-mobile-van_jpg.jpg",
+        width: 1200,
+        height: 630,
+        alt: "24/7 Mobile Tire Service Van on Site",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "24/7 Mobile Tire Service & Repair | Xtreme Mobile Tire",
+    description:
+      "Flat tire? We come to you 24/7. Fast on-demand mobile tire repair, replacement, and roadside assistance for cars & fleets.",
+    images: [
+      "https://res.cloudinary.com/ebjikx52/image/upload/v1792426881/xtreme/landing/service-mobile-van_jpg.jpg",
+    ],
+  },
+};
 
 export default function HomePage() {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const handleLogoClick = () => {
-    scrollContainerRef.current?.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
-
-  return (
-    /* 
-      OUTER FRAME VIEWPORT (FIXED BEZEL):
-      - Fixed to 100vh (h-screen) with overflow-hidden so the outer framing never scrolls.
-      - bg-black provides the outer dark frame and matches the curved notch background.
-      - p-0 sm:p-3 lg:p-4 creates the luxury framed canvas margin on desktop & tablet.
-    */
-    <div className="relative h-screen w-full bg-black p-0 sm:p-3 lg:p-4 flex flex-col justify-start transition-colors selection:bg-[var(--brand-primary)] selection:text-white overflow-hidden">
-      
-      {/* 
-        INNER CANVAS CONTAINER (THE CARD):
-        - Full edge-to-edge on mobile (rounded-none).
-        - Smooth rounded card on tablet/desktop (sm:rounded-[36px] lg:rounded-[44px]).
-        - overflow-hidden clips the scrollable content inside the curved corners.
-        - Because the container card itself stays locked in the frame, its corner curves NEVER break or drift!
-      */}
-      <div className="relative z-10 w-full flex-1 h-full min-h-0 bg-[var(--neutral-light)] dark:bg-black text-[var(--neutral-dark)] sm:border sm:border-black/5 sm:dark:border-white/10 rounded-none sm:rounded-[36px] lg:rounded-[44px] overflow-hidden shadow-2xl flex flex-col">
-
-        {/* 
-          CURVED-NOTCH NAVBAR (ANCHORED AT TOP):
-          - Positioned absolute top-0 at z-50 so it stays anchored at the top of the card.
-          - Inverted wing fillets seamlessly align with the top edge and outer bezel.
-          - Receives onLogoClick to smoothly scroll the inner container to the top.
-          - Permanently anchored across all pages.
-        */}
-        <div className="absolute top-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
-          <div className="w-full pointer-events-auto">
-            <Header onLogoClick={handleLogoClick} hide={false} />
-          </div>
-        </div>
-
-        {/* 
-          SCROLLABLE CONTENT AREA:
-          - flex-1 and overflow-y-auto no-scrollbar scroll-smooth.
-          - Content smoothly flows underneath the curved navbar notch as the user scrolls.
-          - The navbar notch and outer card curves stay permanently anchored without moving.
-        */}
-        <div
-          ref={scrollContainerRef}
-          className="relative z-20 flex-1 w-full h-full overflow-y-auto no-scrollbar scroll-smooth pt-24 sm:pt-28 lg:pt-32 flex flex-col"
-        >
-          <div id="home" className="w-full flex flex-col flex-1">
-            {/* Section 1: Hero Section (Headline, CTA & 6-card Fleet Gallery Showcase) */}
-            <HeroSection />
-
-            {/* 24/7 Fleet Dispatch Contact Bar (Directly beneath Hero) */}
-            <DispatchContactBar />
-
-            {/* Flowing Bar: Fleet Members infinite marquee separator */}
-            <FleetMembersBar />
-
-            {/* Section 2: Services Cards (24/7 Mobile Service & Fleet Solutions) */}
-            <ServicesCards />
-
-            {/* Section 3: Wireframe Mobile Tire Showcase (XTREMEMOBILE TIRE SOLUTIONS + Box + Picture) */}
-            <MobileTireShowcase />
-
-            {/* Section 4: Choose Your Account Type (Fleet Manager vs Personal Membership) */}
-            <AccountTypeComparison />
-
-            {/* Section 5: Built For Fleet Managers Banner */}
-            <FleetBanner />
-
-            {/* Section 6: Testimonials & Trusted By Teams Worldwide */}
-            <Testimonials />
-
-            {/* Section 7: Footer (Quick Links & Contact) */}
-            <HomeFooter />
-          </div>
-        </div>
-
-        {/* THEME TOGGLE: Bottom right floating button */}
-        <ThemeToggle />
-
-      </div>
-
-    </div>
-  );
+  return <HomeView />;
 }

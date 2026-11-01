@@ -50,7 +50,7 @@ export default function MobileTireShowcase() {
                 <div className="absolute top-0 left-0 bottom-0 w-1 bg-transparent group-hover/box:bg-[var(--brand-primary)] transition-colors rounded-none" />
 
                 <p className="font-sans text-sm sm:text-base lg:text-lg leading-relaxed text-zinc-700 dark:text-zinc-300 font-normal">
-                  Xtreme Mobile Tire brings expert tire services directly to your home, workplace, or roadside..
+                  Xtreme Mobile Tire brings certified tire technicians, precision mounting equipment, and digital balancing directly to your home, office, or emergency roadside location.
                 </p>
               </div>
             </div>
@@ -63,7 +63,7 @@ export default function MobileTireShowcase() {
               >
                 <div className="flex items-center justify-between gap-4 pb-3 border-b-2 border-black/20 dark:border-white/20 group-hover:border-[var(--brand-primary)] transition-colors">
                   <span className="font-sans text-xl sm:text-2xl font-bold tracking-tight text-[var(--neutral-dark)] group-hover:text-[var(--brand-primary)] transition-colors">
-                    Learn More
+                    Explore On-Site Services
                   </span>
                   
                   {/* Sleek directional arrow */}
@@ -94,7 +94,7 @@ export default function MobileTireShowcase() {
               <div className="absolute inset-0 overflow-hidden">
                 <img
                   src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426893/xtreme/landing/wheel-car_jpg.png"
-                  alt="Professional Mobile Tire Service"
+                  alt="Xtreme Mobile Tire on-site emergency vehicle and tire replacement service"
                   className="w-full h-full object-cover object-center group-hover/image:scale-105 transition-transform duration-700 ease-out"
                 />
                 
