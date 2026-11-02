@@ -1365,8 +1365,8 @@ export const jobController = {
         updateData.arrivalWindowEnd = new Date(updateData.arrivalWindowStart.getTime() + 30 * 60000);
       }
 
-      if (estimatedArrivalMinutes !== undefined && estimatedArrivalMinutes !== null) {
-        updateData.estimatedArrivalMinutes = Number(estimatedArrivalMinutes);
+      if (driverId && estimatedArrivalMinutes !== undefined && estimatedArrivalMinutes !== null) {
+        updateData.driverEtaMinutes = Number(estimatedArrivalMinutes);
       }
 
       if (recipientName) updateData.recipientName = recipientName;
