@@ -6,7 +6,8 @@ import {
   MapPin, Phone, Mail, Globe, Plus, Trash2,
   LogOut, ArrowLeft, Building2, X,
   Calendar, Layers, ShieldCheck, DollarSign,
-  Wrench, ArrowRight, Radio, Bell, Menu, Zap
+  Wrench, ArrowRight, Radio, Bell, Menu, Zap,
+  Search
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -38,6 +39,7 @@ export default function FleetDashboard() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [pendingSearch, setPendingSearch] = useState('');
   const [paidSearch, setPaidSearch] = useState('');
+  const [vehicleSearch, setVehicleSearch] = useState('');
   const leftFormScrollRef = useRef<HTMLDivElement>(null);
 
   // Modals for adding vehicle, driver, and assigning vehicle
@@ -461,6 +463,21 @@ export default function FleetDashboard() {
       inv.notes?.toLowerCase().includes(q)
     );
   }, [paidInvoices, paidSearch]);
+
+  // Filtered vehicles
+  const filteredVehicles = useMemo(() => {
+    const q = vehicleSearch.trim().toLowerCase();
+    if (!q) return vehicles;
+    return vehicles.filter((v: any) =>
+      (v.unitNumber && String(v.unitNumber).toLowerCase().includes(q)) ||
+      (v.licensePlate && String(v.licensePlate).toLowerCase().includes(q)) ||
+      (v.make && String(v.make).toLowerCase().includes(q)) ||
+      (v.model && String(v.model).toLowerCase().includes(q)) ||
+      (v.year && String(v.year).toLowerCase().includes(q)) ||
+      (v.tireSize && String(v.tireSize).toLowerCase().includes(q)) ||
+      (v.vin && String(v.vin).toLowerCase().includes(q))
+    );
+  }, [vehicles, vehicleSearch]);
 
   // KPI Calculations
   const pendingAmountCents = useMemo(() => {
@@ -901,7 +918,7 @@ export default function FleetDashboard() {
 
           {/* 2. VEHICLES TAB */}
           {activeTab === 'vehicles' && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <PageHeader
                 title="Registered Fleet Vehicles"
                 subtitle={`Commercial fleet units authorized for 24/7 roadside tire repair (${vehicles.length} total)`}
@@ -916,60 +933,141 @@ export default function FleetDashboard() {
                 }
               />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {vehicles.map((v: any) => (
-                  <div key={v.id} className="card-surface p-5 space-y-3 relative group hover:border-slate-300 hover:shadow-md transition">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {v.unitNumber && (
-                          <span className="text-xs font-bold px-2 py-0.5 bg-slate-200 text-slate-800 rounded-lg">
-                            Unit {v.unitNumber}
-                          </span>
-                        )}
-                        <span className="text-xs font-mono font-bold px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-slate-800">
-                          {v.licensePlate || 'NO PLATE'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-500 font-mono">{v.year}</span>
+              {vehicles.length === 0 ? (
+                <div className="card-surface py-12 text-center text-slate-500 text-xs space-y-3">
+                  <Truck className="w-10 h-10 text-slate-300 mx-auto" />
+                  <div className="font-semibold text-slate-700">No fleet vehicles registered yet.</div>
+                  <button
+                    onClick={() => setIsAddVehicleOpen(true)}
+                    className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 font-bold cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Register your first vehicle</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="card-surface overflow-hidden shadow-xs space-y-0">
+                  {/* Search / Filter Toolbar */}
+                  <div className="p-3.5 sm:p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+                    <div className="relative flex-1 max-w-md">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={vehicleSearch}
+                        onChange={(e) => setVehicleSearch(e.target.value)}
+                        placeholder="Search unit #, license plate, make, model, tire spec..."
+                        className="input-base pl-9 pr-8 py-2 text-xs text-slate-800 w-full"
+                      />
+                      {vehicleSearch && (
                         <button
-                          onClick={() => deleteVehicleMutation.mutate(v.id)}
-                          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-600 transition p-1 cursor-pointer"
-                          title="Remove Vehicle"
+                          type="button"
+                          onClick={() => setVehicleSearch('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                          title="Clear search"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <X size={14} />
                         </button>
-                      </div>
+                      )}
                     </div>
-
-                    <div>
-                      <div className="font-bold text-base text-slate-900">{v.make} {v.model}</div>
-                      {v.vin && <div className="text-[11px] font-mono text-slate-400 mt-0.5">VIN: {v.vin}</div>}
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                      <span className="text-slate-500 font-medium">Tire Spec:</span>
-                      <span className="px-2 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded font-mono font-bold text-xs">
-                        {v.tireSize || '11R22.5'}
-                      </span>
+                    <div className="text-xs text-slate-500 font-medium">
+                      Showing <span className="font-bold text-slate-900">{filteredVehicles.length}</span> of {vehicles.length} units
                     </div>
                   </div>
-                ))}
 
-                {vehicles.length === 0 && (
-                  <div className="col-span-full card-surface py-12 text-center text-slate-500 text-xs space-y-3">
-                    <Truck className="w-10 h-10 text-slate-300 mx-auto" />
-                    <div className="font-semibold text-slate-700">No fleet vehicles registered yet.</div>
-                    <button
-                      onClick={() => setIsAddVehicleOpen(true)}
-                      className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 font-bold cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Register your first vehicle</span>
-                    </button>
+                  {/* Responsive Vehicles Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs whitespace-nowrap">
+                      <thead>
+                        <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                          <th className="py-3 px-4">UNIT #</th>
+                          <th className="py-3 px-4">LICENSE PLATE</th>
+                          <th className="py-3 px-4">VEHICLE</th>
+                          <th className="py-3 px-4">YEAR</th>
+                          <th className="py-3 px-4">TIRE SPEC</th>
+                          <th className="py-3 px-4">VIN</th>
+                          <th className="py-3 px-4 text-right">ACTION</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredVehicles.length > 0 ? (
+                          filteredVehicles.map((v: any) => (
+                            <tr key={v.id} className="hover:bg-slate-50/80 transition group">
+                              <td className="py-3.5 px-4">
+                                {v.unitNumber ? (
+                                  <span className="text-xs font-bold px-2 py-0.5 bg-slate-200 text-slate-800 rounded-lg inline-block font-mono">
+                                    Unit {v.unitNumber}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-slate-400 font-mono">—</span>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className="text-xs font-mono font-bold px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-slate-800 inline-block">
+                                  {v.licensePlate || 'NO PLATE'}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div className="font-bold text-slate-900 text-xs sm:text-sm">
+                                  {v.make} {v.model}
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className="text-xs text-slate-600 font-mono font-medium">
+                                  {v.year || '—'}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className="px-2 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded font-mono font-bold text-xs inline-block">
+                                  {v.tireSize || '11R22.5'}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                {v.vin ? (
+                                  <span className="text-[11px] font-mono text-slate-500">{v.vin}</span>
+                                ) : (
+                                  <span className="text-slate-300 font-mono text-[11px]">—</span>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-4 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (window.confirm(`Are you sure you want to remove ${v.unitNumber ? 'Unit ' + v.unitNumber : v.licensePlate || `${v.make} ${v.model}`}?`)) {
+                                      deleteVehicleMutation.mutate(v.id);
+                                    }
+                                  }}
+                                  disabled={deleteVehicleMutation.isPending}
+                                  className="text-slate-400 hover:text-red-600 transition p-1.5 rounded-lg hover:bg-red-50 cursor-pointer inline-flex items-center justify-center"
+                                  title="Remove Vehicle"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={7} className="py-12 text-center text-slate-500 text-xs">
+                              <div className="space-y-2">
+                                <Truck className="w-8 h-8 text-slate-300 mx-auto" />
+                                <div className="font-semibold text-slate-700">No vehicles match "{vehicleSearch}"</div>
+                                <p className="text-slate-400 text-[11px]">Try searching by another unit number, plate, or vehicle make.</p>
+                                <button
+                                  type="button"
+                                  onClick={() => setVehicleSearch('')}
+                                  className="text-xs text-red-600 hover:text-red-700 font-bold cursor-pointer pt-1"
+                                >
+                                  Clear search
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
