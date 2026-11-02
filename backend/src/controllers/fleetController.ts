@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { prisma } from '../config/database.js';
+import { cleanUnitNumber, formatVehicleName } from '../utils/textSanitizer.js';
 import {
   sendSuccess,
   sendError,
@@ -321,7 +322,7 @@ export const fleetController = {
       if (Array.isArray(vehicles) && vehicles.length > 0) {
         for (const v of vehicles) {
           const cleanPlate = v.licensePlate && String(v.licensePlate).trim() ? String(v.licensePlate).trim().toUpperCase() : null;
-          const cleanUnit = v.unitNumber && String(v.unitNumber).trim() ? String(v.unitNumber).trim() : null;
+          const cleanUnit = v.unitNumber ? cleanUnitNumber(v.unitNumber) : null;
           if (!cleanPlate && !cleanUnit) continue;
 
           try {
@@ -336,8 +337,8 @@ export const fleetController = {
                 update: {
                   fleetId: fleet.id,
                   unitNumber: cleanUnit || undefined,
-                  make: v.make || 'Commercial',
-                  model: v.model || 'Rig',
+                  make: v.make ? formatVehicleName(v.make) : 'Commercial',
+                  model: v.model ? formatVehicleName(v.model) : 'Rig',
                   year: v.year ? Number(v.year) : new Date().getFullYear(),
                   color: v.color?.trim() || undefined,
                   unitType: v.unitType?.trim() || undefined,
@@ -793,9 +794,16 @@ export const fleetController = {
 
       let plate = licensePlate ? String(licensePlate).trim().toUpperCase() : null;
       let finalVehicleId = vehicleId || null;
-      if (finalVehicleId && !plate) {
+      if (finalVehicleId) {
         const v = await prisma.vehicle.findUnique({ where: { id: finalVehicleId } });
-        if (v) plate = v.licensePlate || v.unitNumber || null;
+        if (v) {
+          const vName = `${v.make || ''} ${v.model || ''}`.trim().toUpperCase();
+          if (plate && (plate === vName || plate === (v.model || '').toUpperCase())) {
+            plate = v.licensePlate || null;
+          } else if (!plate) {
+            plate = v.licensePlate || null;
+          }
+        }
       }
 
       const driver = await prisma.fleetDriver.create({

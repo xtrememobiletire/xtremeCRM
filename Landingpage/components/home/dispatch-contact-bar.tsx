@@ -27,7 +27,7 @@ export default function DispatchContactBar() {
             href="tel:+18043265442"
             className="hover:text-[var(--brand-primary)] transition-colors cursor-pointer whitespace-nowrap group/link min-h-[36px] inline-flex items-center px-1.5 py-1"
           >
-            <span className="font-semibold text-zinc-900 dark:text-zinc-100 group-hover/link:text-[var(--brand-primary)]">
+            <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100 group-hover/link:text-[var(--brand-primary)]">
               (804) 326-5442
             </span>{" "}
             <span className="text-zinc-500 text-xs font-normal ml-1">(US)</span>
@@ -40,7 +40,7 @@ export default function DispatchContactBar() {
             href="tel:+14373755674"
             className="hover:text-[var(--brand-primary)] transition-colors cursor-pointer whitespace-nowrap group/link min-h-[36px] inline-flex items-center px-1.5 py-1"
           >
-            <span className="font-semibold text-zinc-900 dark:text-zinc-100 group-hover/link:text-[var(--brand-primary)]">
+            <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100 group-hover/link:text-[var(--brand-primary)]">
               (437) 375-5674
             </span>{" "}
             <span className="text-zinc-500 text-xs font-normal ml-1">(CA)</span>
@@ -53,7 +53,7 @@ export default function DispatchContactBar() {
             href="tel:+441630234331"
             className="hover:text-[var(--brand-primary)] transition-colors cursor-pointer whitespace-nowrap group/link min-h-[36px] inline-flex items-center px-1.5 py-1"
           >
-            <span className="font-semibold text-zinc-900 dark:text-zinc-100 group-hover/link:text-[var(--brand-primary)]">
+            <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100 group-hover/link:text-[var(--brand-primary)]">
               +44 1630 234331
             </span>{" "}
             <span className="text-zinc-500 text-xs font-normal ml-1">(UK)</span>

@@ -7,6 +7,7 @@ import { getIO } from '../config/socket.js';
 import { geocodingService } from '../services/geocodingService.js';
 import { sseManager } from '../services/sseManager.js';
 import { resolveTimezoneFromCoords } from '../utils/timezone.js';
+import { cleanUnitNumber, formatVehicleName } from '../utils/textSanitizer.js';
 
 const router = Router();
 
@@ -168,9 +169,9 @@ router.post('/vehicles', async (req: Request, res: Response) => {
         fleetId: fleet.id,
         countryCode: fleet.countryCode,
         year: Number(year) || new Date().getFullYear(),
-        make: make.trim(),
-        model: model.trim(),
-        unitNumber: unitNumber ? String(unitNumber).trim() : null,
+        make: formatVehicleName(make),
+        model: formatVehicleName(model),
+        unitNumber: cleanUnitNumber(unitNumber) || null,
         licensePlate: licensePlate ? licensePlate.trim().toUpperCase() : null,
         tireSize: tireSize.trim(),
         vin: vin ? vin.trim().toUpperCase() : null,
@@ -248,9 +249,16 @@ router.post('/drivers', async (req: Request, res: Response) => {
 
     let plate = licensePlate ? licensePlate.trim().toUpperCase() : null;
     let finalVehicleId = vehicleId || null;
-    if (finalVehicleId && !plate) {
+    if (finalVehicleId) {
       const v = await prisma.vehicle.findUnique({ where: { id: finalVehicleId } });
-      if (v) plate = v.licensePlate || v.unitNumber || null;
+      if (v) {
+        const vName = `${v.make || ''} ${v.model || ''}`.trim().toUpperCase();
+        if (plate && (plate === vName || plate === (v.model || '').toUpperCase())) {
+          plate = v.licensePlate || null;
+        } else if (!plate) {
+          plate = v.licensePlate || null;
+        }
+      }
     }
 
     const driver = await prisma.fleetDriver.create({
@@ -304,9 +312,16 @@ router.patch('/drivers/:id', async (req: Request, res: Response) => {
 
     let plate = licensePlate !== undefined ? (licensePlate ? licensePlate.trim().toUpperCase() : null) : undefined;
     let vId = vehicleId !== undefined ? (vehicleId || null) : undefined;
-    if (vId && plate === undefined) {
+    if (vId) {
       const v = await prisma.vehicle.findUnique({ where: { id: vId } });
-      if (v) plate = v.licensePlate || v.unitNumber || null;
+      if (v) {
+        const vName = `${v.make || ''} ${v.model || ''}`.trim().toUpperCase();
+        if (plate && (plate === vName || plate === (v.model || '').toUpperCase())) {
+          plate = v.licensePlate || null;
+        } else if (plate === undefined) {
+          plate = v.licensePlate || null;
+        }
+      }
     }
 
     await prisma.fleetDriver.updateMany({

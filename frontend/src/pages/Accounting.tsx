@@ -1,3 +1,4 @@
+import { formatMoney } from '../utils/displayFormatters';
 import { useState } from 'react';
 import {
   DollarSign,
@@ -218,7 +219,7 @@ export default function Accounting() {
         <>
           {/* KPI Cards Grid */}
           {selectedCountry === 'ALL' && summaryData?.byCurrency ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5 my-5">
               {(
                 [
                   { key: 'CAD', label: 'Canada', flag: '🇨🇦', symbol: 'CA$', data: summaryData.byCurrency.CAD },
@@ -248,18 +249,24 @@ export default function Accounting() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 pt-1 text-center">
-                    <div className="bg-slate-50 p-2 rounded-lg">
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Revenue</p>
-                      <p className="text-xs font-bold text-slate-800">{cur.data?.formatted?.grossRevenue ?? '$0.00'}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-center">
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Revenue</p>
+                      <p className="text-sm sm:text-base font-extrabold text-slate-900 tabular-nums truncate mt-0.5">
+                        {cur.data?.metrics ? formatMoney(cur.data.metrics.grossRevenueDollars, cur.key as any) : (cur.data?.formatted?.grossRevenue ?? '$0.00')}
+                      </p>
                     </div>
-                    <div className="bg-rose-50/50 p-2 rounded-lg">
-                      <p className="text-[10px] uppercase font-bold text-rose-500">Direct COGS</p>
-                      <p className="text-xs font-bold text-rose-700">{cur.data?.formatted?.totalDirectCosts ?? '$0.00'}</p>
+                    <div className="bg-rose-50/60 p-2.5 rounded-xl border border-rose-100">
+                      <p className="text-[10px] uppercase font-bold text-rose-600 tracking-wider">Direct COGS</p>
+                      <p className="text-sm sm:text-base font-extrabold text-rose-700 tabular-nums truncate mt-0.5">
+                        {cur.data?.metrics ? formatMoney(cur.data.metrics.totalDirectCostsDollars, cur.key as any) : (cur.data?.formatted?.totalDirectCosts ?? '$0.00')}
+                      </p>
                     </div>
-                    <div className="bg-emerald-50/50 p-2 rounded-lg">
-                      <p className="text-[10px] uppercase font-bold text-emerald-600">Net Profit</p>
-                      <p className="text-xs font-bold text-emerald-700">{cur.data?.formatted?.netProfit ?? '$0.00'}</p>
+                    <div className="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
+                      <p className="text-[10px] uppercase font-bold text-emerald-700 tracking-wider">Net Profit</p>
+                      <p className="text-sm sm:text-base font-extrabold text-emerald-700 tabular-nums truncate mt-0.5">
+                        {cur.data?.metrics ? formatMoney(cur.data.metrics.netProfitDollars, cur.key as any) : (cur.data?.formatted?.netProfit ?? '$0.00')}
+                      </p>
                     </div>
                   </div>
                 </div>

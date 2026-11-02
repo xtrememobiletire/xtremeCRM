@@ -1,3 +1,4 @@
+import { formatUnitLabel, formatVehicleName, formatPlateBadge, formatTireSpecBadge, cleanText } from '../utils/displayFormatters';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -585,7 +586,7 @@ export default function FleetDashboard() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold text-slate-800 truncate">
-                {fleet?.companyName || user?.fullName || 'Fleet Manager'}
+                {cleanText(fleet?.companyName) || user?.fullName || 'Fleet Manager'}
               </p>
               <p className="text-[10px] text-slate-500 uppercase font-semibold">
                 FLEET MANAGER
@@ -994,21 +995,30 @@ export default function FleetDashboard() {
                             <tr key={v.id} className="hover:bg-slate-50/80 transition group">
                               <td className="py-3.5 px-4">
                                 {v.unitNumber ? (
-                                  <span className="text-xs font-bold px-2 py-0.5 bg-slate-200 text-slate-800 rounded-lg inline-block font-mono">
-                                    Unit {v.unitNumber}
+                                  <span className="text-xs font-bold px-2.5 py-1 bg-slate-200 text-slate-800 rounded-lg inline-block font-mono">
+                                    {formatUnitLabel(v.unitNumber)}
                                   </span>
                                 ) : (
                                   <span className="text-xs text-slate-400 font-mono">—</span>
                                 )}
                               </td>
                               <td className="py-3.5 px-4">
-                                <span className="text-xs font-mono font-bold px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-slate-800 inline-block">
-                                  {v.licensePlate || 'NO PLATE'}
-                                </span>
+                                {(() => {
+                                  const badge = formatPlateBadge(v.licensePlate, `${v.make} ${v.model}`);
+                                  return (
+                                    <span className={`text-xs font-mono font-bold px-2.5 py-1 border rounded-lg inline-block ${
+                                      badge.isPlaceholder
+                                        ? 'bg-slate-100 text-slate-600 border-slate-200'
+                                        : 'bg-slate-100 text-slate-800 border-slate-200'
+                                    }`}>
+                                      {badge.text}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td className="py-3.5 px-4">
                                 <div className="font-bold text-slate-900 text-xs sm:text-sm">
-                                  {v.make} {v.model}
+                                  {formatVehicleName(`${v.make || ''} ${v.model || ''}`)}
                                 </div>
                               </td>
                               <td className="py-3.5 px-4">
@@ -1017,9 +1027,18 @@ export default function FleetDashboard() {
                                 </span>
                               </td>
                               <td className="py-3.5 px-4">
-                                <span className="px-2 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded font-mono font-bold text-xs inline-block">
-                                  {v.tireSize || '11R22.5'}
-                                </span>
+                                {(() => {
+                                  const spec = formatTireSpecBadge(v.tireSize);
+                                  return (
+                                    <span className={`px-2.5 py-1 rounded font-mono font-bold text-xs inline-block tabular-nums border ${
+                                      spec.isPlaceholder
+                                        ? 'bg-slate-100 text-slate-600 border-slate-200'
+                                        : 'bg-red-50 text-red-700 border-red-200'
+                                    }`}>
+                                      {spec.text}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td className="py-3.5 px-4">
                                 {v.vin ? (
@@ -1091,7 +1110,7 @@ export default function FleetDashboard() {
                       className="btn-primary text-xs cursor-pointer"
                     >
                       <Plus size={14} />
-                      <span>+ Add Driver</span>
+                      <span>Add Driver</span>
                     </button>
                   </div>
                 }
@@ -1105,14 +1124,27 @@ export default function FleetDashboard() {
                       <div className="text-slate-500 font-mono flex items-center gap-2">
                         <Phone className="w-3.5 h-3.5 text-red-600" />
                         <span>{d.phone}</span>
-                        {d.licensePlate && (
-                          <>
-                            <span className="text-slate-300">•</span>
-                            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-mono text-[11px] font-semibold">
-                              Plate: {d.licensePlate}
-                            </span>
-                          </>
-                        )}
+                        {(() => {
+                          const badge = formatPlateBadge(d.licensePlate, d.vehicleName || d.vehicle?.model);
+                          if (badge.isPlaceholder) {
+                            return (
+                              <>
+                                <span className="text-slate-300">•</span>
+                                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded font-mono text-[11px] font-medium border border-slate-200">
+                                  No Plate
+                                </span>
+                              </>
+                            );
+                          }
+                          return (
+                            <>
+                              <span className="text-slate-300">•</span>
+                              <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-mono text-[11px] font-semibold border border-slate-200">
+                                Plate: {badge.text}
+                              </span>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -1188,16 +1220,20 @@ export default function FleetDashboard() {
                     className="lg:col-span-7 xl:col-span-8 space-y-6 pb-12"
                   >
                     {/* Header Banner */}
-                    <div className="pb-2 border-b border-slate-200">
-                      <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-                        <span>Request Roadside & Fleet Service</span>
-                        <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-red-100 text-red-700 border border-red-200">
+                    <div className="pb-3 border-b border-slate-200">
+                      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                            Request Roadside & Fleet Service
+                          </h1>
+                          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                            Book priority emergency roadside assistance or schedule routine yard fleet maintenance directly with dispatch
+                          </p>
+                        </div>
+                        <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-red-100 text-red-700 border border-red-200 shrink-0">
                           Direct Dispatch
                         </span>
-                      </h1>
-                      <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                        Book priority emergency roadside assistance or schedule routine yard fleet maintenance directly with dispatch
-                      </p>
+                      </div>
                     </div>
                     <div className="p-6 sm:p-7 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-7">
                       {/* 1. Service Priority & Timing Window */}
@@ -1693,8 +1729,9 @@ export default function FleetDashboard() {
                     {jobs.map((j: any, index: number) => {
                       const serviceTitle = j.serviceItems?.[0]?.serviceName || 'Tire Service';
                       const vehicleDesc = j.vehicle
-                        ? `${j.vehicle.unitNumber ? `[Unit ${j.vehicle.unitNumber}] ` : ''}${j.vehicle.year ? `${j.vehicle.year} ` : ''}${j.vehicle.make} ${j.vehicle.model}`
-                        : (j.vehicleMakeModel || '(NONE)');
+                        ? `${j.vehicle.unitNumber ? `[${formatUnitLabel(j.vehicle.unitNumber)}] ` : ''}${j.vehicle.year ? `${j.vehicle.year} ` : ''}${formatVehicleName(`${j.vehicle.make || ''} ${j.vehicle.model || ''}`)}`
+                        : formatVehicleName(j.vehicleMakeModel || '(NONE)');
+                      const plateBadge = formatPlateBadge(j.vehicle?.licensePlate, j.vehicle ? `${j.vehicle.make || ''} ${j.vehicle.model || ''}` : null);
                       const tireSize = j.vehicle?.tireSize || '11R22.5';
                       const apptNum = `#${jobs.length - index}`;
                       const formattedDate = j.scheduledFor || j.appointmentDate || j.createdAt
@@ -1735,9 +1772,9 @@ export default function FleetDashboard() {
                           </td>
                           <td className="py-3.5 px-4 text-slate-700 font-medium">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              {j.vehicle?.licensePlate && (
-                                <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-800">
-                                  {j.vehicle.licensePlate}
+                              {!plateBadge.isPlaceholder && (
+                                <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-800 tabular-nums">
+                                  {plateBadge.text}
                                 </span>
                               )}
                               <span>{vehicleDesc}</span>
@@ -1825,7 +1862,7 @@ export default function FleetDashboard() {
                         </button>
 
                         <div className="text-right">
-                          <div className="font-mono font-bold text-red-600 text-base">
+                          <div className="font-mono font-bold text-red-600 text-base tabular-nums">
                             {formatCurrency(centsToDollars(inv.totalCents), currencySymbol)}
                           </div>
                           <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded">
@@ -1889,7 +1926,7 @@ export default function FleetDashboard() {
                         </button>
 
                         <div className="text-right">
-                          <div className="font-mono font-bold text-emerald-600 text-base">
+                          <div className="font-mono font-bold text-emerald-600 text-base tabular-nums">
                             {formatCurrency(centsToDollars(inv.totalCents), currencySymbol)}
                           </div>
                           <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded">

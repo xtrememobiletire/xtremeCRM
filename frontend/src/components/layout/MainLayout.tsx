@@ -113,20 +113,20 @@ export default function MainLayout() {
   };
 
   return (
-    <div className="flex h-[100dvh] max-h-[100dvh] overflow-hidden bg-slate-50 text-slate-900 font-sans antialiased">
+    <div className="flex min-h-screen w-full overflow-x-hidden bg-slate-50 text-slate-900 font-sans antialiased">
       <Sidebar 
         isOpen={isMobileMenuOpen} 
         onClose={() => setIsMobileMenuOpen(false)}
         isCollapsed={isCollapsed}
       />
-      <div className="flex-1 flex flex-col h-[100dvh] max-h-[100dvh] overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden min-w-0">
         <TopNav 
           onMobileMenuClick={() => setIsMobileMenuOpen(true)}
           onToggleCollapse={toggleCollapse}
           isCollapsed={isCollapsed}
         />
-        <main className="flex-1 overflow-y-auto px-3.5 py-4 sm:px-6 sm:py-6">
-          <div className="max-w-7xl mx-auto w-full">
+        <main className="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6 lg:p-8">
+          <div className="max-w-7xl mx-auto w-full min-w-0">
             <RouteErrorBoundary>
               <Suspense fallback={<PageLoader />}>
                 <Outlet />

@@ -937,7 +937,7 @@ export default function BookingModal({
                         placeholder="John"
                         value={formData.firstName}
                         onChange={(e) => handleInputChange("firstName", e.target.value)}
-                        className={`w-full px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
+                        className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
                           formErrors.firstName
                             ? "border-red-500"
                             : "border-zinc-200 dark:border-zinc-700 focus:border-[#DC2626]"
@@ -957,7 +957,7 @@ export default function BookingModal({
                         placeholder="Doe"
                         value={formData.lastName}
                         onChange={(e) => handleInputChange("lastName", e.target.value)}
-                        className={`w-full px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
+                        className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
                           formErrors.lastName
                             ? "border-red-500"
                             : "border-zinc-200 dark:border-zinc-700 focus:border-[#DC2626]"
@@ -977,7 +977,7 @@ export default function BookingModal({
                         placeholder="john@example.com"
                         value={formData.email}
                         onChange={(e) => handleInputChange("email", e.target.value)}
-                        className={`w-full px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
+                        className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
                           formErrors.email
                             ? "border-red-500"
                             : "border-zinc-200 dark:border-zinc-700 focus:border-[#DC2626]"
@@ -997,7 +997,7 @@ export default function BookingModal({
                         placeholder="(905) 000-0000"
                         value={formData.phone}
                         onChange={(e) => handleInputChange("phone", e.target.value)}
-                        className={`w-full px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
+                        className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
                           formErrors.phone
                             ? "border-red-500"
                             : "border-zinc-200 dark:border-zinc-700 focus:border-[#DC2626]"
@@ -1038,7 +1038,7 @@ export default function BookingModal({
                         list="makes-list"
                         value={formData.make}
                         onChange={(e) => handleInputChange("make", e.target.value)}
-                        className={`w-full px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
+                        className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
                           formErrors.make
                             ? "border-red-500"
                             : "border-zinc-200 dark:border-zinc-700 focus:border-[#DC2626]"
@@ -1063,7 +1063,7 @@ export default function BookingModal({
                         placeholder="e.g. F-150, Civic, Silverado"
                         value={formData.model}
                         onChange={(e) => handleInputChange("model", e.target.value)}
-                        className={`w-full px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
+                        className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
                           formErrors.model
                             ? "border-red-500"
                             : "border-zinc-200 dark:border-zinc-700 focus:border-[#DC2626]"
@@ -1100,7 +1100,7 @@ export default function BookingModal({
                     placeholder="e.g. 120 Airport Rd, Unit 4, Mississauga, ON or Highway 401 Exit 320"
                     value={formData.address}
                     onChange={(e) => handleInputChange("address", e.target.value)}
-                    className={`w-full px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
+                    className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
                       formErrors.address
                         ? "border-red-500"
                         : "border-zinc-200 dark:border-zinc-700 focus:border-[#DC2626]"

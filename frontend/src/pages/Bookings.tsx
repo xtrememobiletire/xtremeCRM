@@ -22,42 +22,29 @@ import { jobService } from '../services/jobService';
 import { useTenant } from '../context/TenantContext';
 import { toast } from 'sonner';
 import { formatDate, formatTimeInTz, getDefaultTimezoneForCountry, PKT_TIMEZONE } from '../utils/date';
+import { cleanText, formatVehicleName, formatPlateBadge } from '../utils/displayFormatters';
 
 export type BookingCategoryTab = 'ALL' | 'PUBLIC_WEB' | 'MEMBER' | 'FLEET';
 export type ViewMode = 'table' | 'cards';
 
 function parseBookingDetails(b: any) {
-  const customerName = b.recipientName || b.customer?.fullName || (b.fleet ? b.fleet.name : 'Online Customer');
+  const customerName = cleanText(b.recipientName || b.customer?.fullName || (b.fleet ? b.fleet.name : 'Online Customer'));
   const customerPhone = b.recipientPhone || b.customer?.phone || (b.fleet ? b.fleet.phone : 'No Phone');
-  const rawAddress = b.serviceAddress || b.locationAddress || 'No address provided';
-
-  // Extract email if in notes or direct fields
+  const rawAddress = cleanText(b.serviceAddress || b.locationAddress || 'No address provided');
   let email = b.customer?.email || b.email || '';
-  let cleanNotes = b.problemNotes || '';
-  
+  let cleanNotes = cleanText(b.problemNotes || '');
   if (!email && cleanNotes) {
     const emailMatch = cleanNotes.match(/Customer Email:\s*([^\s\r\n]+)/i) || cleanNotes.match(/Email:\s*([^\s\r\n]+)/i);
-    if (emailMatch) {
-      email = emailMatch[1];
-    }
+    if (emailMatch) email = emailMatch[1];
   }
-
-  // Clean up notes so raw email or repetitive prefixes don't clutter the notes
   if (cleanNotes) {
-    cleanNotes = cleanNotes
-      .replace(/Customer Email:\s*[^\s\r\n]+/gi, '')
-      .replace(/Time Preference:\s*[^\r\n]+/gi, '')
-      .trim();
+    cleanNotes = cleanNotes.replace(/Customer Email:\s*[^\s\r\n]+/gi, '').replace(/Time Preference:\s*[^\r\n]+/gi, '').trim();
   }
-
-  const vehicleStr = b.vehicle
-    ? `${b.vehicle.year || ''} ${b.vehicle.make} ${b.vehicle.model}`.trim()
-    : b.vehicleMakeModel || '';
-
+  const vehicleStr = formatVehicleName(b.vehicle ? `${b.vehicle.year || ''} ${b.vehicle.make || ''} ${b.vehicle.model || ''}`.trim() : (b.vehicleMakeModel || ''));
   const tireSize = b.vehicle?.tireSize || b.tireSize || '';
-  const plate = b.vehicle?.licensePlate || b.licensePlate || '';
+  const plateBadge = formatPlateBadge(b.vehicle?.licensePlate || b.licensePlate, vehicleStr);
+  const plate = plateBadge.isPlaceholder ? '' : plateBadge.text;
   const unitNumber = b.vehicle?.unitNumber || b.unitNumber || '';
-
   return {
     customerName,
     customerPhone,

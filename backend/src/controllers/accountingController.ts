@@ -96,17 +96,17 @@ export const accountingController = {
         };
       };
 
-      const currency: 'CAD' | 'USD' | 'GBP' = countryCode === 'US' ? 'USD' : countryCode === 'UK' ? 'GBP' : 'CAD';
+      const currency: 'CAD' | 'USD' | 'GBP' = countryCode === 'US' ? 'USD' : (countryCode === 'UK' || countryCode === 'GB') ? 'GBP' : 'CAD';
       const defaultBucket = buildBucket(jobs, currency);
 
       const byCurrency = countryCode === 'ALL' ? {
         CAD: buildBucket(jobs.filter((j) => j.countryCode === 'CA' || j.currency === 'CAD'), 'CAD'),
         USD: buildBucket(jobs.filter((j) => j.countryCode === 'US' || j.currency === 'USD'), 'USD'),
-        GBP: buildBucket(jobs.filter((j) => j.countryCode === 'UK' || j.currency === 'GBP'), 'GBP'),
+        GBP: buildBucket(jobs.filter((j) => (j.countryCode as any) === 'UK' || (j.countryCode as any) === 'GB' || j.currency === 'GBP'), 'GBP'),
       } : undefined;
 
       const summary = {
-        countryCode,
+        countryCode: countryCode === 'UK' ? 'GB' : countryCode,
         currency,
         metrics: defaultBucket,
         formatted: defaultBucket.formatted,

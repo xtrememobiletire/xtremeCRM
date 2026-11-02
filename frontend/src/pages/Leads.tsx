@@ -1,3 +1,4 @@
+import { cleanText } from '../utils/displayFormatters';
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
@@ -450,7 +451,7 @@ export default function Leads() {
   const handleWhatsAppChat = (lead: Lead) => {
     const cleanPhone = lead.phone.replace(/[^0-9]/g, '');
     const message = encodeURIComponent(
-      `Hi ${lead.contactPerson}, this is Xtreme Mobile Tire dispatch team regarding fleet tire servicing for ${lead.companyName}. Please find our commercial agreement details here.`
+      `Hi ${lead.contactPerson}, this is Xtreme Mobile Tire dispatch team regarding fleet tire servicing for ${cleanText(lead.companyName)}. Please find our commercial agreement details here.`
     );
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
   };
@@ -526,7 +527,6 @@ export default function Leads() {
               setVaInSession(true);
             }}
             onRefresh={refetchBatches}
-            onOpenUpload={() => setIsUploadModalOpen(true)}
           />
         ) : (
           <div className="space-y-4">
@@ -590,8 +590,7 @@ export default function Leads() {
                 refetchQueue();
                 refetchBatches();
               }}
-              onOpenUpload={() => setIsUploadModalOpen(true)}
-            />
+              />
 
             {/* Scheduled Callbacks Due (Priority Queue) */}
             {queueData.scheduledCallbacks && queueData.scheduledCallbacks.length > 0 && (
@@ -645,6 +644,7 @@ export default function Leads() {
         (isAdminOrGm || isDispatcher) && managementViewMode === 'BATCHES' ? (
           <ManagementBatchDashboard
             batches={managementBatches}
+            onOpenUpload={() => setIsUploadModalOpen(true)}
             isLoading={isLoadingBatches}
             onInspectBatch={(batchId: string) => {
               setInspectedBatchId(batchId);
@@ -662,7 +662,6 @@ export default function Leads() {
             onCloseBatch={(id) => closeBatchMutation.mutate(id)}
             onDistributeBatch={isAdminOrGm ? () => distributeMutation.mutate() : undefined}
             onReviveBatch={(batch) => setBatchToRevive(batch)}
-            onOpenUpload={() => setIsUploadModalOpen(true)}
             onRefresh={refetchBatchesMgmt}
             isAdmin={isAdminOrGm}
           />
@@ -986,7 +985,7 @@ export default function Leads() {
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-1.5">
                             <span className="text-sm">{countryFlags[lead.countryCode] || '🌐'}</span>
-                            <span className="font-bold text-slate-900 text-sm">{lead.companyName}</span>
+                            <span className="font-bold text-slate-900 text-sm">{cleanText(lead.companyName)}</span>
                           </div>
                           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                             {lead.numberOfUnits ? (
@@ -1198,7 +1197,7 @@ export default function Leads() {
                     return (
                       <tr key={lead.id} className="hover:bg-slate-50/70 transition">
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          <div className="font-bold text-slate-900 text-sm">{cleanText(lead.companyName)}</div>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             {lead.numberOfUnits ? (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
@@ -1305,7 +1304,7 @@ export default function Leads() {
                     return (
                       <tr key={lead.id} className="hover:bg-slate-50/70 transition">
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          <div className="font-bold text-slate-900 text-sm">{cleanText(lead.companyName)}</div>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             {lead.numberOfUnits ? (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
@@ -1414,7 +1413,7 @@ export default function Leads() {
                     return (
                       <tr key={lead.id} className="hover:bg-slate-50/70 transition">
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          <div className="font-bold text-slate-900 text-sm">{cleanText(lead.companyName)}</div>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             {lead.numberOfUnits ? (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
@@ -1585,7 +1584,7 @@ export default function Leads() {
                     return (
                       <tr key={lead.id} className="hover:bg-slate-50/70 transition">
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          <div className="font-bold text-slate-900 text-sm">{cleanText(lead.companyName)}</div>
                           <div className="text-[11px] text-slate-600 mt-0.5">
                             {lead.contactPerson} • <span className="font-mono text-slate-800 font-semibold">{lead.phone}</span>
                           </div>
@@ -1762,7 +1761,7 @@ export default function Leads() {
                     return (
                       <tr key={lead.id} className="hover:bg-slate-50/70 transition">
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          <div className="font-bold text-slate-900 text-sm">{cleanText(lead.companyName)}</div>
                           <div className="text-[10px] text-slate-500 font-mono mt-0.5">
                             Ingested: {new Date(lead.createdAt).toLocaleDateString()}
                           </div>
@@ -1884,7 +1883,7 @@ export default function Leads() {
                     return (
                       <tr key={lead.id} className="hover:bg-slate-50/70 transition">
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          <div className="font-bold text-slate-900 text-sm">{cleanText(lead.companyName)}</div>
                           {lead.numberOfUnits && (
                             <span className="text-[10px] text-slate-500 font-medium">
                               {lead.numberOfUnits} Units
@@ -1935,7 +1934,7 @@ export default function Leads() {
                     return (
                       <tr key={lead.id} className="hover:bg-slate-50/70 transition">
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                          <div className="font-bold text-slate-900 text-sm">{cleanText(lead.companyName)}</div>
                           {lead.resultingFleet?.fleetCode ? (
                             <span className="inline-flex items-center gap-1 font-mono font-bold text-emerald-800 bg-emerald-100/70 border border-emerald-300 px-2 py-0.5 rounded-lg text-[10px] mt-0.5">
                               Fleet: {lead.resultingFleet.fleetCode}
@@ -1993,7 +1992,7 @@ export default function Leads() {
                     <tr key={lead.id} className="hover:bg-slate-50/70 transition">
                       {/* Column 1: Company & Units */}
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-slate-900 text-sm">{lead.companyName}</div>
+                        <div className="font-bold text-slate-900 text-sm">{cleanText(lead.companyName)}</div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {lead.numberOfUnits ? (
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
@@ -2277,7 +2276,7 @@ export default function Leads() {
         <Modal
           isOpen={!!disqualifyingLead}
           onClose={() => setDisqualifyingLead(null)}
-          title={`Disqualify Lead — ${disqualifyingLead.companyName}`}
+          title={`Disqualify Lead — ${cleanText(disqualifyingLead.companyName)}`}
           maxWidth="max-w-md"
         >
           <div className="space-y-3.5 text-xs">
@@ -2342,7 +2341,7 @@ export default function Leads() {
         <Modal
           isOpen={!!editingNotesLead}
           onClose={() => setEditingNotesLead(null)}
-          title={`Dispatcher Feasibility Assessment — ${editingNotesLead.companyName}`}
+          title={`Dispatcher Feasibility Assessment — ${cleanText(editingNotesLead.companyName)}`}
           maxWidth="max-w-md"
         >
           <div className="space-y-3.5 text-xs">

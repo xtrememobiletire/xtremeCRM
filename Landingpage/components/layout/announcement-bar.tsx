@@ -32,9 +32,9 @@ export default function AnnouncementBar({
       aria-label="Announcement"
       className="relative z-50 w-full bg-black border-b border-white/[0.08] text-white px-4 py-2 transition-all duration-300 ease-in-out"
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 text-xs sm:text-sm">
+      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 sm:gap-3 text-xs sm:text-sm">
         {/* Left / Center content */}
-        <div className="flex items-center gap-2.5 mx-auto overflow-hidden">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5 mx-auto text-center">
           {/* Pulsing live badge with Crimson Red brand accent */}
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[var(--brand-primary)]/15 border border-[var(--brand-primary)]/40 text-[var(--brand-primary)] text-[11px] font-semibold tracking-wider uppercase shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-primary)] animate-pulse" />
@@ -42,7 +42,7 @@ export default function AnnouncementBar({
           </span>
 
           {/* Announcement text */}
-          <p className="text-zinc-300 font-normal truncate">
+          <p className="text-zinc-300 font-normal">
             {message}
           </p>
 

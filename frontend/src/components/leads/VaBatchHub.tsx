@@ -1,9 +1,9 @@
+import { formatRegionBadge } from '../../utils/displayFormatters';
 import { 
   Layers, 
   Sparkles, 
   ArrowRight, 
-  RefreshCw, 
-  UploadCloud 
+  RefreshCw,
 } from 'lucide-react';
 import type { AvailableBatch } from '../../services/leadService';
 
@@ -12,7 +12,6 @@ interface VaBatchHubProps {
   isLoading: boolean;
   onRefresh: () => void;
   onSelectBatch: (batchId: string | null) => void;
-  onOpenUpload?: () => void;
 }
 
 export default function VaBatchHub({
@@ -20,7 +19,6 @@ export default function VaBatchHub({
   isLoading,
   onRefresh,
   onSelectBatch,
-  onOpenUpload,
 }: VaBatchHubProps) {
   return (
     <div className="max-w-4xl mx-auto space-y-4 py-2">
@@ -41,17 +39,7 @@ export default function VaBatchHub({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {onOpenUpload && (
-            <button
-              type="button"
-              onClick={onOpenUpload}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-300 transition cursor-pointer shadow-2xs"
-              title="Upload leads spreadsheet to an existing batch"
-            >
-              <UploadCloud size={14} className="text-slate-600" />
-              <span>Upload Spreadsheet</span>
-            </button>
-          )}
+          
 
           <button
             type="button"
@@ -107,10 +95,9 @@ export default function VaBatchHub({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {batches.map((batch) => {
               const flagEmoji = batch.countryCode === 'US' ? '🇺🇸' : batch.countryCode === 'UK' ? '🇬🇧' : '🇨🇦';
-              const regionName = batch.countryCode === 'US' ? 'United States' : batch.countryCode === 'UK' ? 'United Kingdom' : 'Canada';
 
               return (
                 <div
@@ -119,10 +106,9 @@ export default function VaBatchHub({
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className="inline-flex items-center gap-1 font-mono text-[11px] font-extrabold uppercase px-2 py-0.5 rounded-lg bg-slate-100 text-slate-800 border border-slate-200">
+                      <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-extrabold px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-800 border border-slate-200">
                         <span>{flagEmoji}</span>
-                        <span>{batch.countryCode}</span>
-                        <span className="text-[10px] text-slate-400 font-normal">({regionName})</span>
+                        <span>{formatRegionBadge(batch.countryCode).label}</span>
                       </span>
 
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">

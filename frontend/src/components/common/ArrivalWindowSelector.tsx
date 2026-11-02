@@ -401,7 +401,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                     setStartHour(h);
                     updateWindowTimes(windowDate, h, startMinute, startAmPm, endHour, endMinute, endAmPm);
                   }}
-                  className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="h-11 min-w-[64px] px-2.5 text-sm font-semibold rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 tabular-nums"
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((h) => (
                     <option key={h} value={h}>
@@ -417,7 +417,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                     setStartMinute(m);
                     updateWindowTimes(windowDate, startHour, m, startAmPm, endHour, endMinute, endAmPm);
                   }}
-                  className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="h-11 min-w-[64px] px-2.5 text-sm font-semibold rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 tabular-nums"
                 >
                   {['00', '15', '30', '45'].map((m) => (
                     <option key={m} value={m}>
@@ -432,7 +432,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                       setStartAmPm('AM');
                       updateWindowTimes(windowDate, startHour, startMinute, 'AM', endHour, endMinute, endAmPm);
                     }}
-                    className={`px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                    className={`h-11 px-3.5 text-sm font-bold transition cursor-pointer tabular-nums flex items-center justify-center ${
                       startAmPm === 'AM' ? 'bg-red-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'
                     }`}
                   >
@@ -444,7 +444,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                       setStartAmPm('PM');
                       updateWindowTimes(windowDate, startHour, startMinute, 'PM', endHour, endMinute, endAmPm);
                     }}
-                    className={`px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                    className={`h-11 px-3.5 text-sm font-bold transition cursor-pointer tabular-nums flex items-center justify-center ${
                       startAmPm === 'PM' ? 'bg-red-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'
                     }`}
                   >
@@ -467,7 +467,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                     setEndHour(h);
                     updateWindowTimes(windowDate, startHour, startMinute, startAmPm, h, endMinute, endAmPm);
                   }}
-                  className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="h-11 min-w-[64px] px-2.5 text-sm font-semibold rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 tabular-nums"
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((h) => (
                     <option key={h} value={h}>
@@ -483,7 +483,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                     setEndMinute(m);
                     updateWindowTimes(windowDate, startHour, startMinute, startAmPm, endHour, m, endAmPm);
                   }}
-                  className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="h-11 min-w-[64px] px-2.5 text-sm font-semibold rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 tabular-nums"
                 >
                   {['00', '15', '30', '45'].map((m) => (
                     <option key={m} value={m}>
@@ -498,7 +498,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                       setEndAmPm('AM');
                       updateWindowTimes(windowDate, startHour, startMinute, startAmPm, endHour, endMinute, 'AM');
                     }}
-                    className={`px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                    className={`h-11 px-3.5 text-sm font-bold transition cursor-pointer tabular-nums flex items-center justify-center ${
                       endAmPm === 'AM' ? 'bg-red-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'
                     }`}
                   >
@@ -510,7 +510,7 @@ export const ArrivalWindowSelector: React.FC<ArrivalWindowSelectorProps> = ({
                       setEndAmPm('PM');
                       updateWindowTimes(windowDate, startHour, startMinute, startAmPm, endHour, endMinute, 'PM');
                     }}
-                    className={`px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                    className={`h-11 px-3.5 text-sm font-bold transition cursor-pointer tabular-nums flex items-center justify-center ${
                       endAmPm === 'PM' ? 'bg-red-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'
                     }`}
                   >

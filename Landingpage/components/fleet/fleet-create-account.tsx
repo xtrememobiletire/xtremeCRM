@@ -398,7 +398,7 @@ export default function FleetCreateAccount() {
                                   value={formData.name}
                                   onChange={(e) => handleChange("name", e.target.value)}
                                   placeholder="e.g. Apex Transportation Logistics Inc."
-                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
+                                  className={`w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-white/[0.04] border ${
                                     errors.name
                                       ? "border-red-500 ring-1 ring-red-500"
                                       : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"
@@ -424,7 +424,7 @@ export default function FleetCreateAccount() {
                                   onChange={(e) =>
                                     handleChange("countryCode", e.target.value as "CA" | "US" | "UK")
                                   }
-                                  className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-xl text-sm sm:text-base text-white focus:outline-none transition-all font-sans appearance-none cursor-pointer"
+                                  className="w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-zinc-900 border border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-xl text-sm sm:text-base text-white focus:outline-none transition-all font-sans appearance-none cursor-pointer"
                                 >
                                   <option value="CA" className="bg-zinc-900 text-white">
                                     Canada (CA) — CAD Billing
@@ -459,7 +459,7 @@ export default function FleetCreateAccount() {
                                   value={formData.website}
                                   onChange={(e) => handleChange("website", e.target.value)}
                                   placeholder="https://yourcompany.com"
-                                  className="w-full pl-10 pr-4 py-3 bg-white/[0.04] border border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-xl text-sm sm:text-base text-white placeholder:text-zinc-600 focus:outline-none focus:bg-white/[0.07] transition-all font-sans"
+                                  className="w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-xl text-sm sm:text-base text-white placeholder:text-zinc-600 focus:outline-none focus:bg-white/[0.07] transition-all font-sans"
                                 />
                               </div>
                             </div>
@@ -481,7 +481,7 @@ export default function FleetCreateAccount() {
                                   value={formData.contactPerson}
                                   onChange={(e) => handleChange("contactPerson", e.target.value)}
                                   placeholder="Full name (e.g. John Doe)"
-                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
+                                  className={`w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-white/[0.04] border ${
                                     errors.contactPerson
                                       ? "border-red-500 ring-1 ring-red-500"
                                       : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"
@@ -511,7 +511,7 @@ export default function FleetCreateAccount() {
                                       ? "+44 20 7946 0000"
                                       : "+1 (555) 000-0000"
                                   }
-                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
+                                  className={`w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-white/[0.04] border ${
                                     errors.phone
                                       ? "border-red-500 ring-1 ring-red-500"
                                       : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"
@@ -571,7 +571,7 @@ export default function FleetCreateAccount() {
                                   value={formData.address}
                                   onChange={(e) => handleChange("address", e.target.value)}
                                   placeholder="123 Industrial Way, City, Province/State, Postal"
-                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
+                                  className={`w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-white/[0.04] border ${
                                     errors.address
                                       ? "border-red-500 ring-1 ring-red-500"
                                       : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"
@@ -598,7 +598,7 @@ export default function FleetCreateAccount() {
                                   value={formData.numberOfUnits}
                                   onChange={(e) => handleChange("numberOfUnits", e.target.value)}
                                   placeholder="e.g. 10"
-                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
+                                  className={`w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-white/[0.04] border ${
                                     errors.numberOfUnits
                                       ? "border-red-500 ring-1 ring-red-500"
                                       : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"
@@ -627,7 +627,7 @@ export default function FleetCreateAccount() {
                                   value={formData.poaEmail}
                                   onChange={(e) => handleChange("poaEmail", e.target.value)}
                                   placeholder="ap@yourcompany.com (For Net-30 Invoices)"
-                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
+                                  className={`w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-white/[0.04] border ${
                                     errors.poaEmail
                                       ? "border-red-500 ring-1 ring-red-500"
                                       : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"
@@ -658,7 +658,7 @@ export default function FleetCreateAccount() {
                                   value={formData.email}
                                   onChange={(e) => handleChange("email", e.target.value)}
                                   placeholder="manager@yourcompany.com"
-                                  className={`w-full pl-10 pr-4 py-3 bg-white/[0.04] border ${
+                                  className={`w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-white/[0.04] border ${
                                     errors.email
                                       ? "border-red-500 ring-1 ring-red-500"
                                       : "border-white/10 hover:border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500"

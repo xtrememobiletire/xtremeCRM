@@ -17,6 +17,7 @@ import { validateAndNormalizePhone } from '../utils/validators.js';
 import { logger } from '../utils/logger.js';
 import { resolveLeadTimezone, zonedWallTimeToUtc } from '../utils/timezone.js';
 import { geocodingService } from '../services/geocodingService.js';
+import { cleanText } from '../utils/textSanitizer.js';
 
 export const VA_LEAD_CAP = 1;
 
@@ -525,19 +526,19 @@ export const leadController = {
 
       const lead = await prisma.lead.create({
         data: {
-          companyName: companyName.trim(),
-          contactPerson: String(resolvedContact).trim(),
-          fleetManager: fleetManager?.trim() || null,
-          ceoOwnerName: ceoOwnerName?.trim() || null,
+          companyName: cleanText(companyName),
+          contactPerson: cleanText(String(resolvedContact)),
+          fleetManager: fleetManager ? cleanText(fleetManager) : null,
+          ceoOwnerName: ceoOwnerName ? cleanText(ceoOwnerName) : null,
           phone: phone.trim(),
           altPhone: altPhone?.trim() || null,
           email: email?.trim() || null,
           poaEmail: poaEmail?.trim() || null,
-          address: address?.trim() || null,
+          address: address ? cleanText(address) : null,
           website: website?.trim() || null,
           numberOfUnits: numberOfUnits ? Number(numberOfUnits) : null,
           countryCode: countryCode as any,
-          notes: notes?.trim() || null,
+          notes: notes ? cleanText(notes) : null,
           uploadedById: user?.id || null,
           isCompanySourced,
           assignedAgentId: assignedAgentId || null,
@@ -1534,18 +1535,18 @@ export const leadController = {
         const isCompanySourced = uploaderRole === 'ADMIN' || uploaderRole === 'GENERAL_MANAGER' || uploaderRole === 'DISPATCHER';
 
         leadsToCreate.push({
-          companyName: comp || contactPerson || 'Prospect Company',
-          contactPerson: String(contactPerson || 'Fleet Manager').trim(),
-          fleetManager: fleetManager ? String(fleetManager).trim() : null,
-          ceoOwnerName: ceoOwnerName ? String(ceoOwnerName).trim() : null,
+          companyName: cleanText(comp || contactPerson || 'Prospect Company'),
+          contactPerson: cleanText(String(contactPerson || 'Fleet Manager')),
+          fleetManager: fleetManager ? cleanText(String(fleetManager)) : null,
+          ceoOwnerName: ceoOwnerName ? cleanText(String(ceoOwnerName)) : null,
           phone: phone || '+14165550100',
-          altPhone: altPhone ? String(altPhone).trim() : null,
+          altPhone: altPhone ? cleanText(String(altPhone)) : null,
           email: email ? String(email).trim() : null,
           poaEmail: poaEmail ? String(poaEmail).trim() : null,
-          address: address ? String(address).trim() : null,
+          address: address ? cleanText(String(address)) : null,
           website: website ? String(website).trim() : null,
           numberOfUnits: parsedUnits,
-          notes: notes ? String(notes).trim() : null,
+          notes: notes ? cleanText(String(notes)) : null,
           countryCode: targetCountry,
           status: 'NEW',
           stage: 'VA_OUTREACH',

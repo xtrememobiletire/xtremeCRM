@@ -1,3 +1,4 @@
+import { formatVehicleName, formatPlateBadge } from '../../utils/displayFormatters';
 import { TrendingUp, TrendingDown, Edit3, PlusCircle, CheckCircle2, Clock, Check, ShieldAlert } from 'lucide-react';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
@@ -101,8 +102,10 @@ export default function ReconciliationTable({
                   </div>
                   {r.vehicle ? (
                     <div className="text-[10px] text-slate-500 mt-0.5 truncate max-w-[180px]">
-                      {r.vehicle.year} {r.vehicle.make} {r.vehicle.model} •{' '}
-                      <span className="font-mono font-semibold text-slate-600">{r.vehicle.licensePlate}</span>
+                      {r.vehicle.year ? `${r.vehicle.year} ` : ''}{formatVehicleName(`${r.vehicle.make || ''} ${r.vehicle.model || ''}`)} •{' '}
+                      <span className="font-mono font-semibold text-slate-600">
+                        {formatPlateBadge(r.vehicle.licensePlate, `${r.vehicle.make} ${r.vehicle.model}`).text}
+                      </span>
                     </div>
                   ) : (
                     <div className="text-[10px] text-slate-400 mt-0.5">Mobile roadside service</div>
@@ -206,10 +209,10 @@ export default function ReconciliationTable({
                       e.stopPropagation();
                       onSelectJob?.(r);
                     }}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                       hasRecordedExpenses
-                        ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                        ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'
+                        : 'border border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 shadow-2xs'
                     }`}
                   >
                     {hasRecordedExpenses ? (

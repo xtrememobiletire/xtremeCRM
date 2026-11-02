@@ -320,7 +320,7 @@ export default function Navbar({
                     type="button"
                     onClick={() => setMobileMenuOpen(true)}
                     aria-label="Open navigation menu"
-                    className="min-w-[44px] min-h-[44px] p-2 rounded-none text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] cursor-pointer flex items-center justify-center"
+                    className="min-w-[44px] min-h-[44px] h-11 w-11 p-2 rounded-none text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] cursor-pointer flex items-center justify-center"
                   >
                     <div className="w-6 flex flex-col gap-1.5 items-end py-1">
                       <span className="block h-[2px] w-6 bg-white rounded-full" />
@@ -345,7 +345,7 @@ export default function Navbar({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -14, scale: 0.98 }}
                   transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute top-0 left-0 right-0 z-50 lg:hidden bg-black dark:bg-[#0c0c0e] text-white rounded-t-none rounded-b-2xl sm:rounded-b-[28px] p-4 sm:p-6 shadow-2xl shadow-black/90 border-b border-x border-white/20 max-h-[85vh] overflow-y-auto"
+                  className="absolute top-0 left-0 right-0 z-50 lg:hidden bg-black dark:bg-[#0c0c0e] text-white rounded-t-none rounded-b-2xl sm:rounded-b-[28px] p-4 sm:p-6 shadow-2xl shadow-black/90 border-b border-x border-white/20 max-h-[calc(100dvh-4rem)] overflow-y-auto"
                 >
                   {/* Top Row: Logo on left, Close '✕' on right */}
                   <div className="flex items-center justify-between gap-3 pb-4 border-b border-white/[0.08]">
@@ -379,7 +379,7 @@ export default function Navbar({
                       type="button"
                       onClick={() => setMobileMenuOpen(false)}
                       aria-label="Close navigation menu"
-                      className="min-w-[44px] min-h-[44px] p-2 rounded-none text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] cursor-pointer flex items-center justify-center"
+                      className="min-w-[44px] min-h-[44px] h-11 w-11 p-2 rounded-none text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] cursor-pointer flex items-center justify-center"
                     >
                       <svg
                         className="w-6 h-6 stroke-[2.2]"

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/database.js';
+import { cleanUnitNumber, formatVehicleName } from '../utils/textSanitizer.js';
 import {
   sendSuccess,
   sendError,
@@ -115,10 +116,10 @@ export const vehicleController = {
           fleetId: fleetId || null,
           countryCode: countryCode || 'CA',
           year: Number(year),
-          make,
-          model,
+          make: make ? formatVehicleName(make) : make,
+          model: model ? formatVehicleName(model) : model,
           color: color?.trim() || null,
-          unitNumber: unitNumber?.trim() || null,
+          unitNumber: cleanUnitNumber(unitNumber) || null,
           unitType: unitType?.trim() || null,
           licensePlate: licensePlate?.trim() || null,
           vin: vin?.trim() || null,
@@ -139,9 +140,14 @@ export const vehicleController = {
   async updateVehicle(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
+      const updateData = { ...req.body };
+      if (updateData.make) updateData.make = formatVehicleName(updateData.make);
+      if (updateData.model) updateData.model = formatVehicleName(updateData.model);
+      if (updateData.unitNumber !== undefined) updateData.unitNumber = cleanUnitNumber(updateData.unitNumber) || null;
+
       const updated = await prisma.vehicle.update({
         where: { id },
-        data: req.body,
+        data: updateData,
         include: {
           customer: true,
           fleet: true,

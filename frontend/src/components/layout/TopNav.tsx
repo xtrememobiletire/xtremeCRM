@@ -30,7 +30,7 @@ export default function TopNav({
 
   return (
     <>
-      <header className="h-14 bg-white border-b border-slate-200 px-3.5 sm:px-5 flex items-center justify-between gap-2 sm:gap-4 shrink-0 z-30">
+      <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between gap-2 shrink-0 z-30">
         {/* Left side: Mobile burger + desktop collapse button + Title */}
         <div className="flex items-center gap-2 sm:gap-3">
           <button
@@ -58,7 +58,7 @@ export default function TopNav({
         </div>
 
         {/* Right side controls: Notifications, Country Silo, Agent Presence, Profile */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Operations Notification Bell */}
           <button
             type="button"

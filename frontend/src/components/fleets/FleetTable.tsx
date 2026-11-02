@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Truck, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
+import { cleanText } from '../../utils/displayFormatters';
 import { useTenant } from '../../context/TenantContext';
 import type { FleetItem } from '../../services/fleetService';
 
@@ -59,7 +60,7 @@ export default function FleetTable({ fleets, onSelectFleet }: FleetTableProps) {
               <td className="table-td">
                 <div className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
                   <Truck size={15} className="text-red-600 shrink-0" />
-                  <span>{f.companyName || f.name}</span>
+                  <span>{cleanText(f.companyName || f.name)}</span>
                 </div>
               </td>
               <td className="table-td" onClick={(e) => e.stopPropagation()}>
@@ -119,10 +120,10 @@ export default function FleetTable({ fleets, onSelectFleet }: FleetTableProps) {
                   {f.vehicles?.length || 0} fleet rigs
                 </div>
               </td>
-              <td className="table-td text-right font-mono text-xs text-slate-700">
+              <td className="table-td text-right font-mono text-xs text-slate-700 tabular-nums">
                 {f.creditLimitCents ? formatCurrency(centsToDollars(f.creditLimitCents), currencySymbol) : 'Unlimited'}
               </td>
-              <td className="table-td text-right font-mono font-bold text-red-600 text-xs sm:text-sm">
+              <td className="table-td text-right font-mono font-bold text-red-600 text-xs sm:text-sm tabular-nums">
                 {formatCurrency(centsToDollars(f.outstandingBalanceCents || 0), currencySymbol)}
               </td>
             </tr>

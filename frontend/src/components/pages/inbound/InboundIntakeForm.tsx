@@ -298,41 +298,42 @@ export default function InboundIntakeForm({
           )}
         </div>
 
-        {/* Step 3: Customer Name */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 3 : 2}</span>
-            <User className="w-3.5 h-3.5 text-slate-400" />
-            <span>Customer Name <span className="text-red-500">*</span></span>
-          </label>
-          <input
-            type="text"
-            value={callerName}
-            onChange={(e) => setCallerName(e.target.value)}
-            placeholder="e.g. John Smith"
-            required
-            className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
-          />
-        </div>
+        {/* Step 3 & 4: Customer Name and Inbound Source Channel in responsive 2-column grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 3 : 2}</span>
+              <User className="w-3.5 h-3.5 text-slate-400" />
+              <span>Customer Name <span className="text-red-500">*</span></span>
+            </label>
+            <input
+              type="text"
+              value={callerName}
+              onChange={(e) => setCallerName(e.target.value)}
+              placeholder="e.g. John Smith"
+              required
+              className="w-full h-11 px-4 text-sm rounded-xl border border-slate-300 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600 transition-all shadow-2xs"
+            />
+          </div>
 
-        {/* Step 4: Lead Source Channel */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 4 : 3}</span>
-            <Share2 className="w-3.5 h-3.5 text-slate-400" />
-            <span>Inbound Source Channel</span>
-          </label>
-          <select
-            value={leadSource}
-            onChange={(e) => setLeadSource(e.target.value)}
-            className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
-          >
-            <option value="DIRECT_CALL">Direct Phone Call (Hotline)</option>
-            <option value="WHATSAPP">WhatsApp Dispatch</option>
-            <option value="WEBSITE">Website Self-Book</option>
-            <option value="LANDING_PAGE_SELF_BOOK">Landing Page Form</option>
-            <option value="FLEET_PORTAL">Fleet Portal Inbound</option>
-          </select>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 4 : 3}</span>
+              <Share2 className="w-3.5 h-3.5 text-slate-400" />
+              <span>Inbound Source Channel</span>
+            </label>
+            <select
+              value={leadSource}
+              onChange={(e) => setLeadSource(e.target.value)}
+              className="w-full h-11 px-3 text-sm rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-600 transition-all shadow-2xs cursor-pointer"
+            >
+              <option value="DIRECT_CALL">Direct Phone Call (Hotline)</option>
+              <option value="WHATSAPP">WhatsApp Dispatch</option>
+              <option value="WEBSITE">Website Self-Book</option>
+              <option value="LANDING_PAGE_SELF_BOOK">Landing Page Form</option>
+              <option value="FLEET_PORTAL">Fleet Portal Inbound</option>
+            </select>
+          </div>
         </div>
 
         {/* Step 5: Breakdown Address & Mapbox Autocomplete */}
@@ -370,53 +371,54 @@ export default function InboundIntakeForm({
           )}
         </div>
 
-        {/* Step 6: Vehicle Make & Model */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 6 : 5}</span>
-            <Car className="w-3.5 h-3.5 text-slate-400" />
-            <span>Vehicle (Year / Make / Model)</span>
-          </label>
-          <input
-            type="text"
-            value={vehicleMakeModel}
-            onChange={(e) => setVehicleMakeModel(e.target.value)}
-            placeholder="e.g. 2021 Toyota RAV4 / Ford F-150"
-            className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
-          />
-        </div>
-
-        {/* Step 7: Tire Specification */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 7 : 6}</span>
-              <Wrench className="w-3.5 h-3.5 text-slate-400" />
-              <span>Tire Size / Specification</span>
+        {/* Step 6 & 7: Vehicle Make/Model & Tire Specification in responsive 2-column grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 6 : 5}</span>
+              <Car className="w-3.5 h-3.5 text-slate-400" />
+              <span>Vehicle (Year / Make / Model)</span>
             </label>
+            <input
+              type="text"
+              value={vehicleMakeModel}
+              onChange={(e) => setVehicleMakeModel(e.target.value)}
+              placeholder="e.g. 2021 Toyota RAV4 / Ford F-150"
+              className="w-full h-11 px-4 text-sm rounded-xl border border-slate-300 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600 transition-all shadow-2xs"
+            />
           </div>
-          <input
-            type="text"
-            value={tireSize}
-            onChange={(e) => setTireSize(e.target.value)}
-            placeholder="e.g. 275/65R18 or 225/65R17"
-            className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-2xs"
-          />
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {COMMON_TIRE_SIZES.map((size) => (
-              <button
-                key={size}
-                type="button"
-                onClick={() => setTireSize(size)}
-                className={`text-[11px] font-mono px-2 py-0.5 rounded-lg border transition cursor-pointer ${
-                  tireSize === size
-                    ? 'bg-red-50 text-red-700 border-red-200 font-bold'
-                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                {size}
-              </button>
-            ))}
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono flex items-center justify-center font-bold">{onCountryChange ? 7 : 6}</span>
+                <Wrench className="w-3.5 h-3.5 text-slate-400" />
+                <span>Tire Size / Specification</span>
+              </label>
+            </div>
+            <input
+              type="text"
+              value={tireSize}
+              onChange={(e) => setTireSize(e.target.value)}
+              placeholder="e.g. 275/65R18 or 225/65R17"
+              className="w-full h-11 px-4 text-sm rounded-xl border border-slate-300 font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600 transition-all shadow-2xs"
+            />
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {COMMON_TIRE_SIZES.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => setTireSize(size)}
+                  className={`text-[11px] font-mono px-2 py-0.5 rounded-lg border transition cursor-pointer ${
+                    tireSize === size
+                      ? 'bg-red-50 text-red-700 border-red-200 font-bold'
+                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

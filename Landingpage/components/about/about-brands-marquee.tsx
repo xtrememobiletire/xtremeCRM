@@ -169,7 +169,7 @@ export default function AboutBrandsMarquee() {
         - Smooth Edge Masks: Dissolves into black at screen borders
         ========================================================================
       */}
-      <div className="relative w-full [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
+      <div className="relative w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
         {/* Row 1: Leftward Flying Motion (48s - Gentle, Calmer Glide) */}
         <MarqueeRow items={ROW_1} direction="left" duration={48} />
 

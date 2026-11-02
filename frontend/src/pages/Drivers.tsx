@@ -12,6 +12,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { userService, type UserItem } from '../services/userService';
 import AddDriverModal from '../components/dispatch/AddDriverModal';
 import DriverDetailDrawer from '../components/dispatch/DriverDetailDrawer';
+import { cleanText, formatVehicleName } from '../utils/displayFormatters';
 
 /**
  * Render driver profiles filtered by region, type, and search, with creation,
@@ -73,7 +74,7 @@ export default function Drivers() {
       setTogglingDriverId(driver.id);
       const nextState = !driver.isAgentActive;
       await userService.updateUser(driver.id, { isAgentActive: nextState });
-      toast.success(`${driver.fullName} is now ${nextState ? 'On-Duty' : 'Off-Duty'}`);
+      toast.success(`${cleanText(driver.fullName)} is now ${nextState ? 'On-Duty' : 'Off-Duty'}`);
       queryClient.invalidateQueries({ queryKey: ['drivers'] });
       if (selectedDriver?.id === driver.id) {
         setSelectedDriver({ ...selectedDriver, isAgentActive: nextState });
@@ -232,7 +233,7 @@ export default function Drivers() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <h3 className="text-xs font-bold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
-                          {driver.fullName}
+                          {cleanText(driver.fullName)}
                         </h3>
                         <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-mono text-[9px] font-bold shrink-0">
                           {driver.countryCode}
@@ -269,14 +270,14 @@ export default function Drivers() {
                     <strong className="text-slate-800 font-semibold truncate max-w-[170px] text-[11px]">
                       {isExternal
                         ? (driver.assignedVehicle?.replace(/^EXTERNAL:\s*/, '') || 'Outsourced Contractor')
-                        : (driver.assignedVehicle || 'Mobile Service Rig')}
+                        : formatVehicleName(driver.assignedVehicle || 'Mobile Service Rig')}
                     </strong>
                   </div>
 
                   {driver.phone && (
                     <div className="flex items-center justify-between text-slate-600 border-t border-slate-200/60 pt-1">
                       <span className="text-[10px] text-slate-400">Phone:</span>
-                      <span className="font-mono text-slate-700 text-[11px] font-medium">
+                      <span className="font-mono text-slate-700 text-[11px] font-medium tabular-nums">
                         {driver.phone}
                       </span>
                     </div>

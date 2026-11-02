@@ -1,3 +1,4 @@
+import { cleanText, parseLeadNotes } from '../../utils/displayFormatters';
 import { useState, useEffect, useMemo } from 'react';
 import { 
   User, 
@@ -384,7 +385,7 @@ export default function VaFocusCard({
     <div className="max-w-4xl mx-auto bg-white border border-slate-200/90 rounded-3xl shadow-sm overflow-hidden">
       {/* Top Banner (Clean light header, NO dark black banner) */}
       <div className="p-4 sm:p-6 bg-slate-50/80 border-b border-slate-200">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between border-b border-slate-200 pb-4">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 font-mono text-[10px] font-bold uppercase tracking-wider border border-red-200">
@@ -404,9 +405,9 @@ export default function VaFocusCard({
               )}
             </div>
 
-            <div className="flex items-center gap-2 mt-2">
-              <h2 className="text-lg sm:text-xl font-bold truncate text-slate-900">
-                {lead.companyName}
+            <div className="flex items-center gap-2 mt-2 min-w-0 flex-1">
+              <h2 className="text-lg sm:text-xl font-bold break-words min-w-0 flex-1 text-slate-900">
+                {cleanText(lead.companyName)}
               </h2>
               <button
                 type="button"
@@ -420,7 +421,7 @@ export default function VaFocusCard({
           </div>
 
           {/* Header Action Buttons & Live Call Timer */}
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap sm:justify-end">
             <button
               type="button"
               onClick={() => setIsEditingData(!isEditingData)}
@@ -644,7 +645,7 @@ export default function VaFocusCard({
           </div>
         ) : (
           /* READABLE 3-COLUMN GRID: ALL 12 CSV COLUMNS + SPECS */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 my-5">
             {/* 1. Primary Phone */}
             <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80">
               <div className="flex items-center gap-2 min-w-0">
@@ -652,8 +653,8 @@ export default function VaFocusCard({
                   <Phone size={13} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">1. Primary Phone</div>
-                  <div className="text-xs font-bold text-slate-900 font-mono truncate">{lead.phone || 'N/A'}</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">1. Primary Phone</div>
+                  <div className="text-sm sm:text-base font-semibold text-slate-900 tabular-nums truncate">{lead.phone || 'N/A'}</div>
                 </div>
               </div>
               <button
@@ -673,7 +674,7 @@ export default function VaFocusCard({
                   <Phone size={13} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">2. Alt Phone</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">2. Alt Phone</div>
                   <div className="text-xs font-medium text-slate-800 font-mono truncate">
                     {lead.altPhone || <span className="text-slate-400 italic font-sans">Not recorded</span>}
                   </div>
@@ -698,7 +699,7 @@ export default function VaFocusCard({
                   <Mail size={13} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">3. Official Email</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">3. Official Email</div>
                   <div className="text-xs font-medium text-slate-800 truncate">
                     {lead.email || <span className="text-slate-400 italic">Not recorded</span>}
                   </div>
@@ -723,7 +724,7 @@ export default function VaFocusCard({
                   <Mail size={13} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">4. Direct / POA Email</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">4. Direct / POA Email</div>
                   <div className="text-xs font-medium text-slate-800 truncate">
                     {lead.poaEmail || <span className="text-slate-400 italic">Not recorded</span>}
                   </div>
@@ -748,7 +749,7 @@ export default function VaFocusCard({
                   <User size={13} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">5. Fleet / Ops Manager</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">5. Fleet / Ops Manager</div>
                   <div className="text-xs font-bold text-slate-900 truncate">
                     {lead.fleetManager || lead.contactPerson || <span className="text-slate-400 italic font-normal">Not recorded</span>}
                   </div>
@@ -773,7 +774,7 @@ export default function VaFocusCard({
                   <Briefcase size={13} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">6. CEO / Owner Name</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">6. CEO / Owner Name</div>
                   <div className="text-xs font-semibold text-slate-800 truncate">
                     {lead.ceoOwnerName || <span className="text-slate-400 italic font-normal">Not recorded</span>}
                   </div>
@@ -798,8 +799,8 @@ export default function VaFocusCard({
                   <Truck size={13} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">7. Fleet Size (NOU)</div>
-                  <div className="text-xs font-bold text-slate-900 font-mono truncate">
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">7. Fleet Size (NOU)</div>
+                  <div className="text-sm sm:text-base font-semibold text-slate-900 tabular-nums truncate">
                     {lead.numberOfUnits ? `${lead.numberOfUnits} commercial units` : <span className="text-slate-400 italic font-normal font-sans">Not recorded</span>}
                   </div>
                 </div>
@@ -823,7 +824,7 @@ export default function VaFocusCard({
                   <Globe size={13} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">8. Website</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">8. Website</div>
                   {lead.website ? (
                     <a
                       href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
@@ -857,7 +858,7 @@ export default function VaFocusCard({
                   <Tag size={13} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">9. Vehicle Types</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">9. Vehicle Types</div>
                   <div className="text-xs font-semibold text-slate-800 truncate">
                     {Array.isArray(lead.vehicleTypes) ? lead.vehicleTypes.join(', ') : (lead.vehicleTypes || <span className="text-slate-400 italic font-normal">Not recorded</span>)}
                   </div>
@@ -882,7 +883,7 @@ export default function VaFocusCard({
                   <MapPin size={13} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">10. Physical Address</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">10. Physical Address</div>
                   <div className="text-xs font-medium text-slate-800 truncate">
                     {lead.address || <span className="text-slate-400 italic font-normal">Not recorded</span>}
                   </div>
@@ -907,7 +908,7 @@ export default function VaFocusCard({
                   <Wrench size={13} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[9px] uppercase font-bold text-slate-400 font-mono">11-12. Tire Sizes</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">11-12. Tire Sizes</div>
                   <div className="text-xs font-mono font-bold text-red-700 truncate">
                     {Array.isArray(lead.tireSizes) ? lead.tireSizes.join(', ') : (lead.commonTireSizes || lead.tireSizes || <span className="text-slate-400 italic font-sans font-normal">Not recorded</span>)}
                   </div>
@@ -982,9 +983,9 @@ export default function VaFocusCard({
 
         {/* LEAD / FLEET SPREADSHEET NOTES */}
         {lead.notes ? (
-          <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200/70 text-xs">
-            <div className="flex items-center justify-between mb-1">
-              <span className="font-bold text-amber-900 uppercase font-mono text-[10px]">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-amber-900 uppercase font-mono text-xs">
                 {hitHistory.length > 0 ? 'Original Lead / Equipment Notes' : 'Lead & Equipment Notes (Imported)'}
               </span>
               <button
@@ -995,7 +996,22 @@ export default function VaFocusCard({
                 {copiedField === 'Lead Notes' ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
               </button>
             </div>
-            <p className="text-amber-900 whitespace-pre-wrap">{lead.notes}</p>
+            {(() => {
+              const parsed = parseLeadNotes(lead.notes);
+              if (parsed.length > 0) {
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {parsed.map((item, idx) => (
+                      <div key={idx} className="bg-white border border-amber-200/80 rounded-xl p-2.5 shadow-2xs">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-amber-800/80">{item.key}</div>
+                        <div className="text-xs font-semibold text-slate-900 break-words mt-0.5">{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              return <p className="text-amber-900 whitespace-pre-wrap">{cleanText(lead.notes)}</p>;
+            })()}
           </div>
         ) : null}
 

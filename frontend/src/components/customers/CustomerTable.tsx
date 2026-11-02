@@ -1,5 +1,6 @@
 import { Car, ExternalLink } from 'lucide-react';
 import { formatCurrency, centsToDollars } from '../../utils/currency';
+import { cleanText } from '../../utils/displayFormatters';
 import { useTenant } from '../../context/TenantContext';
 
 interface Customer {
@@ -47,16 +48,16 @@ export default function CustomerTable({ customers, onSelectCustomer }: CustomerT
           {customers.map((c) => (
             <tr key={c.id} className="hover:bg-slate-50/70 transition-colors">
               <td className="table-td">
-                <div className="font-bold text-slate-900 text-xs sm:text-sm">{c.name}</div>
+                <div className="font-bold text-slate-900 text-xs sm:text-sm">{cleanText(c.name)}</div>
                 {c.email && <div className="text-[11px] text-slate-400">{c.email}</div>}
               </td>
               <td className="table-td">
-                <div className="font-mono text-xs text-slate-700 font-semibold">{c.phone}</div>
+                <div className="font-mono text-xs text-slate-700 font-semibold tabular-nums">{c.phone}</div>
               </td>
               <td className="table-td">
                 {c.fleetCompany ? (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                    Fleet: {c.fleetCompany.companyName}
+                    Fleet: {cleanText(c.fleetCompany.companyName)}
                   </span>
                 ) : c.customerType === 'MEMBERSHIP' ? (
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
@@ -80,7 +81,7 @@ export default function CustomerTable({ customers, onSelectCustomer }: CustomerT
                   <span>{c.vehicles?.length || 0} Registered</span>
                 </div>
               </td>
-              <td className="table-td text-right font-mono font-bold text-slate-900">
+              <td className="table-td text-right font-mono font-bold text-slate-900 tabular-nums">
                 {formatCurrency(centsToDollars(c.totalSpendCents || 0), currencySymbol)}
               </td>
               <td className="table-td text-center">

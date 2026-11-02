@@ -87,7 +87,7 @@ export default function HeroDynamicPhoneBar() {
     >
       <Phone className="w-3.5 h-3.5 text-[#DC2626] animate-pulse shrink-0" />
       <span className="text-sm select-none shrink-0">{phoneData.flag}</span>
-      <span className="text-sm sm:text-base font-semibold tracking-wide text-zinc-100 group-hover:text-white transition-colors">
+      <span className="text-sm sm:text-base font-semibold tracking-wide tabular-nums text-zinc-100 group-hover:text-white transition-colors">
         {phoneData.displayNumber}
       </span>
     </a>
