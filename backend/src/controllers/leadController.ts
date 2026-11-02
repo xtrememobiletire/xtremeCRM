@@ -1566,7 +1566,7 @@ export const leadController = {
         const targetBatchId = req.body.batchId as string;
         if (targetBatchId) {
           activeBatch = await tx.batch.findFirst({
-            where: { id: targetBatchId, ...getTenantFilter(req) },
+            where: { id: targetBatchId },
           });
           if (activeBatch) {
             const updateData: any = {

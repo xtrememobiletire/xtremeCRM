@@ -58,7 +58,7 @@ router.get('/stats', authorize(DISPATCHER_OR_MGMT), leadController.getLeadStats)
  * @desc    Get outbound batches with progress and lead counters
  * @access  Private (Management / Dispatcher)
  */
-router.get('/batches', authorize(DISPATCHER_OR_MGMT), leadController.getBatches);
+router.get('/batches', authorize(VA_OPERATIONAL_ROLES), leadController.getBatches);
 
 /**
  * @route   GET /api/leads/batches/available-for-va
@@ -78,7 +78,7 @@ router.get(
  */
 router.post(
   '/upload',
-  authorize(MANAGEMENT_ROLES),
+  authorize(VA_OPERATIONAL_ROLES),
   memoryUpload.single('file'),
   validateRequest({ body: createBatchSchema }),
   leadController.uploadLeads
