@@ -14,7 +14,8 @@
     "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "seed:developer": "tsx prisma/seed_developer.ts"
   },
   "keywords": [],
   "author": "",

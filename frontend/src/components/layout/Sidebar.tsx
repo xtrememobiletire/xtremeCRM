@@ -23,6 +23,7 @@ import {
   FileText,
   UserCheck,
   Cpu,
+  ShieldCheck,
 } from 'lucide-react';
 
 const routeChunkLoaders: Record<string, () => Promise<any>> = {
@@ -39,6 +40,7 @@ const routeChunkLoaders: Record<string, () => Promise<any>> = {
   '/drivers': () => import('../../pages/Drivers'),
   '/accounting': () => import('../../pages/Accounting'),
   '/developer-profit': () => import('../../pages/DeveloperProfitPage'),
+  '/user-management': () => import('../../pages/UserManagement'),
   '/leads': () => import('../../pages/Leads'),
   '/fleet-dashboard': () => import('../../pages/FleetDashboard'),
   '/member-dashboard': () => import('../../pages/MemberDashboard'),
@@ -72,6 +74,11 @@ const adminNavItems = [
   { icon: Cpu, label: 'Developer', path: '/developer-profit' },
   { icon: PhoneIncoming, label: 'Roadside Intake', path: '/inbound' },
   { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
+];
+
+const developerNavItems = [
+  ...adminNavItems,
+  { icon: ShieldCheck, label: 'User Management', path: '/user-management' },
 ];
 
 const baseNavItems = [
@@ -173,7 +180,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
         { icon: PhoneIncoming, label: 'Roadside Intake', path: '/inbound' },
         { icon: Truck, label: 'Fleet Intake', path: '/inbound-fleet' },
       ]
-    : user?.role === 'DEVELOPER' || user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER'
+    : user?.role === 'DEVELOPER'
+    ? developerNavItems
+    : user?.role === 'ADMIN' || user?.role === 'GENERAL_MANAGER'
     ? adminNavItems
     : baseNavItems;
 

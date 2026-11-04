@@ -60,6 +60,13 @@ export const updateUserSchema = baseUserSchema.extend({
   email: z.string().email('Invalid email address').optional(),
 }).partial();
 
+export const resetCredentialsSchema = z.object({
+  password: z.string().min(6, 'Password must be at least 6 characters').optional(),
+  email: z.string().email('Invalid email address').optional(),
+}).refine((data) => Boolean(data.password || data.email), {
+  message: 'At least one of password or email is required',
+});
+
 export const userQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(100).optional().default(20),
@@ -76,8 +83,10 @@ export const userQuerySchema = z.object({
     'FLEET_MANAGER',
     'CUSTOMER_MEMBER',
   ]).optional(),
+  classification: z.enum(['INTERNAL', 'EXTERNAL', 'ALL']).optional(),
   countryCode: z.preprocess(
     (val) => (typeof val === 'string' ? val.toUpperCase() : val),
     z.enum(['CA', 'US', 'UK', 'ALL']).optional()
   ),
 });
+

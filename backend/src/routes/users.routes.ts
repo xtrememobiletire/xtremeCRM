@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { userController } from '../controllers/userController.js';
 import { authenticate } from '../middleware/auth.js';
-import { authorize } from '../middleware/authorize.js';
+import { authorize, authorizeStrict } from '../middleware/authorize.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import {
   userQuerySchema,
   createUserSchema,
   updateUserSchema,
+  resetCredentialsSchema,
   idParamSchema,
 } from '../schemas/index.js';
 
@@ -47,6 +48,18 @@ router.post(
   authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']),
   validateRequest({ body: createUserSchema }),
   userController.createUser
+);
+
+/**
+ * @route   PATCH /api/users/:id/credentials
+ * @desc    Developer-only password and/or email reset for any user
+ * @access  Private (DEVELOPER only)
+ */
+router.patch(
+  '/:id/credentials',
+  authorizeStrict(['DEVELOPER']),
+  validateRequest({ params: idParamSchema, body: resetCredentialsSchema }),
+  userController.resetUserCredentials
 );
 
 /**

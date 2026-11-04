@@ -36,6 +36,7 @@ const Invoices = lazyWithRetry(() => import('./pages/Invoices'));
 const Drivers = lazyWithRetry(() => import('./pages/Drivers'));
 const ExternalDriverDispatch = lazyWithRetry(() => import('./pages/ExternalDriverDispatch'));
 const DeveloperProfitPage = lazyWithRetry(() => import('./pages/DeveloperProfitPage'));
+const UserManagement = lazyWithRetry(() => import('./pages/UserManagement'));
 
 /** Return the role's home route, defaulting to /dashboard for missing or unknown roles. */
 function getRoleHome(role?: string) {
@@ -101,6 +102,19 @@ function RoleRoute({ allowedRoles, children }: { allowedRoles: string[]; childre
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'ADMIN' || user.role === 'GENERAL_MANAGER' || user.role === 'DEVELOPER') return <>{children}</>;
   if (!allowedRoles.includes(user.role)) {
+    return <Navigate to={getRoleHome(user.role)} replace />;
+  }
+  return <>{children}</>;
+}
+
+/**
+ * Strictly permits only the DEVELOPER role. Neither ADMIN nor GENERAL_MANAGER can access.
+ */
+function DeveloperOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <PageLoader />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'DEVELOPER') {
     return <Navigate to={getRoleHome(user.role)} replace />;
   }
   return <>{children}</>;
@@ -208,6 +222,7 @@ function AppRoutes() {
           <Route path="/invoices" element={<RoleRoute allowedRoles={['ACCOUNTANT', 'DISPATCHER']}><Invoices /></RoleRoute>} />
           <Route path="/accounting" element={<RoleRoute allowedRoles={['ACCOUNTANT']}><Accounting /></RoleRoute>} />
           <Route path="/developer-profit" element={<RoleRoute allowedRoles={['DEVELOPER', 'ADMIN', 'GENERAL_MANAGER']}><DeveloperProfitPage /></RoleRoute>} />
+          <Route path="/user-management" element={<DeveloperOnlyRoute><UserManagement /></DeveloperOnlyRoute>} />
           <Route path="/inbound" element={<RoleRoute allowedRoles={['CALL_AGENT', 'DISPATCHER']}><Inbound /></RoleRoute>} />
           <Route path="/inbound-fleet" element={<RoleRoute allowedRoles={['CALL_AGENT', 'DISPATCHER']}><FleetInbound /></RoleRoute>} />
           <Route path="/technician" element={<RoleRoute allowedRoles={['DRIVER']}><TechnicianPortal /></RoleRoute>} />

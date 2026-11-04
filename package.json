@@ -8,6 +8,7 @@
     "build": "node dev.js build",
     "start": "node dev.js start",
     "lint": "pnpm --dir backend lint && pnpm --dir frontend lint",
-    "typecheck": "pnpm --dir backend typecheck && pnpm --dir frontend typecheck"
+    "typecheck": "pnpm --dir backend typecheck && pnpm --dir frontend typecheck",
+    "seed:developer": "pnpm --dir backend seed:developer"
   }
 }

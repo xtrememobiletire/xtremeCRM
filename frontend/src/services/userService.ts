@@ -14,6 +14,8 @@ export interface UserItem {
   latitude?: number | null;
   longitude?: number | null;
   isAgentActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 export const UserItem = {};
 
@@ -83,4 +85,48 @@ export const userService = {
   async deleteUser(id: string): Promise<void> {
     await api.delete(`/users/${id}`);
   },
+
+  /**
+   * Fetch paginated users with optional role, classification, country, and search filters.
+   */
+  async getUsers(params?: {
+    page?: number;
+    limit?: number;
+    role?: string;
+    countryCode?: string;
+    classification?: 'INTERNAL' | 'EXTERNAL' | 'ALL';
+    search?: string;
+  }): Promise<{ data: UserItem[]; meta: { currentPage: number; totalPages: number; totalCount: number; perPage: number } }> {
+    const res = await api.get('/users', { params });
+    const raw = res.data;
+    if (raw && raw.data && raw.meta) {
+      return {
+        data: raw.data,
+        meta: raw.meta,
+      };
+    }
+    const list = Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : []);
+    return {
+      data: list,
+      meta: {
+        currentPage: 1,
+        totalPages: 1,
+        totalCount: list.length,
+        perPage: list.length || 20,
+      },
+    };
+  },
+
+  /**
+   * Developer-only credential reset: changes password and/or email.
+   * Strictly restricted to DEVELOPER role on the server.
+   */
+  async resetUserCredentials(
+    userId: string,
+    payload: { password?: string; email?: string }
+  ): Promise<UserItem> {
+    const res = await api.patch(`/users/${userId}/credentials`, payload);
+    return res.data.data;
+  },
 };
+

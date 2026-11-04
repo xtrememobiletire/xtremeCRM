@@ -23,9 +23,29 @@ export const userController = {
       const role = req.query.role as any;
       const countryCode = req.query.countryCode as any;
       const search = req.query.search as string;
+      const classification = req.query.classification as string;
 
       const where: any = { deletedAt: null };
-      if (role) where.role = role;
+      if (role) {
+        where.role = role;
+      } else if (classification === 'INTERNAL') {
+        where.role = {
+          in: [
+            'ADMIN',
+            'GENERAL_MANAGER',
+            'DEVELOPER',
+            'CALL_AGENT',
+            'DISPATCHER',
+            'DRIVER',
+            'ACCOUNTANT',
+            'VIRTUAL_ASSISTANT',
+          ],
+        };
+      } else if (classification === 'EXTERNAL') {
+        where.role = {
+          in: ['FLEET_MANAGER', 'CUSTOMER_MEMBER'],
+        };
+      }
       if (countryCode && countryCode !== 'ALL') where.countryCode = countryCode;
       if (search) {
         where.OR = [
@@ -280,6 +300,67 @@ export const userController = {
 
       invalidateUserAuthCache(id);
       return sendSuccess(res, updated, `Agent presence set to ${updated.isAgentActive ? 'Active' : 'Inactive'}`);
+    } catch (err: any) {
+      return sendError(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Developer-only credential reset: update a user's password and/or email.
+   * Strictly restricted to DEVELOPER role.
+   * Does not require old password.
+   */
+  async resetUserCredentials(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      const { password, email } = req.body;
+
+      if (!password && !email) {
+        return sendError(res, 'At least one of password or email is required', 400);
+      }
+
+      const user = await prisma.user.findUnique({ where: { id, deletedAt: null } });
+      if (!user) return sendError(res, 'User not found', 404);
+
+      const data: any = {};
+
+      if (email && email !== user.email) {
+        const cleanEmail = email.trim().toLowerCase();
+        const existing = await prisma.user.findUnique({ where: { email: cleanEmail } });
+        if (existing && existing.id !== id) {
+          return sendError(res, 'Email already in use by another account', 409);
+        }
+        data.email = cleanEmail;
+      }
+
+      if (password) {
+        data.passwordHash = await bcrypt.hash(password, 10);
+      }
+
+      const updated = await prisma.user.update({
+        where: { id },
+        data,
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          role: true,
+          countryCode: true,
+          phone: true,
+          address: true,
+          assignedVehicle: true,
+          workingDays: true,
+          workingHours: true,
+          approvedByName: true,
+          latitude: true,
+          longitude: true,
+          isAgentActive: true,
+          updatedAt: true,
+        },
+      });
+
+      invalidateUserAuthCache(id);
+      return sendSuccess(res, updated, 'User credentials updated successfully');
     } catch (err: any) {
       return sendError(res, err.message, 400);
     }
