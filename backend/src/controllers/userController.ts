@@ -369,6 +369,14 @@ export const userController = {
   async deleteUser(req: Request, res: Response) {
     try {
       const id = String(req.params.id);
+      const requesterId = (req.user as any)?.id;
+      if (requesterId && requesterId === id) {
+        return sendError(res, 'You cannot delete your own account', 400);
+      }
+      const existing = await prisma.user.findUnique({ where: { id, deletedAt: null } });
+      if (!existing) {
+        return sendError(res, 'User not found or already deleted', 404);
+      };
       await prisma.user.update({
         where: { id },
         data: { deletedAt: new Date() },

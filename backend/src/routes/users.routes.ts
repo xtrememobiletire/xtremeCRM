@@ -45,7 +45,7 @@ router.get(
  */
 router.post(
   '/',
-  authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']),
+  authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER', 'DEVELOPER']),
   validateRequest({ body: createUserSchema }),
   userController.createUser
 );
@@ -69,7 +69,7 @@ router.patch(
  */
 router.patch(
   '/:id',
-  authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER']),
+  authorize(['ADMIN', 'GENERAL_MANAGER', 'DISPATCHER', 'DEVELOPER']),
   validateRequest({ params: idParamSchema, body: updateUserSchema }),
   userController.updateUser
 );
@@ -99,7 +99,7 @@ router.patch(
  */
 router.delete(
   '/:id',
-  authorize(['ADMIN', 'GENERAL_MANAGER']),
+  authorize(['ADMIN', 'GENERAL_MANAGER', 'DEVELOPER']),
   validateRequest({ params: idParamSchema }),
   userController.deleteUser
 );

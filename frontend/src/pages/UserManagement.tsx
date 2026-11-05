@@ -7,14 +7,19 @@ import {
   Users, 
   UserCog, 
   Globe2, 
-  ExternalLink,
-  ChevronLeft,
-  ChevronRight,
-  FilterX
+  ExternalLink, 
+  ChevronLeft, 
+  ChevronRight, 
+  FilterX, 
+  UserPlus, 
+  Trash2 
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { userService, type UserItem } from '../services/userService';
+import { useAuth } from '../context/AuthContext';
 import ResetCredentialsModal from '../components/common/ResetCredentialsModal';
+import CreateUserModal from '../components/common/CreateUserModal';
+import DeleteUserModal from '../components/common/DeleteUserModal';
 
 const EXTERNAL_ROLES = [
   'FLEET_MANAGER',
@@ -37,6 +42,7 @@ const ALL_ROLES = [
 
 export default function UserManagement() {
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
 
   // Filters & State
   const [regionFilter, setRegionFilter] = useState<'ALL' | 'CA' | 'US' | 'UK'>('ALL');
@@ -48,7 +54,14 @@ export default function UserManagement() {
 
   // Selected User for Credential Reset Modal
   const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+
+  // Add User Modal State
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Delete User Modal State
+  const [userToDelete, setUserToDelete] = useState<UserItem | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Fetch users with reactive query
   const queryParams = useMemo(() => ({
@@ -71,10 +84,25 @@ export default function UserManagement() {
 
   const handleOpenResetModal = (user: UserItem) => {
     setSelectedUser(user);
-    setIsModalOpen(true);
+    setIsResetModalOpen(true);
   };
 
   const handleResetSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['users-management'] });
+    refetch();
+  };
+
+  const handleCreateSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['users-management'] });
+    refetch();
+  };
+
+  const handleDeleteOpen = (user: UserItem) => {
+    setUserToDelete(user);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['users-management'] });
     refetch();
   };
@@ -121,12 +149,23 @@ export default function UserManagement() {
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Classify platform users, override passwords, and update login credentials across all silos
+              Provision accounts, override passwords, manage roles, and delete user profiles across all silos
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
+          {/* Add User Action */}
+          <button
+            type="button"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 active:bg-red-800 rounded-xl transition shadow-xs cursor-pointer"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Add User</span>
+          </button>
+
+          {/* Refresh Action */}
           <button
             type="button"
             onClick={() => refetch()}
@@ -323,12 +362,13 @@ export default function UserManagement() {
                   <th className="py-3 px-4">Role</th>
                   <th className="py-3 px-4">Region</th>
                   <th className="py-3 px-4">Presence</th>
-                  <th className="py-3 px-4 text-right">Credentials Action</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-normal">
                 {users.map((u) => {
                   const isExt = isRoleExternal(u.role);
+                  const isCurrentUser = currentUser?.id === u.id;
                   return (
                     <tr 
                       key={u.id}
@@ -384,16 +424,32 @@ export default function UserManagement() {
                         </div>
                       </td>
 
-                      {/* Action */}
+                      {/* Actions */}
                       <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenResetModal(u)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-slate-800 bg-white hover:bg-red-50 hover:text-red-700 hover:border-red-300 border border-slate-200 rounded-xl transition-all shadow-2xs cursor-pointer group-hover:border-slate-300"
-                        >
-                          <KeyRound size={12} className="text-slate-500 group-hover:text-red-600" />
-                          <span>Change Credentials</span>
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Change Credentials */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenResetModal(u)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold text-slate-800 bg-white hover:bg-red-50 hover:text-red-700 hover:border-red-300 border border-slate-200 rounded-xl transition-all shadow-2xs cursor-pointer group-hover:border-slate-300"
+                            title="Change credentials"
+                          >
+                            <KeyRound size={12} className="text-slate-500 group-hover:text-red-600" />
+                            <span className="hidden sm:inline">Change Credentials</span>
+                            <span className="sm:hidden">Reset</span>
+                          </button>
+
+                          {/* Delete User */}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteOpen(u)}
+                            disabled={isCurrentUser}
+                            className="inline-flex items-center justify-center p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-xl transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-slate-400 disabled:hover:border-slate-200"
+                            title={isCurrentUser ? "Cannot delete your own account" : "Delete user account"}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -442,12 +498,32 @@ export default function UserManagement() {
       {/* Reset Credentials Modal */}
       <ResetCredentialsModal
         user={selectedUser}
-        isOpen={isModalOpen}
+        isOpen={isResetModalOpen}
         onClose={() => {
-          setIsModalOpen(false);
+          setIsResetModalOpen(false);
           setSelectedUser(null);
         }}
         onSuccess={handleResetSuccess}
+      />
+
+      {/* Create User Modal */}
+      <CreateUserModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={handleCreateSuccess}
+        defaultRegion={regionFilter === 'ALL' ? 'CA' : regionFilter}
+      />
+
+      {/* Delete User Modal */}
+      <DeleteUserModal
+        user={userToDelete}
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setUserToDelete(null);
+        }}
+        onSuccess={handleDeleteSuccess}
+        currentUserId={currentUser?.id}
       />
     </div>
   );
