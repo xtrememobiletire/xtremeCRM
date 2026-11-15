@@ -3,19 +3,25 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { Phone, Mail, ArrowUpRight } from "lucide-react";
 
 export default function FleetDowntimeBanner() {
   return (
-    <section className="w-full py-10 xs:py-12 sm:py-16 lg:py-20 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-t border-zinc-300 dark:border-zinc-800">
+    <motion.section
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="w-full py-10 xs:py-12 sm:py-16 lg:py-20 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-t border-zinc-300 dark:border-zinc-800"
+    >
       {/* 
         TOP PICTURE BANNER (Matching Wireframe Image Box)
-        - Sharp rectangular box (rounded-none)
+        - 2-tier corner geometry token system (rounded-2xl shell)
         - Blueprint crosshairs (+) at corners
         - High-resolution commercial fleet photography
-        - Serif display headline: "Ready to Eliminate Fleet Downtime Across the USA, UK and Canada?"
       */}
-      <div className="relative w-full rounded-none overflow-hidden border border-zinc-300 dark:border-zinc-800 bg-zinc-950 min-h-[320px] xs:min-h-[380px] sm:min-h-[440px] lg:min-h-[480px] flex items-center justify-center p-4 xs:p-8 sm:p-14 lg:p-20 shadow-2xl group">
+      <div className="relative w-full rounded-2xl overflow-hidden border border-zinc-300 dark:border-zinc-800 bg-zinc-950 min-h-[320px] xs:min-h-[380px] sm:min-h-[440px] lg:min-h-[480px] flex items-center justify-center p-4 xs:p-8 sm:p-14 lg:p-20 shadow-2xl group">
         {/* Background Commercial Fleet Image */}
         <div className="absolute inset-0 w-full h-full">
           <Image
@@ -55,9 +61,14 @@ export default function FleetDowntimeBanner() {
             </span>
           </div>
 
-          {/* Headline in Clean Bold Sans Font - using "and", not "&" */}
+          {/* Headline in Clean Bold Sans Font + Serif Italic Brand Accent */}
           <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-bold tracking-tight text-white leading-[1.15]">
-            Ready to Eliminate Fleet Downtime Across the USA, UK and Canada?
+            <span className="font-sans font-bold text-white">
+              Ready to Eliminate Fleet Downtime Across the{" "}
+            </span>
+            <span className="font-serif italic font-normal text-[var(--brand-primary)]">
+              USA, UK and Canada?
+            </span>
           </h2>
 
           {/* Action Button */}
@@ -88,10 +99,10 @@ export default function FleetDowntimeBanner() {
       {/* 
         BOTTOM DISPATCH BAR (Matching Wireframe Ticker)
         - 24/7 Fleet Dispatch phone numbers
-        - Sharp rectangular bar (rounded-none)
+        - Rounded-xl inner card
         - Clickable tel: links with hand cursor
       */}
-      <div className="mt-4 sm:mt-6 w-full rounded-none border border-zinc-300 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/70 p-3.5 xs:p-4 sm:p-5 flex flex-wrap items-center justify-center gap-x-3 xs:gap-x-4 sm:gap-x-6 gap-y-2 text-center text-xs sm:text-sm md:text-base font-medium text-zinc-800 dark:text-zinc-200">
+      <div className="mt-4 sm:mt-6 w-full rounded-xl border border-zinc-300 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/70 p-3.5 xs:p-4 sm:p-5 flex flex-wrap items-center justify-center gap-x-3 xs:gap-x-4 sm:gap-x-6 gap-y-2 text-center text-xs sm:text-sm md:text-base font-medium text-zinc-800 dark:text-zinc-200">
         <div className="flex items-center gap-2 font-bold text-zinc-950 dark:text-white">
           <Phone className="w-4 h-4 text-[var(--brand-primary)] shrink-0" />
           <span>24/7 Fleet Dispatch:</span>
@@ -128,6 +139,6 @@ export default function FleetDowntimeBanner() {
           </a>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

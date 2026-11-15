@@ -87,7 +87,7 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
   return (
     <div
       id={category.id}
-      className="w-full rounded-none border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-950/90 backdrop-blur-md overflow-hidden shadow-sm dark:shadow-2xl transition-all duration-300"
+      className="w-full rounded-2xl border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-950/90 backdrop-blur-md overflow-hidden shadow-sm dark:shadow-2xl transition-all duration-300"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >

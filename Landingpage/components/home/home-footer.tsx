@@ -25,8 +25,8 @@ export default function HomeFooter({
     */
     <footer id="footer" className={`relative z-10 w-full sm:w-[calc(100%-3rem)] lg:w-[calc(100%-4rem)] mx-auto bg-black text-white border-t sm:border border-white/10 rounded-t-[24px] xs:rounded-t-[28px] sm:rounded-t-[38px] lg:rounded-t-[48px] rounded-b-none sm:rounded-b-[36px] lg:rounded-b-[44px] ${className ? className : "mt-6 sm:mt-8"} pt-8 xs:pt-10 sm:pt-16 pb-0 overflow-hidden shadow-2xl flex flex-col justify-between mb-0 sm:mb-6`}>
       
-      {/* Increased Width Content Container */}
-      <div className="w-full max-w-7xl mx-auto px-3.5 xs:px-5 sm:px-8 lg:px-12 space-y-8 sm:space-y-12 flex-1">
+      {/* Unified Width Content Container */}
+      <div className="w-full max-w-6xl mx-auto px-3.5 xs:px-5 sm:px-8 lg:px-12 space-y-8 sm:space-y-12 flex-1">
         
         {/* ======================================================== */}
         {/* 3-COLUMN WIREFRAME BOXED CONTAINER                       */}

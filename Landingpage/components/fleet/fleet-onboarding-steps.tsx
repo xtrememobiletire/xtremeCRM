@@ -84,7 +84,13 @@ export default function FleetOnboardingSteps() {
   };
 
   return (
-    <section className="w-full py-10 xs:py-14 sm:py-24 lg:py-28 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-t border-zinc-300 dark:border-zinc-800">
+    <motion.section
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="w-full py-10 xs:py-14 sm:py-24 lg:py-28 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-t border-zinc-300 dark:border-zinc-800"
+    >
       {/* Top Header Section matching wireframe */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 pb-8 sm:pb-16 border-b border-zinc-300 dark:border-zinc-800 mb-8 sm:mb-16">
         <div>
@@ -94,8 +100,13 @@ export default function FleetOnboardingSteps() {
               Fleet Solutions
             </span>
           </div>
-          <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-950 dark:text-white">
-            Get Your Fleet Protected
+          <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl tracking-tight text-zinc-950 dark:text-white leading-[1.12]">
+            <span className="font-sans font-extrabold text-zinc-950 dark:text-white">
+              Get Your Fleet{" "}
+            </span>
+            <span className="font-serif italic font-normal text-[var(--brand-primary)]">
+              Protected
+            </span>
           </h2>
         </div>
         <p className="text-xs xs:text-sm sm:text-base md:text-lg text-zinc-600 dark:text-zinc-400 max-w-md font-normal leading-relaxed">
@@ -190,7 +201,7 @@ export default function FleetOnboardingSteps() {
 
         {/* Right Column: Picture Box + Bottom Bordered Text Box (matching Wireframe) */}
         <div className="lg:col-span-6">
-          <div className="relative rounded-none border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xl overflow-hidden flex flex-col">
+          <div className="relative rounded-lg border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xl overflow-hidden flex flex-col">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeStep.id}
@@ -226,6 +237,6 @@ export default function FleetOnboardingSteps() {
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

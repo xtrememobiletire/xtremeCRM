@@ -112,13 +112,24 @@ export default function AccountAccordionItem({
                 ))}
               </div>
 
-              {/* Action Button: Sharp rounded-none */}
+              {/* Action Button */}
               <div className="pt-3 sm:pt-4">
                 <Link
                   href={option.ctaHref}
-                  className="w-full xs:w-auto inline-flex items-center justify-center min-h-[44px] px-6 py-2.5 rounded-none text-xs sm:text-sm font-bold tracking-wider uppercase bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 hover:bg-[var(--brand-primary)] dark:hover:bg-[var(--brand-primary)] dark:hover:text-white transition-colors duration-200 shadow-sm"
+                  className="group/cta w-full xs:w-auto inline-flex items-center justify-center gap-2 min-h-[44px] px-6 py-2.5 rounded-none text-xs sm:text-sm font-bold tracking-wider uppercase bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 hover:bg-[var(--brand-primary)] dark:hover:bg-[var(--brand-primary)] dark:hover:text-white transition-colors duration-200 shadow-sm"
                 >
-                  {option.ctaLabel}
+                  <span>{option.ctaLabel}</span>
+                  <svg
+                    className="w-4 h-4 stroke-[2.5] transition-transform duration-200 group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M7 17 17 7" />
+                    <path d="M7 7h10v10" />
+                  </svg>
                 </Link>
               </div>
 

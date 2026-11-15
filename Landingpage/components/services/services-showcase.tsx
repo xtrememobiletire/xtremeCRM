@@ -1,12 +1,19 @@
 "use client";
 
 import React from "react";
+import { motion } from "framer-motion";
 import { SERVICE_CATEGORIES } from "./services-data";
 import ServicesCategoryBlock from "./services-category-block";
 
 export default function ServicesShowcase() {
   return (
-    <section className="w-full py-10 xs:py-14 sm:py-24 lg:py-28 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+    <motion.section
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="w-full py-10 xs:py-14 sm:py-24 lg:py-28 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto"
+    >
       {/* Top Eyebrow & Header Section (directly matching wireframe) */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 pb-8 sm:pb-16 border-b border-zinc-300 dark:border-zinc-800 mb-8 sm:mb-16">
         <div>
@@ -16,8 +23,13 @@ export default function ServicesShowcase() {
               Services Portfolio
             </span>
           </div>
-          <h2 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-zinc-950 dark:text-white">
-            What We Offer
+          <h2 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl tracking-tight text-zinc-950 dark:text-white leading-[1.12]">
+            <span className="font-sans font-extrabold text-zinc-950 dark:text-white">
+              What We{" "}
+            </span>
+            <span className="font-serif italic font-normal text-[var(--brand-primary)]">
+              Offer
+            </span>
           </h2>
         </div>
         <p className="text-xs xs:text-sm sm:text-base md:text-lg text-zinc-600 dark:text-zinc-400 max-w-md font-normal leading-relaxed">
@@ -33,6 +45,6 @@ export default function ServicesShowcase() {
           </div>
         ))}
       </div>
-    </section>
+    </motion.section>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { ShieldCheck, BadgeCheck, Wrench } from "lucide-react";
 
 interface ValueCardItem {
@@ -53,7 +54,13 @@ export default function AboutValuesCards() {
   };
 
   return (
-    <section className="relative z-10 w-full max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6 py-10 sm:py-16 lg:py-20">
+    <motion.section
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="relative z-10 w-full max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6 py-10 sm:py-16 lg:py-20"
+    >
       
       {/* 
         ========================================================================
@@ -113,7 +120,7 @@ export default function AboutValuesCards() {
                   handleCardClick(item.id);
                 }
               }}
-              className="group relative rounded-none border border-black/15 dark:border-white/15 bg-zinc-950 text-white overflow-hidden shadow-lg hover:shadow-2xl hover:border-[var(--brand-primary)]/70 transition-all duration-500 min-h-[440px] sm:h-[500px] flex flex-col justify-between cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
+              className="group relative rounded-lg border border-black/15 dark:border-white/15 bg-zinc-950 text-white overflow-hidden shadow-lg hover:shadow-2xl hover:border-[var(--brand-primary)]/70 transition-all duration-500 min-h-[440px] sm:h-[500px] flex flex-col justify-between cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
             >
               {/* ======================================================== */}
               {/* TOP SECTION: Information Panel (Revealed via CSS Grid)   */}
@@ -229,6 +236,6 @@ export default function AboutValuesCards() {
         })}
       </div>
 
-    </section>
+    </motion.section>
   );
 }

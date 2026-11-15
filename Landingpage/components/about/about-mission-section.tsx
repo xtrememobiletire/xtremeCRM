@@ -166,8 +166,9 @@ export default function AboutMissionSection() {
             </span>
           </div>
 
-          <h2 className="text-2xl xs:text-3xl sm:text-4xl font-bold tracking-tight uppercase text-zinc-950 dark:text-white font-sans select-none">
-            Our Mission
+          <h2 className="text-2xl xs:text-3xl sm:text-4xl tracking-tight text-zinc-950 dark:text-white select-none leading-tight">
+            <span className="font-sans font-extrabold text-zinc-950 dark:text-white">Our </span>
+            <span className="font-serif italic font-normal text-[var(--brand-primary)]">Mission</span>
           </h2>
 
           <p className="text-sm xs:text-base sm:text-xl leading-snug font-sans tracking-tight pt-1">
@@ -187,10 +188,11 @@ export default function AboutMissionSection() {
         */}
         <div className="lg:col-span-5 lg:sticky lg:top-28 self-start flex flex-col items-center justify-center z-20">
           
-          {/* Desktop-only Header Title: "OUR MISSION" (Centered over speedometer, shifted right from left margin) */}
+          {/* Desktop-only Header Title: "OUR MISSION" */}
           <div className="hidden lg:block w-full text-center mb-6">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[38px] font-bold tracking-tight uppercase text-zinc-950 dark:text-white font-sans select-none">
-              Our Mission
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[38px] tracking-tight text-zinc-950 dark:text-white select-none leading-tight">
+              <span className="font-sans font-extrabold text-zinc-950 dark:text-white">Our </span>
+              <span className="font-serif italic font-normal text-[var(--brand-primary)]">Mission</span>
             </h2>
           </div>
 

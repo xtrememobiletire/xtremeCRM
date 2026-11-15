@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Truck, ShieldCheck, Navigation, Wrench, Package, Radio, Building2, Flame } from "lucide-react";
+import { Truck, ShieldCheck, Navigation, Wrench, Package, Globe, HardHat, Activity } from "lucide-react";
 
 interface FleetMember {
   id: string;
@@ -11,44 +11,44 @@ interface FleetMember {
 
 const FLEET_MEMBERS: FleetMember[] = [
   {
-    id: "apex-freight",
-    name: "Apex Freight Logistics",
+    id: "class-8-semis",
+    name: "Heavy-Duty Class 8 Semis",
     icon: <Truck className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.75} />,
   },
   {
-    id: "metro-delivery",
-    name: "Metro Delivery Express",
-    icon: <Navigation className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.75} />,
-  },
-  {
-    id: "titan-haulage",
-    name: "Titan Heavy Haulage",
-    icon: <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.75} />,
-  },
-  {
-    id: "vanguard-fleet",
-    name: "Vanguard Contractor Fleet",
-    icon: <Wrench className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.75} />,
-  },
-  {
-    id: "ryder-systems",
-    name: "Ryder Fleet Systems",
-    icon: <Building2 className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.75} />,
-  },
-  {
-    id: "penske-truck",
-    name: "Penske Commercial Truck",
+    id: "commercial-box-trucks",
+    name: "Commercial Box Trucks",
     icon: <Package className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.75} />,
   },
   {
-    id: "dhl-supply",
-    name: "DHL Express Supply",
-    icon: <Radio className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.75} />,
+    id: "last-mile-sprinters",
+    name: "Last-Mile Sprinter Vans",
+    icon: <Navigation className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.75} />,
   },
   {
-    id: "swift-trans",
-    name: "Swift Transportation",
-    icon: <Flame className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.75} />,
+    id: "municipal-vehicles",
+    name: "Municipal Service Fleets",
+    icon: <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.75} />,
+  },
+  {
+    id: "contractor-flatbeds",
+    name: "Contractor Flatbeds",
+    icon: <Wrench className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.75} />,
+  },
+  {
+    id: "construction-earthmoving",
+    name: "Construction & Earthmoving",
+    icon: <HardHat className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.75} />,
+  },
+  {
+    id: "interstate-carriers",
+    name: "Interstate Freight Carriers",
+    icon: <Globe className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.75} />,
+  },
+  {
+    id: "mobile-service-units",
+    name: "24/7 Mobile Service Units",
+    icon: <Activity className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.75} />,
   },
 ];
 
@@ -56,22 +56,22 @@ export default function FleetMembersBar() {
   return (
     <section className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 my-4 sm:my-8">
       {/* 
-        Substantially Enlarged Flowing Bar:
+        Commercial Fleet Classifications Bar:
         - Taller padding (py-4 sm:py-6) for an authoritative enterprise look.
-        - Pinned left label "Fleet Members" with prominent red status pulse.
-        - High-visibility logos with larger typography and icons.
+        - Pinned left label "Commercial Fleets Serviced" with prominent crimson status pulse.
+        - High-visibility vehicle categories with larger typography and authentic icons.
         - Smooth continuous infinite auto-scrolling with pause on hover.
       */}
       <div className="relative w-full border-y border-black/15 dark:border-white/15 py-4 sm:py-6 flex items-center overflow-hidden">
         
-        {/* Left Pinned Label matching Reference Image 1 */}
+        {/* Left Pinned Label */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 pr-3 sm:pr-8 mr-2.5 sm:mr-7 border-r-2 border-black/10 dark:border-white/10 z-10 bg-[var(--neutral-light)] dark:bg-black">
           <span className="relative flex h-2.5 w-2.5 sm:h-3 sm:w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--brand-primary)] opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 bg-[var(--brand-primary)]" />
           </span>
           <span className="text-xs xs:text-sm sm:text-base md:text-lg font-bold tracking-tight text-[var(--neutral-dark)] dark:text-zinc-100 whitespace-nowrap">
-            Fleet Members
+            Commercial Fleets Serviced
           </span>
         </div>
 

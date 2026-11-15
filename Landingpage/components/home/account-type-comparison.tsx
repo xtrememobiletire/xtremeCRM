@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import {
   AccountKey,
   ACCOUNT_OPTIONS,
@@ -20,7 +21,13 @@ export default function AccountTypeComparison() {
   const activeOption = activeAccount ? ACCOUNT_OPTIONS[activeAccount] : null;
 
   return (
-    <section className="relative z-10 w-full max-w-5xl mx-auto px-3.5 xs:px-4 sm:px-6 py-10 sm:py-16">
+    <motion.section
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="relative z-10 w-full max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6 py-10 sm:py-16"
+    >
       {/* 
         Section Header matching Wireframe:
         - "CHOOSE YOUR" in bold editorial serif
@@ -32,7 +39,7 @@ export default function AccountTypeComparison() {
           <span className="font-sans font-extrabold text-[var(--neutral-dark)]">
             Choose your{" "}
           </span>
-          <span className="font-serif italic font-normal text-[var(--neutral-dark)]">
+          <span className="font-serif italic font-normal text-[var(--brand-primary)]">
             account type
           </span>
         </h2>
@@ -73,6 +80,6 @@ export default function AccountTypeComparison() {
         </div>
 
       </div>
-    </section>
+    </motion.section>
   );
 }

@@ -190,7 +190,7 @@ export default function HeroSection({
         {/* Soft Blurred Gradient Border Diffuser between Hero and Interactive Hub */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 sm:h-16 z-10 backdrop-blur-md bg-gradient-to-b from-transparent via-black/50 to-black/90"
+          className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 sm:h-16 z-10 backdrop-blur-md bg-gradient-to-b from-transparent via-[#eceef2]/40 to-[#eceef2] dark:via-black/50 dark:to-black/90"
         />
       </section>
 

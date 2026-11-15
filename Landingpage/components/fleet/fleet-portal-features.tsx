@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import {
   KeyRound,
   Radio,
@@ -57,7 +58,13 @@ export default function FleetPortalFeatures() {
   const [activeFeature, setActiveFeature] = useState<string>("b2b-code");
 
   return (
-    <section className="w-full py-10 xs:py-14 sm:py-24 lg:py-28 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-t border-zinc-300 dark:border-zinc-800">
+    <motion.section
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="w-full py-10 xs:py-14 sm:py-24 lg:py-28 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-t border-zinc-300 dark:border-zinc-800"
+    >
       {/* Top Section Header & Eyebrow (matching wireframe) */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 pb-8 sm:pb-16 border-b border-zinc-300 dark:border-zinc-800 mb-8 sm:mb-16">
         <div>
@@ -67,8 +74,13 @@ export default function FleetPortalFeatures() {
               Fleet Solutions
             </span>
           </div>
-          <h2 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-zinc-950 dark:text-white">
-            Everything Included in Your Fleet Manager Portal
+          <h2 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl tracking-tight text-zinc-950 dark:text-white leading-[1.12]">
+            <span className="font-sans font-extrabold text-zinc-950 dark:text-white">
+              Everything Included in Your{" "}
+            </span>
+            <span className="font-serif italic font-normal text-[var(--brand-primary)]">
+              Fleet Portal
+            </span>
           </h2>
         </div>
         <p className="text-xs xs:text-sm sm:text-base md:text-lg text-zinc-600 dark:text-zinc-400 max-w-md font-normal leading-relaxed">
@@ -109,7 +121,7 @@ export default function FleetPortalFeatures() {
 
         {/* Right Column: 2x2 Architectural Grid (Matching wireframe) */}
         <div className="lg:col-span-7">
-          <div className="relative rounded-none border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-950/90 shadow-sm dark:shadow-2xl overflow-hidden group">
+          <div className="relative rounded-lg border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-950/90 shadow-sm dark:shadow-2xl overflow-hidden group">
             {/* Blueprint Crosshair Marks (+) at the 4 corners */}
             <span className="absolute top-2 left-2 font-mono text-xs text-zinc-400 dark:text-zinc-600 select-none pointer-events-none z-10">+</span>
             <span className="absolute top-2 right-2 font-mono text-xs text-zinc-400 dark:text-zinc-600 select-none pointer-events-none z-10">+</span>
@@ -268,6 +280,6 @@ export default function FleetPortalFeatures() {
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

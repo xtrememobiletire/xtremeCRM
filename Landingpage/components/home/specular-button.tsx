@@ -2,6 +2,7 @@
 
 import React, { useRef, useEffect } from "react";
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 
 interface SpecularButtonProps {
   label: string;
@@ -9,6 +10,7 @@ interface SpecularButtonProps {
   onClick?: () => void;
   variant?: "crimson" | "white";
   className?: string;
+  showArrow?: boolean;
 }
 
 export default function SpecularButton({
@@ -17,6 +19,7 @@ export default function SpecularButton({
   onClick,
   variant = "crimson",
   className = "",
+  showArrow = true,
 }: SpecularButtonProps) {
   const buttonRef = useRef<HTMLDivElement>(null);
   const isHoveredRef = useRef(false);
@@ -86,10 +89,10 @@ export default function SpecularButton({
 
   // Specular light colors (vivid & always on)
   const shineColor = isCrimson
-    ? "rgba(255, 75, 75, 1)"
-    : "rgba(255, 255, 255, 1)";
+    ? "rgba(255, 255, 255, 0.95)"
+    : "rgba(255, 255, 255, 0.9)";
   const ambientBorderColor = isCrimson
-    ? "rgba(200, 16, 46, 0.45)"
+    ? "rgba(255, 200, 200, 0.45)"
     : "rgba(255, 255, 255, 0.35)";
 
   const content = (
@@ -99,10 +102,10 @@ export default function SpecularButton({
       onMouseLeave={handleMouseLeave}
       className={`relative inline-flex items-center justify-center ${
         className.includes("w-") ? "" : "w-48 sm:w-52"
-      } min-h-[44px] h-12 sm:h-13 rounded-none overflow-hidden select-none transition-transform duration-200 active:scale-95 cursor-pointer ${
+      } min-h-[44px] h-12 sm:h-13 rounded-none overflow-hidden select-none transition-all duration-200 active:scale-95 cursor-pointer ${
         isCrimson
-          ? "bg-zinc-950/90 text-white shadow-[0_0_20px_-3px_rgba(200,16,46,0.45)]"
-          : "bg-white hover:bg-zinc-100 dark:bg-zinc-900/90 text-zinc-950 dark:text-white border border-black/15 dark:border-white/20 shadow-[0_0_20px_-3px_rgba(0,0,0,0.1)] dark:shadow-[0_0_20px_-3px_rgba(255,255,255,0.2)]"
+          ? "bg-[var(--brand-primary)] hover:bg-[var(--brand-secondary)] text-white shadow-[0_0_24px_rgba(200,16,46,0.55)] border border-[var(--brand-primary)]/80"
+          : "bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/25 text-white shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
       } ${className}`}
     >
       {/* Specular edge light layer (ALWAYS active and gliding along the border perimeter via CSS variables) */}
@@ -118,28 +121,27 @@ export default function SpecularButton({
         }}
       />
 
-      {/* Specular glass reflection pool inside button (ALWAYS visibly shining) */}
+      {/* Specular glass reflection pool inside button */}
       <div
         className="pointer-events-none absolute inset-0 rounded-none"
         style={{
           background: `radial-gradient(90px circle at var(--spec-x, 50px) var(--spec-y, 0px), ${
             isCrimson
-              ? "rgba(200, 16, 46, 0.25)"
+              ? "rgba(255, 255, 255, 0.25)"
               : "rgba(255, 255, 255, 0.18)"
           }, transparent 80%)`,
         }}
       />
 
-      {/* Button Text: Consistent typography, bold and sharp */}
-      <span
-        className={`relative z-10 font-bold text-xs xs:text-sm sm:text-base tracking-wide px-3 text-center ${
-          isCrimson
-            ? "text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]"
-            : "text-zinc-900 dark:text-white dark:drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]"
-        }`}
-      >
-        {label}
-      </span>
+      {/* Button Text & Arrow: Consistent typography, bold and sharp */}
+      <div className="relative z-10 flex items-center justify-center gap-2 px-3 text-center">
+        <span className="font-bold text-xs xs:text-sm sm:text-base tracking-wide text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.7)]">
+          {label}
+        </span>
+        {showArrow && (
+          <ArrowUpRight className="w-4 h-4 text-white transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 shrink-0 drop-shadow-[0_1px_4px_rgba(0,0,0,0.7)]" />
+        )}
+      </div>
     </div>
   );
 

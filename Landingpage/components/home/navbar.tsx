@@ -36,7 +36,7 @@ export default function Navbar({
   brandName = "Xtreme Mobile Tire",
   logoSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp",
   navItems = DEFAULT_NAV_ITEMS,
-  signInHref: _signInHref = LOGIN_URL,
+  signInHref = LOGIN_URL,
   signUpHref: _signUpHref = "/signup",
   onLogoClick,
   hide = false,
@@ -101,7 +101,7 @@ export default function Navbar({
           Container Wrapper:
           Consistent sizing and padding across ALL pages and screen sizes.
         */}
-        <div className="w-full max-w-[calc(100%-1.25rem)] xs:max-w-[calc(100%-2rem)] sm:max-w-[calc(100%-3rem)] lg:max-w-4xl xl:max-w-5xl px-0 sm:px-4 lg:px-6 pointer-events-auto">
+        <div className="w-full max-w-[calc(100%-1.25rem)] xs:max-w-[calc(100%-2rem)] sm:max-w-[calc(100%-3rem)] lg:max-w-6xl px-0 sm:px-4 lg:px-6 pointer-events-auto">
           {/* 
             NAVBAR ASSEMBLY (Moves as ONE unified piece):
             Contains the Left Wing, the Right Wing, and the Curved Nav Body.
@@ -309,7 +309,7 @@ export default function Navbar({
                 <div className="hidden lg:flex items-center">
                   <SplitPillButton
                     label="Sign In"
-                    href="https://app.xtrememobiletire.com/login"
+                    href={signInHref}
                     theme="white-crimson"
                     arrowDirection="up-right"
                     size="sm"
@@ -496,7 +496,7 @@ export default function Navbar({
                   >
                     <SplitPillButton
                       label="Sign In"
-                      href="https://app.xtrememobiletire.com/login"
+                      href={signInHref}
                       onClick={() => setMobileMenuOpen(false)}
                       theme="white-crimson"
                       arrowDirection="up-right"

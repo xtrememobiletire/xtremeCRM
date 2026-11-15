@@ -12,12 +12,12 @@ interface HubCardProps {
 }
 
 /* 
-  WHITE CARD COMPONENT:
-  - Pure white background (bg-white)
+  COCKPIT CARD COMPONENT:
+  - Theme-aware background (bg-white dark:bg-[#15171e])
   - Subtle rounded corners (rounded-lg / 8px radius)
   - Fixed exact height (h-[120px]) so circuit lines touch borders with 0 gap
   - Crisp high-contrast typography: Bold title + subtle subtitle
-  - Clean light inset tray housing the icon
+  - Inset tray housing the icon
 */
 function HubCard({
   title,
@@ -30,21 +30,21 @@ function HubCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className={`group relative min-h-[105px] sm:h-[120px] rounded-lg border border-slate-200/90 bg-white p-2 xs:p-2.5 sm:p-3 shadow-[0_12px_28px_-5px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,1)] hover:border-[var(--brand-primary)]/50 hover:shadow-xl transition-all duration-300 flex flex-col justify-between ${className}`}
+      className={`group relative min-h-[105px] sm:h-[120px] rounded-lg border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#15171e] p-2 xs:p-2.5 sm:p-3 shadow-[0_12px_28px_-5px_rgba(0,0,0,0.3)] dark:shadow-2xl hover:border-[var(--brand-primary)]/50 hover:shadow-xl transition-all duration-300 flex flex-col justify-between ${className}`}
     >
       {/* Title & Subtitle */}
       <div className="text-center px-0.5">
-        <h4 className="text-xs sm:text-[13px] font-bold text-slate-900 leading-tight tracking-tight">
+        <h4 className="text-xs sm:text-[13px] font-bold text-slate-900 dark:text-white leading-tight tracking-tight">
           {title}
         </h4>
-        <p className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 font-normal leading-tight">
+        <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5 font-normal leading-tight">
           {subtitle}
         </p>
       </div>
 
-      {/* Crisp Light Inset Tray */}
-      <div className="w-full bg-slate-100/90 rounded-md border border-slate-200 py-1.5 px-2 flex items-center justify-center shadow-inner group-hover:border-[var(--brand-primary)]/30 transition-all">
-        <div className="w-4 h-4 flex items-center justify-center text-slate-700 group-hover:text-[var(--brand-primary)] transition-colors">
+      {/* Crisp Inset Tray */}
+      <div className="w-full bg-slate-100/90 dark:bg-white/[0.05] rounded-md border border-slate-200 dark:border-white/10 py-1.5 px-2 flex items-center justify-center shadow-inner group-hover:border-[var(--brand-primary)]/30 transition-all">
+        <div className="w-4 h-4 flex items-center justify-center text-slate-700 dark:text-zinc-200 group-hover:text-[var(--brand-primary)] transition-colors">
           {icon}
         </div>
       </div>
@@ -57,18 +57,18 @@ export default function HeroInteractiveHub() {
     <div className="relative w-full max-w-6xl mx-auto px-2.5 xs:px-4 sm:px-6 mt-6 sm:mt-12 mb-8 sm:mb-14">
       {/* 
         MAIN SURROUNDING TECH CANVAS BOARD:
-        - Sleek solid gray chassis (bg-[#2b303c] / not black!)
+        - Deep obsidian chassis (bg-[#0c0d10])
         - Subtle rounded-2xl chassis
         - Micro-grid tech texture with clean white grid lines
       */}
-      <div className="relative rounded-2xl border border-zinc-600/50 bg-[#2b303c] backdrop-blur-md p-3.5 xs:p-5 sm:p-8 lg:p-10 overflow-hidden shadow-2xl">
+      <div className="relative rounded-2xl border border-white/10 bg-[#0c0d10] backdrop-blur-md p-3.5 xs:p-5 sm:p-8 lg:p-10 overflow-hidden shadow-2xl">
         
         {/* Subtle Ambient Radial Glow */}
-        <div className="pointer-events-none absolute -right-24 -top-24 w-80 h-80 bg-white/5 blur-3xl rounded-full" />
+        <div className="pointer-events-none absolute -right-24 -top-24 w-80 h-80 bg-[var(--brand-primary)]/10 blur-3xl rounded-full" />
         <div className="pointer-events-none absolute -left-24 -bottom-24 w-80 h-80 bg-white/5 blur-3xl rounded-full" />
 
         {/* Micro-grid Texture with subtle white lines */}
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#ffffff12_1px,transparent_1px),linear-gradient(to_bottom,#ffffff12_1px,transparent_1px)] bg-[size:2rem_2rem]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#ffffff0f_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0f_1px,transparent_1px)] bg-[size:2rem_2rem]" />
 
         {/* ============================================================== */}
         {/* DESKTOP 2-TIER HUB ARCHITECTURE (Percentage coordinates)       */}
@@ -100,38 +100,38 @@ export default function HeroInteractiveHub() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease: "easeOut" }}
-              className="group relative h-[120px] rounded-lg border border-slate-200/90 bg-white p-3 shadow-[0_12px_28px_-5px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,1)] hover:border-[var(--brand-primary)]/50 hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
+              className="group relative h-[120px] rounded-lg border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#15171e] p-3 shadow-[0_12px_28px_-5px_rgba(0,0,0,0.3)] dark:shadow-2xl hover:border-[var(--brand-primary)]/50 hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
             >
               {/* Header Title & Subtitle */}
               <div className="text-center px-1">
-                <h4 className="text-xs sm:text-[13px] font-bold text-slate-900 leading-tight tracking-tight">
+                <h4 className="text-xs sm:text-[13px] font-bold text-slate-900 dark:text-white leading-tight tracking-tight">
                   Commercial Fleet Safety
                 </h4>
-                <p className="text-[11px] text-slate-500 mt-0.5 font-normal leading-tight">
+                <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5 font-normal leading-tight">
                   Commercial safety standards & compliance
                 </p>
               </div>
 
               {/* 3-Slot Inset Tray */}
               <div className="grid grid-cols-3 gap-2 w-full">
-                <div className="bg-slate-100/90 rounded-md border border-slate-200 py-1 px-1.5 flex flex-col items-center justify-center text-center shadow-inner">
-                  <svg className="w-3.5 h-3.5 text-slate-700 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="bg-slate-100/90 dark:bg-white/[0.05] rounded-md border border-slate-200 dark:border-white/10 py-1 px-1.5 flex flex-col items-center justify-center text-center shadow-inner">
+                  <svg className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
-                  <span className="text-[8.5px] font-medium text-slate-700 truncate">Safety Protocol</span>
+                  <span className="text-[8.5px] font-medium text-slate-700 dark:text-zinc-300 truncate">Safety Protocol</span>
                 </div>
-                <div className="bg-slate-100/90 rounded-md border border-slate-200 py-1 px-1.5 flex flex-col items-center justify-center text-center shadow-inner">
-                  <svg className="w-3.5 h-3.5 text-slate-700 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="bg-slate-100/90 dark:bg-white/[0.05] rounded-md border border-slate-200 dark:border-white/10 py-1 px-1.5 flex flex-col items-center justify-center text-center shadow-inner">
+                  <svg className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  <span className="text-[8.5px] font-medium text-slate-700 truncate">Master Techs</span>
+                  <span className="text-[8.5px] font-medium text-slate-700 dark:text-zinc-300 truncate">Master Techs</span>
                 </div>
-                <div className="bg-slate-100/90 rounded-md border border-slate-200 py-1 px-1.5 flex flex-col items-center justify-center text-center shadow-inner">
-                  <svg className="w-3.5 h-3.5 text-slate-700 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="bg-slate-100/90 dark:bg-white/[0.05] rounded-md border border-slate-200 dark:border-white/10 py-1 px-1.5 flex flex-col items-center justify-center text-center shadow-inner">
+                  <svg className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-[8.5px] font-medium text-slate-700 truncate">100% Insured</span>
+                  <span className="text-[8.5px] font-medium text-slate-700 dark:text-zinc-300 truncate">100% Insured</span>
                 </div>
               </div>
             </motion.div>
@@ -197,36 +197,36 @@ export default function HeroInteractiveHub() {
             <LaptopMockup />
           </div>
 
-          {/* Top-Center Card (Pure White) */}
+          {/* Top-Center Card (Theme-aware) */}
           <div className="w-full">
-            <div className="rounded-lg border border-slate-200/90 bg-white p-3 xs:p-4 shadow-md">
+            <div className="rounded-lg border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#15171e] p-3 xs:p-4 shadow-md dark:shadow-2xl">
               <div className="text-center px-1">
-                <h4 className="text-xs sm:text-[13px] font-bold text-slate-900 leading-tight tracking-tight">
+                <h4 className="text-xs sm:text-[13px] font-bold text-slate-900 dark:text-white leading-tight tracking-tight">
                   Commercial Fleet Safety
                 </h4>
-                <p className="text-[10px] xs:text-[11px] text-slate-500 mt-1 font-normal leading-tight">
+                <p className="text-[10px] xs:text-[11px] text-slate-500 dark:text-zinc-400 mt-1 font-normal leading-tight">
                   Commercial safety standards & compliance
                 </p>
               </div>
               <div className="mt-2.5 xs:mt-3 grid grid-cols-3 gap-1.5 xs:gap-2 w-full">
-                <div className="bg-slate-100/90 rounded-md border border-slate-200 py-1.5 px-1 xs:px-2 flex flex-col items-center justify-center text-center shadow-inner">
-                  <svg className="w-3.5 h-3.5 text-slate-700 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="bg-slate-100/90 dark:bg-white/[0.05] rounded-md border border-slate-200 dark:border-white/10 py-1.5 px-1 xs:px-2 flex flex-col items-center justify-center text-center shadow-inner">
+                  <svg className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
-                  <span className="text-[8px] xs:text-[9px] font-medium text-slate-700 truncate">Safety Protocol</span>
+                  <span className="text-[8px] xs:text-[9px] font-medium text-slate-700 dark:text-zinc-300 truncate">Safety Protocol</span>
                 </div>
-                <div className="bg-slate-100/90 rounded-md border border-slate-200 py-1.5 px-1 xs:px-2 flex flex-col items-center justify-center text-center shadow-inner">
-                  <svg className="w-3.5 h-3.5 text-slate-700 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="bg-slate-100/90 dark:bg-white/[0.05] rounded-md border border-slate-200 dark:border-white/10 py-1.5 px-1 xs:px-2 flex flex-col items-center justify-center text-center shadow-inner">
+                  <svg className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  <span className="text-[8px] xs:text-[9px] font-medium text-slate-700 truncate">Master Techs</span>
+                  <span className="text-[8px] xs:text-[9px] font-medium text-slate-700 dark:text-zinc-300 truncate">Master Techs</span>
                 </div>
-                <div className="bg-slate-100/90 rounded-md border border-slate-200 py-1.5 px-1 xs:px-2 flex flex-col items-center justify-center text-center shadow-inner">
-                  <svg className="w-3.5 h-3.5 text-slate-700 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="bg-slate-100/90 dark:bg-white/[0.05] rounded-md border border-slate-200 dark:border-white/10 py-1.5 px-1 xs:px-2 flex flex-col items-center justify-center text-center shadow-inner">
+                  <svg className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-[8px] xs:text-[9px] font-medium text-slate-700 truncate">100% Insured</span>
+                  <span className="text-[8px] xs:text-[9px] font-medium text-slate-700 dark:text-zinc-300 truncate">100% Insured</span>
                 </div>
               </div>
             </div>

@@ -284,6 +284,15 @@
   will-change: transform;
 }
 
+@keyframes progress-ring-draw {
+  from {
+    stroke-dashoffset: var(--ring-circumference, 175.93);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 
 /* Tabular numbers for neatly aligned monetary and counter values */
 .tabular-nums {

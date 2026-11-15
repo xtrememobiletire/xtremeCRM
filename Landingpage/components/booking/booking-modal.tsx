@@ -472,7 +472,7 @@ export default function BookingModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 12 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="relative w-full max-w-4xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-none shadow-2xl overflow-hidden z-10 flex flex-col max-h-[94dvh]"
+          className="relative w-full max-w-4xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden z-10 flex flex-col max-h-[94dvh]"
         >
           {/* Top Bar matching Taylor Tire: Brand Logo, Back/Step Title, Progress Dots, Close */}
           <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
@@ -885,7 +885,7 @@ export default function BookingModal({
                       <button
                         type="button"
                         onClick={() => setStep(2)}
-                        className="w-full py-3 px-6 rounded-none bg-[var(--brand-primary)] hover:bg-black dark:hover:bg-white dark:hover:text-black text-white font-bold text-sm tracking-wide transition-all duration-300 shadow-md cursor-pointer"
+                        className="w-full py-3 px-6 rounded-lg bg-[var(--brand-primary)] hover:bg-black dark:hover:bg-white dark:hover:text-black text-white font-bold text-sm tracking-wide transition-all duration-300 shadow-md cursor-pointer"
                       >
                         Continue to Vehicle & Contact Details →
                       </button>
@@ -1135,7 +1135,7 @@ export default function BookingModal({
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full sm:w-auto px-8 py-3.5 rounded-none bg-[var(--brand-primary)] hover:bg-black dark:hover:bg-white dark:hover:text-black text-white font-bold text-sm tracking-wide transition-all duration-300 shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full sm:w-auto px-8 py-3.5 rounded-lg bg-[var(--brand-primary)] hover:bg-black dark:hover:bg-white dark:hover:text-black text-white font-bold text-sm tracking-wide transition-all duration-300 shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (
                       <>
@@ -1238,7 +1238,7 @@ export default function BookingModal({
                   <button
                     type="button"
                     onClick={handleReset}
-                    className="w-full sm:w-auto px-8 py-3 rounded-none border border-zinc-900 dark:border-white bg-transparent hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black text-zinc-900 dark:text-white font-bold text-xs uppercase tracking-wider transition cursor-pointer"
+                    className="w-full sm:w-auto px-8 py-3 rounded-lg border border-zinc-900 dark:border-white bg-transparent hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black text-zinc-900 dark:text-white font-bold text-xs uppercase tracking-wider transition cursor-pointer"
                   >
                     Book Another Appointment
                   </button>

@@ -14,10 +14,10 @@ export default function MobileTireShowcase() {
     >
       {/* 
         Outer Container Card:
-        Sharp brutalist lines (rounded-none), zero rounded corners.
+        2-tier corner geometry token system (rounded-2xl shell).
         Ultra-clean border, attractive dark/light contrast.
       */}
-      <div className="relative rounded-none bg-white/70 dark:bg-zinc-950/90 backdrop-blur-md border border-black/15 dark:border-white/10 p-4 xs:p-6 sm:p-10 lg:p-12 overflow-hidden shadow-2xl">
+      <div className="relative rounded-2xl bg-white/70 dark:bg-zinc-950/90 backdrop-blur-md border border-black/15 dark:border-white/10 p-4 xs:p-6 sm:p-10 lg:p-12 overflow-hidden shadow-2xl">
         
         {/* Subtle Ambient Crimson Glow */}
         <div className="pointer-events-none absolute -right-24 -top-24 w-96 h-96 bg-[var(--brand-primary)]/15 blur-3xl rounded-none" />
@@ -52,7 +52,7 @@ export default function MobileTireShowcase() {
               </h2>
 
               {/* 3. Bordered Text Box matching Wireframe (Simple font, clean size) */}
-              <div className="relative rounded-none border border-black/20 dark:border-white/20 bg-zinc-50/80 dark:bg-white/[0.04] p-6 sm:p-8 shadow-sm hover:border-[var(--brand-primary)]/50 transition-colors group/box">
+              <div className="relative rounded-lg border border-black/20 dark:border-white/20 bg-zinc-50/80 dark:bg-white/[0.04] p-6 sm:p-8 shadow-sm hover:border-[var(--brand-primary)]/50 transition-colors group/box">
                 {/* Subtle Crimson Accent Bar on left edge */}
                 <div className="absolute top-0 left-0 bottom-0 w-1 bg-transparent group-hover/box:bg-[var(--brand-primary)] transition-colors rounded-none" />
 
@@ -92,10 +92,10 @@ export default function MobileTireShowcase() {
           </div>
 
           {/* ======================================================== */}
-          {/* RIGHT COLUMN: Tall Picture Frame (Sharp rounded-none)    */}
+          {/* RIGHT COLUMN: Tall Picture Frame                         */}
           {/* ======================================================== */}
           <div className="lg:col-span-6 flex flex-col">
-            <div className="group/image relative w-full h-full min-h-[300px] xs:min-h-[360px] sm:min-h-[440px] lg:min-h-[520px] rounded-none overflow-hidden border border-black/15 dark:border-white/10 bg-zinc-950 shadow-2xl flex flex-col justify-between">
+            <div className="group/image relative w-full h-full min-h-[300px] xs:min-h-[360px] sm:min-h-[440px] lg:min-h-[520px] rounded-lg overflow-hidden border border-black/15 dark:border-white/10 bg-zinc-950 shadow-2xl flex flex-col justify-between">
               
               {/* Background Photography */}
               <div className="absolute inset-0 overflow-hidden">
@@ -112,7 +112,7 @@ export default function MobileTireShowcase() {
 
               {/* Bottom Image Details & Telemetry */}
               <div className="relative z-10 p-5 sm:p-6 mt-auto">
-                <div className="p-4 rounded-none bg-black/70 backdrop-blur-md border border-white/10 text-white">
+                <div className="p-4 rounded-lg bg-black/70 backdrop-blur-md border border-white/10 text-white">
                   <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
                     <span className="font-semibold text-[var(--brand-primary)] uppercase tracking-wider text-[10px]">
                       Professional On-Site Mounting

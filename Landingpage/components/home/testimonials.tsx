@@ -57,20 +57,11 @@ const TESTIMONIALS: TestimonialItem[] = [
 ];
 
 const RADIUS = 31;
+const CIRCUMFERENCE = 194.78; // 2 * Math.PI * 31
 
 export default function Testimonials() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-
-  // Auto-advancing interval that respects pause-on-hover without 40fps React re-renders
-  useEffect(() => {
-    if (isPaused) return;
-    const timer = setTimeout(() => {
-      setActiveIndex((curr) => (curr + 1) % TESTIMONIALS.length);
-    }, 5000);
-
-    return () => clearTimeout(timer);
-  }, [activeIndex, isPaused]);
 
   const handleSelectClient = (index: number) => {
     setActiveIndex(index);
@@ -79,36 +70,42 @@ export default function Testimonials() {
   const current = TESTIMONIALS[activeIndex];
 
   return (
-    <section className="relative z-10 w-full max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6 py-8 sm:py-14">
+    <motion.section
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      className="relative z-10 w-full max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6 py-8 sm:py-14"
+    >
       {/* 
         Main Testimonial Card:
         - Header kept INSIDE the box
         - Full-width legible quote layout
-        - Sharp corners (rounded-none)
-        - Circular status progress on active client avatar with pause-on-hover
+        - Outer shell rounded-2xl
+        - Circular status progress on active client avatar with freeze-in-place pause-on-hover
       */}
       <div
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
-        className="relative w-full rounded-none bg-white/70 dark:bg-zinc-950/90 backdrop-blur-md border border-black/15 dark:border-white/10 p-4 xs:p-6 sm:p-8 lg:p-9 overflow-hidden shadow-2xl transition-all"
+        className="relative w-full rounded-2xl bg-white/80 dark:bg-[#0c0d10] backdrop-blur-md border border-black/10 dark:border-white/10 p-4 xs:p-6 sm:p-8 lg:p-10 overflow-hidden shadow-2xl transition-all"
       >
         {/* Subtle Ambient Crimson Glow */}
-        <div className="pointer-events-none absolute -right-24 -top-24 w-96 h-96 bg-[var(--brand-primary)]/10 blur-3xl rounded-none" />
-        <div className="pointer-events-none absolute -left-20 -bottom-20 w-80 h-80 bg-[var(--brand-primary)]/10 blur-3xl rounded-none" />
+        <div className="pointer-events-none absolute -right-24 -top-24 w-96 h-96 bg-[var(--brand-primary)]/10 blur-3xl rounded-full" />
+        <div className="pointer-events-none absolute -left-20 -bottom-20 w-80 h-80 bg-[var(--brand-primary)]/10 blur-3xl rounded-full" />
 
         {/* Section Header INSIDE the card */}
-        <div className="text-left mb-5 sm:mb-8">
+        <div className="text-left mb-6 sm:mb-9">
           <div className="flex items-center gap-2.5 mb-2 sm:mb-2.5">
             <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black dark:bg-[var(--brand-primary)] inline-block shrink-0 shadow-sm rounded-none" />
             <span className="text-[11px] xs:text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
               Trusted by commercial teams
             </span>
           </div>
-          <h2 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl tracking-tight text-[var(--neutral-dark)]">
-            <span className="font-sans font-extrabold text-[var(--neutral-dark)]">
+          <h2 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl tracking-tight text-zinc-950 dark:text-white">
+            <span className="font-sans font-extrabold text-zinc-950 dark:text-white">
               What our clients{" "}
             </span>
-            <span className="font-serif italic font-normal text-[var(--neutral-dark)]">
+            <span className="font-serif italic font-normal text-[var(--brand-primary)]">
               say
             </span>
           </h2>
@@ -144,9 +141,9 @@ export default function Testimonials() {
                           className="stroke-zinc-200 dark:stroke-zinc-800"
                           strokeWidth="2.5"
                         />
-                        {/* Smooth GPU Animated Progress Circle */}
-                        <motion.circle
-                          key={`${item.id}-${isPaused ? "paused" : "running"}`}
+                        {/* Smooth GPU Animated Progress Circle with freeze-in-place pause-on-hover */}
+                        <circle
+                          key={item.id}
                           cx="36"
                           cy="36"
                           r={RADIUS}
@@ -154,12 +151,15 @@ export default function Testimonials() {
                           stroke="var(--brand-primary)"
                           strokeWidth="2.5"
                           strokeLinecap="round"
-                          initial={{ pathLength: 0 }}
-                          animate={{ pathLength: isPaused ? 0.3 : 1 }}
-                          transition={{
-                            duration: isPaused ? 0 : 5,
-                            ease: "linear",
-                          }}
+                          strokeDasharray={CIRCUMFERENCE}
+                          style={{
+                            "--ring-circumference": `${CIRCUMFERENCE}px`,
+                            animation: "progress-ring-draw 5s linear forwards",
+                            animationPlayState: isPaused ? "paused" : "running",
+                          } as React.CSSProperties}
+                          onAnimationEnd={() =>
+                            setActiveIndex((curr) => (curr + 1) % TESTIMONIALS.length)
+                          }
                           className="shadow-sm"
                         />
                       </svg>
@@ -219,6 +219,6 @@ export default function Testimonials() {
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

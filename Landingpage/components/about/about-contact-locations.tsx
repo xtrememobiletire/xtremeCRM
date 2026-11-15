@@ -26,8 +26,8 @@ const LOCATIONS: LocationItem[] = [
     name: "United Kingdom",
     country: "United Kingdom",
     flag: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426850/xtreme/landing/flags/uk_svg.svg",
-    line1: "24-28 Holborn",
-    line2: "London EC1N 2HT, United Kingdom",
+    line1: "UK Operations & Regional Dispatch Hub",
+    line2: "24-28 Holborn, London EC1N 2HT, United Kingdom",
     phone: "+44 1630 234331",
     phoneRaw: "+441630234331",
     email: "Info@xtrememobiletire.com",
@@ -60,18 +60,11 @@ const LOCATIONS: LocationItem[] = [
 
 // SVG circle metrics
 const RADIUS = 34;
+const CIRCUMFERENCE = 213.63; // 2 * Math.PI * 34
 
 export default function AboutContactLocations() {
   const [activeIndex, setActiveIndex] = useState(0);
-
-  // Auto-advancing progress timer that loops through UK -> US -> Canada smoothly without state thrashing
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setActiveIndex((curr) => (curr + 1) % LOCATIONS.length);
-    }, 5000);
-
-    return () => clearTimeout(timer);
-  }, [activeIndex]);
+  const [isPaused, setIsPaused] = useState(false);
 
   const handleSelectLocation = (idx: number) => {
     setActiveIndex(idx);
@@ -80,15 +73,25 @@ export default function AboutContactLocations() {
   const current = LOCATIONS[activeIndex];
 
   return (
-    <section className="relative z-10 w-full bg-transparent text-zinc-950 dark:text-white py-10 sm:py-16 lg:py-20 border-t border-black/5 dark:border-white/5">
+    <motion.section
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      className="relative z-10 w-full bg-transparent text-zinc-950 dark:text-white py-10 sm:py-16 lg:py-20 border-t border-black/5 dark:border-white/5"
+    >
       <div className="max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6 lg:px-8">
         {/* 
           MAIN CARD CONTAINER:
           - Crisp, pure white in Light Mode (bg-white border-black/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)]).
           - Deep, rich luxury obsidian in Dark Mode (dark:bg-[#111317] dark:border-white/10 dark:shadow-2xl).
-          - Clean, elegant, and modern with blueprint corner crosshairs (+) and no muddy grid tint.
+          - Outer shell rounded-2xl in 2-tier corner geometry token system.
         */}
-        <div className="relative w-full rounded-none bg-white dark:bg-[#0c0d10] border border-black/10 dark:border-white/10 p-4 xs:p-6 sm:p-10 md:p-12 lg:p-14 min-h-[340px] xs:min-h-[380px] sm:min-h-[400px] md:min-h-[420px] transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-2xl overflow-hidden group">
+        <div
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+          className="relative w-full rounded-2xl bg-white dark:bg-[#0c0d10] border border-black/10 dark:border-white/10 p-4 xs:p-6 sm:p-10 md:p-12 lg:p-14 min-h-[340px] xs:min-h-[380px] sm:min-h-[400px] md:min-h-[420px] transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-2xl overflow-hidden group"
+        >
           
           {/* Blueprint Crosshair Marks at corners */}
           <span className="absolute top-2 left-2 font-mono text-xs text-zinc-400/60 dark:text-zinc-600/60 select-none pointer-events-none">+</span>
@@ -182,10 +185,10 @@ export default function AboutContactLocations() {
                             className="stroke-zinc-300 dark:stroke-zinc-700/90"
                             strokeWidth={isActive ? "3.5" : "2.5"}
                           />
-                          {/* Active Red Progress Stroke */}
+                          {/* Active Red Progress Stroke with pause-on-hover */}
                           {isActive && (
-                            <motion.circle
-                              key={`${loc.id}-${activeIndex}`}
+                            <circle
+                              key={loc.id}
                               cx="40"
                               cy="40"
                               r={RADIUS}
@@ -193,9 +196,15 @@ export default function AboutContactLocations() {
                               stroke="var(--brand-primary)"
                               strokeWidth="3.5"
                               strokeLinecap="round"
-                              initial={{ pathLength: 0 }}
-                              animate={{ pathLength: 1 }}
-                              transition={{ duration: 5, ease: "linear" }}
+                              strokeDasharray={CIRCUMFERENCE}
+                              style={{
+                                "--ring-circumference": `${CIRCUMFERENCE}px`,
+                                animation: "progress-ring-draw 5s linear forwards",
+                                animationPlayState: isPaused ? "paused" : "running",
+                              } as React.CSSProperties}
+                              onAnimationEnd={() =>
+                                setActiveIndex((curr) => (curr + 1) % LOCATIONS.length)
+                              }
                               className="shadow-sm"
                             />
                           )}
@@ -287,6 +296,6 @@ export default function AboutContactLocations() {
 
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

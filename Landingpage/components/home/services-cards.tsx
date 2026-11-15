@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 interface ServiceCardItem {
   id: string;
@@ -81,7 +82,13 @@ export default function ServicesCards() {
   };
 
   return (
-    <section className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+    <motion.section
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14"
+    >
       {/* 
         Section Header matching Image 1:
         ■  XTREME MOBILE TIRE SOLUTIONS
@@ -98,7 +105,7 @@ export default function ServicesCards() {
           <span className="font-sans font-extrabold text-[var(--neutral-dark)]">
             Professional{" "}
           </span>
-          <span className="font-serif italic font-normal text-[var(--neutral-dark)]">
+          <span className="font-serif italic font-normal text-[var(--brand-primary)]">
             mobile tire services
           </span>
         </h2>
@@ -125,7 +132,7 @@ export default function ServicesCards() {
                   handleCardClick(item.id);
                 }
               }}
-              className="group relative rounded-none border border-black/15 dark:border-white/15 bg-zinc-950 text-white overflow-hidden shadow-lg hover:shadow-2xl hover:border-[var(--brand-primary)]/70 transition-all duration-500 min-h-[440px] sm:h-[500px] flex flex-col justify-between cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
+              className="group relative rounded-lg border border-black/15 dark:border-white/15 bg-zinc-950 text-white overflow-hidden shadow-lg hover:shadow-2xl hover:border-[var(--brand-primary)]/70 transition-all duration-500 min-h-[440px] sm:h-[500px] flex flex-col justify-between cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
             >
               {/* ======================================================== */}
               {/* TOP SECTION: Information Panel (Revealed via CSS Grid)   */}
@@ -235,6 +242,6 @@ export default function ServicesCards() {
           );
         })}
       </div>
-    </section>
+    </motion.section>
   );
 }

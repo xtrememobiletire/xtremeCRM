@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { motion } from "framer-motion";
 
 interface StoryBlock {
   id: string;
@@ -33,7 +34,13 @@ const STORY_BLOCKS: StoryBlock[] = [
 
 export default function AboutStorySection() {
   return (
-    <section className="relative z-10 w-full bg-transparent text-zinc-950 dark:text-white pt-12 sm:pt-28 lg:pt-36 pb-8 sm:pb-14 lg:pb-16 border-t border-black/5 dark:border-white/5">
+    <motion.section
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="relative z-10 w-full bg-transparent text-zinc-950 dark:text-white pt-12 sm:pt-28 lg:pt-36 pb-8 sm:pb-14 lg:pb-16 border-t border-black/5 dark:border-white/5"
+    >
       <div className="max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6">
         {/* 
           ========================================================================
@@ -51,10 +58,11 @@ export default function AboutStorySection() {
           */}
           <div className="lg:col-span-5 lg:sticky lg:top-28 self-start flex flex-col items-center lg:items-start z-20">
             
-            {/* Header Title: "OUR STORY" (Clean, simple, non-italic) */}
+            {/* Header Title: "OUR STORY" */}
             <div className="w-full text-center lg:text-left mb-3 sm:mb-4">
-              <h2 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl lg:text-[38px] font-bold tracking-tight uppercase text-zinc-950 dark:text-white font-sans select-none">
-                Our Story
+              <h2 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl lg:text-[38px] tracking-tight text-zinc-950 dark:text-white select-none leading-tight">
+                <span className="font-sans font-extrabold text-zinc-950 dark:text-white">Our </span>
+                <span className="font-serif italic font-normal text-[var(--brand-primary)]">Story</span>
               </h2>
             </div>
 
@@ -124,7 +132,7 @@ export default function AboutStorySection() {
               - Signature line ("Harry King")
               ========================================================================
             */}
-            <div className="relative p-4 xs:p-5 sm:p-6 lg:p-7 rounded-none bg-[var(--brand-primary)] text-white shadow-xl overflow-hidden mt-2 sm:mt-3">
+            <div className="relative p-4 xs:p-5 sm:p-6 lg:p-7 rounded-xl bg-[var(--brand-primary)] text-white shadow-xl overflow-hidden mt-2 sm:mt-3">
               
               {/* Blueprint Crosshair Marks at corners */}
               <span className="absolute -top-0.5 -left-0.5 font-mono text-[10px] text-white/50 select-none">+</span>
@@ -165,6 +173,6 @@ export default function AboutStorySection() {
 
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }
