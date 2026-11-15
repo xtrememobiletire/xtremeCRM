@@ -8,41 +8,41 @@ interface SpeedometerGaugeProps {
   className?: string;
 }
 
+// Center coordinates & dimensions matching ProTuners semi-circular inspiration
+const cx = 240;
+const cy = 250;
+
+// Sweep angle: -115° (idle, bottom-left) to +115° (max, bottom-right)
+const MIN_ANGLE = -115;
+const MAX_ANGLE = 115;
+const TOTAL_SWEEP = MAX_ANGLE - MIN_ANGLE; // 230°
+
+// Helper to round coordinates to 2 decimal places, preventing server/client IEEE-754 precision hydration mismatches
+const round = (num: number) => Math.round(num * 100) / 100;
+
+// Polar to Cartesian helper (0° = 12 o'clock, clockwise)
+const polarToCartesian = (radius: number, angleDeg: number) => {
+  const angleRad = ((angleDeg - 90) * Math.PI) / 180.0;
+  return {
+    x: round(cx + radius * Math.cos(angleRad)),
+    y: round(cy + radius * Math.sin(angleRad)),
+  };
+};
+
 export default function SpeedometerGauge({
   progress = 0,
   currentSpeed = 0,
   className = "",
 }: SpeedometerGaugeProps) {
-  // Center coordinates & dimensions matching ProTuners semi-circular inspiration
-  const cx = 240;
-  const cy = 250;
-
-  // Sweep angle: -115° (idle, bottom-left) to +115° (max, bottom-right)
-  const minAngle = -115;
-  const maxAngle = 115;
-  const totalSweep = maxAngle - minAngle; // 230°
-
   // Current needle angle based on progress (clamped between min and max)
   const clampedProgress = Math.max(0, Math.min(1, progress));
-  const currentAngle = minAngle + clampedProgress * totalSweep;
-
-  // Helper to round coordinates to 2 decimal places, preventing server/client IEEE-754 precision hydration mismatches
-  const round = (num: number) => Math.round(num * 100) / 100;
-
-  // Polar to Cartesian helper (0° = 12 o'clock, clockwise)
-  const polarToCartesian = (radius: number, angleDeg: number) => {
-    const angleRad = ((angleDeg - 90) * Math.PI) / 180.0;
-    return {
-      x: round(cx + radius * Math.cos(angleRad)),
-      y: round(cy + radius * Math.sin(angleRad)),
-    };
-  };
+  const currentAngle = MIN_ANGLE + clampedProgress * TOTAL_SWEEP;
 
   // Generate outer fine radial ticks (fine gray lines radiating outward)
   const outerTicks = useMemo(() => {
     const ticks = [];
     const step = 2.5; // dense tick resolution
-    for (let a = minAngle; a <= maxAngle; a += step) {
+    for (let a = MIN_ANGLE; a <= MAX_ANGLE; a += step) {
       const isMajor = Math.abs(a % 10) < 0.5;
       const isMedium = Math.abs(a % 5) < 0.5;
       const rInner = 188;
@@ -102,6 +102,7 @@ export default function SpeedometerGauge({
       {/* Semi-Circular Instrument SVG */}
       <svg
         viewBox="0 0 480 355"
+        aria-label={`Performance Speedometer: ${currentSpeed} MPH`}
         className="w-full h-auto drop-shadow-[0_0_18px_rgba(200,16,46,0.12)]"
       >
         <defs>

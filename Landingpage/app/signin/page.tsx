@@ -6,7 +6,7 @@ import { ArrowRight } from "lucide-react";
 import { LOGIN_URL } from "@/lib/config";
 
 export default function SignInPage() {
-  const loginUrl = "https://app.xtrememobiletire.com/login";
+  const loginUrl = LOGIN_URL;
 
   useEffect(() => {
     window.location.replace(loginUrl);
@@ -14,7 +14,7 @@ export default function SignInPage() {
 
   return (
     <PageShell>
-      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-20 sm:py-28 flex-1 flex flex-col justify-center items-center text-center">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-28 flex-1 flex flex-col justify-center items-center text-center">
         <div className="flex items-center gap-2.5 mb-3.5">
           <span className="w-3 h-3 bg-black dark:bg-[var(--brand-primary)] inline-block shrink-0 rounded-none shadow-sm" />
           <span className="text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
@@ -30,7 +30,7 @@ export default function SignInPage() {
 
         <a
           href={loginUrl}
-          className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-none bg-zinc-950 text-white dark:bg-white dark:text-black hover:bg-[#DC2626] dark:hover:bg-[#DC2626] dark:hover:text-white font-medium text-sm sm:text-base tracking-tight transition-all duration-200 shadow-sm cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-none bg-zinc-950 text-white dark:bg-white dark:text-black hover:bg-[var(--brand-primary)] dark:hover:bg-[var(--brand-primary)] dark:hover:text-white font-medium text-sm sm:text-base tracking-tight transition-all duration-200 shadow-sm cursor-pointer"
         >
           <span>Continue to Portal Login</span>
           <ArrowRight className="w-4 h-4" />

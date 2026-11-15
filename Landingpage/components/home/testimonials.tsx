@@ -56,53 +56,42 @@ const TESTIMONIALS: TestimonialItem[] = [
   },
 ];
 
-const DURATION_MS = 5000;
-const INTERVAL_MS = 25; // Smooth 40 FPS status ring animation
-
-// Circle SVG calculations
 const RADIUS = 31;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS; // ~194.78
 
 export default function Testimonials() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [progress, setProgress] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
-  // Continuous auto-advancing timer that runs ALL THE TIME (never pauses on hover)
+  // Auto-advancing interval that respects pause-on-hover without 40fps React re-renders
   useEffect(() => {
-    const timer = setInterval(() => {
-      setProgress((prev) => {
-        const next = prev + (INTERVAL_MS / DURATION_MS) * 100;
-        if (next >= 100) {
-          setActiveIndex((curr) => (curr + 1) % TESTIMONIALS.length);
-          return 0;
-        }
-        return next;
-      });
-    }, INTERVAL_MS);
+    if (isPaused) return;
+    const timer = setTimeout(() => {
+      setActiveIndex((curr) => (curr + 1) % TESTIMONIALS.length);
+    }, 5000);
 
-    return () => clearInterval(timer);
-  }, [activeIndex]);
+    return () => clearTimeout(timer);
+  }, [activeIndex, isPaused]);
 
   const handleSelectClient = (index: number) => {
     setActiveIndex(index);
-    setProgress(0);
   };
 
   const current = TESTIMONIALS[activeIndex];
-  const strokeDashoffset = CIRCUMFERENCE * (1 - progress / 100);
 
   return (
-    <section className="relative z-10 w-full max-w-5xl mx-auto px-3.5 xs:px-4 sm:px-6 py-8 sm:py-14">
+    <section className="relative z-10 w-full max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6 py-8 sm:py-14">
       {/* 
         Main Testimonial Card:
-        - Header kept INSIDE the box as requested
-        - Decreased compact height without empty dead space
-        - Full-width legible quote layout (no squished 1-word lines)
+        - Header kept INSIDE the box
+        - Full-width legible quote layout
         - Sharp corners (rounded-none)
-        - Continuous circular status progress on active client avatar
+        - Circular status progress on active client avatar with pause-on-hover
       */}
-      <div className="relative w-full rounded-none bg-white/70 dark:bg-zinc-950/90 backdrop-blur-md border border-black/15 dark:border-white/10 p-4 xs:p-6 sm:p-8 lg:p-9 overflow-hidden shadow-2xl">
-        
+      <div
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        className="relative w-full rounded-none bg-white/70 dark:bg-zinc-950/90 backdrop-blur-md border border-black/15 dark:border-white/10 p-4 xs:p-6 sm:p-8 lg:p-9 overflow-hidden shadow-2xl transition-all"
+      >
         {/* Subtle Ambient Crimson Glow */}
         <div className="pointer-events-none absolute -right-24 -top-24 w-96 h-96 bg-[var(--brand-primary)]/10 blur-3xl rounded-none" />
         <div className="pointer-events-none absolute -left-20 -bottom-20 w-80 h-80 bg-[var(--brand-primary)]/10 blur-3xl rounded-none" />
@@ -112,7 +101,7 @@ export default function Testimonials() {
           <div className="flex items-center gap-2.5 mb-2 sm:mb-2.5">
             <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black dark:bg-[var(--brand-primary)] inline-block shrink-0 shadow-sm rounded-none" />
             <span className="text-[11px] xs:text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
-              Trusted by the world Leading companies
+              Trusted by commercial teams
             </span>
           </div>
           <h2 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl tracking-tight text-[var(--neutral-dark)]">
@@ -127,10 +116,7 @@ export default function Testimonials() {
 
         {/* Interactive Layout: Avatars on left, full-width active quote on right */}
         <div className="flex flex-col md:flex-row items-start md:items-center gap-5 sm:gap-8 lg:gap-10 w-full">
-          
-          {/* ======================================================== */}
-          {/* LEFT: Client Avatar Row with Circular Status Progress    */}
-          {/* ======================================================== */}
+          {/* Client Avatar Row with Smooth SVG Progress Ring */}
           <div className="shrink-0 flex items-center justify-start gap-2 xs:gap-2.5 sm:gap-3.5 select-none overflow-x-auto max-w-full pb-1 md:pb-0">
             {TESTIMONIALS.map((item, idx) => {
               const isActive = idx === activeIndex;
@@ -145,7 +131,6 @@ export default function Testimonials() {
                   {isActive ? (
                     /* Active Avatar with SVG Circular Progress Ring */
                     <div className="relative w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 flex items-center justify-center">
-                      {/* SVG Progress Ring */}
                       <svg
                         className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none"
                         viewBox="0 0 72 72"
@@ -159,8 +144,9 @@ export default function Testimonials() {
                           className="stroke-zinc-200 dark:stroke-zinc-800"
                           strokeWidth="2.5"
                         />
-                        {/* Dynamic Crimson Progress Circle */}
-                        <circle
+                        {/* Smooth GPU Animated Progress Circle */}
+                        <motion.circle
+                          key={`${item.id}-${isPaused ? "paused" : "running"}`}
                           cx="36"
                           cy="36"
                           r={RADIUS}
@@ -168,9 +154,13 @@ export default function Testimonials() {
                           stroke="var(--brand-primary)"
                           strokeWidth="2.5"
                           strokeLinecap="round"
-                          strokeDasharray={CIRCUMFERENCE}
-                          strokeDashoffset={strokeDashoffset}
-                          className="transition-[stroke-dashoffset] duration-75 ease-linear shadow-sm"
+                          initial={{ pathLength: 0 }}
+                          animate={{ pathLength: isPaused ? 0.3 : 1 }}
+                          transition={{
+                            duration: isPaused ? 0 : 5,
+                            ease: "linear",
+                          }}
+                          className="shadow-sm"
                         />
                       </svg>
 
@@ -198,9 +188,7 @@ export default function Testimonials() {
             })}
           </div>
 
-          {/* ======================================================== */}
-          {/* RIGHT: Active Testimonial Quote & Author Bio             */}
-          {/* ======================================================== */}
+          {/* Active Testimonial Quote & Author Bio */}
           <div className="flex-1 min-w-0 w-full flex flex-col justify-center text-left">
             <AnimatePresence mode="wait">
               <motion.div
@@ -229,11 +217,8 @@ export default function Testimonials() {
               </motion.div>
             </AnimatePresence>
           </div>
-
         </div>
-
       </div>
-
     </section>
   );
 }

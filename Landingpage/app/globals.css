@@ -107,11 +107,13 @@
   --color-brand-text: var(--brand-text);
   --color-brand-border: var(--brand-border);
   --color-brand-ring: var(--brand-ring);
+  --color-surface-dark: #0c0d10;
+  --color-surface-dark-border: rgba(255, 255, 255, 0.1);
 }
 
 @utility container-layout {
   width: 100%;
-  max-width: 80rem;
+  max-width: 72rem;
   margin-left: auto;
   margin-right: auto;
   padding-left: 1rem;
@@ -265,6 +267,20 @@
   display: flex;
   width: max-content;
   animation: marquee 26s linear infinite;
+  will-change: transform;
+}
+
+@utility animate-marquee-left {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll-left 28s linear infinite;
+  will-change: transform;
+}
+
+@utility animate-marquee-right {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll-right 28s linear infinite;
   will-change: transform;
 }
 

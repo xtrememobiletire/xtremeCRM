@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import {
   ArrowUpRight,
   RotateCw,
@@ -96,7 +95,7 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
       <div className="p-4 xs:p-6 sm:p-8 lg:p-10 border-b border-zinc-300 dark:border-zinc-800 flex flex-col md:flex-row md:items-end justify-between gap-3 sm:gap-4">
         <div>
           <div className="flex items-center gap-2.5 mb-2 sm:mb-2.5">
-            <span className="w-2.5 h-2.5 bg-[#DC2626] rounded-none inline-block shadow-sm" />
+            <span className="w-2.5 h-2.5 bg-[var(--brand-primary)] rounded-none inline-block shadow-sm" />
             <span className="text-[11px] xs:text-xs font-mono font-bold tracking-widest uppercase text-zinc-500 dark:text-zinc-400">
               Section {category.index} • Comprehensive Coverage
             </span>
@@ -120,17 +119,14 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
               <button
                 key={service.id}
                 type="button"
-                onClick={() => {
-                  handleSelectService(idx);
-                  handleOpenBooking(service.title);
-                }}
+                onClick={() => handleSelectService(idx)}
                 className={`flex items-center gap-2 px-3 xs:px-3.5 py-1.5 xs:py-2 rounded-none text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 cursor-pointer min-h-[38px] ${
                   isActive
-                    ? "bg-[#DC2626] text-white shadow-md shadow-red-600/30 border border-[#DC2626]"
+                    ? "bg-[var(--brand-primary)] text-white shadow-md shadow-red-900/30 border border-[var(--brand-primary)]"
                     : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-800 hover:border-zinc-500"
                 }`}
               >
-                <IconCmp className={`w-3.5 h-3.5 ${isActive ? "text-white" : "text-[#DC2626]"}`} />
+                <IconCmp className={`w-3.5 h-3.5 ${isActive ? "text-white" : "text-[var(--brand-primary)]"}`} />
                 <span>{service.title.split("(")[0].trim()}</span>
               </button>
             );
@@ -150,10 +146,7 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
               <button
                 key={service.id}
                 type="button"
-                onClick={() => {
-                  handleSelectService(idx);
-                  handleOpenBooking(service.title);
-                }}
+                onClick={() => handleSelectService(idx)}
                 className={`w-full text-left p-6 transition-all duration-300 flex-1 flex items-center justify-between gap-4 group relative cursor-pointer ${
                   isActive
                     ? "bg-red-500/[0.08] dark:bg-red-500/[0.14]"
@@ -162,14 +155,14 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
               >
                 {/* Left Active Bar Indicator */}
                 {isActive && (
-                  <span className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#DC2626] shadow-[0_0_12px_rgba(220,38,38,0.5)]" />
+                  <span className="absolute left-0 top-0 bottom-0 w-1.5 bg-[var(--brand-primary)] shadow-[0_0_12px_rgba(200,16,46,0.5)]" />
                 )}
 
                 <div className="flex items-start gap-4 min-w-0 pr-2">
                   <div
                     className={`w-11 h-11 rounded-none flex items-center justify-center shrink-0 transition-all duration-300 ${
                       isActive
-                        ? "bg-[#DC2626] text-white shadow-md shadow-red-600/30 scale-105"
+                        ? "bg-[var(--brand-primary)] text-white shadow-md shadow-red-900/30 scale-105"
                         : "bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-200 group-hover:bg-zinc-200/70 dark:group-hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800"
                     }`}
                   >
@@ -202,7 +195,7 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
                   }}
                   className={`w-10 h-10 rounded-none flex items-center justify-center shrink-0 transition-all duration-300 border cursor-pointer ${
                     isActive
-                      ? "bg-[#DC2626] text-white border-[#DC2626] shadow-md shadow-red-600/30 scale-105"
+                      ? "bg-[var(--brand-primary)] text-white border-[var(--brand-primary)] shadow-md shadow-red-900/30 scale-105"
                       : "bg-transparent text-zinc-400 dark:text-zinc-500 border-zinc-200 dark:border-zinc-800 group-hover:border-zinc-400 dark:group-hover:border-zinc-600 group-hover:text-zinc-900 dark:group-hover:text-white group-hover:bg-zinc-100 dark:group-hover:bg-zinc-800 group-hover:scale-105"
                   }`}
                   title="Book this service"
@@ -251,7 +244,7 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
             {/* Sleek, Compact Floating Glass Stats Card (positioned at bottom-left) */}
             <div
               onClick={() => handleOpenBooking(activeService.title)}
-              className="relative z-10 w-full sm:w-[330px] max-w-full sm:max-w-[350px] rounded-2xl bg-black/65 backdrop-blur-xl border border-white/20 p-3.5 xs:p-4 sm:p-5 shadow-2xl shadow-black/90 transition-all duration-300 cursor-pointer hover:border-[var(--brand-primary)]/60 hover:scale-[1.01]"
+              className="relative z-10 w-full sm:w-[330px] max-w-full sm:max-w-[350px] rounded-lg bg-black/65 backdrop-blur-xl border border-white/20 p-3.5 xs:p-4 sm:p-5 shadow-2xl shadow-black/90 transition-all duration-300 cursor-pointer hover:border-[var(--brand-primary)]/60 hover:scale-[1.01]"
               title="Click to book this service"
             >
               {/* Feature Title matching inspiration */}
@@ -263,19 +256,19 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
 
               {/* Glowing animated progress / readiness bar */}
               <div className="w-full h-2 rounded-full bg-zinc-900/90 border border-white/10 overflow-hidden mb-3 p-[1px] relative shadow-inner">
-                <div className="h-full w-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-300 rounded-full animate-pulse shadow-[0_0_18px_rgba(239,68,68,0.7)]" />
+                <div className="h-full w-full bg-gradient-to-r from-[var(--brand-primary)] via-[var(--brand-secondary)] to-amber-400 rounded-full animate-pulse shadow-[0_0_18px_rgba(200,16,46,0.7)]" />
               </div>
 
               {/* Compact Quick Specs Badges */}
               <div className="grid grid-cols-2 gap-2 mb-2.5 sm:mb-3">
-                <div className="bg-white/[0.06] border border-white/10 rounded-xl px-2 xs:px-2.5 py-1.5 flex items-center gap-1.5 xs:gap-2">
+                <div className="bg-white/[0.06] border border-white/10 rounded-lg px-2 xs:px-2.5 py-1.5 flex items-center gap-1.5 xs:gap-2">
                   <Timer className="w-3.5 h-3.5 text-red-400 shrink-0" />
                   <div className="min-w-0">
                     <div className="text-[8px] xs:text-[9px] text-zinc-400 uppercase font-mono tracking-wider">Est. Time</div>
                     <div className="text-[10px] xs:text-[11px] font-semibold text-white truncate">{activeService.stats.duration}</div>
                   </div>
                 </div>
-                <div className="bg-white/[0.06] border border-white/10 rounded-xl px-2 xs:px-2.5 py-1.5 flex items-center gap-1.5 xs:gap-2">
+                <div className="bg-white/[0.06] border border-white/10 rounded-lg px-2 xs:px-2.5 py-1.5 flex items-center gap-1.5 xs:gap-2">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <div className="min-w-0">
                     <div className="text-[8px] xs:text-[9px] text-zinc-400 uppercase font-mono tracking-wider">Protection</div>
@@ -292,7 +285,7 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
                     className="flex items-center justify-between text-[11px] xs:text-xs text-zinc-200 gap-2 bg-white/[0.03] px-2 xs:px-2.5 py-1 xs:py-1.5 rounded-lg border border-white/5"
                   >
                     <div className="flex items-center gap-1.5 xs:gap-2 min-w-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-primary)] shrink-0 shadow-[0_0_6px_rgba(200,16,46,0.8)]" />
                       <span className="truncate font-medium">{point}</span>
                     </div>
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -306,7 +299,7 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
           <button
             type="button"
             onClick={() => handleOpenBooking(activeService.title)}
-            className="w-full min-h-[48px] py-3.5 xs:py-4 sm:py-5 px-4 xs:px-6 font-bold uppercase tracking-wider text-xs xs:text-sm sm:text-base flex items-center justify-center gap-2.5 xs:gap-3 transition-all duration-300 z-10 bg-[#DC2626] text-white border-t border-red-700/50 hover:bg-white hover:text-black hover:border-white shadow-lg shadow-red-950/40 rounded-none cursor-pointer group/cta"
+            className="w-full min-h-[48px] py-3.5 xs:py-4 sm:py-5 px-4 xs:px-6 font-bold uppercase tracking-wider text-xs xs:text-sm sm:text-base flex items-center justify-center gap-2.5 xs:gap-3 transition-all duration-300 z-10 bg-[var(--brand-primary)] text-white border-t border-[var(--brand-secondary)]/50 hover:bg-white hover:text-black hover:border-white shadow-lg shadow-red-950/40 rounded-none cursor-pointer group/cta"
           >
             <span>Book Now – {activeService.title.split('(')[0].trim()}</span>
             <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover/cta:translate-x-1" />

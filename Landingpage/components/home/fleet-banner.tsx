@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 const FLEET_BENEFITS = [
   "Manage your fleet and drivers in one place.",
@@ -11,7 +12,13 @@ const FLEET_BENEFITS = [
 
 export default function FleetBanner() {
   return (
-    <section className="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+    <motion.section
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14"
+    >
       {/* 
         Section Header OUTSIDE the card:
         - "Fleet Solutions" tag
@@ -103,10 +110,10 @@ export default function FleetBanner() {
           </div>
 
           {/* ======================================================== */}
-          {/* RIGHT COLUMN: Fleet Image Card with White Bottom Section */}
+          {/* RIGHT COLUMN: Fleet Image Card with Proper Dark Contrast */}
           {/* ======================================================== */}
           <div className="lg:col-span-6 flex flex-col">
-            <div className="group/image relative w-full h-full rounded-none overflow-hidden border border-black/15 dark:border-white/15 bg-white shadow-2xl flex flex-col">
+            <div className="group/image relative w-full h-full rounded-none overflow-hidden border border-black/15 dark:border-white/15 bg-white dark:bg-zinc-900 shadow-2xl flex flex-col">
               
               {/* Top Compartment: Commercial Fleet Photography (Clean, no badges) */}
               <div className="relative w-full h-52 xs:h-64 sm:h-72 lg:h-80 overflow-hidden bg-zinc-950 shrink-0">
@@ -117,18 +124,18 @@ export default function FleetBanner() {
                 />
               </div>
 
-              {/* Bottom Compartment: Full Width White Box Below Picture with Dark Font */}
-              <div className="flex-1 p-4 xs:p-6 sm:p-8 lg:p-9 border-t border-black/15 bg-white text-zinc-950 flex flex-col justify-center text-left">
+              {/* Bottom Compartment: Full Width Box Below Picture with High Contrast */}
+              <div className="flex-1 p-4 xs:p-6 sm:p-8 lg:p-9 border-t border-black/15 dark:border-white/15 bg-white dark:bg-zinc-900/90 text-zinc-950 dark:text-white flex flex-col justify-center text-left">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-2 h-2 rounded-none bg-[var(--brand-primary)] shrink-0" />
                   <span className="text-xs font-bold uppercase tracking-wider text-[var(--brand-primary)] font-mono">
                     Single Master Invoice
                   </span>
                 </div>
-                <h4 className="text-lg sm:text-xl font-bold text-zinc-950 leading-tight mb-2">
+                <h4 className="text-lg sm:text-xl font-bold text-zinc-950 dark:text-white leading-tight mb-2">
                   Dedicated Fleet Command
                 </h4>
-                <p className="font-sans text-sm sm:text-base text-zinc-600 leading-relaxed font-normal">
+                <p className="font-sans text-sm sm:text-base text-zinc-600 dark:text-zinc-300 leading-relaxed font-normal">
                   Priority on-site scheduling, automatic telemetry logs, and dedicated B2B account managers.
                 </p>
               </div>
@@ -139,6 +146,6 @@ export default function FleetBanner() {
         </div>
 
       </div>
-    </section>
+    </motion.section>
   );
 }

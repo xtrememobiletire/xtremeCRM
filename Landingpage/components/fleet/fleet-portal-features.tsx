@@ -57,12 +57,12 @@ export default function FleetPortalFeatures() {
   const [activeFeature, setActiveFeature] = useState<string>("b2b-code");
 
   return (
-    <section className="w-full py-10 xs:py-14 sm:py-24 lg:py-28 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-zinc-300 dark:border-zinc-800">
+    <section className="w-full py-10 xs:py-14 sm:py-24 lg:py-28 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-t border-zinc-300 dark:border-zinc-800">
       {/* Top Section Header & Eyebrow (matching wireframe) */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 pb-8 sm:pb-16 border-b border-zinc-300 dark:border-zinc-800 mb-8 sm:mb-16">
         <div>
           <div className="flex items-center gap-2.5 mb-2 sm:mb-3">
-            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black dark:bg-[#DC2626] inline-block shrink-0 rounded-none shadow-sm" />
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black dark:bg-[var(--brand-primary)] inline-block shrink-0 rounded-none shadow-sm" />
             <span className="text-[11px] xs:text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
               Fleet Solutions
             </span>
@@ -99,7 +99,7 @@ export default function FleetPortalFeatures() {
           <div className="pt-2 flex items-center gap-4">
             <Link
               href="#create-fleet-account"
-              className="w-full xs:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#DC2626] text-white hover:bg-black dark:hover:bg-white dark:hover:text-black font-semibold text-xs sm:text-sm uppercase tracking-wider transition-all duration-300 rounded-none shadow-md shadow-red-950/20 cursor-pointer group/btn"
+              className="w-full xs:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 px-6 py-3 bg-[var(--brand-primary)] text-white hover:bg-black dark:hover:bg-white dark:hover:text-black font-semibold text-xs sm:text-sm uppercase tracking-wider transition-all duration-300 rounded-none shadow-md shadow-red-950/20 cursor-pointer group/btn"
             >
               <span>Setup Fleet Account</span>
               <ArrowUpRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
@@ -128,14 +128,14 @@ export default function FleetPortalFeatures() {
                 }`}
               >
                 {activeFeature === FLEET_FEATURES[0].id && (
-                  <span className="absolute top-0 left-0 right-0 h-1 bg-[#DC2626]" />
+                  <span className="absolute top-0 left-0 right-0 h-1 bg-[var(--brand-primary)]" />
                 )}
                 <div>
                   <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
                     <div
                       className={`w-9 h-9 xs:w-10 xs:h-10 rounded-none flex items-center justify-center border transition-all ${
                         activeFeature === FLEET_FEATURES[0].id
-                          ? "bg-[#DC2626] text-white border-[#DC2626] shadow-sm"
+                          ? "bg-[var(--brand-primary)] text-white border-[var(--brand-primary)] shadow-sm"
                           : "bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800"
                       }`}
                     >
@@ -164,14 +164,14 @@ export default function FleetPortalFeatures() {
                 }`}
               >
                 {activeFeature === FLEET_FEATURES[1].id && (
-                  <span className="absolute top-0 left-0 right-0 h-1 bg-[#DC2626]" />
+                  <span className="absolute top-0 left-0 right-0 h-1 bg-[var(--brand-primary)]" />
                 )}
                 <div>
                   <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
                     <div
                       className={`w-9 h-9 xs:w-10 xs:h-10 rounded-none flex items-center justify-center border transition-all ${
                         activeFeature === FLEET_FEATURES[1].id
-                          ? "bg-[#DC2626] text-white border-[#DC2626] shadow-sm"
+                          ? "bg-[var(--brand-primary)] text-white border-[var(--brand-primary)] shadow-sm"
                           : "bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800"
                       }`}
                     >
@@ -203,14 +203,14 @@ export default function FleetPortalFeatures() {
                 }`}
               >
                 {activeFeature === FLEET_FEATURES[2].id && (
-                  <span className="absolute top-0 left-0 right-0 h-1 bg-[#DC2626]" />
+                  <span className="absolute top-0 left-0 right-0 h-1 bg-[var(--brand-primary)]" />
                 )}
                 <div>
                   <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
                     <div
                       className={`w-9 h-9 xs:w-10 xs:h-10 rounded-none flex items-center justify-center border transition-all ${
                         activeFeature === FLEET_FEATURES[2].id
-                          ? "bg-[#DC2626] text-white border-[#DC2626] shadow-sm"
+                          ? "bg-[var(--brand-primary)] text-white border-[var(--brand-primary)] shadow-sm"
                           : "bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800"
                       }`}
                     >
@@ -239,14 +239,14 @@ export default function FleetPortalFeatures() {
                 }`}
               >
                 {activeFeature === FLEET_FEATURES[3].id && (
-                  <span className="absolute top-0 left-0 right-0 h-1 bg-[#DC2626]" />
+                  <span className="absolute top-0 left-0 right-0 h-1 bg-[var(--brand-primary)]" />
                 )}
                 <div>
                   <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
                     <div
                       className={`w-9 h-9 xs:w-10 xs:h-10 rounded-none flex items-center justify-center border transition-all ${
                         activeFeature === FLEET_FEATURES[3].id
-                          ? "bg-[#DC2626] text-white border-[#DC2626] shadow-sm"
+                          ? "bg-[var(--brand-primary)] text-white border-[var(--brand-primary)] shadow-sm"
                           : "bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800"
                       }`}
                     >

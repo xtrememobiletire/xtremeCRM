@@ -11,13 +11,9 @@ import {
   X,
   Wrench,
   Clock,
-  MapPin,
   CheckCircle2,
-  Calendar as CalendarIcon,
-  Car,
   AlertCircle,
   Loader2,
-  Zap,
   RotateCw,
   Disc3,
   Droplets,
@@ -368,7 +364,8 @@ export default function BookingModal({
       if (!isAsap) {
         const [timePart, meridiem] = finalTime.split(" ");
         if (timePart && meridiem) {
-          let [hours, minutes] = timePart.split(":").map(Number);
+          const [rawHours, minutes] = timePart.split(":").map(Number);
+          let hours = rawHours;
           if (meridiem === "PM" && hours < 12) hours += 12;
           if (meridiem === "AM" && hours === 12) hours = 0;
           scheduledDateTime.setHours(hours || 12, minutes || 0, 0, 0);
@@ -481,7 +478,7 @@ export default function BookingModal({
           <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
             <div className="flex items-center gap-4">
               <span className="font-black italic tracking-tighter text-lg sm:text-xl text-zinc-950 dark:text-white">
-                XTREME <span className="text-[#DC2626]">MOBILE TIRE</span>
+                XTREME <span className="text-[var(--brand-primary)]">MOBILE TIRE</span>
               </span>
 
               {/* Step Title & Back Navigation */}
@@ -550,10 +547,10 @@ export default function BookingModal({
                     <button
                       type="button"
                       onClick={() => setIsServiceDropdownOpen((prev) => !prev)}
-                      className="group flex items-center gap-3 px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-800/80 hover:border-[#DC2626] dark:hover:border-[#DC2626] transition-all cursor-pointer shadow-xs hover:shadow-sm text-left max-w-full sm:max-w-md"
+                      className="group flex items-center gap-3 px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-800/80 hover:border-[var(--brand-primary)] dark:hover:border-[var(--brand-primary)] transition-all cursor-pointer shadow-xs hover:shadow-sm text-left max-w-full sm:max-w-md"
                       title="Click to change service category"
                     >
-                      <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/60 text-[#DC2626] shrink-0 group-hover:scale-105 transition-transform">
+                      <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/60 text-[var(--brand-primary)] shrink-0 group-hover:scale-105 transition-transform">
                         {React.createElement(
                           BOOKING_SERVICE_CATEGORIES.find((c) => c.services.includes(serviceTitle))?.icon || Wrench,
                           { className: "w-4 h-4" }
@@ -565,13 +562,13 @@ export default function BookingModal({
                             {BOOKING_SERVICE_CATEGORIES.find((c) => c.services.includes(serviceTitle))?.name || "Service Category"}
                           </span>
                           <span className="text-zinc-300 dark:text-zinc-700">•</span>
-                          <span className="text-[#DC2626] group-hover:underline">Click to change</span>
+                          <span className="text-[var(--brand-primary)] group-hover:underline">Click to change</span>
                         </div>
                         <div className="flex items-center justify-between gap-2 font-bold text-sm sm:text-base text-zinc-950 dark:text-white truncate">
                           <span className="truncate">{serviceTitle}</span>
                           <ChevronDown
-                            className={`w-4 h-4 text-zinc-400 group-hover:text-[#DC2626] transition-transform duration-200 shrink-0 ${
-                              isServiceDropdownOpen ? "rotate-180 text-[#DC2626]" : ""
+                            className={`w-4 h-4 text-zinc-400 group-hover:text-[var(--brand-primary)] transition-transform duration-200 shrink-0 ${
+                              isServiceDropdownOpen ? "rotate-180 text-[var(--brand-primary)]" : ""
                             }`}
                           />
                         </div>
@@ -607,7 +604,7 @@ export default function BookingModal({
                                 onMouseEnter={() => setActiveCategoryTab(cat.id)}
                                 className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer text-left ${
                                   isActive
-                                    ? "bg-white dark:bg-zinc-800 text-[#DC2626] shadow-xs font-bold"
+                                    ? "bg-white dark:bg-zinc-800 text-[var(--brand-primary)] shadow-xs font-bold"
                                     : "text-zinc-700 dark:text-zinc-300 hover:bg-white/80 dark:hover:bg-zinc-800/60"
                                 }`}
                               >
@@ -615,7 +612,7 @@ export default function BookingModal({
                                   <div
                                     className={`p-1.5 rounded-lg ${
                                       isActive
-                                        ? "bg-red-50 dark:bg-red-950/60 text-[#DC2626]"
+                                        ? "bg-red-50 dark:bg-red-950/60 text-[var(--brand-primary)]"
                                         : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
                                     }`}
                                   >
@@ -625,12 +622,12 @@ export default function BookingModal({
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0 ml-1">
                                   {hasSelectedService && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#DC2626]" />
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-primary)]" />
                                   )}
                                   <ChevronRight
                                     className={`w-3.5 h-3.5 ${
                                       isActive
-                                        ? "text-[#DC2626] translate-x-0.5"
+                                        ? "text-[var(--brand-primary)] translate-x-0.5"
                                         : "text-zinc-400"
                                     } transition-transform`}
                                   />
@@ -670,13 +667,13 @@ export default function BookingModal({
                                   }}
                                   className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-semibold transition cursor-pointer text-left ${
                                     isSelected
-                                      ? "bg-red-50/90 dark:bg-red-950/50 text-[#DC2626] border border-red-200 dark:border-red-900/50 font-bold shadow-2xs"
+                                      ? "bg-red-50/90 dark:bg-red-950/50 text-[var(--brand-primary)] border border-red-200 dark:border-red-900/50 font-bold shadow-2xs"
                                       : "text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 border border-transparent"
                                   }`}
                                 >
                                   <span className="pr-2">{svc}</span>
                                   {isSelected && (
-                                    <Check className="w-4 h-4 text-[#DC2626] shrink-0" />
+                                    <Check className="w-4 h-4 text-[var(--brand-primary)] shrink-0" />
                                   )}
                                 </button>
                               );
@@ -763,7 +760,7 @@ export default function BookingModal({
                             }}
                             className={`h-11 sm:h-12 rounded-lg flex flex-col items-center justify-center font-bold text-sm transition-all cursor-pointer ${
                               isSelected
-                                ? "bg-[#DC2626] text-white shadow-md shadow-red-600/30 font-black scale-105"
+                                ? "bg-[var(--brand-primary)] text-white shadow-md shadow-red-600/30 font-black scale-105"
                                 : isPast
                                 ? "text-zinc-300 dark:text-zinc-700 cursor-not-allowed opacity-40"
                                 : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-black dark:hover:text-white"
@@ -784,7 +781,7 @@ export default function BookingModal({
                       <select
                         value={selectedTimezone}
                         onChange={(e) => setSelectedTimezone(e.target.value)}
-                        className="w-full px-3 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white outline-none focus:border-[#DC2626]"
+                        className="w-full px-3 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white outline-none focus:border-[var(--brand-primary)]"
                       >
                         {TIMEZONES.map((tz) => (
                           <option key={tz.value} value={tz.value}>
@@ -839,7 +836,7 @@ export default function BookingModal({
                               }}
                               className={`py-2.5 px-3 rounded-lg text-xs font-bold transition border cursor-pointer text-center ${
                                 isSelected
-                                  ? "bg-[#DC2626] text-white border-[#DC2626] shadow-sm"
+                                  ? "bg-[var(--brand-primary)] text-white border-[var(--brand-primary)] shadow-sm"
                                   : "bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 hover:border-zinc-400"
                               }`}
                             >
@@ -855,7 +852,7 @@ export default function BookingModal({
                       <button
                         type="button"
                         onClick={() => setIsCustomTime(!isCustomTime)}
-                        className="text-xs font-bold text-[#DC2626] hover:underline flex items-center gap-1 cursor-pointer"
+                        className="text-xs font-bold text-[var(--brand-primary)] hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Clock className="w-3.5 h-3.5" />
                         <span>
@@ -888,7 +885,7 @@ export default function BookingModal({
                       <button
                         type="button"
                         onClick={() => setStep(2)}
-                        className="w-full py-3 px-6 rounded-none bg-[#DC2626] hover:bg-black dark:hover:bg-white dark:hover:text-black text-white font-bold text-sm tracking-wide transition-all duration-300 shadow-md cursor-pointer"
+                        className="w-full py-3 px-6 rounded-none bg-[var(--brand-primary)] hover:bg-black dark:hover:bg-white dark:hover:text-black text-white font-bold text-sm tracking-wide transition-all duration-300 shadow-md cursor-pointer"
                       >
                         Continue to Vehicle & Contact Details →
                       </button>
@@ -912,7 +909,7 @@ export default function BookingModal({
                       Enter your vehicle and contact information to complete the booking.
                     </p>
                   </div>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-xs font-bold text-[#DC2626] self-start sm:self-auto">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-xs font-bold text-[var(--brand-primary)] self-start sm:self-auto">
                     <Wrench className="w-3.5 h-3.5" />
                     <span>{serviceTitle}</span>
                   </div>
@@ -940,7 +937,7 @@ export default function BookingModal({
                         className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
                           formErrors.firstName
                             ? "border-red-500"
-                            : "border-zinc-200 dark:border-zinc-700 focus:border-[#DC2626]"
+                            : "border-zinc-200 dark:border-zinc-700 focus:border-[var(--brand-primary)]"
                         }`}
                       />
                       {formErrors.firstName && (
@@ -960,7 +957,7 @@ export default function BookingModal({
                         className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
                           formErrors.lastName
                             ? "border-red-500"
-                            : "border-zinc-200 dark:border-zinc-700 focus:border-[#DC2626]"
+                            : "border-zinc-200 dark:border-zinc-700 focus:border-[var(--brand-primary)]"
                         }`}
                       />
                       {formErrors.lastName && (
@@ -980,7 +977,7 @@ export default function BookingModal({
                         className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
                           formErrors.email
                             ? "border-red-500"
-                            : "border-zinc-200 dark:border-zinc-700 focus:border-[#DC2626]"
+                            : "border-zinc-200 dark:border-zinc-700 focus:border-[var(--brand-primary)]"
                         }`}
                       />
                       {formErrors.email && (
@@ -1000,7 +997,7 @@ export default function BookingModal({
                         className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
                           formErrors.phone
                             ? "border-red-500"
-                            : "border-zinc-200 dark:border-zinc-700 focus:border-[#DC2626]"
+                            : "border-zinc-200 dark:border-zinc-700 focus:border-[var(--brand-primary)]"
                         }`}
                       />
                       {formErrors.phone && (
@@ -1018,7 +1015,7 @@ export default function BookingModal({
                       <select
                         value={formData.year}
                         onChange={(e) => handleInputChange("year", e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none focus:border-[#DC2626]"
+                        className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none focus:border-[var(--brand-primary)]"
                       >
                         {Array.from({ length: 33 }, (_, i) => 2026 - i).map((yr) => (
                           <option key={yr} value={yr}>
@@ -1041,7 +1038,7 @@ export default function BookingModal({
                         className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
                           formErrors.make
                             ? "border-red-500"
-                            : "border-zinc-200 dark:border-zinc-700 focus:border-[#DC2626]"
+                            : "border-zinc-200 dark:border-zinc-700 focus:border-[var(--brand-primary)]"
                         }`}
                       />
                       <datalist id="makes-list">
@@ -1066,7 +1063,7 @@ export default function BookingModal({
                         className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
                           formErrors.model
                             ? "border-red-500"
-                            : "border-zinc-200 dark:border-zinc-700 focus:border-[#DC2626]"
+                            : "border-zinc-200 dark:border-zinc-700 focus:border-[var(--brand-primary)]"
                         }`}
                       />
                       {formErrors.model && (
@@ -1083,7 +1080,7 @@ export default function BookingModal({
                         placeholder="e.g. Base, XLT, Sport"
                         value={formData.trim}
                         onChange={(e) => handleInputChange("trim", e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none focus:border-[#DC2626]"
+                        className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none focus:border-[var(--brand-primary)]"
                       >
                       </input>
                     </div>
@@ -1103,7 +1100,7 @@ export default function BookingModal({
                     className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none transition ${
                       formErrors.address
                         ? "border-red-500"
-                        : "border-zinc-200 dark:border-zinc-700 focus:border-[#DC2626]"
+                        : "border-zinc-200 dark:border-zinc-700 focus:border-[var(--brand-primary)]"
                     }`}
                   />
                   {formErrors.address && (
@@ -1121,7 +1118,7 @@ export default function BookingModal({
                     placeholder="Any special requests, wheel lock key location, tire specs..."
                     value={formData.notes}
                     onChange={(e) => handleInputChange("notes", e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none focus:border-[#DC2626]"
+                    className="w-full px-3.5 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs sm:text-sm text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 outline-none focus:border-[var(--brand-primary)]"
                   />
                 </div>
 
@@ -1138,7 +1135,7 @@ export default function BookingModal({
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full sm:w-auto px-8 py-3.5 rounded-none bg-[#DC2626] hover:bg-black dark:hover:bg-white dark:hover:text-black text-white font-bold text-sm tracking-wide transition-all duration-300 shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full sm:w-auto px-8 py-3.5 rounded-none bg-[var(--brand-primary)] hover:bg-black dark:hover:bg-white dark:hover:text-black text-white font-bold text-sm tracking-wide transition-all duration-300 shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (
                       <>
@@ -1193,7 +1190,7 @@ export default function BookingModal({
                   <div className="flex justify-between items-start border-b border-zinc-200 dark:border-zinc-700/60 pb-2.5">
                     <span className="text-zinc-500 dark:text-zinc-400">Service</span>
                     <span className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 text-right">
-                      <Wrench className="w-3.5 h-3.5 text-[#DC2626] shrink-0" />
+                      <Wrench className="w-3.5 h-3.5 text-[var(--brand-primary)] shrink-0" />
                       <span>{serviceTitle}</span>
                     </span>
                   </div>
@@ -1203,7 +1200,7 @@ export default function BookingModal({
                     <span className="font-bold text-zinc-900 dark:text-white text-right">
                       {formattedSelectedDate}
                       <br />
-                      <span className="text-[#DC2626] font-extrabold">{selectedTime}</span>
+                      <span className="text-[var(--brand-primary)] font-extrabold">{selectedTime}</span>
                     </span>
                   </div>
 

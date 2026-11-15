@@ -26,8 +26,8 @@ const LOCATIONS: LocationItem[] = [
     name: "United Kingdom",
     country: "United Kingdom",
     flag: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426850/xtreme/landing/flags/uk_svg.svg",
-    line1: "10 Downing Street, London",
-    line2: "SW1A 2AA, United Kingdom",
+    line1: "24-28 Holborn",
+    line2: "London EC1N 2HT, United Kingdom",
     phone: "+44 1630 234331",
     phoneRaw: "+441630234331",
     email: "Info@xtrememobiletire.com",
@@ -58,41 +58,26 @@ const LOCATIONS: LocationItem[] = [
   },
 ];
 
-// Circular progress animation timings (5 seconds per location, 25ms tick)
-const DURATION_MS = 5000;
-const INTERVAL_MS = 25;
-
 // SVG circle metrics
 const RADIUS = 34;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS; // ~213.63
 
 export default function AboutContactLocations() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [progress, setProgress] = useState(0);
 
-  // Auto-advancing progress timer that loops through UK -> US -> Canada
+  // Auto-advancing progress timer that loops through UK -> US -> Canada smoothly without state thrashing
   useEffect(() => {
-    const timer = setInterval(() => {
-      setProgress((prev) => {
-        const next = prev + (INTERVAL_MS / DURATION_MS) * 100;
-        if (next >= 100) {
-          setActiveIndex((curr) => (curr + 1) % LOCATIONS.length);
-          return 0;
-        }
-        return next;
-      });
-    }, INTERVAL_MS);
+    const timer = setTimeout(() => {
+      setActiveIndex((curr) => (curr + 1) % LOCATIONS.length);
+    }, 5000);
 
-    return () => clearInterval(timer);
+    return () => clearTimeout(timer);
   }, [activeIndex]);
 
   const handleSelectLocation = (idx: number) => {
     setActiveIndex(idx);
-    setProgress(0);
   };
 
   const current = LOCATIONS[activeIndex];
-  const strokeDashoffset = CIRCUMFERENCE * (1 - progress / 100);
 
   return (
     <section className="relative z-10 w-full bg-transparent text-zinc-950 dark:text-white py-10 sm:py-16 lg:py-20 border-t border-black/5 dark:border-white/5">
@@ -103,7 +88,7 @@ export default function AboutContactLocations() {
           - Deep, rich luxury obsidian in Dark Mode (dark:bg-[#111317] dark:border-white/10 dark:shadow-2xl).
           - Clean, elegant, and modern with blueprint corner crosshairs (+) and no muddy grid tint.
         */}
-        <div className="relative w-full rounded-none bg-white dark:bg-[#111317] border border-black/10 dark:border-white/10 p-4 xs:p-6 sm:p-10 md:p-12 lg:p-14 min-h-[340px] xs:min-h-[380px] sm:min-h-[400px] md:min-h-[420px] transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-2xl overflow-hidden group">
+        <div className="relative w-full rounded-none bg-white dark:bg-[#0c0d10] border border-black/10 dark:border-white/10 p-4 xs:p-6 sm:p-10 md:p-12 lg:p-14 min-h-[340px] xs:min-h-[380px] sm:min-h-[400px] md:min-h-[420px] transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-2xl overflow-hidden group">
           
           {/* Blueprint Crosshair Marks at corners */}
           <span className="absolute top-2 left-2 font-mono text-xs text-zinc-400/60 dark:text-zinc-600/60 select-none pointer-events-none">+</span>
@@ -199,7 +184,8 @@ export default function AboutContactLocations() {
                           />
                           {/* Active Red Progress Stroke */}
                           {isActive && (
-                            <circle
+                            <motion.circle
+                              key={`${loc.id}-${activeIndex}`}
                               cx="40"
                               cy="40"
                               r={RADIUS}
@@ -207,9 +193,10 @@ export default function AboutContactLocations() {
                               stroke="var(--brand-primary)"
                               strokeWidth="3.5"
                               strokeLinecap="round"
-                              strokeDasharray={CIRCUMFERENCE}
-                              strokeDashoffset={strokeDashoffset}
-                              className="transition-[stroke-dashoffset] duration-75 ease-linear shadow-sm"
+                              initial={{ pathLength: 0 }}
+                              animate={{ pathLength: 1 }}
+                              transition={{ duration: 5, ease: "linear" }}
+                              className="shadow-sm"
                             />
                           )}
                         </svg>

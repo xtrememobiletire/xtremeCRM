@@ -54,7 +54,7 @@ function HubCard({
 
 export default function HeroInteractiveHub() {
   return (
-    <div className="relative w-full max-w-5xl mx-auto px-2.5 xs:px-4 sm:px-6 mt-6 sm:mt-12 mb-8 sm:mb-14">
+    <div className="relative w-full max-w-6xl mx-auto px-2.5 xs:px-4 sm:px-6 mt-6 sm:mt-12 mb-8 sm:mb-14">
       {/* 
         MAIN SURROUNDING TECH CANVAS BOARD:
         - Sleek solid gray chassis (bg-[#2b303c] / not black!)
@@ -73,7 +73,7 @@ export default function HeroInteractiveHub() {
         {/* ============================================================== */}
         {/* DESKTOP 2-TIER HUB ARCHITECTURE (Percentage coordinates)       */}
         {/* ============================================================== */}
-        <div className="relative h-[580px] hidden xl:block">
+        <div className="relative h-[580px] hidden lg:block">
           {/* Animated Pure White Connecting Circuit Lines Overlay */}
           <CircuitConnectors />
 
@@ -189,9 +189,9 @@ export default function HeroInteractiveHub() {
         </div>
 
         {/* ============================================================== */}
-        {/* TABLET & MOBILE RESPONSIVE LAYOUT (Screens < 1280px)            */}
+        {/* TABLET & MOBILE RESPONSIVE LAYOUT (Screens < 1024px)            */}
         {/* ============================================================== */}
-        <div className="xl:hidden flex flex-col items-center gap-4 sm:gap-5">
+        <div className="lg:hidden flex flex-col items-center gap-4 sm:gap-5">
           {/* Central Sharp PC Laptop */}
           <div className="w-full max-w-[280px] xs:max-w-[320px]">
             <LaptopMockup />
@@ -210,12 +210,22 @@ export default function HeroInteractiveHub() {
               </div>
               <div className="mt-2.5 xs:mt-3 grid grid-cols-3 gap-1.5 xs:gap-2 w-full">
                 <div className="bg-slate-100/90 rounded-md border border-slate-200 py-1.5 px-1 xs:px-2 flex flex-col items-center justify-center text-center shadow-inner">
+                  <svg className="w-3.5 h-3.5 text-slate-700 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
                   <span className="text-[8px] xs:text-[9px] font-medium text-slate-700 truncate">Safety Protocol</span>
                 </div>
                 <div className="bg-slate-100/90 rounded-md border border-slate-200 py-1.5 px-1 xs:px-2 flex flex-col items-center justify-center text-center shadow-inner">
+                  <svg className="w-3.5 h-3.5 text-slate-700 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
                   <span className="text-[8px] xs:text-[9px] font-medium text-slate-700 truncate">Master Techs</span>
                 </div>
                 <div className="bg-slate-100/90 rounded-md border border-slate-200 py-1.5 px-1 xs:px-2 flex flex-col items-center justify-center text-center shadow-inner">
+                  <svg className="w-3.5 h-3.5 text-slate-700 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M5 13l4 4L19 7" />
+                  </svg>
                   <span className="text-[8px] xs:text-[9px] font-medium text-slate-700 truncate">100% Insured</span>
                 </div>
               </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import SplitPillButton from "./split-pill-button";
 import { LOGIN_URL } from "@/lib/config";
@@ -36,13 +36,12 @@ export default function Navbar({
   brandName = "Xtreme Mobile Tire",
   logoSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp",
   navItems = DEFAULT_NAV_ITEMS,
-  signInHref = LOGIN_URL,
-  signUpHref = "/signup",
+  signInHref: _signInHref = LOGIN_URL,
+  signUpHref: _signUpHref = "/signup",
   onLogoClick,
   hide = false,
 }: NavbarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedDropdown, setExpandedDropdown] = useState<string | null>(null);
   const [desktopDropdown, setDesktopDropdown] = useState<string | null>(null);
@@ -70,7 +69,10 @@ export default function Navbar({
   // Auto-close mobile drawer when navbar is commanded to hide
   useEffect(() => {
     if (hide) {
-      setMobileMenuOpen(false);
+      const timer = setTimeout(() => {
+        setMobileMenuOpen(false);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [hide]);
 

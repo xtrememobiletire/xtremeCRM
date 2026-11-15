@@ -73,8 +73,15 @@ export default function ServicesCards() {
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [clickedCard, setClickedCard] = useState<string | null>(null);
 
+  const handleCardClick = (id: string) => {
+    // Only lock click on touch devices without fine hover pointers
+    if (typeof window !== "undefined" && window.matchMedia("(hover: none)").matches) {
+      setClickedCard((prev) => (prev === id ? null : id));
+    }
+  };
+
   return (
-    <section className="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+    <section className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
       {/* 
         Section Header matching Image 1:
         ■  XTREME MOBILE TIRE SOLUTIONS
@@ -111,58 +118,58 @@ export default function ServicesCards() {
               aria-label={`${item.title} - Click or hover to reveal service details`}
               onMouseEnter={() => setHoveredCard(item.id)}
               onMouseLeave={() => setHoveredCard(null)}
-              onClick={() => setClickedCard((prev) => (prev === item.id ? null : item.id))}
+              onClick={() => handleCardClick(item.id)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  setClickedCard((prev) => (prev === item.id ? null : item.id));
+                  handleCardClick(item.id);
                 }
               }}
               className="group relative rounded-none border border-black/15 dark:border-white/15 bg-zinc-950 text-white overflow-hidden shadow-lg hover:shadow-2xl hover:border-[var(--brand-primary)]/70 transition-all duration-500 min-h-[440px] sm:h-[500px] flex flex-col justify-between cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
             >
               {/* ======================================================== */}
-              {/* TOP SECTION: Information Panel (Revealed on Hover/Click) */}
+              {/* TOP SECTION: Information Panel (Revealed via CSS Grid)   */}
               {/* ======================================================== */}
               <div
-                className={`w-full overflow-hidden transition-all duration-500 ease-in-out shrink-0 bg-zinc-950 flex flex-col justify-between ${
+                className={`grid transition-[grid-template-rows,opacity] duration-500 ease-out shrink-0 bg-zinc-950 ${
                   isActive
-                    ? "min-h-[200px] xs:min-h-[220px] h-auto opacity-100 p-3.5 xs:p-4 sm:p-5 border-b border-white/15"
-                    : "h-0 opacity-0 p-0 border-b-0 pointer-events-none"
+                    ? "grid-rows-[1fr] opacity-100 border-b border-white/15"
+                    : "grid-rows-[0fr] opacity-0 border-b-0 pointer-events-none"
                 }`}
               >
-                <div>
-                  {/* Title in Information View */}
-                  <h3 className="font-sans text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug mb-2.5">
-                    {item.title}
-                  </h3>
+                <div className="overflow-hidden min-h-0 p-3.5 xs:p-4 sm:p-5 flex flex-col justify-between">
+                  <div>
+                    {/* Title in Information View */}
+                    <h3 className="font-sans text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug mb-2.5">
+                      {item.title}
+                    </h3>
 
-                  {/* Complete Service Description (Matching User Screenshots) */}
-                  <p className="text-xs sm:text-[13px] text-zinc-300 leading-relaxed font-normal">
-                    {item.description}
-                  </p>
-                </div>
+                    {/* Complete Service Description */}
+                    <p className="text-xs sm:text-[13px] text-zinc-300 leading-relaxed font-normal">
+                      {item.description}
+                    </p>
+                  </div>
 
-                {/* Bottom Row: Direct Action CTA */}
-                <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-[11px] text-zinc-400 font-mono">
-                    {item.status}
-                  </span>
+                  {/* Bottom Row: Direct Action CTA */}
+                  <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 mt-3">
+                    <span className="text-[11px] text-zinc-400 font-mono">
+                      {item.status}
+                    </span>
 
-                  <Link
-                    href={item.ctaHref}
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--brand-primary)] hover:text-white transition-colors shrink-0 group/link"
-                  >
-                    <span>{item.ctaText}</span>
-                    <span className="transition-transform group-hover/link:translate-x-1">&rarr;</span>
-                  </Link>
+                    <Link
+                      href={item.ctaHref}
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--brand-primary)] hover:text-white transition-colors shrink-0 group/link"
+                    >
+                      <span>{item.ctaText}</span>
+                      <span className="transition-transform group-hover/link:translate-x-1">&rarr;</span>
+                    </Link>
+                  </div>
                 </div>
               </div>
 
               {/* ======================================================== */}
               {/* PICTURE CONTAINER:                                       */}
-              {/* - Default: Takes 100% of card length (Full Bleed Photo)  */}
-              {/* - Hover/Click: Slides DOWN to bottom 45% of card!        */}
               {/* ======================================================== */}
               <div
                 className={`relative w-full overflow-hidden transition-all duration-500 ease-in-out ${

@@ -32,55 +32,36 @@ export default function LaptopMockup({
     const playVideo = () => {
       if (!video) return;
       video.muted = true;
-      const promise = video.play();
-      if (promise !== undefined) {
-        promise.catch(() => {
-          // Autoplay was blocked, will resume on user gesture
-        });
-      }
+      video.play().catch(() => {});
     };
 
-    // Immediate playback attempt
-    playVideo();
+    // IntersectionObserver to pause when off-screen and play when visible
+    let observer: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== "undefined") {
+      observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            playVideo();
+          } else {
+            video.pause();
+          }
+        },
+        { threshold: 0.1 }
+      );
+      observer.observe(video);
+    } else {
+      playVideo();
+    }
 
-    // Trigger playback as soon as browser has ready data
-    video.addEventListener("loadedmetadata", playVideo);
-    video.addEventListener("canplay", playVideo);
-    video.addEventListener("loadeddata", playVideo);
-
-    // If playback ends or stalls, immediately restart
     const handleEnded = () => {
       video.currentTime = 0;
       playVideo();
     };
-    const handlePause = () => {
-      // Prevent unwanted pausing
-      playVideo();
-    };
     video.addEventListener("ended", handleEnded);
-    video.addEventListener("pause", handlePause);
-
-    // Global interaction fallbacks (touch, click, scroll) to guarantee video starts
-    const triggerEvents = ["click", "touchstart", "pointerdown", "scroll", "keydown"];
-    const onInteraction = () => {
-      playVideo();
-    };
-
-    triggerEvents.forEach((ev) => {
-      window.addEventListener(ev, onInteraction, { passive: true });
-      document.addEventListener(ev, onInteraction, { passive: true });
-    });
 
     return () => {
-      video.removeEventListener("loadedmetadata", playVideo);
-      video.removeEventListener("canplay", playVideo);
-      video.removeEventListener("loadeddata", playVideo);
+      if (observer) observer.disconnect();
       video.removeEventListener("ended", handleEnded);
-      video.removeEventListener("pause", handlePause);
-      triggerEvents.forEach((ev) => {
-        window.removeEventListener(ev, onInteraction);
-        document.removeEventListener(ev, onInteraction);
-      });
     };
   }, [videoSrc]);
 

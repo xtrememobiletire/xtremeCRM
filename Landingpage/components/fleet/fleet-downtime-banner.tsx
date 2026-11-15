@@ -7,7 +7,7 @@ import { Phone, Mail, ArrowUpRight } from "lucide-react";
 
 export default function FleetDowntimeBanner() {
   return (
-    <section className="w-full py-10 xs:py-12 sm:py-16 lg:py-20 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-zinc-300 dark:border-zinc-800">
+    <section className="w-full py-10 xs:py-12 sm:py-16 lg:py-20 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-t border-zinc-300 dark:border-zinc-800">
       {/* 
         TOP PICTURE BANNER (Matching Wireframe Image Box)
         - Sharp rectangular box (rounded-none)
@@ -34,7 +34,7 @@ export default function FleetDowntimeBanner() {
         <div
           className="absolute inset-0 opacity-10 pointer-events-none z-[2]"
           style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.25) 1px, transparent 0)`,
+            backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.15) 1px, transparent 0)`,
             backgroundSize: "24px 24px",
           }}
         />
@@ -49,7 +49,7 @@ export default function FleetDowntimeBanner() {
         <div className="relative z-10 max-w-3xl text-center sm:text-left space-y-4 xs:space-y-6 sm:space-y-8">
           {/* Eyebrow */}
           <div className="flex items-center justify-center sm:justify-start gap-2.5">
-            <span className="w-2.5 h-2.5 bg-[#DC2626] rounded-none inline-block shadow-sm" />
+            <span className="w-2.5 h-2.5 bg-[var(--brand-primary)] rounded-none inline-block shadow-sm" />
             <span className="text-[11px] xs:text-xs sm:text-sm font-mono font-bold tracking-widest uppercase text-zinc-300">
               National Commercial Coverage
             </span>
@@ -70,7 +70,7 @@ export default function FleetDowntimeBanner() {
                   target.scrollIntoView({ behavior: "smooth", block: "start" });
                 }
               }}
-              className="w-full xs:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 bg-[#DC2626] text-white hover:bg-white hover:text-black font-semibold text-xs sm:text-sm uppercase tracking-wider transition-all duration-300 rounded-none shadow-lg shadow-red-950/40 cursor-pointer group/cta"
+              className="w-full xs:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 bg-[var(--brand-primary)] text-white hover:bg-white hover:text-black font-semibold text-xs sm:text-sm uppercase tracking-wider transition-all duration-300 rounded-none shadow-lg shadow-red-950/40 cursor-pointer group/cta"
             >
               <span>Open Fleet Account</span>
               <ArrowUpRight className="w-4 h-4 transition-transform group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5" />
@@ -93,37 +93,37 @@ export default function FleetDowntimeBanner() {
       */}
       <div className="mt-4 sm:mt-6 w-full rounded-none border border-zinc-300 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/70 p-3.5 xs:p-4 sm:p-5 flex flex-wrap items-center justify-center gap-x-3 xs:gap-x-4 sm:gap-x-6 gap-y-2 text-center text-xs sm:text-sm md:text-base font-medium text-zinc-800 dark:text-zinc-200">
         <div className="flex items-center gap-2 font-bold text-zinc-950 dark:text-white">
-          <Phone className="w-4 h-4 text-[#DC2626] shrink-0" />
+          <Phone className="w-4 h-4 text-[var(--brand-primary)] shrink-0" />
           <span>24/7 Fleet Dispatch:</span>
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-x-3 xs:gap-x-4 gap-y-1">
           <a
             href="tel:+18043265442"
-            className="hover:text-[#DC2626] transition-colors cursor-pointer whitespace-nowrap min-h-[36px] inline-flex items-center"
+            className="hover:text-[var(--brand-primary)] transition-colors cursor-pointer whitespace-nowrap min-h-[36px] inline-flex items-center"
           >
             <span className="font-semibold">(804) 326-5442</span> <span className="text-zinc-500 text-xs ml-1">(US)</span>
           </a>
           <span className="text-zinc-400 dark:text-zinc-600">|</span>
           <a
             href="tel:+14373755674"
-            className="hover:text-[#DC2626] transition-colors cursor-pointer whitespace-nowrap min-h-[36px] inline-flex items-center"
+            className="hover:text-[var(--brand-primary)] transition-colors cursor-pointer whitespace-nowrap min-h-[36px] inline-flex items-center"
           >
             <span className="font-semibold">(437) 375-5674</span> <span className="text-zinc-500 text-xs ml-1">(CA)</span>
           </a>
           <span className="text-zinc-400 dark:text-zinc-600">|</span>
           <a
             href="tel:+441630234331"
-            className="hover:text-[#DC2626] transition-colors cursor-pointer whitespace-nowrap min-h-[36px] inline-flex items-center"
+            className="hover:text-[var(--brand-primary)] transition-colors cursor-pointer whitespace-nowrap min-h-[36px] inline-flex items-center"
           >
             <span className="font-semibold">+44 1630 234331</span> <span className="text-zinc-500 text-xs ml-1">(UK)</span>
           </a>
           <span className="text-zinc-400 dark:text-zinc-600 hidden sm:inline select-none">|</span>
           <a
             href="mailto:Info@Xtrememobiletire.com"
-            className="inline-flex items-center gap-1.5 hover:text-[#DC2626] transition-colors cursor-pointer break-all sm:break-normal min-h-[36px]"
+            className="inline-flex items-center gap-1.5 hover:text-[var(--brand-primary)] transition-colors cursor-pointer break-all sm:break-normal min-h-[36px]"
           >
-            <Mail className="w-3.5 h-3.5 text-[#DC2626] shrink-0" />
+            <Mail className="w-3.5 h-3.5 text-[var(--brand-primary)] shrink-0" />
             <span className="font-semibold">Info@Xtrememobiletire.com</span>
           </a>
         </div>

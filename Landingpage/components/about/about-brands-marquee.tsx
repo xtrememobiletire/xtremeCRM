@@ -1,8 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
 import Image from "next/image";
-import gsap from "gsap";
 
 interface BrandItem {
   id: string;
@@ -43,55 +41,21 @@ const ROW_3: BrandItem[] = [
 function MarqueeRow({
   items,
   direction = "left",
-  duration = 24,
+  duration = 32,
 }: {
   items: BrandItem[];
   direction?: "left" | "right";
   duration?: number;
 }) {
-  const rowRef = useRef<HTMLDivElement>(null);
-  // Duplicate array 4 times for seamless non-breaking loop
-  const duplicated = [...items, ...items, ...items, ...items];
-
-  useEffect(() => {
-    const el = rowRef.current;
-    if (!el) return;
-
-    const ctx = gsap.context(() => {
-      if (direction === "left") {
-        gsap.fromTo(
-          el,
-          { xPercent: 0 },
-          {
-            xPercent: -50,
-            duration,
-            ease: "none",
-            repeat: -1,
-          }
-        );
-      } else {
-        gsap.fromTo(
-          el,
-          { xPercent: -50 },
-          {
-            xPercent: 0,
-            duration,
-            ease: "none",
-            repeat: -1,
-          }
-        );
-      }
-    });
-
-    return () => ctx.revert();
-  }, [direction, duration]);
+  const duplicated = [...items, ...items];
+  const animClass =
+    direction === "left" ? "animate-marquee-left" : "animate-marquee-right";
 
   return (
     <div className="relative w-full overflow-hidden py-1.5 xs:py-2 sm:py-2.5">
       <div
-        ref={rowRef}
-        className="flex gap-3 xs:gap-4 sm:gap-6 w-max"
-        style={{ willChange: "transform" }}
+        className={`${animClass} hover:[animation-play-state:paused] flex gap-3 xs:gap-4 sm:gap-6 w-max cursor-pointer`}
+        style={{ animationDuration: `${duration}s` }}
       >
         {duplicated.map((brand, idx) => (
           <div
@@ -115,20 +79,16 @@ function MarqueeRow({
   );
 }
 
-
 export default function AboutBrandsMarquee() {
   return (
     <section className="relative z-10 w-full bg-transparent text-zinc-950 dark:text-white py-10 sm:py-16 lg:py-20 border-t border-black/5 dark:border-white/5 overflow-hidden">
       {/* 
         ========================================================================
-        HEADER SECTION (Matching Wireframe media_1792312468433_88856298.png)
-        - Left: ■ Our Network + "Brands We work with"
-        - Right: Two-tone mission text "At XtremeMobileTire, Expert mobile..."
+        HEADER SECTION
         ========================================================================
       */}
       <div className="max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6 mb-6 sm:mb-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 pb-5 sm:pb-6 border-b border-black/10 dark:border-white/10">
-          
           {/* Left: Tag + Headline */}
           <div className="space-y-2 sm:space-y-3">
             <div className="flex items-center gap-2">
@@ -154,30 +114,23 @@ export default function AboutBrandsMarquee() {
               </span>
             </p>
           </div>
-
         </div>
       </div>
 
-
       {/* 
         ========================================================================
-        3-ROW CONTINUOUS INFINITE MARQUEE BARS
-        - Row 1: Leftward Flying Motion (22s)
-        - Row 2: Rightward Flying Motion (26s)
-        - Row 3: Leftward Flying Motion (20s)
-        - POWERED BY GSAP ENGINE: Guaranteed non-stop 60FPS hardware-accelerated motion
-        - Smooth Edge Masks: Dissolves into black at screen borders
+        3-ROW CONTINUOUS INFINITE MARQUEE BARS (Pure CSS + Pause on Hover)
         ========================================================================
       */}
       <div className="relative w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
-        {/* Row 1: Leftward Flying Motion (48s - Gentle, Calmer Glide) */}
-        <MarqueeRow items={ROW_1} direction="left" duration={48} />
+        {/* Row 1: Leftward Flying Motion (36s) */}
+        <MarqueeRow items={ROW_1} direction="left" duration={36} />
 
-        {/* Row 2: Rightward Flying Motion (56s - Gentle, Calmer Glide) */}
-        <MarqueeRow items={ROW_2} direction="right" duration={56} />
+        {/* Row 2: Rightward Flying Motion (42s) */}
+        <MarqueeRow items={ROW_2} direction="right" duration={42} />
 
-        {/* Row 3: Leftward Flying Motion (44s - Gentle, Calmer Glide) */}
-        <MarqueeRow items={ROW_3} direction="left" duration={44} />
+        {/* Row 3: Leftward Flying Motion (32s) */}
+        <MarqueeRow items={ROW_3} direction="left" duration={32} />
       </div>
     </section>
   );

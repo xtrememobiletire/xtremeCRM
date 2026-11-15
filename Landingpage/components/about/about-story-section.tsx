@@ -34,7 +34,7 @@ const STORY_BLOCKS: StoryBlock[] = [
 export default function AboutStorySection() {
   return (
     <section className="relative z-10 w-full bg-transparent text-zinc-950 dark:text-white pt-12 sm:pt-28 lg:pt-36 pb-8 sm:pb-14 lg:pb-16 border-t border-black/5 dark:border-white/5">
-      <div className="max-w-5xl mx-auto px-3.5 xs:px-4 sm:px-6">
+      <div className="max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6">
         {/* 
           ========================================================================
           TWO-COLUMN PINNED LAYOUT:

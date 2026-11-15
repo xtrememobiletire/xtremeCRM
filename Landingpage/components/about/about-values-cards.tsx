@@ -46,8 +46,14 @@ export default function AboutValuesCards() {
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [clickedCard, setClickedCard] = useState<string | null>(null);
 
+  const handleCardClick = (id: string) => {
+    if (typeof window !== "undefined" && window.matchMedia("(hover: none)").matches) {
+      setClickedCard((prev) => (prev === id ? null : id));
+    }
+  };
+
   return (
-    <section className="relative z-10 w-full max-w-5xl mx-auto px-3.5 xs:px-4 sm:px-6 py-10 sm:py-16 lg:py-20">
+    <section className="relative z-10 w-full max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6 py-10 sm:py-16 lg:py-20">
       
       {/* 
         ========================================================================
@@ -63,9 +69,10 @@ export default function AboutValuesCards() {
           </span>
         </div>
 
-        {/* Section Headline */}
+        {/* Section Headline - Sans + Serif Italic Hierarchy */}
         <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-3 sm:mb-4">
-          Our Values
+          <span className="font-sans font-extrabold text-[var(--neutral-dark)]">Our </span>
+          <span className="font-serif italic font-normal text-[var(--brand-primary)]">Core Values</span>
         </h2>
 
         {/* High-Contrast Two-Tone Mission Text */}
@@ -83,8 +90,7 @@ export default function AboutValuesCards() {
         ========================================================================
         3-CARD FULL-BLEED VALUES GRID:
         - Responsive: 1 col mobile, 2 col tablet/medium laptop, 3 col desktop
-        - Default state: Picture covers 100% of card length
-        - Hover/Click state: Picture slides down to bottom, Information appears on top
+        - Smooth CSS grid row drawer interpolation
         ========================================================================
       */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8 items-stretch">
@@ -100,61 +106,61 @@ export default function AboutValuesCards() {
               aria-label={`${item.title} - Click or hover to reveal details`}
               onMouseEnter={() => setHoveredCard(item.id)}
               onMouseLeave={() => setHoveredCard(null)}
-              onClick={() => setClickedCard((prev) => (prev === item.id ? null : item.id))}
+              onClick={() => handleCardClick(item.id)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  setClickedCard((prev) => (prev === item.id ? null : item.id));
+                  handleCardClick(item.id);
                 }
               }}
               className="group relative rounded-none border border-black/15 dark:border-white/15 bg-zinc-950 text-white overflow-hidden shadow-lg hover:shadow-2xl hover:border-[var(--brand-primary)]/70 transition-all duration-500 min-h-[440px] sm:h-[500px] flex flex-col justify-between cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
             >
               {/* ======================================================== */}
-              {/* TOP SECTION: Information Panel (Revealed on Hover/Click) */}
+              {/* TOP SECTION: Information Panel (Revealed via CSS Grid)   */}
               {/* ======================================================== */}
               <div
-                className={`w-full overflow-hidden transition-all duration-500 ease-in-out shrink-0 bg-zinc-950 flex flex-col justify-between ${
+                className={`grid transition-[grid-template-rows,opacity] duration-500 ease-out shrink-0 bg-zinc-950 ${
                   isActive
-                    ? "min-h-[200px] xs:min-h-[220px] h-auto opacity-100 p-3.5 xs:p-4 sm:p-5 border-b border-white/15"
-                    : "h-0 opacity-0 p-0 border-b-0 pointer-events-none"
+                    ? "grid-rows-[1fr] opacity-100 border-b border-white/15"
+                    : "grid-rows-[0fr] opacity-0 border-b-0 pointer-events-none"
                 }`}
               >
-                <div>
-                  {/* Icon & Eyebrow */}
-                  <div className="flex items-center gap-2 mb-2 text-[var(--brand-primary)]">
-                    {item.icon}
-                    <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-300">
-                      Core Value
-                    </span>
+                <div className="overflow-hidden min-h-0 p-3.5 xs:p-4 sm:p-5 flex flex-col justify-between">
+                  <div>
+                    {/* Icon & Eyebrow */}
+                    <div className="flex items-center gap-2 mb-2 text-[var(--brand-primary)]">
+                      {item.icon}
+                      <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-300">
+                        Core Value
+                      </span>
+                    </div>
+
+                    {/* Title in Information View */}
+                    <h3 className="font-sans text-lg xs:text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug mb-2">
+                      {item.title}
+                    </h3>
+
+                    {/* Full Service Description */}
+                    <p className="text-xs sm:text-[13px] text-zinc-300 leading-relaxed font-normal">
+                      {item.description}
+                    </p>
                   </div>
 
-                  {/* Title in Information View */}
-                  <h3 className="font-sans text-lg xs:text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug mb-2">
-                    {item.title}
-                  </h3>
-
-                  {/* Full Service Description */}
-                  <p className="text-xs sm:text-[13px] text-zinc-300 leading-relaxed font-normal">
-                    {item.description}
-                  </p>
-                </div>
-
-                {/* Bottom Row of Information View */}
-                <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-[10px] xs:text-[11px] text-zinc-400 font-mono">
-                    {item.hoverBarText}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-[var(--brand-primary)]">
-                    <span>Active Standard</span>
-                    <span>&rarr;</span>
-                  </span>
+                  {/* Bottom Row of Information View */}
+                  <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 mt-3">
+                    <span className="text-[10px] xs:text-[11px] text-zinc-400 font-mono">
+                      {item.hoverBarText}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-[var(--brand-primary)]">
+                      <span>Active Standard</span>
+                      <span>&rarr;</span>
+                    </span>
+                  </div>
                 </div>
               </div>
 
               {/* ======================================================== */}
               {/* PICTURE CONTAINER:                                       */}
-              {/* - Default: Takes 100% of card length (Full Bleed Photo)  */}
-              {/* - Hover/Click: Slides DOWN to bottom 50% of card!        */}
               {/* ======================================================== */}
               <div
                 className={`relative w-full overflow-hidden transition-all duration-500 ease-in-out ${

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { StatueOfLibertyIcon, CanadaLandmarkIcon } from "./footer/footer-landmark-icons";
 import FooterLargeBranding from "./footer/footer-large-branding";
+import FooterLegal from "./footer/footer-legal";
 
 interface HomeFooterProps {
   brandName?: string;
@@ -30,7 +31,7 @@ export default function HomeFooter({
         {/* ======================================================== */}
         {/* 3-COLUMN WIREFRAME BOXED CONTAINER                       */}
         {/* ======================================================== */}
-        <div className="border border-white/10 rounded-2xl bg-[#0c0c0e]/95 backdrop-blur-md shadow-2xl grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-white/10 overflow-hidden">
+        <div className="border border-white/10 rounded-2xl bg-[#0c0d10]/95 backdrop-blur-md shadow-2xl grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-white/10 overflow-hidden">
           
           {/* ======================================================== */}
           {/* COLUMN 1 (LEFT): Logo, Simple Quote & 4 Social Links     */}
@@ -187,7 +188,7 @@ export default function HomeFooter({
             <div className="space-y-3 sm:space-y-3.5">
               
               {/* United States Card */}
-              <div className="group rounded-xl border border-white/10 hover:border-[#e62e2d] bg-white/[0.04] hover:bg-[#e62e2d] p-3.5 xs:p-4 flex items-center justify-between gap-3 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-red-950/40">
+              <div className="group rounded-xl border border-white/10 hover:border-[var(--brand-primary)] bg-white/[0.04] hover:bg-[var(--brand-primary)] p-3.5 xs:p-4 flex items-center justify-between gap-3 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-red-950/40">
                 <div className="space-y-1 min-w-0 flex-1">
                   <h4 className="text-sm xs:text-base font-bold text-white group-hover:text-black transition-colors font-sans">
                     United States
@@ -213,7 +214,7 @@ export default function HomeFooter({
               </div>
 
               {/* Canada Card */}
-              <div className="group rounded-xl border border-white/10 hover:border-[#e62e2d] bg-white/[0.04] hover:bg-[#e62e2d] p-3.5 xs:p-4 flex items-center justify-between gap-3 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-red-950/40">
+              <div className="group rounded-xl border border-white/10 hover:border-[var(--brand-primary)] bg-white/[0.04] hover:bg-[var(--brand-primary)] p-3.5 xs:p-4 flex items-center justify-between gap-3 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-red-950/40">
                 <div className="space-y-1 min-w-0 flex-1">
                   <h4 className="text-sm xs:text-base font-bold text-white group-hover:text-black transition-colors font-sans">
                     Canada
@@ -242,6 +243,9 @@ export default function HomeFooter({
           </div>
 
         </div>
+
+        {/* Legal & Live Dispatch Bar */}
+        <FooterLegal brandName={brandName} logoSrc={logoSrc} />
 
       </div>
 

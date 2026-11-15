@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { LOGIN_URL } from "@/lib/config";
 import SpecularButton from "@/components/home/specular-button";
@@ -127,7 +126,7 @@ export default function FleetHero() {
           </span>
           <span className="inline-block">
             <span>Manage Your Entire Fleet – </span>
-            <span className="font-extrabold italic text-zinc-950 dark:text-white">
+            <span className="font-serif italic font-normal text-[var(--brand-primary)]">
               We do it all
             </span>
           </span>

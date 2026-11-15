@@ -5,7 +5,7 @@ import { Phone, Mail } from "lucide-react";
 
 export default function DispatchContactBar() {
   return (
-    <section className="w-full max-w-5xl mx-auto px-4 sm:px-6 my-3 sm:my-4">
+    <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 my-3 sm:my-4">
       {/* 
         24/7 FLEET DISPATCH CONTACT BAR
         - Open-ended on left and right sides (border-y border-x-0)

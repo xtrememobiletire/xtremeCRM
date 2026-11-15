@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { LOGIN_URL, API_BASE_URL } from "@/lib/config";
 import {
@@ -66,6 +65,15 @@ const STEPS = [
   { id: 4, label: "Access", description: "Manager portal email & password" },
 ];
 
+interface SubmittedFleetInfo {
+  name?: string;
+  email?: string;
+  fleetCode?: string;
+  numberOfUnits?: string | number;
+  phone?: string;
+  [key: string]: unknown;
+}
+
 export default function FleetCreateAccount() {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [formData, setFormData] = useState<FormData>(INITIAL_DATA);
@@ -73,7 +81,7 @@ export default function FleetCreateAccount() {
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submittedFleet, setSubmittedFleet] = useState<any | null>(null);
+  const [submittedFleet, setSubmittedFleet] = useState<SubmittedFleetInfo | null>(null);
   const [direction, setDirection] = useState<number>(1);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
@@ -177,7 +185,7 @@ export default function FleetCreateAccount() {
         const errorMsg =
           data?.message ||
           (Array.isArray(data?.errors)
-            ? data.errors.map((e: any) => e.message).join(", ")
+            ? data.errors.map((e: { message?: string }) => e?.message || String(e)).join(", ")
             : null) ||
           "Failed to submit fleet registration. Please check your details and try again.";
         setSubmitError(errorMsg);
@@ -188,10 +196,12 @@ export default function FleetCreateAccount() {
       const createdFleet = data?.data || data;
       setSubmittedFleet(createdFleet);
       setIsSubmitted(true);
-    } catch (err: any) {
-      setSubmitError(
-        err?.message || "Network error connecting to registration server. Please try again."
-      );
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Network error connecting to registration server. Please try again.";
+      setSubmitError(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -235,10 +245,10 @@ export default function FleetCreateAccount() {
     <section
       id="create-fleet-account"
       data-hide-navbar="true"
-      className="w-full pt-6 xs:pt-8 sm:pt-12 pb-10 sm:pb-16 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
+      className="w-full pt-6 xs:pt-8 sm:pt-12 pb-10 sm:pb-16 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto"
     >
       {/* Outer Luxury Automotive Container */}
-      <div className="relative border border-zinc-800/80 bg-zinc-950 rounded-2xl overflow-hidden shadow-2xl">
+      <div className="relative border border-white/10 bg-[#0c0d10] rounded-2xl overflow-hidden shadow-2xl">
         <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[500px] xs:min-h-[580px] lg:min-h-[640px]">
           {/* ========================================================================
               LEFT COLUMN: High-Resolution Sports Car Background with Centered Title
@@ -280,7 +290,7 @@ export default function FleetCreateAccount() {
                       <div className="absolute top-4 xs:top-5 left-4 xs:left-5 right-4 xs:right-5 h-[2px] bg-zinc-800 z-0">
                         {/* Glowing Active Fill */}
                         <div
-                          className="h-full bg-gradient-to-r from-red-600 via-rose-600 to-red-500 transition-all duration-300 shadow-[0_0_12px_rgba(220,38,38,0.6)]"
+                          className="h-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-secondary)] transition-all duration-300 shadow-[0_0_12px_rgba(200,16,46,0.6)]"
                           style={{
                             width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%`,
                           }}
@@ -304,9 +314,9 @@ export default function FleetCreateAccount() {
                               disabled={isUpcoming}
                               className={`w-8 h-8 xs:w-10 xs:h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center font-mono text-[11px] xs:text-xs sm:text-sm transition-all duration-300 ${
                                 isCompleted
-                                  ? "bg-zinc-800 text-white border border-zinc-700 shadow-md cursor-pointer hover:border-red-500 hover:text-red-400"
+                                  ? "bg-zinc-800 text-white border border-zinc-700 shadow-md cursor-pointer hover:border-[var(--brand-primary)] hover:text-white"
                                   : isCurrent
-                                  ? "bg-gradient-to-br from-red-600 to-rose-700 text-white border-2 border-red-500 shadow-[0_0_24px_rgba(220,38,38,0.5)] ring-4 ring-red-500/20 font-bold"
+                                  ? "bg-gradient-to-br from-[var(--brand-primary)] to-[var(--brand-secondary)] text-white border-2 border-[var(--brand-primary)] shadow-[0_0_24px_rgba(200,16,46,0.5)] ring-4 ring-[var(--brand-primary)]/20 font-bold"
                                   : "bg-zinc-900/80 text-zinc-500 border border-white/5 cursor-not-allowed font-medium"
                               }`}
                               title={step.label}
@@ -322,7 +332,7 @@ export default function FleetCreateAccount() {
                             <span
                               className={`mt-1.5 xs:mt-2 text-[9px] xs:text-[10px] sm:text-xs font-mono uppercase tracking-wider transition-colors ${
                                 isCurrent
-                                  ? "text-red-500 font-bold"
+                                  ? "text-[var(--brand-primary)] font-bold"
                                   : isCompleted
                                   ? "text-zinc-300 font-medium"
                                   : "text-zinc-600"
@@ -338,7 +348,7 @@ export default function FleetCreateAccount() {
                     {/* Step Context Sub-bar */}
                     <div className="mt-4 sm:mt-5 pt-3 sm:pt-3.5 border-t border-white/10 flex flex-wrap items-center justify-between text-xs font-mono gap-1.5">
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]" />
+                        <span className="w-2 h-2 bg-[var(--brand-primary)] rounded-full animate-pulse shadow-[0_0_8px_rgba(200,16,46,0.8)]" />
                         <span className="font-bold uppercase tracking-wider text-white">
                           Step {currentStep} of 4
                         </span>
@@ -777,7 +787,7 @@ export default function FleetCreateAccount() {
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full xs:w-auto min-h-[44px] inline-flex items-center justify-center gap-2.5 px-6 sm:px-10 py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-red-600/30 hover:shadow-red-600/50 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full xs:w-auto min-h-[44px] inline-flex items-center justify-center gap-2.5 px-6 sm:px-10 py-3.5 rounded-lg bg-[var(--brand-primary)] hover:brightness-110 text-white font-bold text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-red-950/40 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isSubmitting ? (
                           <>
@@ -806,7 +816,7 @@ export default function FleetCreateAccount() {
                   transition={{ duration: 0.3 }}
                   className="text-center py-6 sm:py-8 space-y-6"
                 >
-                  <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-red-600 to-rose-700 text-white flex items-center justify-center shadow-xl shadow-red-600/30">
+                  <div className="w-16 h-16 mx-auto rounded-xl bg-gradient-to-br from-[var(--brand-primary)] to-[var(--brand-secondary)] text-white flex items-center justify-center shadow-xl shadow-red-950/40">
                     <CheckCircle2 className="w-9 h-9" />
                   </div>
 
@@ -859,14 +869,14 @@ export default function FleetCreateAccount() {
                   <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                     <a
                       href={LOGIN_URL}
-                      className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-red-600/30 cursor-pointer"
+                      className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 rounded-lg bg-[var(--brand-primary)] hover:brightness-110 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-red-950/40 cursor-pointer"
                     >
                       Sign In to Fleet Portal
                     </a>
                     <button
                       type="button"
                       onClick={handleReset}
-                      className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3.5 rounded-xl border border-white/15 bg-white/[0.03] hover:bg-white/[0.08] text-zinc-300 hover:text-white text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer"
+                      className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3.5 rounded-lg border border-white/15 bg-white/[0.03] hover:bg-white/[0.08] text-zinc-300 hover:text-white text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer"
                     >
                       Register Another Fleet
                     </button>

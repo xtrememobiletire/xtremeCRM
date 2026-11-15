@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowUpRight, ArrowRight } from "lucide-react";
 
@@ -75,7 +74,7 @@ export default function FleetOnboardingSteps() {
 
   const handleCtaClick = (stepId: string) => {
     if (stepId === "step-3") {
-      window.location.href = "https://app.xtrememobiletire.com/login";
+      window.location.assign("https://app.xtrememobiletire.com/login");
     } else {
       const target = document.getElementById("create-fleet-account");
       if (target) {
@@ -85,12 +84,12 @@ export default function FleetOnboardingSteps() {
   };
 
   return (
-    <section className="w-full py-10 xs:py-14 sm:py-24 lg:py-28 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-zinc-300 dark:border-zinc-800">
+    <section className="w-full py-10 xs:py-14 sm:py-24 lg:py-28 px-3.5 xs:px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-t border-zinc-300 dark:border-zinc-800">
       {/* Top Header Section matching wireframe */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 pb-8 sm:pb-16 border-b border-zinc-300 dark:border-zinc-800 mb-8 sm:mb-16">
         <div>
           <div className="flex items-center gap-2.5 mb-2 sm:mb-3">
-            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black dark:bg-[#DC2626] inline-block shrink-0 rounded-none shadow-sm" />
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black dark:bg-[var(--brand-primary)] inline-block shrink-0 rounded-none shadow-sm" />
             <span className="text-[11px] xs:text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
               Fleet Solutions
             </span>
@@ -122,7 +121,7 @@ export default function FleetOnboardingSteps() {
               >
                 {/* Active Left Indicator Bar */}
                 {isActive && (
-                  <span className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#DC2626] shadow-[0_0_10px_rgba(220,38,38,0.5)]" />
+                  <span className="absolute left-0 top-0 bottom-0 w-1.5 bg-[var(--brand-primary)] shadow-[0_0_10px_rgba(200,16,46,0.5)]" />
                 )}
 
                 <button
@@ -143,7 +142,7 @@ export default function FleetOnboardingSteps() {
                   <div
                     className={`w-8 h-8 xs:w-9 xs:h-9 rounded-full flex items-center justify-center shrink-0 border transition-all duration-300 cursor-pointer ${
                       isActive
-                        ? "bg-[#DC2626] text-white border-[#DC2626] shadow-md shadow-red-600/30 scale-105"
+                        ? "bg-[var(--brand-primary)] text-white border-[var(--brand-primary)] shadow-md shadow-red-950/40 scale-105"
                         : "bg-white dark:bg-zinc-900 text-zinc-400 dark:text-zinc-500 border-zinc-300 dark:border-zinc-700 hover:border-zinc-500 hover:text-zinc-900 dark:hover:text-white"
                     }`}
                   >
@@ -174,7 +173,7 @@ export default function FleetOnboardingSteps() {
                           <button
                             type="button"
                             onClick={() => handleCtaClick(step.id)}
-                            className="w-full xs:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black hover:bg-[#DC2626] dark:hover:bg-[#DC2626] dark:hover:text-white font-semibold text-xs uppercase tracking-wider transition-all duration-300 rounded-none shadow-sm cursor-pointer group/cta"
+                            className="w-full xs:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black hover:bg-[var(--brand-primary)] dark:hover:bg-[var(--brand-primary)] dark:hover:text-white font-semibold text-xs uppercase tracking-wider transition-all duration-300 rounded-none shadow-sm cursor-pointer group/cta"
                           >
                             <span>{step.ctaText}</span>
                             <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5" />

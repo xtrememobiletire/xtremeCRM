@@ -1,10 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 export default function MobileTireShowcase() {
   return (
-    <section className="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+    <motion.section
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14"
+    >
       {/* 
         Outer Container Card:
         Sharp brutalist lines (rounded-none), zero rounded corners.
@@ -26,21 +33,21 @@ export default function MobileTireShowcase() {
           {/* ======================================================== */}
           <div className="lg:col-span-6 flex flex-col justify-between text-left">
             <div>
-              {/* 1. Square Marker & Subheading matching Wireframe */}
+              {/* 1. Distinct Square Marker & Subheading */}
               <div className="flex items-center gap-2.5 mb-3 sm:mb-4">
                 <span className="w-3 h-3 bg-black dark:bg-[var(--brand-primary)] inline-block shrink-0 shadow-sm rounded-none" />
                 <span className="text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
-                  XTREME MOBILE TIRE SOLUTIONS
+                  On-Site Mobile Workshop
                 </span>
               </div>
 
-              {/* 2. Main Title - Two-font alternating style */}
+              {/* 2. Main Title - Two-font alternating style with distinct copy */}
               <h2 className="text-2xl sm:text-3xl md:text-4xl tracking-tight text-[var(--neutral-dark)] leading-[1.15] mb-6 sm:mb-8">
                 <span className="font-sans font-extrabold text-[var(--neutral-dark)]">
-                  Professional{" "}
+                  Equipped for{" "}
                 </span>
-                <span className="font-serif italic font-normal text-[var(--neutral-dark)]">
-                  mobile tire services
+                <span className="font-serif italic font-normal text-[var(--brand-primary)]">
+                  every roadside emergency
                 </span>
               </h2>
 
@@ -90,7 +97,7 @@ export default function MobileTireShowcase() {
           <div className="lg:col-span-6 flex flex-col">
             <div className="group/image relative w-full h-full min-h-[300px] xs:min-h-[360px] sm:min-h-[440px] lg:min-h-[520px] rounded-none overflow-hidden border border-black/15 dark:border-white/10 bg-zinc-950 shadow-2xl flex flex-col justify-between">
               
-              {/* Background Photography (High-performance vehicle with custom wheels/tires at dusk) */}
+              {/* Background Photography */}
               <div className="absolute inset-0 overflow-hidden">
                 <img
                   src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426893/xtreme/landing/wheel-car_jpg.png"
@@ -127,6 +134,6 @@ export default function MobileTireShowcase() {
         </div>
 
       </div>
-    </section>
+    </motion.section>
   );
 }

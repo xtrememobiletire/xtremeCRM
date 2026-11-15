@@ -11,9 +11,9 @@ function BookingContent() {
 
   return (
     <PageShell>
-      <div className="w-full max-w-5xl mx-auto px-3.5 xs:px-4 sm:px-6 py-10 xs:py-14 sm:py-24 flex-1 flex flex-col justify-center items-center text-center">
+      <div className="w-full max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6 py-10 xs:py-14 sm:py-24 flex-1 flex flex-col justify-center items-center text-center">
         <div className="flex items-center gap-2.5 mb-2.5 sm:mb-3.5">
-          <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#DC2626] inline-block shrink-0 rounded-none shadow-sm" />
+          <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[var(--brand-primary)] inline-block shrink-0 rounded-none shadow-sm" />
           <span className="text-[11px] xs:text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
             Online Booking &amp; 24/7 Dispatch
           </span>
@@ -37,21 +37,21 @@ function BookingContent() {
         {/* Feature Badges */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mt-10 sm:mt-14 w-full max-w-3xl text-left">
           <div className="p-4 xs:p-5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 rounded-none">
-            <Clock className="w-5 h-5 text-[#DC2626] mb-2" />
+            <Clock className="w-5 h-5 text-[var(--brand-primary)] mb-2" />
             <h4 className="font-bold text-xs xs:text-sm text-zinc-900 dark:text-white">24/7 Availability</h4>
             <p className="text-[11px] xs:text-xs text-zinc-500 dark:text-zinc-400 mt-1">
               Book anytime day or night. Emergency mobile units dispatched immediately.
             </p>
           </div>
           <div className="p-4 xs:p-5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 rounded-none">
-            <Wrench className="w-5 h-5 text-[#DC2626] mb-2" />
+            <Wrench className="w-5 h-5 text-[var(--brand-primary)] mb-2" />
             <h4 className="font-bold text-xs xs:text-sm text-zinc-900 dark:text-white">On-Site Service</h4>
             <p className="text-[11px] xs:text-xs text-zinc-500 dark:text-zinc-400 mt-1">
               We arrive at your driveway, office parking, or highway shoulder fully equipped.
             </p>
           </div>
           <div className="p-4 xs:p-5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 rounded-none">
-            <ShieldCheck className="w-5 h-5 text-[#DC2626] mb-2" />
+            <ShieldCheck className="w-5 h-5 text-[var(--brand-primary)] mb-2" />
             <h4 className="font-bold text-xs xs:text-sm text-zinc-900 dark:text-white">Live Tracking</h4>
             <p className="text-[11px] xs:text-xs text-zinc-500 dark:text-zinc-400 mt-1">
               Your request lands directly in dispatch triage with live technician coordination.

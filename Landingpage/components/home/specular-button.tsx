@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useRef, useEffect } from "react";
 import Link from "next/link";
 
 interface SpecularButtonProps {
@@ -19,10 +19,10 @@ export default function SpecularButton({
   className = "",
 }: SpecularButtonProps) {
   const buttonRef = useRef<HTMLDivElement>(null);
-  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
-  const [autoPos, setAutoPos] = useState<{ x: number; y: number }>({ x: 50, y: 0 });
+  const isHoveredRef = useRef(false);
 
   // Continuous auto-animation: Specular light travels continuously along the rectangular perimeter
+  // Uses CSS variables --spec-x and --spec-y directly on the DOM element with 0 React re-renders!
   useEffect(() => {
     let rafId: number;
     let startTime: number | null = null;
@@ -32,33 +32,34 @@ export default function SpecularButton({
       if (!startTime) startTime = time;
       const elapsed = (time - startTime) / 1000;
 
-      const W = buttonRef.current?.offsetWidth || 208;
-      const H = buttonRef.current?.offsetHeight || 52;
-      const P = 2 * (W + H);
+      const el = buttonRef.current;
+      if (el && !isHoveredRef.current) {
+        const W = el.offsetWidth || 208;
+        const H = el.offsetHeight || 52;
+        const P = 2 * (W + H);
 
-      const d = (elapsed * speed) % P;
-      let x = 0;
-      let y = 0;
+        const d = (elapsed * speed) % P;
+        let x = 0;
+        let y = 0;
 
-      if (d < W) {
-        // Top edge: moving left to right
-        x = d;
-        y = 0;
-      } else if (d < W + H) {
-        // Right edge: moving top to bottom
-        x = W;
-        y = d - W;
-      } else if (d < 2 * W + H) {
-        // Bottom edge: moving right to left
-        x = W - (d - (W + H));
-        y = H;
-      } else {
-        // Left edge: moving bottom to top
-        x = 0;
-        y = H - (d - (2 * W + H));
+        if (d < W) {
+          x = d;
+          y = 0;
+        } else if (d < W + H) {
+          x = W;
+          y = d - W;
+        } else if (d < 2 * W + H) {
+          x = W - (d - (W + H));
+          y = H;
+        } else {
+          x = 0;
+          y = H - (d - (2 * W + H));
+        }
+
+        el.style.setProperty("--spec-x", `${x.toFixed(1)}px`);
+        el.style.setProperty("--spec-y", `${y.toFixed(1)}px`);
       }
 
-      setAutoPos({ x, y });
       rafId = requestAnimationFrame(animate);
     };
 
@@ -67,29 +68,28 @@ export default function SpecularButton({
   }, []);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
-    setMousePos({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    });
+    const el = buttonRef.current;
+    if (!el) return;
+    isHoveredRef.current = true;
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    el.style.setProperty("--spec-x", `${x.toFixed(1)}px`);
+    el.style.setProperty("--spec-y", `${y.toFixed(1)}px`);
   };
 
   const handleMouseLeave = () => {
-    setMousePos(null);
+    isHoveredRef.current = false;
   };
 
   const isCrimson = variant === "crimson";
-
-  // When hovering, follow mouse; when not hovering (and on mobile/touch), continuously auto-glide!
-  const activePos = mousePos || autoPos;
 
   // Specular light colors (vivid & always on)
   const shineColor = isCrimson
     ? "rgba(255, 75, 75, 1)"
     : "rgba(255, 255, 255, 1)";
   const ambientBorderColor = isCrimson
-    ? "rgba(220, 38, 38, 0.45)"
+    ? "rgba(200, 16, 46, 0.45)"
     : "rgba(255, 255, 255, 0.35)";
 
   const content = (
@@ -101,19 +101,16 @@ export default function SpecularButton({
         className.includes("w-") ? "" : "w-48 sm:w-52"
       } min-h-[44px] h-12 sm:h-13 rounded-none overflow-hidden select-none transition-transform duration-200 active:scale-95 cursor-pointer ${
         isCrimson
-          ? "shadow-[0_0_20px_-3px_rgba(220,38,38,0.45)]"
-          : "shadow-[0_0_20px_-3px_rgba(255,255,255,0.3)]"
+          ? "bg-zinc-950/90 text-white shadow-[0_0_20px_-3px_rgba(200,16,46,0.45)]"
+          : "bg-white hover:bg-zinc-100 dark:bg-zinc-900/90 text-zinc-950 dark:text-white border border-black/15 dark:border-white/20 shadow-[0_0_20px_-3px_rgba(0,0,0,0.1)] dark:shadow-[0_0_20px_-3px_rgba(255,255,255,0.2)]"
       } ${className}`}
-      style={{
-        backgroundColor: "rgba(10, 10, 10, 0.85)",
-      }}
     >
-      {/* Specular edge light layer (ALWAYS active and gliding along the border perimeter) */}
+      {/* Specular edge light layer (ALWAYS active and gliding along the border perimeter via CSS variables) */}
       <div
         className="pointer-events-none absolute inset-0 rounded-none"
         style={{
           padding: "1.5px",
-          background: `radial-gradient(130px circle at ${activePos.x}px ${activePos.y}px, ${shineColor}, ${ambientBorderColor} 55%, transparent 100%)`,
+          background: `radial-gradient(130px circle at var(--spec-x, 50px) var(--spec-y, 0px), ${shineColor}, ${ambientBorderColor} 55%, transparent 100%)`,
           WebkitMask:
             "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
           WebkitMaskComposite: "xor",
@@ -125,16 +122,22 @@ export default function SpecularButton({
       <div
         className="pointer-events-none absolute inset-0 rounded-none"
         style={{
-          background: `radial-gradient(90px circle at ${activePos.x}px ${activePos.y}px, ${
+          background: `radial-gradient(90px circle at var(--spec-x, 50px) var(--spec-y, 0px), ${
             isCrimson
-              ? "rgba(220, 38, 38, 0.25)"
+              ? "rgba(200, 16, 46, 0.25)"
               : "rgba(255, 255, 255, 0.18)"
           }, transparent 80%)`,
         }}
       />
 
       {/* Button Text: Consistent typography, bold and sharp */}
-      <span className="relative z-10 font-bold text-xs xs:text-sm sm:text-base tracking-wide text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)] px-3 text-center">
+      <span
+        className={`relative z-10 font-bold text-xs xs:text-sm sm:text-base tracking-wide px-3 text-center ${
+          isCrimson
+            ? "text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]"
+            : "text-zinc-900 dark:text-white dark:drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]"
+        }`}
+      >
         {label}
       </span>
     </div>
