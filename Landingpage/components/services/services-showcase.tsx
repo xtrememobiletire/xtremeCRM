@@ -37,7 +37,7 @@ export default function ServicesShowcase() {
         </p>
       </div>
 
-      {/* 5 Category Showcase Blocks Connected Directly With Zero Gap (Wireframe Continuous Grid) */}
+      {/* 4 Category Showcase Blocks Connected Directly With Zero Gap (Wireframe Continuous Grid) */}
       <div className="relative flex flex-col">
         {SERVICE_CATEGORIES.map((category, index) => (
           <div key={category.id} className={index > 0 ? "-mt-px relative" : "relative"}>

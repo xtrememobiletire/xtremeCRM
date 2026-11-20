@@ -135,16 +135,24 @@ export default function ServicesCards() {
               className="group relative rounded-lg border border-black/15 dark:border-white/15 bg-zinc-950 text-white overflow-hidden shadow-lg hover:shadow-2xl hover:border-[var(--brand-primary)]/70 transition-all duration-500 min-h-[440px] sm:h-[500px] flex flex-col justify-between cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
             >
               {/* ======================================================== */}
-              {/* TOP SECTION: Information Panel (Revealed via CSS Grid)   */}
+              {/* TOP SECTION: Information Panel (Framer Motion Drawer)    */}
               {/* ======================================================== */}
-              <div
-                className={`grid transition-[grid-template-rows,opacity] duration-500 ease-out shrink-0 bg-zinc-950 ${
-                  isActive
-                    ? "grid-rows-[1fr] opacity-100 border-b border-white/15"
-                    : "grid-rows-[0fr] opacity-0 border-b-0 pointer-events-none"
-                }`}
+              <motion.div
+                initial={false}
+                animate={{
+                  height: isActive ? "auto" : 0,
+                  opacity: isActive ? 1 : 0,
+                }}
+                transition={{
+                  height: { duration: 0.42, ease: [0.16, 1, 0.3, 1] },
+                  opacity: { duration: 0.35, ease: "easeOut" },
+                }}
+                className="overflow-hidden shrink-0 bg-zinc-950 border-white/15"
+                style={{
+                  borderBottomWidth: isActive ? 1 : 0,
+                }}
               >
-                <div className="overflow-hidden min-h-0 p-3.5 xs:p-4 sm:p-5 flex flex-col justify-between">
+                <div className="min-h-0 p-3.5 xs:p-4 sm:p-5 flex flex-col justify-between">
                   <div>
                     {/* Title in Information View */}
                     <h3 className="font-sans text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug mb-2.5">
@@ -173,18 +181,12 @@ export default function ServicesCards() {
                     </Link>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* ======================================================== */}
               {/* PICTURE CONTAINER:                                       */}
               {/* ======================================================== */}
-              <div
-                className={`relative w-full overflow-hidden transition-all duration-500 ease-in-out ${
-                  isActive
-                    ? "h-[220px] sm:h-[230px]"
-                    : "h-full flex-1"
-                }`}
-              >
+              <div className="relative w-full overflow-hidden flex-1 min-h-[180px]">
                 {/* Full-Bleed Photograph covering entire container length */}
                 <img
                   src={item.image}
@@ -197,7 +199,7 @@ export default function ServicesCards() {
                 {/* Subtle dark tint to maintain contrast */}
                 <div
                   className={`absolute inset-0 transition-colors duration-500 ${
-                    isActive ? "bg-black/25" : "bg-black/35 group-hover:bg-black/25"
+                    isActive ? "bg-black/30" : "bg-black/40 group-hover:bg-black/25"
                   }`}
                 />
 
@@ -205,9 +207,15 @@ export default function ServicesCards() {
                 {/* REST STATE OVERLAYS (Visible when card is not active):   */}
                 {/* Shows Badge at top, Title & Subtitle at bottom of photo  */}
                 {/* ======================================================== */}
-                <div
-                  className={`absolute inset-0 flex flex-col justify-end transition-opacity duration-300 ${
-                    isActive ? "opacity-0 pointer-events-none" : "opacity-100"
+                <motion.div
+                  initial={false}
+                  animate={{
+                    opacity: isActive ? 0 : 1,
+                    y: isActive ? 12 : 0,
+                  }}
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                  className={`absolute inset-0 flex flex-col justify-end ${
+                    isActive ? "pointer-events-none" : ""
                   }`}
                 >
                   {/* Bottom Overlay Title & Prompt */}
@@ -227,16 +235,19 @@ export default function ServicesCards() {
                       </span>
                     </div>
                   </div>
-                </div>
+                </motion.div>
 
                 {/* Active Mode Subtle Lower Label */}
-                {isActive && (
-                  <div className="absolute bottom-2 right-3 z-10 pointer-events-none">
-                    <span className="text-[10px] font-mono text-white/60 bg-black/60 px-2 py-0.5 rounded-none backdrop-blur-sm border border-white/10">
-                      Click to collapse ↑
-                    </span>
-                  </div>
-                )}
+                <motion.div
+                  initial={false}
+                  animate={{ opacity: isActive ? 1 : 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="absolute bottom-2 right-3 z-10 pointer-events-none"
+                >
+                  <span className="text-[10px] font-mono text-white/60 bg-black/60 px-2 py-0.5 rounded-none backdrop-blur-sm border border-white/10">
+                    Click to collapse ↑
+                  </span>
+                </motion.div>
               </div>
             </div>
           );

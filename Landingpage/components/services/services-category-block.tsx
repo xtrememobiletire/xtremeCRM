@@ -312,7 +312,13 @@ export default function ServicesCategoryBlock({ category }: ServicesCategoryBloc
         isOpen={isBookingOpen}
         onClose={() => setIsBookingOpen(false)}
         initialServiceTitle={selectedServiceTitle || activeService.title}
-        initialServiceCategory={category.id === "roadside-assistance" ? "ROADSIDE_ASSISTANCE" : "TIRE_SERVICE"}
+        initialServiceCategory={
+          category.id === "roadside-assistance"
+            ? "ROADSIDE_ASSISTANCE"
+            : category.id === "mobile-auto-maintenance"
+            ? "MAINTENANCE"
+            : "TIRE_SERVICE"
+        }
       />
     </div>
   );

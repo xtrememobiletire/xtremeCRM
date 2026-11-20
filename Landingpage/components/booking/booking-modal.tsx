@@ -36,32 +36,22 @@ export const BOOKING_SERVICE_CATEGORIES: BookingCategoryOption[] = [
     code: "TIRE_SERVICE",
     icon: RotateCw,
     services: [
-      "Seasonal Tire Change (ON/OFF RIM)",
+      "Tire Swap (ON RIM)",
+      "Tire Swap (OFF RIM)",
       "Flat Tire Repair",
-      "New Tires for Sale",
-      "Used Tires for Sale",
-      "Tire Storage",
+      "New Tires Replacement",
+      "Used Tires Replacement",
+      "Wheel Balancing & Rotation",
     ],
   },
   {
     id: "wheel-rim-services",
     name: "Wheel & Rim Services",
-    code: "WHEEL_RIM_SERVICE",
+    code: "TIRE_SERVICE",
     icon: Disc3,
     services: [
       "Rim Repair",
-      "Rim Protector Installation",
-    ],
-  },
-  {
-    id: "mobile-auto-maintenance",
-    name: "Mobile Auto Maintenance",
-    code: "AUTO_MAINTENANCE",
-    icon: Droplets,
-    services: [
-      "Oil Change",
-      "Brake Replacement",
-      "Battery Boost / Jump-Start",
+      "New & Used Rim Replacement",
     ],
   },
   {
@@ -71,18 +61,22 @@ export const BOOKING_SERVICE_CATEGORIES: BookingCategoryOption[] = [
     icon: Clock,
     services: [
       "Roadside Assistance (24/7)",
+      "Spare Tire Change",
+      "Battery Boost / Jump-Start",
       "Car Lockout / Locksmith",
       "Gas and Diesel Delivery",
+      "Winch Out & Towing",
     ],
   },
   {
-    id: "vehicle-care-protection",
-    name: "Vehicle Care & Protection",
-    code: "VEHICLE_CARE",
-    icon: Sparkles,
+    id: "mobile-auto-maintenance",
+    name: "Mobile Auto Maintenance",
+    code: "MAINTENANCE",
+    icon: Droplets,
     services: [
-      "Car Detailing",
-      "PPF (Paint Protection Film)",
+      "Oil Change",
+      "Brake Inspection & Service",
+      "Battery Installation & Replacement",
     ],
   },
 ];
@@ -92,6 +86,15 @@ export function findCategoryForService(title: string): BookingCategoryOption {
     if (cat.services.includes(title)) {
       return cat;
     }
+  }
+  if (title.toLowerCase().includes("rim")) {
+    return BOOKING_SERVICE_CATEGORIES.find((c) => c.id === "wheel-rim-services") || BOOKING_SERVICE_CATEGORIES[0];
+  }
+  if (title.toLowerCase().includes("roadside") || title.toLowerCase().includes("lockout") || title.toLowerCase().includes("fuel") || title.toLowerCase().includes("winch") || title.toLowerCase().includes("tow")) {
+    return BOOKING_SERVICE_CATEGORIES.find((c) => c.id === "roadside-assistance") || BOOKING_SERVICE_CATEGORIES[0];
+  }
+  if (title.toLowerCase().includes("maintenance") || title.toLowerCase().includes("oil") || title.toLowerCase().includes("brake")) {
+    return BOOKING_SERVICE_CATEGORIES.find((c) => c.id === "mobile-auto-maintenance") || BOOKING_SERVICE_CATEGORIES[0];
   }
   return BOOKING_SERVICE_CATEGORIES[0];
 }

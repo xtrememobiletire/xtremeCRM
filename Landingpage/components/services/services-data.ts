@@ -32,22 +32,42 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
     description: "At XtremeMobileTire, our mission is simple: to do what's best for our customers and their vehicles with touchless, rapid on-site tire expertise.",
     services: [
       {
-        id: "seasonal-tire-change",
-        slug: "seasonal-tire-change",
-        title: "Seasonal Tire Change (ON/OFF RIM)",
-        shortDesc: "Complete seasonal swap with laser-balanced precision directly in your driveway.",
+        id: "tire-swap-on-rim",
+        slug: "tire-swap-on-rim",
+        title: "Tire Swap (ON RIM)",
+        shortDesc: "Complete seasonal pre-mounted wheel swap and digital balancing directly at your location.",
         iconName: "RotateCw",
         image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426873/xtreme/landing/mobile-tire-service_jpg.jpg",
         stats: {
-          badge: "Seasonal Tire Swap and Laser Balance",
-          duration: "30-45 Mins",
-          equipment: "Hunter Road Force Touchless",
+          badge: "Seasonal On-Rim Wheel Swap",
+          duration: "25-35 Mins",
+          equipment: "Commercial Floor Jacks & Impact Torque",
           warranty: "100% Fitment Guarantee",
           checkmarks: [
-            "Touchless rim demounting and rim seat inspection",
-            "Computerized dynamic wheel balancing",
+            "Driveway or parking stall on-site wheel swap",
+            "Computerized dynamic wheel balance verification",
             "TPMS digital sensor verification and recalibration",
-            "OEM torque-wrench specifications verified"
+            "OEM torque-wrench star-pattern torque verification"
+          ]
+        }
+      },
+      {
+        id: "tire-swap-off-rim",
+        slug: "tire-swap-off-rim",
+        title: "Tire Swap (OFF RIM)",
+        shortDesc: "Touchless tire dismount from rims, new seasonal tire mounting, bead seal, and laser balancing.",
+        iconName: "RotateCw",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426886/xtreme/landing/tire-service-wheel_jpg.jpg",
+        stats: {
+          badge: "Full Dismount, Mount & Road-Force Balance",
+          duration: "45-60 Mins",
+          equipment: "Touchless Mobile Tire Changer & Balancer",
+          warranty: "Zero Rim Scratch Guarantee",
+          checkmarks: [
+            "Non-contact robotic arm dismount from rims",
+            "Rim bead seat corrosion cleaning and bead sealer",
+            "High-speed computerized rim balancing",
+            "Factory PSI inflation and valve core inspection"
           ]
         }
       },
@@ -74,7 +94,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
       {
         id: "new-tires-sale",
         slug: "new-tires",
-        title: "New Tires for Sale",
+        title: "New Tires Replacement",
         shortDesc: "Top-tier OEM brands delivered, mounted, and balanced on your schedule.",
         iconName: "Sparkles",
         image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426887/xtreme/landing/tire-shop_jpg.jpg",
@@ -94,7 +114,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
       {
         id: "used-tires-sale",
         slug: "used-tires",
-        title: "Used Tires for Sale",
+        title: "Used Tires Replacement",
         shortDesc: "Multi-point safety inspected certified pre-owned tires for budget reliability.",
         iconName: "BadgeCheck",
         image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426893/xtreme/landing/wheel-car_jpg.png",
@@ -112,22 +132,22 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         }
       },
       {
-        id: "tire-storage",
-        slug: "tire-storage",
-        title: "Tire Storage",
-        shortDesc: "Insured, climate-controlled seasonal storage facility with doorstep pickup.",
-        iconName: "Warehouse",
+        id: "wheel-balance-rotation",
+        slug: "wheel-balance-rotation",
+        title: "Wheel Balancing & Rotation",
+        shortDesc: "High-precision dynamic wheel balancing and tire position rotation for maximum tire longevity.",
+        iconName: "Disc",
         image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426864/xtreme/landing/fleet-vans_jpg.jpg",
         stats: {
-          badge: "Climate-Controlled Insured Storage",
-          duration: "Doorstep Pickup and Delivery",
-          equipment: "UV and Temperature-Controlled Facility",
-          warranty: "Fully Insured Coverage",
+          badge: "Vibration-Free Road Contact",
+          duration: "25-35 Mins",
+          equipment: "Digital Laser Road-Force Balancer",
+          warranty: "Smooth Ride Guarantee",
           checkmarks: [
-            "Deep wheel wash and preservative tire conditioning",
-            "Individual barcode tagged and indexed storage",
-            "Safe from ozone, sunlight, and moisture corrosion",
-            "Seamless seasonal swap delivery on demand"
+            "Dynamic double-plane spin balancing",
+            "Corrective zinc weight calibration",
+            "Even treadwear cross-pattern rotation",
+            "Lug nut torque verification to OEM spec"
           ]
         }
       }
@@ -136,15 +156,15 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
   {
     id: "wheel-rim-services",
     index: "02",
-    title: "Wheel and Rim Services",
-    subtitle: "Wheel repair and protection",
-    description: "Restore curb damaged alloy rims to showroom brilliance and safeguard high-value wheels from future street hazards.",
+    title: "Wheel & Rim Services",
+    subtitle: "Wheel repair and replacement",
+    description: "Restore curb damaged alloy rims to showroom brilliance and replace bent or cracked wheels on-site.",
     services: [
       {
         id: "rim-repair",
         slug: "rim-repair",
         title: "Rim Repair",
-        shortDesc: "Complete mobile cosmetic and structural alloy restoration for curb rash and bends.",
+        shortDesc: "Complete mobile cosmetic and structural alloy restoration for curb rash and minor bends.",
         iconName: "Disc3",
         image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426894/xtreme/landing/wheel-detail_jpg.jpg",
         stats: {
@@ -161,91 +181,22 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         }
       },
       {
-        id: "rim-protector-installation",
-        slug: "rim-protector-installation",
-        title: "Rim Protector Installation",
-        shortDesc: "Engineered high-impact edge defense barriers guarding your wheels against curb impact.",
-        iconName: "ShieldCheck",
+        id: "rim-replacement",
+        slug: "rim-replacement",
+        title: "New & Used Rim Replacement",
+        shortDesc: "OEM and aftermarket replacement wheels delivered, mounted, and balanced on location.",
+        iconName: "Disc",
         image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426893/xtreme/landing/wheel-car_jpg.png",
         stats: {
-          badge: "Precision Wheel Guard Defense Armor",
+          badge: "Direct Fitment Wheel Replacement",
           duration: "30-45 Mins",
-          equipment: "AlloyGator Certified System",
-          warranty: "1-Year Impact Warranty",
+          equipment: "OEM Spec Direct Replacements",
+          warranty: "Fitment & Structural Guarantee",
           checkmarks: [
-            "Tough composite nylon edge impact absorption",
-            "Interlocking seat technology behind rim bead",
-            "Available in discreet OEM or bold custom colors",
-            "Maintains vehicle trade-in and wheel resale value"
-          ]
-        }
-      }
-    ]
-  },
-  {
-    id: "mobile-auto-maintenance",
-    index: "03",
-    title: "Mobile Auto Maintenance",
-    subtitle: "Routine maintenance and basic vehicle repairs",
-    description: "Certified dealership-grade maintenance brought right to your driveway or workplace with zero dealer wait times.",
-    services: [
-      {
-        id: "oil-change",
-        slug: "oil-change",
-        title: "Oil Change",
-        shortDesc: "Premium full-synthetic oil and OEM filter replacement at your doorstep.",
-        iconName: "Droplets",
-        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426863/xtreme/landing/fleet-trucks_jpg.jpg",
-        stats: {
-          badge: "Full Synthetic Lube and Filter Service",
-          duration: "30-40 Mins",
-          equipment: "Mobil 1 / Castrol Edge Synthetic",
-          warranty: "Certified Tech Guarantee",
-          checkmarks: [
-            "Full manufacturer synthetic formulation oil",
-            "Premium OEM-grade oil filter replacement",
-            "Multi-fluid top off: washer, brake, and coolant",
-            "Eco-friendly zero-spill used oil extraction and recycling"
-          ]
-        }
-      },
-      {
-        id: "brake-replacement",
-        slug: "brake-replacement",
-        title: "Brake Replacement",
-        shortDesc: "Ceramic pad and rotor replacement for silent, decisive stopping confidence.",
-        iconName: "Disc",
-        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426886/xtreme/landing/tire-service-wheel_jpg.jpg",
-        stats: {
-          badge: "Ceramic Brake Pads and Rotors",
-          duration: "60-75 Mins",
-          equipment: "Akebono / Bosch Ceramic Hardware",
-          warranty: "24-Month / 24,000-Mile Warranty",
-          checkmarks: [
-            "Micrometer digital rotor and pad wear analysis",
-            "Hardware, guide pin, and slide rail lubrication",
-            "Brake fluid moisture check and air bleed verification",
-            "Dynamic stopping safety road calibration test"
-          ]
-        }
-      },
-      {
-        id: "battery-boost",
-        slug: "battery-boost",
-        title: "Battery Boost / Jump-Start",
-        shortDesc: "Rapid on-location battery diagnostic, high-amperage jump-start, or new battery fitment.",
-        iconName: "Zap",
-        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426859/xtreme/landing/fleet-electric_jpg.jpg",
-        stats: {
-          badge: "Instant Battery Boost and Diagnostic",
-          duration: "15-25 Mins",
-          equipment: "Industrial High-Amp Jump System",
-          warranty: "Reliable Start Guarantee",
-          checkmarks: [
-            "Digital alternator and starter load diagnostic",
-            "Clean surge-protected high-amperage jump-start",
-            "Battery terminal corrosion cleaning and protective seal",
-            "On-site Interstate battery replacement if required"
+            "Factory OEM steel and alloy wheel match",
+            "Precision offset and bolt-pattern verification",
+            "Old cracked or bent rim safe removal",
+            "Full tire re-mounting, valve stem, and balance"
           ]
         }
       }
@@ -253,10 +204,10 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
   },
   {
     id: "roadside-assistance",
-    index: "04",
+    index: "03",
     title: "Roadside Assistance",
-    subtitle: "Help when customers are stranded",
-    description: "24/7 rapid roadside emergency dispatch across Canada and the US. Help arrives within minutes to keep you safe.",
+    subtitle: "24/7 priority emergency roadside help",
+    description: "Rapid emergency dispatch across our service corridors. Fully equipped mobile vans arrive with real-time GPS tracking.",
     services: [
       {
         id: "roadside-247",
@@ -275,6 +226,46 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
             "Highway safety perimeter and lighting setup",
             "Immediate emergency roadside triage",
             "Seamless spare tire change, jump, or dispatch"
+          ]
+        }
+      },
+      {
+        id: "spare-tire-change",
+        slug: "spare-tire-change",
+        title: "Spare Tire Change",
+        shortDesc: "Rapid roadside installation of your vehicle's spare or donut tire when you suffer a blowout.",
+        iconName: "Wrench",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426881/xtreme/landing/service-mobile-van_jpg.jpg",
+        stats: {
+          badge: "Rapid Roadside Spare Install",
+          duration: "15-25 Mins",
+          equipment: "Hydraulic Jack & Pneumatic Lugs",
+          warranty: "Safe Roadway Guarantee",
+          checkmarks: [
+            "Spare tire pressure check and inflation",
+            "Lug nut safety torque calibration",
+            "Damaged tire securely stowed in trunk",
+            "Hazard safety perimeter on road shoulder"
+          ]
+        }
+      },
+      {
+        id: "battery-boost",
+        slug: "battery-boost",
+        title: "Battery Boost / Jump-Start",
+        shortDesc: "Rapid on-location battery diagnostic and high-amperage surge-protected jump-start.",
+        iconName: "Zap",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426859/xtreme/landing/fleet-electric_jpg.jpg",
+        stats: {
+          badge: "Instant Battery Boost and Diagnostic",
+          duration: "15-20 Mins",
+          equipment: "Industrial High-Amp Jump System",
+          warranty: "Reliable Start Guarantee",
+          checkmarks: [
+            "Digital alternator and starter load diagnostic",
+            "Clean surge-protected high-amperage jump-start",
+            "Battery terminal corrosion cleaning and seal",
+            "On-site battery replacement option if depleted"
           ]
         }
       },
@@ -311,7 +302,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
           equipment: "DOT-Certified Safety Fuel Dispensers",
           warranty: "Immediate Restart Guarantee",
           checkmarks: [
-            "Up to 3 gallons of clean regular, premium, or diesel",
+            "Clean regular unleaded, premium, or diesel fuel",
             "Spill-free safety transfer directly into fuel neck",
             "Fuel line priming and engine start verification",
             "Turn-by-turn guidance to nearest fuel station"
@@ -321,49 +312,69 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
     ]
   },
   {
-    id: "vehicle-care-protection",
-    index: "05",
-    title: "Vehicle Care and Protection",
-    subtitle: "Keep vehicles clean and protected",
-    description: "Deep luxury interior rejuvenation and advanced self-healing paint protection film applied with meticulous care.",
+    id: "mobile-auto-maintenance",
+    index: "04",
+    title: "Mobile Auto Maintenance",
+    subtitle: "Routine vehicle maintenance at your doorstep",
+    description: "Certified routine maintenance brought right to your driveway or workplace with zero dealer wait times.",
     services: [
       {
-        id: "car-detailing",
-        slug: "car-detailing",
-        title: "Car Detailing",
-        shortDesc: "Mobile luxury interior steam extraction, exterior hand wash, and hydrophobic paint seal.",
-        iconName: "Sparkles",
-        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426894/xtreme/landing/wheel-detail_jpg.jpg",
+        id: "oil-change",
+        slug: "oil-change",
+        title: "Oil Change",
+        shortDesc: "Premium full-synthetic oil and OEM filter replacement at your doorstep.",
+        iconName: "Droplets",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426863/xtreme/landing/fleet-trucks_jpg.jpg",
         stats: {
-          badge: "Full Interior and Exterior Luxury Detail",
-          duration: "90-120 Mins",
-          equipment: "De-ionized Water and High-Temp Steam",
-          warranty: "Showroom Finish Guarantee",
+          badge: "Full Synthetic Lube and Filter Service",
+          duration: "30-40 Mins",
+          equipment: "Mobil 1 / Castrol Edge Synthetic",
+          warranty: "Certified Tech Guarantee",
           checkmarks: [
-            "pH-neutral foam bath and scratch-free two-bucket wash",
-            "High-temperature steam interior sanitization and stain lift",
-            "Leather conditioning with deep UV-ray blockers",
-            "Hydrophobic ceramic tire dressing and rim sealing"
+            "Full manufacturer synthetic formulation oil",
+            "Premium OEM-grade oil filter replacement",
+            "Multi-fluid top off: washer, brake, and coolant",
+            "Eco-friendly zero-spill used oil extraction and recycling"
           ]
         }
       },
       {
-        id: "ppf-protection",
-        slug: "ppf-paint-protection",
-        title: "PPF (Paint Protection Film)",
-        shortDesc: "Self-healing optical polyurethane film shielding your paintwork from rock chips and road debris.",
-        iconName: "Shield",
-        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426893/xtreme/landing/wheel-car_jpg.png",
+        id: "brake-inspection",
+        slug: "brake-inspection",
+        title: "Brake Inspection & Service",
+        shortDesc: "Mobile brake wear diagnostic, pad inspection, and rotor measurements for confident stopping.",
+        iconName: "Disc",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426886/xtreme/landing/tire-service-wheel_jpg.jpg",
         stats: {
-          badge: "Self-Healing Stone Chip Armor",
-          duration: "Custom Scheduled",
-          equipment: "Computer-Cut Precision Plotter",
-          warranty: "10-Year Anti-Yellowing Warranty",
+          badge: "Comprehensive Brake Safety Check",
+          duration: "30-45 Mins",
+          equipment: "Digital Micrometer & Caliper Gauges",
+          warranty: "Safety Inspection Certificate",
           checkmarks: [
-            "Heat-activated self-healing topcoat technology",
-            "High-impact rock chip, salt, and scratch deflection",
-            "Computer cut precision patterns matching exact body panels",
-            "Optically clear gloss preserving factory depth"
+            "Micrometer digital rotor thickness measurement",
+            "Brake pad remaining thickness percentage check",
+            "Brake fluid moisture and boiling point test",
+            "Full caliper, line, and hydraulic leak inspection"
+          ]
+        }
+      },
+      {
+        id: "battery-replacement",
+        slug: "battery-replacement",
+        title: "Battery Installation & Replacement",
+        shortDesc: "On-site commercial-grade battery replacement with alternator and starter test.",
+        iconName: "Zap",
+        image: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426859/xtreme/landing/fleet-electric_jpg.jpg",
+        stats: {
+          badge: "OEM-Spec Fresh Battery Installation",
+          duration: "25-35 Mins",
+          equipment: "Interstate / DieHard High-CCA Batteries",
+          warranty: "3-Year Free Replacement Warranty",
+          checkmarks: [
+            "Cold cranking amps (CCA) charging test",
+            "Terminal post wire-brush and anti-corrosion spray",
+            "Old battery eco-friendly recycling return",
+            "On-board memory preservation during installation"
           ]
         }
       }
