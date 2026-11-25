@@ -12,10 +12,6 @@ interface LocationItem {
   name: string;
   country: string;
   flag: string;
-  line1: string;
-  line2: string;
-  phone: string;
-  phoneRaw: string;
   email: string;
 }
 
@@ -26,10 +22,6 @@ const LOCATIONS: LocationItem[] = [
     name: "United Kingdom",
     country: "United Kingdom",
     flag: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426850/xtreme/landing/flags/uk_svg.svg",
-    line1: "UK Operations & Regional Dispatch Hub",
-    line2: "24-28 Holborn, London EC1N 2HT, United Kingdom",
-    phone: "+44 1630 234331",
-    phoneRaw: "+441630234331",
     email: "Info@xtrememobiletire.com",
   },
   {
@@ -38,10 +30,6 @@ const LOCATIONS: LocationItem[] = [
     name: "United States",
     country: "USA",
     flag: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426853/xtreme/landing/flags/us_svg.svg",
-    line1: "11815 Medway Church Loop",
-    line2: "Manassas, VA 20109, USA",
-    phone: "(804) 326-5442",
-    phoneRaw: "+18043265442",
     email: "Info@Xtrememobiletire.com",
   },
   {
@@ -50,10 +38,6 @@ const LOCATIONS: LocationItem[] = [
     name: "Canada",
     country: "Canada",
     flag: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426848/xtreme/landing/flags/ca_svg.svg",
-    line1: "857 Winterton Way, Mississauga, ON L5V 1Z5",
-    line2: "Canada",
-    phone: "(437) 375-5674",
-    phoneRaw: "+14373755674",
     email: "Info@Xtrememobiletire.com",
   },
 ];
@@ -259,23 +243,6 @@ export default function AboutContactLocations() {
                     transition={{ duration: 0.2, ease: "easeOut" }}
                     className="space-y-2 sm:space-y-3 w-full"
                   >
-                    {/* Address in clean readable typography */}
-                    <div className="text-xs xs:text-sm sm:text-lg md:text-xl text-zinc-700 dark:text-zinc-300 font-normal leading-snug tracking-tight font-sans">
-                      <p>{current.line1}</p>
-                      <p>{current.line2}</p>
-                    </div>
-
-                    {/* Phone Number in one line */}
-                    <p className="text-xs xs:text-sm sm:text-lg md:text-xl text-zinc-900 dark:text-white font-medium tracking-tight font-sans">
-                      <a
-                        href={`tel:${current.phoneRaw}`}
-                        className="hover:text-[var(--brand-primary)] dark:hover:text-[var(--brand-primary)] transition-colors inline-flex items-center gap-2 min-h-[36px]"
-                      >
-                        <Phone className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-[var(--brand-primary)] shrink-0 inline md:hidden" />
-                        <span>{current.phone}</span>
-                      </a>
-                    </p>
-
                     {/* Email with continuous underline */}
                     <p className="text-xs xs:text-sm sm:text-lg md:text-xl text-zinc-900 dark:text-white font-medium tracking-tight pt-0.5 font-sans break-all sm:break-normal">
                       <a

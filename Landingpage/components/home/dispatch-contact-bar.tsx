@@ -20,47 +20,8 @@ export default function DispatchContactBar() {
           <span>24/7 Fleet Dispatch:</span>
         </div>
 
-        {/* Contact Numbers Row */}
+        {/* Contact Row */}
         <div className="flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-1 sm:gap-y-1.5">
-          {/* US Dispatch */}
-          <a
-            href="tel:+18043265442"
-            className="hover:text-[var(--brand-primary)] transition-colors cursor-pointer whitespace-nowrap group/link min-h-[36px] inline-flex items-center px-1.5 py-1"
-          >
-            <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100 group-hover/link:text-[var(--brand-primary)]">
-              (804) 326-5442
-            </span>{" "}
-            <span className="text-zinc-500 text-xs font-normal ml-1">(US)</span>
-          </a>
-
-          <span className="text-zinc-400 dark:text-zinc-600 hidden md:inline select-none">|</span>
-
-          {/* CA Dispatch */}
-          <a
-            href="tel:+14373755674"
-            className="hover:text-[var(--brand-primary)] transition-colors cursor-pointer whitespace-nowrap group/link min-h-[36px] inline-flex items-center px-1.5 py-1"
-          >
-            <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100 group-hover/link:text-[var(--brand-primary)]">
-              (437) 375-5674
-            </span>{" "}
-            <span className="text-zinc-500 text-xs font-normal ml-1">(CA)</span>
-          </a>
-
-          <span className="text-zinc-400 dark:text-zinc-600 hidden md:inline select-none">|</span>
-
-          {/* UK Dispatch */}
-          <a
-            href="tel:+441630234331"
-            className="hover:text-[var(--brand-primary)] transition-colors cursor-pointer whitespace-nowrap group/link min-h-[36px] inline-flex items-center px-1.5 py-1"
-          >
-            <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100 group-hover/link:text-[var(--brand-primary)]">
-              +44 1630 234331
-            </span>{" "}
-            <span className="text-zinc-500 text-xs font-normal ml-1">(UK)</span>
-          </a>
-
-          <span className="text-zinc-400 dark:text-zinc-600 hidden md:inline select-none">|</span>
-
           {/* Official Email */}
           <a
             href="mailto:Info@Xtrememobiletire.com"

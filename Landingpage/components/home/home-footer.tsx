@@ -193,14 +193,7 @@ export default function HomeFooter({
                   <h4 className="text-sm xs:text-base font-bold text-white group-hover:text-black transition-colors font-sans">
                     United States
                   </h4>
-                  <p className="text-[11px] xs:text-xs text-zinc-300 group-hover:text-black leading-snug font-sans transition-colors">
-                    11815 Medway Church Loop, Manassas, VA 20109
-                  </p>
                   <div className="pt-1 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-x-2 gap-y-1 text-[10px] xs:text-[11px] text-zinc-400 group-hover:text-black font-sans transition-colors">
-                    <a href="tel:8043265442" className="hover:underline text-zinc-300 group-hover:text-black transition-colors">
-                      (804) 326-5442
-                    </a>
-                    <span className="hidden sm:inline">•</span>
                     <a href="mailto:Info@Xtrememobiletire.com" className="hover:underline text-zinc-300 group-hover:text-black transition-colors break-all sm:break-normal">
                       Info@Xtrememobiletire.com
                     </a>
@@ -219,14 +212,7 @@ export default function HomeFooter({
                   <h4 className="text-sm xs:text-base font-bold text-white group-hover:text-black transition-colors font-sans">
                     Canada
                   </h4>
-                  <p className="text-[11px] xs:text-xs text-zinc-300 group-hover:text-black leading-snug font-sans transition-colors">
-                    857 Winterton Way, Mississauga, ON L5V 1Z5, Canada
-                  </p>
                   <div className="pt-1 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-x-2 gap-y-1 text-[10px] xs:text-[11px] text-zinc-400 group-hover:text-black font-sans transition-colors">
-                    <a href="tel:4373755674" className="hover:underline text-zinc-300 group-hover:text-black transition-colors">
-                      (437) 375-5674
-                    </a>
-                    <span className="hidden sm:inline">•</span>
                     <a href="mailto:Info@Xtrememobiletire.com" className="hover:underline text-zinc-300 group-hover:text-black transition-colors break-all sm:break-normal">
                       Info@Xtrememobiletire.com
                     </a>
