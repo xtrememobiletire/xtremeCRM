@@ -237,7 +237,7 @@ export default function InvoicePdfModal({
         <div className="flex flex-wrap items-center justify-between px-5 py-3.5 bg-slate-900 text-white border-b border-slate-800 shrink-0 gap-3 no-print">
           <div className="flex items-center gap-3">
             <img
-              src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp"
+              src="/logo.png"
               alt="Xtreme"
               className="h-8 w-auto object-contain shrink-0"
             />
@@ -488,7 +488,7 @@ export default function InvoicePdfModal({
                   <div>
                     <div className="flex items-center gap-4">
                       <img
-                        src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp"
+                        src="/logo.png"
                         alt="Xtreme Mobile Tire"
                         className="h-16 sm:h-20 w-auto object-contain shrink-0"
                       />

@@ -35,7 +35,7 @@ export default function LoginForm() {
       {/* Brand Logo Included Inside Black Card */}
       <div className="flex justify-center pt-1 pb-1">
         <img 
-          src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426903/xtreme/frontend/logo-signin_png.png" 
+          src="/logo.png" 
           alt="Xtreme Mobile Tire" 
           className="h-14 sm:h-16 w-auto object-contain drop-shadow-md" 
         />
