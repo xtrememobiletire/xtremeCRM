@@ -28,14 +28,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('xtreme_user');
-    return saved ? JSON.parse(saved) : null;
+    if (!saved) return null;
+    try {
+      return JSON.parse(saved);
+    } catch {
+      localStorage.removeItem('xtreme_user');
+      return null;
+    }
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(() => {
+    return Boolean(localStorage.getItem('xtreme_user') || localStorage.getItem('xtreme_token'));
+  });
 
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const res = await api.get('/auth/me');
+        const res = await api.get('/auth/me', { timeout: 5000 });
         if (res.data.success && res.data.data) {
           const u = res.data.data;
           const formattedUser = {
@@ -47,13 +55,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const nonSwitching = ['DRIVER', 'CALL_AGENT', 'FLEET_MANAGER', 'CUSTOMER_MEMBER', 'VIRTUAL_ASSISTANT'];
           if (u.countryCode && (nonSwitching.includes(u.role) || !localStorage.getItem('xtreme_country'))) {
             localStorage.setItem('xtreme_country', u.countryCode);
-        queryClient.clear();
+            queryClient.clear();
           }
         }
       } catch {
         // If unauthenticated or token expired, clear invalid storage
         queryClient.clear();
-    setUser(null);
+        setUser(null);
         localStorage.removeItem('xtreme_user');
         localStorage.removeItem('xtreme_token');
       } finally {

@@ -6,13 +6,13 @@ import { queryClient } from './lib/queryClient';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TenantProvider } from './context/TenantContext';
 import { SocketProvider } from './context/SocketContext';
-import MainLayout from './components/layout/MainLayout';
 import { RouteErrorBoundary } from './components/common/RouteErrorBoundary';
 import { useSSE } from './hooks/useSSE';
 
 import { lazyWithRetry } from './utils/lazyWithRetry';
 
 // Lazy Loaded Pages with Auto-Retry
+const MainLayout = lazyWithRetry(() => import('./components/layout/MainLayout'));
 const Login = lazyWithRetry(() => import('./pages/Login'));
 const Dashboard = lazyWithRetry(() => import('./pages/Dashboard'));
 const Jobs = lazyWithRetry(() => import('./pages/Jobs'));
@@ -163,7 +163,9 @@ function AppRoutes() {
                 {user.role === 'FLEET_MANAGER' ? (
                   <Navigate to="/fleet-dashboard" replace />
                 ) : (
-                  <MainLayout />
+                  <Suspense fallback={<PageLoader />}>
+                    <MainLayout />
+                  </Suspense>
                 )}
               </ProtectedRoute>
             }
@@ -202,7 +204,9 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute>
-              <MainLayout />
+              <Suspense fallback={<PageLoader />}>
+                <MainLayout />
+              </Suspense>
             </ProtectedRoute>
           }
         >
