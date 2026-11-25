@@ -11,10 +11,10 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 # Build argument for API URL & WebSocket
-ARG VITE_API_BASE_URL=https://api.xtrememobiletire.com/api
+ARG VITE_API_BASE_URL=https://api.calltire.net/api
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
-ARG VITE_WS_URL=https://api.xtrememobiletire.com
+ARG VITE_WS_URL=https://api.calltire.net
 ENV VITE_WS_URL=$VITE_WS_URL
 
 ARG VITE_MAPBOX_ACCESS_TOKEN

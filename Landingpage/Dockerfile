@@ -16,13 +16,13 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 # Build arguments for public URLs (configurable in Dokploy)
-ARG NEXT_PUBLIC_APP_URL=https://app.xtrememobiletire.com
+ARG NEXT_PUBLIC_APP_URL=https://app.calltire.net
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
-ARG NEXT_PUBLIC_BACKEND_URL=https://api.xtrememobiletire.com
+ARG NEXT_PUBLIC_BACKEND_URL=https://api.calltire.net
 ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 
-ARG NEXT_PUBLIC_API_URL=https://api.xtrememobiletire.com/api
+ARG NEXT_PUBLIC_API_URL=https://api.calltire.net/api
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 ENV NEXT_TELEMETRY_DISABLED=1

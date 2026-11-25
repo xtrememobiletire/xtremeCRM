@@ -107,7 +107,7 @@ export interface BookingModalProps {
 }
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.xtrememobiletire.com/api";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.calltire.net/api";
 
 const TIMEZONES = [
   { label: "Canada – Toronto (EDT/EST)", value: "America/Toronto" },

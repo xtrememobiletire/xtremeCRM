@@ -57,7 +57,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     description:
       "Your drivers call us directly when stuck—track live repair status from your portal and pay via consolidated weekly invoices.",
     ctaText: "Explore Live Portal",
-    ctaHref: "https://app.xtrememobiletire.com/login",
+    ctaHref: "https://app.calltire.net/login",
     imageSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426862/xtreme/landing/fleet-semi_jpg.jpg",
     imageAlt: "Commercial Roadside Semi Truck Dispatch",
     badge: "LIVE GPS TELEMETRY",
@@ -74,7 +74,7 @@ export default function FleetOnboardingSteps() {
 
   const handleCtaClick = (stepId: string) => {
     if (stepId === "step-3") {
-      window.location.assign("https://app.xtrememobiletire.com/login");
+      window.location.assign("https://app.calltire.net/login");
     } else {
       const target = document.getElementById("create-fleet-account");
       if (target) {
