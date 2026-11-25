@@ -107,7 +107,7 @@ export default function AboutBrandsMarquee() {
           <div className="md:max-w-md lg:max-w-lg">
             <p className="text-xs xs:text-sm sm:text-base md:text-lg leading-snug tracking-tight font-medium">
               <span className="text-zinc-950 dark:text-white font-extrabold">
-                At XtremeMobileTire,{" "}
+                At Call Mobile Tire,{" "}
               </span>
               <span className="text-zinc-600 dark:text-zinc-400 font-normal">
                 Expert mobile tire and wheel care for every major vehicle brand

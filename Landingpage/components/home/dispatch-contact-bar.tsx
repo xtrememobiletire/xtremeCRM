@@ -24,12 +24,12 @@ export default function DispatchContactBar() {
         <div className="flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-1 sm:gap-y-1.5">
           {/* Official Email */}
           <a
-            href="mailto:Info@Xtrememobiletire.com"
+            href="mailto:info@calltire.net"
             className="inline-flex items-center gap-1.5 hover:text-[var(--brand-primary)] transition-colors cursor-pointer break-all sm:break-normal min-h-[36px] px-1.5 py-1 group/link"
           >
             <Mail className="w-3.5 h-3.5 text-[var(--brand-primary)] shrink-0" />
             <span className="font-semibold text-zinc-900 dark:text-zinc-100 group-hover/link:text-[var(--brand-primary)]">
-              Info@Xtrememobiletire.com
+              info@calltire.net
             </span>
           </a>
         </div>

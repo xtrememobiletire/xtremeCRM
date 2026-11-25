@@ -42,7 +42,7 @@ export default function DispatchMap({ country }: DispatchMapProps) {
 
         <div className="z-10 flex justify-between items-end text-[11px] text-slate-400">
           <span>Auto-refresh interval: 10s</span>
-          <span className="font-mono text-xs text-red-400 font-bold">Xtreme Fleet Telemetry v2.4</span>
+          <span className="font-mono text-xs text-red-400 font-bold">Call Mobile Tire Telemetry v2.4</span>
         </div>
       </div>
     </Card>

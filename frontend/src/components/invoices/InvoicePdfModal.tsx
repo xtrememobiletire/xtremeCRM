@@ -29,23 +29,23 @@ const REGIONAL_HUBS = {
     address: '857 Winterton Way, Mississauga, ON L5V 1Z5',
     phone: '+1 (416) 555-0192',
     taxLabel: 'HST (13%)',
-    paymentEmail: 'payments@xtrememobiletire.com',
-    bankInfo: 'Interac E-Transfer to payments@xtrememobiletire.com\nDirect Deposit: TD Canada Trust (Transit: 01922, Inst: 004)',
+    paymentEmail: 'payments@calltire.net',
+    bankInfo: 'Interac E-Transfer to payments@calltire.net\nDirect Deposit: TD Canada Trust (Transit: 01922, Inst: 004)',
   },
   US: {
     country: 'United States',
     address: '11815 Medway Church Loop, Manassas, VA 20109',
     phone: '+1 (703) 555-0144',
     taxLabel: 'Sales Tax (8%)',
-    paymentEmail: 'payments.us@xtrememobiletire.com',
-    bankInfo: 'ACH / Wire Remittance: Wells Fargo Bank, N.A.\nZelle Transfer: payments.us@xtrememobiletire.com',
+    paymentEmail: 'payments.us@calltire.net',
+    bankInfo: 'ACH / Wire Remittance: Wells Fargo Bank, N.A.\nZelle Transfer: payments.us@calltire.net',
   },
   UK: {
     country: 'United Kingdom',
     address: 'Independent UK Hub, 24-28 Holborn, London EC1N 2HT',
     phone: '+44 20 7946 0912',
     taxLabel: 'VAT (20%)',
-    paymentEmail: 'payments.uk@xtrememobiletire.com',
+    paymentEmail: 'payments.uk@calltire.net',
     bankInfo: 'Faster Payments / BACS: Barclays Bank PLC\nSort Code: 20-00-00, Account No: 83921048',
   },
 };
@@ -97,7 +97,7 @@ export default function InvoicePdfModal({
           setClientAddress(res.billTo?.address || '');
           setClientPhone(res.billTo?.phone || '');
           setClientEmail(res.billTo?.email || '');
-          setEmailSubject(`Xtreme Mobile Tire - Invoice #${res.invoiceNumber || ''}`);
+          setEmailSubject(`Call Mobile Tire - Invoice #${res.invoiceNumber || ''}`);
           if (initialSendMode) setIsEditingAddress(true);
         })
         .catch(() => {
@@ -127,7 +127,7 @@ export default function InvoicePdfModal({
     setClientAddress(data.billTo?.address || '');
     setClientPhone(data.billTo?.phone || '');
     setClientEmail(data.billTo?.email || '');
-    setEmailSubject(`Xtreme Mobile Tire - Invoice #${data.invoiceNumber || ''}`);
+    setEmailSubject(`Call Mobile Tire - Invoice #${data.invoiceNumber || ''}`);
     toast.success('Addresses reset to default record');
   };
 
@@ -238,7 +238,7 @@ export default function InvoicePdfModal({
           <div className="flex items-center gap-3">
             <img
               src="/logo.png"
-              alt="Xtreme"
+              alt="Call Mobile Tire"
               className="h-8 w-auto object-contain shrink-0"
             />
             <div>
@@ -437,7 +437,7 @@ export default function InvoicePdfModal({
                     type="text"
                     value={emailSubject}
                     onChange={(e) => setEmailSubject(e.target.value)}
-                    placeholder="e.g. Xtreme Mobile Tire - Invoice #..."
+                    placeholder="e.g. Call Mobile Tire - Invoice #..."
                     className="w-full px-2 py-1 border border-slate-200 rounded text-xs mt-0.5 font-medium"
                   />
                 </div>
@@ -489,7 +489,7 @@ export default function InvoicePdfModal({
                     <div className="flex items-center gap-4">
                       <img
                         src="/logo.png"
-                        alt="Xtreme Mobile Tire"
+                        alt="Call Mobile Tire"
                         className="h-16 sm:h-20 w-auto object-contain shrink-0"
                       />
                       <div>
@@ -708,7 +708,7 @@ export default function InvoicePdfModal({
                     <span className="font-bold text-slate-800 uppercase text-[10px] tracking-wider">
                       AUTHORIZED SIGNATURE
                     </span>
-                    <span className="text-[9px] text-slate-500">Xtreme Mobile Tire Group</span>
+                    <span className="text-[9px] text-slate-500">Call Mobile Tire Group</span>
                   </div>
                 </div>
               </div>
@@ -732,7 +732,7 @@ export default function InvoicePdfModal({
                     </span>
                   </div>
                   <span className="text-[10px] text-slate-400 font-mono">
-                    xtrememobiletire.com • 24/7 Rapid Mobile Response
+                    calltire.net • 24/7 Rapid Mobile Response
                   </span>
                 </div>
               </div>

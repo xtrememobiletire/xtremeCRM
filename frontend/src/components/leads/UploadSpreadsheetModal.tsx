@@ -121,7 +121,7 @@ export default function UploadSpreadsheetModal({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'xtreme_leads_template.csv');
+    link.setAttribute('download', 'call_mobile_tire_leads_template.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

@@ -9,14 +9,14 @@ import AboutServicesCta from "@/components/about/about-services-cta";
 import AboutContactLocations from "@/components/about/about-contact-locations";
 
 export const metadata: Metadata = {
-  title: "About Call Tire | 24/7 On-Demand Tire Pros",
+  title: "About Call Mobile Tire | 24/7 On-Demand Tire Pros",
   description:
-    "Learn how Call Tire revolutionizes tire care. Certified mobile technicians delivering fast, transparent, and reliable roadside tire service.",
+    "Learn how Call Mobile Tire revolutionizes tire care. Certified mobile technicians delivering fast, transparent, and reliable roadside tire service.",
   alternates: {
     canonical: "/about",
   },
   keywords: [
-    "about xtreme mobile tire",
+    "about call mobile tire",
     "how does mobile tire service work",
     "mobile tire repair vs tire shop",
     "benefits of on-site tire replacement",
@@ -25,9 +25,9 @@ export const metadata: Metadata = {
     "on-demand tire technicians"
   ],
   openGraph: {
-    title: "About Call Tire | 24/7 On-Demand Tire Pros",
+    title: "About Call Mobile Tire | 24/7 On-Demand Tire Pros",
     description:
-      "Learn how Call Tire revolutionizes tire care. Certified mobile technicians delivering fast, transparent, and reliable roadside tire service.",
+      "Learn how Call Mobile Tire revolutionizes tire care. Certified mobile technicians delivering fast, transparent, and reliable roadside tire service.",
     url: "/about",
     type: "website",
     images: [
@@ -35,15 +35,15 @@ export const metadata: Metadata = {
         url: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426881/xtreme/landing/service-mobile-van_jpg.jpg",
         width: 1200,
         height: 630,
-        alt: "About Call Tire - 24/7 Roadside Tire Team",
+        alt: "About Call Mobile Tire - 24/7 Roadside Tire Team",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "About Call Tire | 24/7 On-Demand Tire Pros",
+    title: "About Call Mobile Tire | 24/7 On-Demand Tire Pros",
     description:
-      "Learn how Call Tire revolutionizes tire care. Certified mobile technicians delivering fast, transparent, and reliable roadside tire service.",
+      "Learn how Call Mobile Tire revolutionizes tire care. Certified mobile technicians delivering fast, transparent, and reliable roadside tire service.",
     images: [
       "https://res.cloudinary.com/ebjikx52/image/upload/v1792426881/xtreme/landing/service-mobile-van_jpg.jpg",
     ],

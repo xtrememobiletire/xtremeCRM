@@ -36,7 +36,7 @@ export default function LoginForm() {
       <div className="flex justify-center pt-1 pb-1">
         <img 
           src="/logo.png" 
-          alt="Xtreme Mobile Tire" 
+          alt="Call Mobile Tire" 
           className="h-14 sm:h-16 w-auto object-contain drop-shadow-md" 
         />
       </div>

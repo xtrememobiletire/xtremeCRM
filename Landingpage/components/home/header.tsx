@@ -10,7 +10,7 @@ export interface HeaderProps {
 }
 
 export default function Header({
-  brandName = "Xtreme Mobile Tire",
+  brandName = "Call Mobile Tire",
   logoSrc = "/logo.png",
   onLogoClick,
   hide = false,

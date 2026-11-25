@@ -12,7 +12,7 @@ interface HomeFooterProps {
 }
 
 export default function HomeFooter({
-  brandName = "Xtreme Mobile Tire",
+  brandName = "Call Mobile Tire",
   logoSrc = "/logo.png",
   className = "",
 }: HomeFooterProps) {
@@ -53,7 +53,7 @@ export default function HomeFooter({
 
               {/* Simple Sans-Serif Quote with Generous Breathing Room */}
               <p className="font-sans text-xs xs:text-sm sm:text-base text-zinc-300 leading-relaxed max-w-sm font-normal">
-                Xtreme Mobile Tire delivers expert mobile tire installation, replacement, and repair across Canada and the USA.
+                Call Mobile Tire delivers expert mobile tire installation, replacement, and repair across Canada and the USA.
               </p>
             </div>
 
@@ -194,8 +194,8 @@ export default function HomeFooter({
                     United States
                   </h4>
                   <div className="pt-1 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-x-2 gap-y-1 text-[10px] xs:text-[11px] text-zinc-400 group-hover:text-black font-sans transition-colors">
-                    <a href="mailto:Info@Xtrememobiletire.com" className="hover:underline text-zinc-300 group-hover:text-black transition-colors break-all sm:break-normal">
-                      Info@Xtrememobiletire.com
+                    <a href="mailto:info@calltire.net" className="hover:underline text-zinc-300 group-hover:text-black transition-colors break-all sm:break-normal">
+                      info@calltire.net
                     </a>
                   </div>
                 </div>
@@ -213,8 +213,8 @@ export default function HomeFooter({
                     Canada
                   </h4>
                   <div className="pt-1 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-x-2 gap-y-1 text-[10px] xs:text-[11px] text-zinc-400 group-hover:text-black font-sans transition-colors">
-                    <a href="mailto:Info@Xtrememobiletire.com" className="hover:underline text-zinc-300 group-hover:text-black transition-colors break-all sm:break-normal">
-                      Info@Xtrememobiletire.com
+                    <a href="mailto:info@calltire.net" className="hover:underline text-zinc-300 group-hover:text-black transition-colors break-all sm:break-normal">
+                      info@calltire.net
                     </a>
                   </div>
                 </div>
@@ -238,7 +238,7 @@ export default function HomeFooter({
       {/* ======================================================== */}
       {/* FULL-WIDTH TWO-TONE BRANDING TEXT                        */}
       {/* ======================================================== */}
-      <FooterLargeBranding brandText="XtremeMobileTire" />
+      <FooterLargeBranding brandText="Call Mobile Tire" />
 
     </footer>
   );

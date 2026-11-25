@@ -110,11 +110,11 @@ export default function FleetDowntimeBanner() {
 
         <div className="flex flex-wrap items-center justify-center gap-x-3 xs:gap-x-4 gap-y-1">
           <a
-            href="mailto:Info@Xtrememobiletire.com"
+            href="mailto:info@calltire.net"
             className="inline-flex items-center gap-1.5 hover:text-[var(--brand-primary)] transition-colors cursor-pointer break-all sm:break-normal min-h-[36px]"
           >
             <Mail className="w-3.5 h-3.5 text-[var(--brand-primary)] shrink-0" />
-            <span className="font-semibold">Info@Xtrememobiletire.com</span>
+            <span className="font-semibold">info@calltire.net</span>
           </a>
         </div>
       </div>

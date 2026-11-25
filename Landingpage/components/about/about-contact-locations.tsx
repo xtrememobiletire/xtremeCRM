@@ -22,7 +22,7 @@ const LOCATIONS: LocationItem[] = [
     name: "United Kingdom",
     country: "United Kingdom",
     flag: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426850/xtreme/landing/flags/uk_svg.svg",
-    email: "Info@xtrememobiletire.com",
+    email: "info@calltire.net",
   },
   {
     id: "us",
@@ -30,7 +30,7 @@ const LOCATIONS: LocationItem[] = [
     name: "United States",
     country: "USA",
     flag: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426853/xtreme/landing/flags/us_svg.svg",
-    email: "Info@Xtrememobiletire.com",
+    email: "info@calltire.net",
   },
   {
     id: "cad",
@@ -38,7 +38,7 @@ const LOCATIONS: LocationItem[] = [
     name: "Canada",
     country: "Canada",
     flag: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426848/xtreme/landing/flags/ca_svg.svg",
-    email: "Info@Xtrememobiletire.com",
+    email: "info@calltire.net",
   },
 ];
 

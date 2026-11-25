@@ -33,7 +33,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
 ];
 
 export default function Navbar({
-  brandName = "Xtreme Mobile Tire",
+  brandName = "Call Mobile Tire",
   logoSrc = "/logo.png",
   navItems = DEFAULT_NAV_ITEMS,
   signInHref = LOGIN_URL,

@@ -19,7 +19,7 @@ export default function FleetTable({ fleets, onSelectFleet }: FleetTableProps) {
 
   const handleCopyInvite = (f: FleetItem, e: React.MouseEvent) => {
     e.stopPropagation();
-    const inviteText = `🏢 Xtreme Mobile Tire — Fleet Manager Portal
+    const inviteText = `🏢 Call Mobile Tire — Fleet Manager Portal
 🔗 Portal: ${window.location.origin}/login
 📧 Login Email: ${f.email || '—'}
 🏷️ Fleet Code: ${f.fleetCode || f.id}`;

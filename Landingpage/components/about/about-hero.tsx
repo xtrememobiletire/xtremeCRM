@@ -14,10 +14,10 @@ interface AboutHeroProps {
 }
 
 export default function AboutHero({
-  badgeText = "ABOUT XTREME MOBILE TIRE",
+  badgeText = "ABOUT CALL MOBILE TIRE",
   badgeHref = "/booking",
   titleLine1 = "Welcome to",
-  titleItalic = "Xtreme Mobile Tire.",
+  titleItalic = "Call Mobile Tire.",
   description = "Fast, reliable on-site tire repair and replacement for everyday drivers and commercial fleets across the USA and Canada.",
   ctaText = "Book Now",
   ctaHref = "/booking",

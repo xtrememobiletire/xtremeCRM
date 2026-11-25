@@ -217,7 +217,7 @@ export default function ExternalDriverDispatch() {
             </div>
             <div>
               <span className="text-xs font-bold text-slate-900 tracking-tight block">
-                XTREME MOBILE TIRE
+                CALL MOBILE TIRE
               </span>
               <span className="text-[10px] text-slate-500">
                 {job.externalCompanyName || 'External Contractor'}

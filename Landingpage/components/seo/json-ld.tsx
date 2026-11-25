@@ -6,15 +6,15 @@ export function OrganizationSchema() {
     "@graph": [
       {
         "@type": ["AutoRepair", "EmergencyService"],
-        "@id": "https://xtrememobiletire.com/#organization",
-        "name": "Xtreme Mobile Tire",
-        "alternateName": "Xtreme Mobile Tire Solutions",
-        "url": "https://xtrememobiletire.com",
-        "logo": "https://xtrememobiletire.com/logo.png",
+        "@id": "https://calltire.net/#organization",
+        "name": "Call Mobile Tire",
+        "alternateName": "Call Mobile Tire Solutions",
+        "url": "https://calltire.net",
+        "logo": "https://calltire.net/logo.png",
         "image": "https://res.cloudinary.com/ebjikx52/image/upload/v1792426881/xtreme/landing/service-mobile-van_jpg.jpg",
         "description": "24/7 on-demand mobile tire repair, tire replacement, roadside assistance, and commercial fleet management solutions delivered directly to your location.",
         "telephone": "+1-804-326-5442",
-        "email": "Info@Xtrememobiletire.com",
+        "email": "info@calltire.net",
         "priceRange": "$$",
         "currenciesAccepted": "USD, CAD",
         "paymentAccepted": "Credit Card, Debit Card, Fleet Account Invoicing",
@@ -97,11 +97,11 @@ export function OrganizationSchema() {
       },
       {
         "@type": "FAQPage",
-        "@id": "https://xtrememobiletire.com/#faq",
+        "@id": "https://calltire.net/#faq",
         "mainEntity": [
           {
             "@type": "Question",
-            "name": "How fast does an Xtreme Mobile Tire van arrive?",
+            "name": "How fast does a Call Mobile Tire van arrive?",
             "acceptedAnswer": {
               "@type": "Answer",
               "text": "For 24/7 emergency roadside calls, our mobile tire units are typically dispatched immediately with rapid arrival directly to your vehicle's GPS coordinates."

@@ -33,7 +33,7 @@ export default function ServicesShowcase() {
           </h2>
         </div>
         <p className="text-xs xs:text-sm sm:text-base md:text-lg text-zinc-600 dark:text-zinc-400 max-w-md font-normal leading-relaxed">
-          At XtremeMobileTire, our mission is simple: to do what&apos;s best for our customers and their vehicles.
+          At Call Mobile Tire, our mission is simple: to do what&apos;s best for our customers and their vehicles.
         </p>
       </div>
 

@@ -29,7 +29,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
     index: "01",
     title: "Tire Services",
     subtitle: "For all tire-related needs",
-    description: "At XtremeMobileTire, our mission is simple: to do what's best for our customers and their vehicles with touchless, rapid on-site tire expertise.",
+    description: "At Call Mobile Tire, our mission is simple: to do what's best for our customers and their vehicles with touchless, rapid on-site tire expertise.",
     services: [
       {
         id: "tire-swap-on-rim",

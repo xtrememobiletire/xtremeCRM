@@ -7,7 +7,7 @@ import FleetDowntimeBanner from "@/components/fleet/fleet-downtime-banner";
 import FleetCreateAccount from "@/components/fleet/fleet-create-account";
 
 export const metadata: Metadata = {
-  title: "Commercial Fleet Tire Management | Call Tire",
+  title: "Commercial Fleet Tire Management | Call Mobile Tire",
   description:
     "Cut downtime with on-site commercial fleet tire maintenance, emergency roadside dispatch, and scheduled inspections. Tailored B2B fleet service plans.",
   alternates: {
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     "fleet tire inspection"
   ],
   openGraph: {
-    title: "Commercial Fleet Tire Management | Call Tire",
+    title: "Commercial Fleet Tire Management | Call Mobile Tire",
     description:
       "Cut downtime with on-site commercial fleet tire maintenance, emergency roadside dispatch, and scheduled inspections. Tailored B2B fleet service plans.",
     url: "/fleet-solutions",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Commercial Fleet Tire Management | Call Tire",
+    title: "Commercial Fleet Tire Management | Call Mobile Tire",
     description:
       "Cut downtime with on-site commercial fleet tire maintenance, emergency roadside dispatch, and scheduled inspections. Tailored B2B fleet service plans.",
     images: [

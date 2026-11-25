@@ -215,7 +215,7 @@ export default function CreateUserModal({
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. john.doe@xtremetire.com"
+              placeholder="e.g. john.doe@calltire.net"
               className="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
             />
           </div>

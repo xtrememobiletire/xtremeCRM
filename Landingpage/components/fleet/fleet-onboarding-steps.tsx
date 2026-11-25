@@ -110,7 +110,7 @@ export default function FleetOnboardingSteps() {
           </h2>
         </div>
         <p className="text-xs xs:text-sm sm:text-base md:text-lg text-zinc-600 dark:text-zinc-400 max-w-md font-normal leading-relaxed">
-          At XtremeMobileTire, keep your commercial fleet moving 24/7 with live dispatch and zero downtime.
+          At Call Mobile Tire, keep your commercial fleet moving 24/7 with live dispatch and zero downtime.
         </p>
       </div>
 

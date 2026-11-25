@@ -22,7 +22,7 @@ const TESTIMONIALS: TestimonialItem[] = [
     avatarSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426721/xtreme/landing/avatar-1_jpg.jpg",
     avatarAlt: "Jennifer Walsh - Apex Freight",
     quote:
-      "Xtreme Mobile Tire completely transformed how our commercial logistics operations run. Roadside blowout downtime dropped by 65% and our drivers are back on the highway in under 40 minutes.",
+      "Call Mobile Tire completely transformed how our commercial logistics operations run. Roadside blowout downtime dropped by 65% and our drivers are back on the highway in under 40 minutes.",
   },
   {
     id: "marcus",
@@ -52,7 +52,7 @@ const TESTIMONIALS: TestimonialItem[] = [
     avatarSrc: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426723/xtreme/landing/avatar-4_jpg.jpg",
     avatarAlt: "David Morales - Vanguard Contractor",
     quote:
-      "Whether it's an emergency flat on I-95 or scheduled skid steer and work van tire rotations across job sites, Xtreme Mobile Tire is always on site before our paperwork is even finished.",
+      "Whether it's an emergency flat on I-95 or scheduled skid steer and work van tire rotations across job sites, Call Mobile Tire is always on site before our paperwork is even finished.",
   },
 ];
 

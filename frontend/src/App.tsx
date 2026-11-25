@@ -76,7 +76,7 @@ function RedirectToLanding() {
     const landingUrl =
       import.meta.env.VITE_LANDING_PAGE_URL ||
       (import.meta.env.PROD || (typeof window !== 'undefined' && !window.location.hostname.includes('localhost'))
-        ? 'https://xtrememobiletire.com'
+        ? 'https://calltire.net'
         : 'http://localhost:4000');
     window.location.replace(landingUrl);
   }, []);
