@@ -28,13 +28,13 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "24/7 Mobile Tire Service & Repair | Xtreme Mobile Tire",
-    template: "%s | Xtreme Mobile Tire",
+    default: "24/7 Mobile Tire Service & Repair | Call Tire",
+    template: "%s | Call Tire",
   },
   description:
     "Flat tire? We come to you 24/7. Fast on-demand mobile tire repair, replacement, and roadside assistance for cars & fleets. Call or book online now!",
-  applicationName: "Xtreme Mobile Tire",
-  authors: [{ name: "Xtreme Mobile Tire", url: siteUrl }],
+  applicationName: "Call Tire",
+  authors: [{ name: "Call Tire", url: siteUrl }],
   generator: "Next.js",
   keywords: [
     "mobile tire repair",
@@ -50,8 +50,8 @@ export const metadata: Metadata = {
     "tire change at my location",
     "emergency fleet roadside tire service"
   ],
-  creator: "Xtreme Mobile Tire",
-  publisher: "Xtreme Mobile Tire",
+  creator: "Call Tire",
+  publisher: "Call Tire",
   formatDetection: {
     telephone: true,
     email: true,
@@ -64,8 +64,8 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: siteUrl,
-    siteName: "Xtreme Mobile Tire",
-    title: "24/7 Mobile Tire Service & Repair | Xtreme Mobile Tire",
+    siteName: "Call Tire",
+    title: "24/7 Mobile Tire Service & Repair | Call Tire",
     description:
       "Flat tire? We come to you 24/7. Fast on-demand mobile tire repair, replacement, and roadside assistance for cars & fleets.",
     images: [
@@ -73,13 +73,13 @@ export const metadata: Metadata = {
         url: "https://res.cloudinary.com/ebjikx52/image/upload/v1792426881/xtreme/landing/service-mobile-van_jpg.jpg",
         width: 1200,
         height: 630,
-        alt: "Xtreme Mobile Tire 24/7 Emergency Service Van",
+        alt: "Call Tire 24/7 Emergency Service Van",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "24/7 Mobile Tire Service & Repair | Xtreme Mobile Tire",
+    title: "24/7 Mobile Tire Service & Repair | Call Tire",
     description:
       "Flat tire? We come to you 24/7. Fast on-demand mobile tire repair, replacement, and roadside assistance for cars & fleets.",
     images: [
