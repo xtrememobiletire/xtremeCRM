@@ -98,9 +98,9 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: "/logo.png",
-    shortcut: "/logo.png",
-    apple: "/logo.png",
+    icon: "/logo.png?v=2",
+    shortcut: "/logo.png?v=2",
+    apple: "/logo.png?v=2",
   },
 };
 
@@ -112,7 +112,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn("font-sans", sans.variable, serif.variable)} suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/logo.png" type="image/png" />
+        <link rel="icon" href="/logo.png?v=2" type="image/png" />
         <OrganizationSchema />
         <script
           dangerouslySetInnerHTML={{

@@ -10,7 +10,7 @@ export function OrganizationSchema() {
         "name": "Xtreme Mobile Tire",
         "alternateName": "Xtreme Mobile Tire Solutions",
         "url": "https://xtrememobiletire.com",
-        "logo": "https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp",
+        "logo": "https://xtrememobiletire.com/logo.png",
         "image": "https://res.cloudinary.com/ebjikx52/image/upload/v1792426881/xtreme/landing/service-mobile-van_jpg.jpg",
         "description": "24/7 on-demand mobile tire repair, tire replacement, roadside assistance, and commercial fleet management solutions delivered directly to your location.",
         "telephone": "+1-804-326-5442",

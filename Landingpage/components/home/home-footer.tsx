@@ -13,7 +13,7 @@ interface HomeFooterProps {
 
 export default function HomeFooter({
   brandName = "Xtreme Mobile Tire",
-  logoSrc = "https://res.cloudinary.com/ebjikx52/image/upload/v1792426904/xtreme/frontend/logo_webp.webp",
+  logoSrc = "/logo.png",
   className = "",
 }: HomeFooterProps) {
   return (
