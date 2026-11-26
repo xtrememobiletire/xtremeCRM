@@ -7,8 +7,8 @@ export function OrganizationSchema() {
       {
         "@type": ["AutoRepair", "EmergencyService"],
         "@id": "https://calltire.net/#organization",
-        "name": "Call Mobile Tire",
-        "alternateName": "Call Mobile Tire Solutions",
+        "name": "CALL TIRE Inc.",
+        "alternateName": "CALL TIRE Inc. Solutions",
         "url": "https://calltire.net",
         "logo": "https://calltire.net/logo.png",
         "image": "https://res.cloudinary.com/ebjikx52/image/upload/v1792426881/xtreme/landing/service-mobile-van_jpg.jpg",
@@ -101,7 +101,7 @@ export function OrganizationSchema() {
         "mainEntity": [
           {
             "@type": "Question",
-            "name": "How fast does a Call Mobile Tire van arrive?",
+            "name": "How fast does a CALL TIRE Inc. van arrive?",
             "acceptedAnswer": {
               "@type": "Answer",
               "text": "For 24/7 emergency roadside calls, our mobile tire units are typically dispatched immediately with rapid arrival directly to your vehicle's GPS coordinates."

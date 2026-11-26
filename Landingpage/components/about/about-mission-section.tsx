@@ -173,7 +173,7 @@ export default function AboutMissionSection() {
 
           <p className="text-sm xs:text-base sm:text-xl leading-snug font-sans tracking-tight pt-1">
             <span className="text-zinc-500 dark:text-zinc-400 font-medium">
-              At Call Mobile Tire, our goal is simple:{" "}
+              At CALL TIRE Inc., our goal is simple:{" "}
             </span>
             <span className="text-zinc-950 dark:text-white font-extrabold">
               eliminate roadside downtime by bringing fast, certified tire care straight to your location, 24/7.
@@ -223,7 +223,7 @@ export default function AboutMissionSection() {
 
             <p className="text-xl sm:text-2xl md:text-3xl leading-snug font-sans tracking-tight">
               <span className="text-zinc-500 dark:text-zinc-400 font-medium">
-                At Call Mobile Tire, our goal is simple:{" "}
+                At CALL TIRE Inc., our goal is simple:{" "}
               </span>
               <span className="text-zinc-950 dark:text-white font-extrabold">
                 eliminate roadside downtime by bringing fast, certified tire care straight to your location, 24/7.

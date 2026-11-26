@@ -430,7 +430,7 @@ export const invoiceController = {
       }
 
       // Creator initials
-      const initials = (creator?.fullName || 'Xtreme Admin')
+      const initials = (creator?.fullName || 'CallTire Admin')
         .split(' ')
         .map((n: string) => n[0])
         .join('')
@@ -553,7 +553,7 @@ export const invoiceController = {
       const countryCode = fleet.countryCode;
       const currency = countryCode === 'US' ? 'USD' : countryCode === 'UK' ? 'GBP' : 'CAD';
 
-      const initials = (creator?.fullName || 'Xtreme Admin')
+      const initials = (creator?.fullName || 'CallTire Admin')
         .split(' ')
         .map((n: string) => n[0])
         .join('')
@@ -687,7 +687,7 @@ export const invoiceController = {
       const country = countryCode || 'CA';
       const curr = currency || (country === 'US' ? 'USD' : country === 'UK' ? 'GBP' : 'CAD');
 
-      const initials = (creator?.fullName || 'Xtreme Admin')
+      const initials = (creator?.fullName || 'CallTire Admin')
         .split(' ')
         .map((n: string) => n[0])
         .join('')
@@ -1086,9 +1086,9 @@ export const invoiceController = {
 
       const pdfData = {
         company: {
-          name: 'XTREME MOBILE TIRE & ROADSIDE ASSISTANCE',
+          name: 'CALL TIRE Inc.',
           tagline: '24/7 Mobile Tire Service & Roadside Fleet Dispatch',
-          paymentEmail: 'Payments@xtrememobiletire.com',
+          paymentEmail: 'Payments@CallTire.net',
           hub: regionalHub,
         },
         invoiceNumber: invoice.invoiceNumber,
@@ -1184,9 +1184,9 @@ export const invoiceController = {
 
       const pdfData = {
         company: {
-          name: 'XTREME MOBILE TIRE & ROADSIDE ASSISTANCE',
+          name: 'CALL TIRE Inc.',
           tagline: '24/7 Mobile Tire Service & Roadside Fleet Dispatch',
-          paymentEmail: 'Payments@xtrememobiletire.com',
+          paymentEmail: 'Payments@CallTire.net',
           hub: regionalHub,
         },
         invoiceNumber: invoice.invoiceNumber,
@@ -1226,7 +1226,7 @@ export const invoiceController = {
       const pdfBuffer = await generateInvoicePdf(pdfData);
 
       const customSubject = req.body.subject?.trim();
-      const emailSubject = customSubject || `Xtreme Mobile Tire - Invoice #${invoice.invoiceNumber}`;
+      const emailSubject = customSubject || `CALL TIRE Inc. - Invoice #${invoice.invoiceNumber}`;
 
       await mailService.sendInvoiceEmail({
         to: targetEmail,

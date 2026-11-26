@@ -33,7 +33,7 @@ router.get(['/', ''], (_req: Request, res: Response) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>XtremeCRM API Documentation (Swagger UI)</title>
+  <title>CALL TIRE Inc. API Documentation (Swagger UI)</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css" />
   <style>
     html { box-sizing: border-box; overflow-y: scroll; }
@@ -50,7 +50,7 @@ router.get(['/', ''], (_req: Request, res: Response) => {
 <body>
   <div class="topbar">
     <a href="/api/docs" class="brand-title">
-      <span>XTREME MOBILE TIRE</span>
+      <span>CALL TIRE Inc.</span>
       <span class="brand-badge">REST API CONSOLE v1.0</span>
     </a>
   </div>

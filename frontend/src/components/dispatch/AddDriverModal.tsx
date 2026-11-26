@@ -59,7 +59,7 @@ export default function AddDriverModal({ isOpen, onClose, onSuccess }: AddDriver
 
         await userService.createUser({
           fullName: fullName.trim(),
-          email: email.trim() || undefined,
+          email: email.trim().toLowerCase() || undefined,
           role: 'DRIVER',
           countryCode,
           phone: phone.trim() || undefined,
@@ -91,7 +91,7 @@ export default function AddDriverModal({ isOpen, onClose, onSuccess }: AddDriver
       setIsSubmitting(true);
       await userService.createUser({
         fullName: fullName.trim(),
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password,
         role: 'DRIVER',
         countryCode,

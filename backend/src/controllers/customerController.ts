@@ -7,6 +7,7 @@ import {
   calculateSkip,
   createPaginatedResponse,
   validateAndNormalizePhone,
+  normalizeEmail,
 } from '../utils/index.js';
 import { geocodingService } from '../services/geocodingService.js';
 import { sseManager } from '../services/sseManager.js';
@@ -298,7 +299,7 @@ export const customerController = {
           fullName: resolvedName,
           phone: cleanPhone,
           altPhone: altPhone?.trim() || null,
-          email: email?.trim() || null,
+          email: normalizeEmail(email),
           address: address?.trim() || null,
           notes: req.body.notes?.trim() || null,
           latitude,
@@ -365,7 +366,7 @@ export const customerController = {
         }
       }
       if (altPhone !== undefined) data.altPhone = altPhone?.trim() || null;
-      if (email !== undefined) data.email = email?.trim() || null;
+      if (email !== undefined) data.email = normalizeEmail(email);
       if (notes !== undefined) data.notes = notes?.trim() || null;
       if (countryCode) data.countryCode = countryCode;
       if (customerType) data.customerType = customerType;

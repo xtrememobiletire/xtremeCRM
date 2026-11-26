@@ -73,7 +73,7 @@ class MailService {
 
     const transporter = this.getTransporter();
 
-    const subject = customSubject || `Xtreme Mobile Tire - Invoice #${invoiceNumber}`;
+    const subject = customSubject || `CALL TIRE Inc. - Invoice #${invoiceNumber}`;
 
     // Only attach the official itemized invoice PDF
     const attachments: any[] = [
@@ -88,10 +88,10 @@ class MailService {
     const text = [
       `Dear ${clientName},`,
       '',
-      `Thank you for trusting Xtreme Mobile Tire with your vehicle and fleet service. Please find attached your invoice #${invoiceNumber}.`,
+      `Thank you for trusting CALL TIRE Inc. with your vehicle and fleet service. Please find attached your invoice #${invoiceNumber}.`,
       '',
       `Best regards,`,
-      `Xtreme Mobile Tire Team`,
+      `CALL TIRE Inc. Team`,
     ].join('\n');
 
     // Clean, elegant, minimalist professional HTML body
@@ -117,11 +117,11 @@ class MailService {
     <tr>
       <td align="center">
         <div class="email-container">
-          <!-- Minimalist Header with Official Cloudinary Logo -->
+          <!-- Minimalist Header with Official CALL TIRE Inc. Logo -->
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #0b1120; border-bottom: 3px solid #dc2626; padding: 22px 0;">
             <tr>
               <td align="center" valign="middle">
-                <img src="https://res.cloudinary.com/ebjikx52/image/upload/f_png,q_auto/v1792426904/xtreme/frontend/logo_webp.png" alt="Xtreme Mobile Tire" width="160" style="display: block; width: 160px; max-width: 160px; height: auto; margin: 0 auto; border: 0;" />
+                <img src="https://calltire.net/logo.png" alt="CALL TIRE Inc." width="160" style="display: block; width: 160px; max-width: 160px; height: auto; margin: 0 auto; border: 0;" />
               </td>
             </tr>
           </table>
@@ -130,11 +130,11 @@ class MailService {
           <div class="content">
             <div class="greeting">Dear ${clientName},</div>
             <p class="intro-p">
-              Thank you for trusting Xtreme Mobile Tire with your vehicle and fleet service. Please find attached your invoice <strong>#${invoiceNumber}</strong>.
+              Thank you for trusting CALL TIRE Inc. with your vehicle and fleet service. Please find attached your invoice <strong>#${invoiceNumber}</strong>.
             </p>
             <p class="signoff">
               Best regards,<br>
-              <strong>Xtreme Mobile Tire Team</strong>
+              <strong>CALL TIRE Inc. Team</strong>
             </p>
           </div>
         </div>
@@ -156,7 +156,7 @@ class MailService {
       /mail\s*delivery|subsystem|daemon|dokploy|mailer/i.test(rawFromName);
 
     const senderDisplayName = isGenericSystemName
-      ? 'Xtreme Mobile Tire - Billing & Invoices'
+      ? 'CALL TIRE Inc. - Billing & Invoices'
       : rawFromName;
 
     const info = await transporter.sendMail({
@@ -166,7 +166,7 @@ class MailService {
       },
       sender: senderEmail,
       replyTo: {
-        name: 'Xtreme Mobile Tire Billing Support',
+        name: 'CALL TIRE Inc. Billing Support',
         address: replyTo,
       },
       to,

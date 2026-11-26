@@ -583,7 +583,7 @@ model Job {
   driverEstimatedArrivalAt DateTime?               @db.Timestamptz @map("driver_estimated_arrival_at") // Actual technician driving ETA separate from customer promised window
   driverEtaMinutes         Int?                    @map("driver_eta_minutes") // Recorded minutes at dispatch
   driverType             DriverType              @default(INTERNAL) @map("driver_type")
-  externalCompanyName    String?                 @default("Xtreme Mobile Tire") @map("external_company_name")
+  externalCompanyName    String?                 @default("CALL TIRE Inc.") @map("external_company_name")
   externalDriverPhone    String?                 @map("external_driver_phone")
   externalDriverFeeCents Int?                    @map("external_driver_fee_cents")
   externalDispatchStatus ExternalDispatchStatus? @map("external_dispatch_status")

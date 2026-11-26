@@ -13,7 +13,7 @@ const STORY_BLOCKS: StoryBlock[] = [
   {
     id: "founded-by-friends",
     title: "Founded by Two Friends",
-    text: "Call Mobile Tire was started by my friend and me out of a shared passion for vehicles and keeping people moving. After repeatedly experiencing slow tow trucks, surprise fees, and hours of wasted downtime at local tire shops, we knew drivers and commercial fleets deserved better.",
+    text: "CALL TIRE Inc. was started by my friend and me out of a shared passion for vehicles and keeping people moving. After repeatedly experiencing slow tow trucks, surprise fees, and hours of wasted downtime at local tire shops, we knew drivers and commercial fleets deserved better.",
   },
   {
     id: "our-solution",
@@ -70,7 +70,7 @@ export default function AboutStorySection() {
             <div className="relative w-full max-w-[320px] xs:max-w-[380px] sm:max-w-[420px] aspect-[16/10] bg-black border border-black/10 dark:border-none shadow-md overflow-hidden [mask-image:linear-gradient(to_bottom,black_85%,transparent_100%)]">
               <Image
                 src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426867/xtreme/landing/founders-story_jpg.jpg"
-                alt="Call Mobile Tire Co-Founders"
+                alt="CALL TIRE Inc. Co-Founders"
                 fill
                 unoptimized
                 className="object-contain object-top filter grayscale contrast-110 brightness-100"
@@ -163,7 +163,7 @@ export default function AboutStorySection() {
                 </div>
 
                 <div className="text-[9px] xs:text-[10px] font-mono text-white/70 uppercase tracking-widest">
-                  Call Mobile Tire Network
+                  CALL TIRE Inc. Network
                 </div>
               </div>
 

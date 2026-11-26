@@ -35,9 +35,9 @@ export const config = {
       process.env.SMTP_FROM_NAME &&
       !/mail\s*delivery|subsystem|daemon|dokploy|mailer/i.test(process.env.SMTP_FROM_NAME)
         ? process.env.SMTP_FROM_NAME
-        : 'Xtreme Mobile Tire - Billing & Invoices',
+        : 'CALL TIRE Inc. - Billing & Invoices',
     FROM_EMAIL: process.env.SMTP_FROM_EMAIL || 'abdullahsiddique.dev.ai@gmail.com',
-    REPLY_TO: process.env.SMTP_REPLY_TO || 'info@xtrememobiletire.com',
+    REPLY_TO: process.env.SMTP_REPLY_TO || 'Info@CallTire.net',
   },
 } as const;
 

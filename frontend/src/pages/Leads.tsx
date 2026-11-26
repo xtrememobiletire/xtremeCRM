@@ -451,7 +451,7 @@ export default function Leads() {
   const handleWhatsAppChat = (lead: Lead) => {
     const cleanPhone = lead.phone.replace(/[^0-9]/g, '');
     const message = encodeURIComponent(
-      `Hi ${lead.contactPerson}, this is Call Mobile Tire dispatch team regarding fleet tire servicing for ${cleanText(lead.companyName)}. Please find our commercial agreement details here.`
+      `Hi ${lead.contactPerson}, this is CALL TIRE Inc. dispatch team regarding fleet tire servicing for ${cleanText(lead.companyName)}. Please find our commercial agreement details here.`
     );
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
   };
@@ -2440,7 +2440,7 @@ export default function Leads() {
               <button
                 type="button"
                 onClick={() => {
-                  const txt = `🏢 Call Mobile Tire — Fleet Manager Portal
+                  const txt = `🏢 CALL TIRE Inc. — Fleet Manager Portal
 🔗 Portal: ${window.location.origin}/login
 🏷️ Fleet Code: ${newFleetCredentials.fleetCode}
 📧 Email: ${newFleetCredentials.email}

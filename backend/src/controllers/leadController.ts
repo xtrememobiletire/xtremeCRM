@@ -9,6 +9,7 @@ import {
   calculateSkip,
   createPaginatedResponse,
   generateUniqueFleetCode,
+  normalizeEmail,
 } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
 import { refillAgentQueueAtomic, claimCallbackLeadAtomic, checkAndCompleteBatches, getQueue, QUEUES } from '../services/queueService.js';
@@ -532,8 +533,8 @@ export const leadController = {
           ceoOwnerName: ceoOwnerName ? cleanText(ceoOwnerName) : null,
           phone: phone.trim(),
           altPhone: altPhone?.trim() || null,
-          email: email?.trim() || null,
-          poaEmail: poaEmail?.trim() || null,
+          email: normalizeEmail(email),
+          poaEmail: normalizeEmail(poaEmail),
           address: address ? cleanText(address) : null,
           website: website?.trim() || null,
           numberOfUnits: numberOfUnits ? Number(numberOfUnits) : null,
@@ -635,8 +636,8 @@ export const leadController = {
       if (ceoOwnerName !== undefined) data.ceoOwnerName = ceoOwnerName;
       if (phone !== undefined) data.phone = phone;
       if (altPhone !== undefined) data.altPhone = altPhone;
-      if (email !== undefined) data.email = email;
-      if (poaEmail !== undefined) data.poaEmail = poaEmail;
+      if (email !== undefined) data.email = normalizeEmail(email);
+      if (poaEmail !== undefined) data.poaEmail = normalizeEmail(poaEmail);
       if (address !== undefined) data.address = address;
       if (website !== undefined) data.website = website;
       if (numberOfUnits !== undefined) data.numberOfUnits = numberOfUnits !== null ? Number(numberOfUnits) : null;
@@ -1070,7 +1071,7 @@ export const leadController = {
             phone: fleetPhone,
             altPhone: extra.altPhone || lead.altPhone || undefined,
             email: fleetEmail,
-            poaEmail: extra.poaEmail || lead.poaEmail || req.body.poaEmail?.trim() || undefined,
+            poaEmail: normalizeEmail(extra.poaEmail || lead.poaEmail || req.body.poaEmail) || undefined,
             billingContactName: extra.billingContactName || req.body.billingContactName || undefined,
             paymentTerms: extra.paymentTerms || req.body.paymentTerms || 'NET_30',
             creditLimitCents: extra.creditLimit ? Math.round(Number(extra.creditLimit) * 100) : (extra.creditLimitCents ? Number(extra.creditLimitCents) : null),
@@ -1541,8 +1542,8 @@ export const leadController = {
           ceoOwnerName: ceoOwnerName ? cleanText(String(ceoOwnerName)) : null,
           phone: phone || '+14165550100',
           altPhone: altPhone ? cleanText(String(altPhone)) : null,
-          email: email ? String(email).trim() : null,
-          poaEmail: poaEmail ? String(poaEmail).trim() : null,
+          email: normalizeEmail(email ? String(email) : null),
+          poaEmail: normalizeEmail(poaEmail ? String(poaEmail) : null),
           address: address ? cleanText(String(address)) : null,
           website: website ? String(website).trim() : null,
           numberOfUnits: parsedUnits,

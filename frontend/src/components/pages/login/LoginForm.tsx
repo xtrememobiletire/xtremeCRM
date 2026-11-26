@@ -18,9 +18,11 @@ export default function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const normalizedEmail = email.trim().toLowerCase();
+    setEmail(normalizedEmail);
     setLoading(true);
     try {
-      await login(email, password);
+      await login(normalizedEmail, password);
       toast.success('Logged in successfully');
       navigate('/');
     } catch (err: any) {
@@ -36,7 +38,7 @@ export default function LoginForm() {
       <div className="flex justify-center pt-1 pb-1">
         <img 
           src="/logo.png" 
-          alt="Call Mobile Tire" 
+          alt="CALL TIRE Inc." 
           className="h-14 sm:h-16 w-auto object-contain drop-shadow-md" 
         />
       </div>
@@ -84,6 +86,7 @@ export default function LoginForm() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={(e) => setEmail(e.target.value.trim().toLowerCase())}
               className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 rounded-none focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition"
               placeholder="name@company.com"
             />

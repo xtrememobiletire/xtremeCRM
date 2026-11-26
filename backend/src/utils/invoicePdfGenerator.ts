@@ -189,7 +189,7 @@ export async function generateInvoicePdf(pdfData: any): Promise<Buffer> {
     const notesY = y - 60;
     doc.fillColor(darkSlate).fontSize(8.5).font('Helvetica-Bold').text('Remittance & Payment Details:', 40, notesY);
     doc.fillColor(grayText).fontSize(8).font('Helvetica').text(
-      `Electronic Transfer / Direct Deposit:\n${pdfData.company?.paymentEmail || 'payments@xtrememobiletire.com'}\nAll invoices subject to standard Net terms.`,
+      `Electronic Transfer / Direct Deposit:\n${pdfData.company?.paymentEmail || 'Payments@CallTire.net'}\nAll invoices subject to standard Net terms.`,
       40,
       notesY + 14,
       { width: 270 }
@@ -197,7 +197,7 @@ export async function generateInvoicePdf(pdfData: any): Promise<Buffer> {
 
     // 6. Footer
     doc.fillColor('#94A3B8').fontSize(7.5).font('Helvetica').text(
-      'Xtreme Mobile Tire Inc. • Emergency Roadside & Commercial Fleet Services • 24/7 Dispatch Bay',
+      'CALL TIRE Inc. • Emergency Roadside & Commercial Fleet Services • 24/7 Dispatch Bay',
       40,
       780,
       { width: 515, align: 'center' }

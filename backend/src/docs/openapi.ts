@@ -1,12 +1,12 @@
 export const openApiSpec = {
   openapi: '3.0.3',
   info: {
-    title: 'XtremeCRM REST API',
+    title: 'CALL TIRE Inc. REST API',
     version: '1.0.0',
     description: 'Enterprise Mobile Tire & Roadside Assistance CRM API for US, Canada, and UK regional operations.',
     contact: {
-      name: 'XtremeCRM Support',
-      email: 'admin@xtrememobiletire.com',
+      name: 'CALL TIRE Inc. Support',
+      email: 'Support@CallTire.net',
     },
   },
   servers: [
@@ -166,7 +166,7 @@ export const openApiSpec = {
                 type: 'object',
                 properties: {
                   fullName: { type: 'string', example: 'Super Admin Updated' },
-                  email: { type: 'string', format: 'email', example: 'admin@xtremecrm.com' },
+                  email: { type: 'string', format: 'email', example: 'Admin@CallTire.com' },
                   phone: { type: 'string', example: '+14165550199' },
                   role: {
                     type: 'string',

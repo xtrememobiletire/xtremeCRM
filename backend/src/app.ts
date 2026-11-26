@@ -44,6 +44,9 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:4000',
   'https://xtreme-crm.vercel.app',
+  'https://calltire.net',
+  'https://www.calltire.net',
+  'https://app.calltire.net',
   ...(config.FRONTEND_URL ? config.FRONTEND_URL.split(',').map((s) => s.trim()) : []),
   ...(config.LANDING_PAGE_URL ? config.LANDING_PAGE_URL.split(',').map((s) => s.trim()) : []),
 ];

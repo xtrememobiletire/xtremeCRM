@@ -9,7 +9,7 @@ interface FooterLegalProps {
 }
 
 export default function FooterLegal({
-  brandName = "Call Mobile Tire",
+  brandName = "CALL TIRE Inc.",
   logoSrc = "/logo.png",
 }: FooterLegalProps) {
   return (

@@ -9,6 +9,7 @@ import {
   calculateSkip,
   createPaginatedResponse,
   generateUniqueFleetCode,
+  normalizeEmail,
 } from '../utils/index.js';
 import { geocodingService } from '../services/geocodingService.js';
 import { validateAndNormalizePhone } from '../utils/validators.js';
@@ -244,7 +245,7 @@ export const fleetController = {
         }
       }
 
-      const cleanEmail = email?.trim() || null;
+      const cleanEmail = normalizeEmail(email);
       const cleanPassword = password?.trim() || null;
       let managerUserIdToLink = managerUserId || null;
       let persistedPassword = cleanPassword;
@@ -640,8 +641,8 @@ export const fleetController = {
           data.phone = null;
         }
       }
-      if (email !== undefined) data.email = email?.trim() || null;
-      if (poaEmail !== undefined) data.poaEmail = poaEmail?.trim() || null;
+      if (email !== undefined) data.email = normalizeEmail(email);
+      if (poaEmail !== undefined) data.poaEmail = normalizeEmail(poaEmail);
       if (fleetManager !== undefined) data.fleetManager = fleetManager?.trim() || null;
       if (ceoOwnerName !== undefined) data.ceoOwnerName = ceoOwnerName?.trim() || null;
       if (website !== undefined) data.website = website?.trim() || null;
@@ -671,7 +672,7 @@ export const fleetController = {
       if (req.body.altPhone !== undefined) data.altPhone = req.body.altPhone?.trim() || null;
 
       // Sync password or email with User account
-      const targetEmail = (email !== undefined ? email?.trim() : existingFleet.email) || null;
+      const targetEmail = (email !== undefined ? normalizeEmail(email) : normalizeEmail(existingFleet.email)) || null;
       const cleanPassword = password !== undefined ? (password?.trim() || null) : null;
 
       if (targetEmail) {

@@ -388,7 +388,7 @@ export default function BookingModal({
         customer: {
           name: `${formData.firstName.trim()} ${formData.lastName.trim()}`,
           phone: formData.phone.trim(),
-          email: formData.email.trim(),
+          email: formData.email.trim().toLowerCase(),
         },
         vehicle: {
           year: Number(formData.year) || new Date().getFullYear(),
@@ -481,7 +481,7 @@ export default function BookingModal({
           <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
             <div className="flex items-center gap-4">
               <span className="font-black italic tracking-tighter text-lg sm:text-xl text-zinc-950 dark:text-white">
-                CALL <span className="text-[var(--brand-primary)]">MOBILE TIRE</span>
+                CALL <span className="text-[var(--brand-primary)]">TIRE Inc.</span>
               </span>
 
               {/* Step Title & Back Navigation */}
@@ -1172,7 +1172,7 @@ export default function BookingModal({
                     Appointment Confirmed!
                   </h3>
                   <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1.5 max-w-md mx-auto">
-                    Your booking has been submitted to Call Mobile Tire dispatch. You will receive a confirmation email shortly.
+                    Your booking has been submitted to CALL TIRE Inc. dispatch. You will receive a confirmation email shortly.
                   </p>
                   {confirmedJobCode && (
                     <div className="inline-block mt-3 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">

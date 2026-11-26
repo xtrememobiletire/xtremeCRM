@@ -85,7 +85,7 @@ export default function AboutValuesCards() {
         {/* High-Contrast Two-Tone Mission Text */}
         <p className="text-sm xs:text-base sm:text-xl md:text-2xl leading-relaxed max-w-3xl">
           <span className="text-zinc-500 dark:text-zinc-400 font-semibold font-sans">
-            At Call Mobile Tire, our mission is simple:{" "}
+            At CALL TIRE Inc., our mission is simple:{" "}
           </span>
           <span className="text-zinc-950 dark:text-white font-extrabold font-sans">
             to do what’s best for our customers and their vehicles

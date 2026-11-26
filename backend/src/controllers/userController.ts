@@ -8,6 +8,7 @@ import {
   sanitizePaginationParams,
   calculateSkip,
   createPaginatedResponse,
+  normalizeRequiredEmail,
 } from '../utils/index.js';
 import { geocodingService } from '../services/geocodingService.js';
 import { invalidateUserAuthCache } from '../config/passport.js';
@@ -138,7 +139,9 @@ export const userController = {
       } = req.body;
 
       const isExternalContractor = assignedVehicle === 'EXTERNAL_CONTRACTOR' || assignedVehicle?.startsWith('EXTERNAL');
-      const finalEmail = email?.trim() || (isExternalContractor ? `contractor_${Date.now()}_${crypto.randomBytes(4).toString('hex')}@external.xtremetire.com` : '');
+      const finalEmail =
+        (email ? normalizeRequiredEmail(email) : '') ||
+        (isExternalContractor ? `contractor_${Date.now()}_${crypto.randomBytes(4).toString('hex')}@external.xtremetire.com` : '');
       if (!finalEmail) return sendError(res, 'Email is required', 400);
 
       const existing = await prisma.user.findUnique({ where: { email: finalEmail } });

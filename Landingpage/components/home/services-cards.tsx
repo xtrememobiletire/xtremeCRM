@@ -98,7 +98,7 @@ export default function ServicesCards() {
         <div className="flex items-center gap-2.5 mb-2.5">
           <span className="w-2.5 h-2.5 bg-black dark:bg-[var(--brand-primary)] inline-block shrink-0 rounded-none shadow-sm" />
           <span className="text-xs sm:text-sm font-bold tracking-widest uppercase text-zinc-800 dark:text-zinc-200 font-sans">
-            Call Mobile Tire Solutions
+            CALL TIRE Inc. Solutions
           </span>
         </div>
         <h2 className="text-2xl sm:text-3xl md:text-4xl tracking-tight text-[var(--neutral-dark)]">
@@ -190,7 +190,7 @@ export default function ServicesCards() {
                 {/* Full-Bleed Photograph covering entire container length */}
                 <img
                   src={item.image}
-                  alt={`${item.title} - Call Mobile Tire Services`}
+                  alt={`${item.title} - CALL TIRE Inc. Services`}
                   loading="lazy"
                   decoding="async"
                   className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"

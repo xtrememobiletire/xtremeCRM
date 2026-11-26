@@ -38,7 +38,7 @@ async function main() {
   // 1. Ensure Standard Staff Users exist and have accurate coordinates / permissions
   const users = [
     {
-      email: 'admin@xtremecrm.com',
+      email: 'admin@calltire.com',
       fullName: 'Super Admin',
       role: 'ADMIN' as const,
       countryCode: 'CA' as const,
@@ -1134,7 +1134,7 @@ async function main() {
       data: {
         jobCode: pb.jobCode,
         vehicleId: pubVeh.id,
-        createdById: userMap['admin@xtremecrm.com'].id,
+        createdById: userMap['admin@calltire.com'].id,
         countryCode: 'CA',
         currency: 'CAD',
         status: 'UNVERIFIED_PUBLIC',

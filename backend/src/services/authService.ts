@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { prisma } from '../config/database.js';
 import { config } from '../config/env.js';
+import { normalizeEmail, normalizeRequiredEmail } from '../utils/index.js';
 
 export const authService = {
   async register(data: {
@@ -14,7 +15,10 @@ export const authService = {
     accountType?: 'CUSTOMER' | 'FLEET';
     companyName?: string;
   }) {
-    const existing = await prisma.user.findUnique({ where: { email: data.email } });
+    const cleanEmail = normalizeRequiredEmail(data.email);
+    const existing = await prisma.user.findFirst({
+      where: { email: { equals: cleanEmail, mode: 'insensitive' } },
+    });
     if (existing) throw new Error('User with this email already exists');
 
     let assignedRole = 'CUSTOMER_MEMBER';
@@ -29,7 +33,7 @@ export const authService = {
     const passwordHash = await bcrypt.hash(data.password, 10);
     const user = await prisma.user.create({
       data: {
-        email: data.email,
+        email: cleanEmail,
         passwordHash,
         fullName: data.fullName,
         phone: data.phone,
@@ -55,7 +59,7 @@ export const authService = {
           fleetCode,
           name: data.companyName || `${data.fullName}'s Fleet`,
           contactPerson: data.fullName,
-          email: data.email,
+          email: cleanEmail,
           phone: data.phone || 'N/A',
           countryCode: data.countryCode || 'CA',
           status: 'PENDING',
@@ -72,10 +76,11 @@ export const authService = {
         },
         update: {
           userId: user.id,
+          email: normalizeEmail(cleanEmail),
         },
         create: {
           fullName: data.fullName,
-          email: data.email,
+          email: cleanEmail,
           phone: data.phone,
           countryCode: data.countryCode || 'CA',
           userId: user.id,
@@ -93,7 +98,13 @@ export const authService = {
   },
 
   async login(email: string, pass: string) {
-    const user = await prisma.user.findUnique({ where: { email } });
+    const cleanEmail = normalizeRequiredEmail(email);
+    let user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+    if (!user) {
+      user = await prisma.user.findFirst({
+        where: { email: { equals: cleanEmail, mode: 'insensitive' } },
+      });
+    }
     if (!user || user.deletedAt) {
       throw new Error('Invalid email or password');
     }
@@ -101,6 +112,18 @@ export const authService = {
     const isMatch = await bcrypt.compare(pass, user.passwordHash);
     if (!isMatch) {
       throw new Error('Invalid email or password');
+    }
+
+    // Auto-heal legacy mixed-case email records on successful login
+    if (user.email !== cleanEmail) {
+      try {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { email: cleanEmail },
+        });
+      } catch {
+        // Ignore if a duplicate lowercase record already exists
+      }
     }
 
     const token = jwt.sign(

@@ -57,7 +57,7 @@ export default function MobileTireShowcase() {
                 <div className="absolute top-0 left-0 bottom-0 w-1 bg-transparent group-hover/box:bg-[var(--brand-primary)] transition-colors rounded-none" />
 
                 <p className="font-sans text-sm sm:text-base lg:text-lg leading-relaxed text-zinc-700 dark:text-zinc-300 font-normal">
-                  Call Mobile Tire brings certified tire technicians, precision mounting equipment, and digital balancing directly to your home, office, or emergency roadside location.
+                  CALL TIRE Inc. brings certified tire technicians, precision mounting equipment, and digital balancing directly to your home, office, or emergency roadside location.
                 </p>
               </div>
             </div>
@@ -101,7 +101,7 @@ export default function MobileTireShowcase() {
               <div className="absolute inset-0 overflow-hidden">
                 <img
                   src="https://res.cloudinary.com/ebjikx52/image/upload/v1792426893/xtreme/landing/wheel-car_jpg.png"
-                  alt="Call Mobile Tire on-site emergency vehicle and tire replacement service"
+                  alt="CALL TIRE Inc. on-site emergency vehicle and tire replacement service"
                   className="w-full h-full object-cover object-center group-hover/image:scale-105 transition-transform duration-700 ease-out"
                 />
                 

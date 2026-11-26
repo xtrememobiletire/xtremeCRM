@@ -5,14 +5,14 @@ interface FooterLargeBrandingProps {
 }
 
 export default function FooterLargeBranding({
-  brandText = "Call Mobile Tire",
+  brandText = "CALL TIRE Inc.",
 }: FooterLargeBrandingProps) {
   return (
     <div className="relative w-full overflow-hidden select-none pt-4 sm:pt-10 pb-0 flex items-end justify-center pointer-events-none px-1 sm:px-2">
       {/* 
         EDGE-TO-EDGE FULL-WIDTH TWO-TONE BRANDING TEXT:
-        - Mobile: Shows ONLY "Call Mobile Tire" scaled dynamically
-        - Desktop / Tablet (sm+): Shows full "Call Mobile Tire" edge-to-edge
+        - Mobile: Shows ONLY "CALL TIRE Inc." scaled dynamically
+        - Desktop / Tablet (sm+): Shows full "CALL TIRE Inc." edge-to-edge
         - Precision two-tone lighting: Pure crisp white (#FFFFFF) top, smoothly fading into steel silver
         - and blending into the deep black footer background.
       */}
@@ -27,7 +27,7 @@ export default function FooterLargeBranding({
           WebkitTextFillColor: "transparent",
         }}
       >
-        Call Mobile Tire
+        CALL TIRE Inc.
       </span>
 
       {/* Desktop & Tablet wordmark: Full "XtremeMobileTire" */}

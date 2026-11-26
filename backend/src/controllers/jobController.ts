@@ -11,6 +11,7 @@ import {
   validateAndNormalizePhone,
   normalizePhoneNumber,
   generateUniqueJobCode,
+  normalizeEmail,
 } from '../utils/index.js';
 import { getIO } from '../config/socket.js';
 import { geocodingService } from '../services/geocodingService.js';
@@ -541,7 +542,7 @@ export const jobController = {
               data: {
                 fullName: name || 'Valued Customer',
                 phone: normalizedContactPhone,
-                email: data.customer?.email || data.customerEmail || data.email,
+                email: normalizeEmail(data.customer?.email || data.customerEmail || data.email),
                 countryCode: country as any,
               },
             });
@@ -555,7 +556,7 @@ export const jobController = {
         try {
           const cust = await prisma.customer.findUnique({ where: { id: customerId } });
           if (cust && !cust.userId) {
-            const userEmail = cust.email || `cx_${cust.phone.replace(/[^0-9]/g, '')}@xtrememobiletire.com`;
+            const userEmail = normalizeEmail(cust.email) || `cx_${cust.phone.replace(/[^0-9]/g, '')}@calltire.net`;
             const existingUser = await prisma.user.findUnique({ where: { email: userEmail } });
             if (!existingUser) {
               const passwordHash = await bcrypt.hash('XtremeMember2026!', 10);
@@ -1632,7 +1633,7 @@ export const jobController = {
           ? new Date(arrivalWindowStart.getTime() + 60 * 60000)
           : undefined;
 
-      const customerEmail = data.customer?.email || data.email || data.customerEmail;
+      const customerEmail = normalizeEmail(data.customer?.email || data.email || data.customerEmail);
       const customerNotes = [
         data.problemNotes || data.notes,
         data.vehicle?.trim ? `Trim/Submodel: ${data.vehicle.trim}` : null,

@@ -512,7 +512,7 @@ export default function Fleets() {
               <button
                 type="button"
                 onClick={() => {
-                  const txt = `🏢 Call Mobile Tire — Fleet Manager Portal
+                  const txt = `🏢 CALL TIRE Inc. — Fleet Manager Portal
 🔗 Portal: ${window.location.origin}/login
 🏷️ Fleet Code: ${newFleetCredentials.fleetCode}
 📧 Email: ${newFleetCredentials.email}

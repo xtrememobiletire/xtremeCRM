@@ -12,7 +12,7 @@ interface HomeFooterProps {
 }
 
 export default function HomeFooter({
-  brandName = "Call Mobile Tire",
+  brandName = "CALL TIRE Inc.",
   logoSrc = "/logo.png",
   className = "",
 }: HomeFooterProps) {
@@ -53,7 +53,7 @@ export default function HomeFooter({
 
               {/* Simple Sans-Serif Quote with Generous Breathing Room */}
               <p className="font-sans text-xs xs:text-sm sm:text-base text-zinc-300 leading-relaxed max-w-sm font-normal">
-                Call Mobile Tire delivers expert mobile tire installation, replacement, and repair across Canada and the USA.
+                CALL TIRE Inc. delivers expert mobile tire installation, replacement, and repair across Canada and the USA.
               </p>
             </div>
 
@@ -238,7 +238,7 @@ export default function HomeFooter({
       {/* ======================================================== */}
       {/* FULL-WIDTH TWO-TONE BRANDING TEXT                        */}
       {/* ======================================================== */}
-      <FooterLargeBranding brandText="Call Mobile Tire" />
+      <FooterLargeBranding brandText="CALL TIRE Inc." />
 
     </footer>
   );

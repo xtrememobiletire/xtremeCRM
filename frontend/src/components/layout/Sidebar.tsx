@@ -277,7 +277,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false }: Sideba
           <div className={`flex items-center gap-2 ${isCollapsed ? 'md:justify-center md:w-full' : ''}`}>
             <img 
               src="/logo.png" 
-              alt="Call Mobile Tire" 
+              alt="CALL TIRE Inc." 
               className={isCollapsed ? "h-8 w-8 object-contain shrink-0" : "h-10 sm:h-11 w-auto max-w-[145px] object-contain shrink-0 drop-shadow-xs"} 
             />
             {(!isCollapsed || isOpen) && (

@@ -4,7 +4,7 @@ import { sendSuccess, sendError } from '../utils/apiResponse.js';
 
 export const getHello = (_req: Request, res: Response): void => {
   sendSuccess(res, {
-    message: 'Hello from XtremeCRM Express Backend!',
+    message: 'Hello from CALL TIRE Inc. Express Backend!',
   });
 };
 

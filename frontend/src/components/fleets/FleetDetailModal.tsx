@@ -167,7 +167,7 @@ export default function FleetDetailModal({ fleet, isOpen, onClose }: FleetDetail
   const [copiedInvite, setCopiedInvite] = useState(false);
 
   const handleCopyInvite = () => {
-    const credText = `🏢 Call Mobile Tire — Fleet Manager Portal
+    const credText = `🏢 CALL TIRE Inc. — Fleet Manager Portal
 🔗 Portal: ${window.location.origin}/login
 📧 Login Email: ${formData.email || activeFleet?.email || '—'}
 🔑 Password: ${activeFleet?.password || (formData.password ? formData.password : '(Managed via User Account)')}
