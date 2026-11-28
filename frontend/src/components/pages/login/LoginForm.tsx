@@ -37,8 +37,11 @@ export default function LoginForm() {
       {/* Brand Logo Included Inside Black Card */}
       <div className="flex justify-center pt-1 pb-1">
         <img 
-          src="/logo.png" 
+          src="/logo.png?v=3" 
           alt="CALL TIRE Inc." 
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
           className="h-14 sm:h-16 w-auto object-contain drop-shadow-md" 
         />
       </div>

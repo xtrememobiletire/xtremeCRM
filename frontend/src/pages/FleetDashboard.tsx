@@ -522,9 +522,11 @@ export default function FleetDashboard() {
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 bg-white shrink-0">
           <div className="flex items-center gap-2">
             <img 
-              src="/logo.png" 
+              src="/logo.png?v=3" 
               alt="CALL TIRE Inc." 
-              className="h-9 sm:h-10 w-auto max-w-[145px] object-contain shrink-0 drop-shadow-xs cursor-pointer"
+              loading="eager"
+              decoding="async"
+              className="h-9 sm:h-10 w-auto max-w-[145px] object-contain rounded-md shrink-0 drop-shadow-xs cursor-pointer"
               onClick={() => setActiveTab('dashboard')} 
             />
             <div className="min-w-0">

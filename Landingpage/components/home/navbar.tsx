@@ -34,7 +34,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
 
 export default function Navbar({
   brandName = "CALL TIRE Inc.",
-  logoSrc = "/logo.png",
+  logoSrc = "/logo.png?v=3",
   navItems = DEFAULT_NAV_ITEMS,
   signInHref = LOGIN_URL,
   signUpHref: _signUpHref = "/signup",
@@ -203,6 +203,9 @@ export default function Navbar({
                     <img
                       src={logoSrc}
                       alt={brandName}
+                      loading="eager"
+                      decoding="async"
+                      fetchPriority="high"
                       className="h-8 xs:h-9 sm:h-12 lg:h-14 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
                     />
                   ) : (
@@ -368,6 +371,8 @@ export default function Navbar({
                         <img
                           src={logoSrc}
                           alt={brandName}
+                          loading="eager"
+                          decoding="async"
                           className="h-8 xs:h-10 sm:h-12 w-auto object-contain"
                         />
                       ) : (

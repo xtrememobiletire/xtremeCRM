@@ -10,7 +10,7 @@ export function OrganizationSchema() {
         "name": "CALL TIRE Inc.",
         "alternateName": "CALL TIRE Inc. Solutions",
         "url": "https://calltire.net",
-        "logo": "https://calltire.net/logo.png",
+        "logo": "https://calltire.net/logo.png?v=3",
         "image": "https://res.cloudinary.com/ebjikx52/image/upload/v1792426881/xtreme/landing/service-mobile-van_jpg.jpg",
         "description": "24/7 on-demand mobile tire repair, tire replacement, roadside assistance, and commercial fleet management solutions delivered directly to your location.",
         "telephone": "+1-804-326-5442",

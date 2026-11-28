@@ -10,7 +10,7 @@ interface FooterLegalProps {
 
 export default function FooterLegal({
   brandName = "CALL TIRE Inc.",
-  logoSrc = "/logo.png",
+  logoSrc = "/logo.png?v=3",
 }: FooterLegalProps) {
   return (
     <div className="w-full pt-8 pb-4 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-zinc-400 font-mono">
@@ -20,6 +20,8 @@ export default function FooterLegal({
           <img
             src={logoSrc}
             alt={brandName}
+            loading="eager"
+            decoding="async"
             className="h-8 sm:h-9 w-auto object-contain transition-transform group-hover:scale-105"
           />
         </Link>

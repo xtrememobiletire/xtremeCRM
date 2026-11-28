@@ -13,7 +13,7 @@ interface HomeFooterProps {
 
 export default function HomeFooter({
   brandName = "CALL TIRE Inc.",
-  logoSrc = "/logo.png",
+  logoSrc = "/logo.png?v=3",
   className = "",
 }: HomeFooterProps) {
   return (
@@ -47,6 +47,8 @@ export default function HomeFooter({
                 <img
                   src={logoSrc}
                   alt={brandName}
+                  loading="eager"
+                  decoding="async"
                   className="h-10 xs:h-12 sm:h-14 md:h-16 w-auto object-contain transition-transform group-hover:scale-105"
                 />
               </Link>

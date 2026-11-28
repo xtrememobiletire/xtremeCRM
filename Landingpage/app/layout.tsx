@@ -112,6 +112,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn("font-sans", sans.variable, serif.variable)} suppressHydrationWarning>
       <head>
+        <link rel="preload" as="image" href="/logo.png?v=3" fetchPriority="high" />
         <link rel="icon" href="https://res.cloudinary.com/wgstyulb/image/upload/v1795861646/Gemini_Generated_Image_xpfmy4xpfmy4xpfm.jpg" type="image/jpeg" />
         <link rel="shortcut icon" href="https://res.cloudinary.com/wgstyulb/image/upload/v1795861646/Gemini_Generated_Image_xpfmy4xpfmy4xpfm.jpg" />
         <link rel="apple-touch-icon" href="https://res.cloudinary.com/wgstyulb/image/upload/v1795861646/Gemini_Generated_Image_xpfmy4xpfmy4xpfm.jpg" />

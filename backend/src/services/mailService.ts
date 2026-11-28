@@ -121,7 +121,7 @@ class MailService {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #0b1120; border-bottom: 3px solid #dc2626; padding: 22px 0;">
             <tr>
               <td align="center" valign="middle">
-                <img src="https://calltire.net/logo.png" alt="CALL TIRE Inc." width="160" style="display: block; width: 160px; max-width: 160px; height: auto; margin: 0 auto; border: 0;" />
+                <img src="https://calltire.net/logo.png?v=3" alt="CALL TIRE Inc." width="160" style="display: block; width: 160px; max-width: 160px; height: auto; margin: 0 auto; border: 0;" />
               </td>
             </tr>
           </table>

@@ -11,7 +11,7 @@ export interface HeaderProps {
 
 export default function Header({
   brandName = "CALL TIRE Inc.",
-  logoSrc = "/logo.png",
+  logoSrc = "/logo.png?v=3",
   onLogoClick,
   hide = false,
 }: HeaderProps) {
