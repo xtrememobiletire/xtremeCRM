@@ -98,9 +98,13 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: "/logo.png?v=2",
-    shortcut: "/logo.png?v=2",
-    apple: "/logo.png?v=2",
+    icon: [
+      { url: "/favicon.png?v=3", type: "image/png", sizes: "32x32" },
+      { url: "/favicon-16x16.png?v=3", type: "image/png", sizes: "16x16" },
+      { url: "/favicon.ico?v=3", sizes: "any" },
+    ],
+    shortcut: "/favicon.png?v=3",
+    apple: "/apple-touch-icon.png?v=3",
   },
 };
 
@@ -112,7 +116,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn("font-sans", sans.variable, serif.variable)} suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/logo.png?v=2" type="image/png" />
+        <link rel="icon" href="/favicon.png?v=3" type="image/png" sizes="32x32" />
+        <link rel="icon" href="/favicon-16x16.png?v=3" type="image/png" sizes="16x16" />
+        <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
+        <link rel="shortcut icon" href="/favicon.png?v=3" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
         <OrganizationSchema />
         <script
           dangerouslySetInnerHTML={{
