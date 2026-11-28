@@ -252,7 +252,7 @@ export const fleetController = {
 
       // Provision or link fleet manager User account for portal authentication
       if (cleanEmail) {
-        const finalPassword = cleanPassword || `XtremeFleet${Math.floor(1000 + Math.random() * 9000)}!`;
+        const finalPassword = cleanPassword || `CallTireFleet${Math.floor(1000 + Math.random() * 9000)}!`;
         persistedPassword = finalPassword;
         const passwordHash = await bcrypt.hash(finalPassword, 10);
         const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });

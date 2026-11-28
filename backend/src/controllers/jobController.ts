@@ -559,7 +559,7 @@ export const jobController = {
             const userEmail = normalizeEmail(cust.email) || `cx_${cust.phone.replace(/[^0-9]/g, '')}@calltire.net`;
             const existingUser = await prisma.user.findUnique({ where: { email: userEmail } });
             if (!existingUser) {
-              const passwordHash = await bcrypt.hash('XtremeMember2026!', 10);
+              const passwordHash = await bcrypt.hash('CallTireMember2026!', 10);
               const newUser = await prisma.user.create({
                 data: {
                   email: userEmail,
@@ -1819,7 +1819,7 @@ export const jobController = {
 
         if (!existingUser) {
           const randSuffix = crypto.randomBytes(4).toString('hex');
-          const email = `contractor_${Date.now()}_${randSuffix}@external.xtremetire.com`;
+          const email = `contractor_${Date.now()}_${randSuffix}@external.calltire.net`;
           const dummyHash = await bcrypt.hash(`Ext_${Date.now()}_${randSuffix}`, 10);
 
           existingUser = await prisma.user.create({

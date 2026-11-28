@@ -141,7 +141,7 @@ export const userController = {
       const isExternalContractor = assignedVehicle === 'EXTERNAL_CONTRACTOR' || assignedVehicle?.startsWith('EXTERNAL');
       const finalEmail =
         (email ? normalizeRequiredEmail(email) : '') ||
-        (isExternalContractor ? `contractor_${Date.now()}_${crypto.randomBytes(4).toString('hex')}@external.xtremetire.com` : '');
+        (isExternalContractor ? `contractor_${Date.now()}_${crypto.randomBytes(4).toString('hex')}@external.calltire.net` : '');
       if (!finalEmail) return sendError(res, 'Email is required', 400);
 
       const existing = await prisma.user.findUnique({ where: { email: finalEmail } });

@@ -1028,7 +1028,7 @@ export const leadController = {
       }
 
       const fleetEmail = (extra.email || lead.email)?.trim()?.toLowerCase() || null;
-      const rawPass: string = extra.password?.trim() || `XtremeFleet${Math.floor(1000 + Math.random() * 9000)}!`;
+      const rawPass: string = extra.password?.trim() || `CallTireFleet${Math.floor(1000 + Math.random() * 9000)}!`;
 
       const result = await prisma.$transaction(async (tx) => {
         let managerUserIdToLink: string | null = null;
