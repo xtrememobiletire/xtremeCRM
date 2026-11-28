@@ -98,13 +98,9 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: [
-      { url: "/favicon.png?v=3", type: "image/png", sizes: "32x32" },
-      { url: "/favicon-16x16.png?v=3", type: "image/png", sizes: "16x16" },
-      { url: "/favicon.ico?v=3", sizes: "any" },
-    ],
-    shortcut: "/favicon.png?v=3",
-    apple: "/apple-touch-icon.png?v=3",
+    icon: "https://res.cloudinary.com/wgstyulb/image/upload/v1795861646/Gemini_Generated_Image_xpfmy4xpfmy4xpfm.jpg",
+    shortcut: "https://res.cloudinary.com/wgstyulb/image/upload/v1795861646/Gemini_Generated_Image_xpfmy4xpfmy4xpfm.jpg",
+    apple: "https://res.cloudinary.com/wgstyulb/image/upload/v1795861646/Gemini_Generated_Image_xpfmy4xpfmy4xpfm.jpg",
   },
 };
 
@@ -116,11 +112,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn("font-sans", sans.variable, serif.variable)} suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/favicon.png?v=3" type="image/png" sizes="32x32" />
-        <link rel="icon" href="/favicon-16x16.png?v=3" type="image/png" sizes="16x16" />
-        <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
-        <link rel="shortcut icon" href="/favicon.png?v=3" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
+        <link rel="icon" href="https://res.cloudinary.com/wgstyulb/image/upload/v1795861646/Gemini_Generated_Image_xpfmy4xpfmy4xpfm.jpg" type="image/jpeg" />
+        <link rel="shortcut icon" href="https://res.cloudinary.com/wgstyulb/image/upload/v1795861646/Gemini_Generated_Image_xpfmy4xpfmy4xpfm.jpg" />
+        <link rel="apple-touch-icon" href="https://res.cloudinary.com/wgstyulb/image/upload/v1795861646/Gemini_Generated_Image_xpfmy4xpfmy4xpfm.jpg" />
         <OrganizationSchema />
         <script
           dangerouslySetInnerHTML={{
